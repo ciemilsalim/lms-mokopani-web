@@ -43,7 +43,7 @@ class AssignmentController extends Controller
                     $firstTp = $tpItems->first();
                     return [
                         'objective_id'          => $firstTp->learning_objective_id,
-                        'objective_code'        => $firstTp->learningObjective?->code ?? '-',
+                        'objective_code'        => $firstTp->learningObjective?->code ?: ('TP ' . ($firstTp->learningObjective?->order ?? '?')),
                         'objective_description' => $firstTp->learningObjective?->description ?? 'Tanpa TP',
                         'assignments'           => $tpItems->map(fn ($a) => [
                             'id'                => $a->id,
@@ -55,6 +55,7 @@ class AssignmentController extends Controller
                             'max_points'        => $a->max_points,
                             'assessment_type'   => $a->assessment_type,
                             'instrument_type'   => $a->instrument_type,
+                            'scoring_tool'      => $a->scoring_tool,
                             'submissions_count' => $a->submissions_count,
                         ])->values(),
                     ];
@@ -88,6 +89,7 @@ class AssignmentController extends Controller
                         'max_points'        => $a->max_points,
                         'assessment_type'   => $a->assessment_type,
                         'instrument_type'   => $a->instrument_type,
+                        'scoring_tool'      => $a->scoring_tool,
                         'submissions_count' => $a->submissions_count,
                     ])->values(),
                     'total' => $items->count(),
@@ -111,6 +113,7 @@ class AssignmentController extends Controller
             'max_points'        => $a->max_points,
             'assessment_type'   => $a->assessment_type,
             'instrument_type'   => $a->instrument_type,
+            'scoring_tool'      => $a->scoring_tool,
             'submissions_count' => $a->submissions_count,
         ]);
 
@@ -172,7 +175,9 @@ class AssignmentController extends Controller
                     ['id' => 'reflective_journal',     'name' => 'Jurnal Reflektif',              'icon' => 'book-open',       'desc' => 'Siswa menulis refleksi pemahaman sendiri'],
                     ['id' => 'self_assessment',        'name' => 'Penilaian Diri',                'icon' => 'user-check',      'desc' => 'Siswa menilai capaian belajar mandiri'],
                     ['id' => 'peer_assessment',        'name' => 'Penilaian Antarteman',          'icon' => 'users',           'desc' => 'Siswa mengevaluasi hasil kerja teman'],
-                    ['id' => 'rubric',                 'name' => 'Rubrik Formatif',               'icon' => 'list-checks',     'desc' => 'Kriteria capaian kinerja bertingkat'],
+                    ['id' => 'formative_quiz',         'name' => 'Kuis Formatif',                 'icon' => 'clipboard-check', 'desc' => 'Tes singkat untuk mengecek pemahaman selama proses belajar'],
+                    ['id' => 'guided_discussion',      'name' => 'Diskusi Terpandu',              'icon' => 'message-square',  'desc' => 'Dialog terstruktur untuk menilai penalaran siswa'],
+                    ['id' => 'structured_assignment',   'name' => 'Penugasan Terstruktur (LKPD)',  'icon' => 'file-text',       'desc' => 'Lembar kerja untuk menilai proses berpikir'],
                     ['id' => 'exit_ticket',            'name' => 'Exit Ticket / CATs',            'icon' => 'ticket',          'desc' => 'Evaluasi cepat sebelum kelas berakhir'],
                     ['id' => 'concept_map',            'name' => 'Peta Konsep',                   'icon' => 'git-branch',      'desc' => 'Pemetaan hubungan antar konsep'],
                     ['id' => 'performance_observation','name' => 'Observasi Kinerja',             'icon' => 'activity',        'desc' => 'Pengamatan partisipasi dan diskusi siswa'],
@@ -186,6 +191,12 @@ class AssignmentController extends Controller
                 ],
             ],
             'holidays'         => $holidays,
+            'scoring_tools' => [
+                ['id' => 'rubric',           'name' => 'Rubrik',              'icon' => 'list-checks',  'desc' => 'Panduan kriteria dan level capaian bertingkat'],
+                ['id' => 'rating_scale',     'name' => 'Skala Penilaian',     'icon' => 'gauge',        'desc' => 'Skala numerik/deskriptif untuk mengukur tingkat capaian'],
+                ['id' => 'checklist',        'name' => 'Checklist',           'icon' => 'check-square', 'desc' => 'Daftar periksa ya/tidak untuk aspek yang dinilai'],
+                ['id' => 'anecdotal_notes',  'name' => 'Catatan Anekdotal',   'icon' => 'file-text',    'desc' => 'Catatan naratif pengamatan guru'],
+            ],
         ]);
     }
 
@@ -199,6 +210,8 @@ class AssignmentController extends Controller
             'assessment_type'       => 'required|in:initial,formative,summative',
             'instrument_type'       => 'nullable|string|max:50',
             'instrument_config'     => 'nullable|array',
+            'scoring_tool'          => 'nullable|string|max:50',
+            'scoring_tool_config'   => 'nullable|array',
             'subject_id'            => 'required|exists:mysql_absensi.subjects,id',
             'learning_objective_id' => 'nullable|exists:lms_learning_objectives,id',
             'school_class_id'       => 'required|exists:mysql_absensi.school_classes,id',
@@ -335,6 +348,8 @@ class AssignmentController extends Controller
                 'assessment_type'   => $assignment->assessment_type,
                 'instrument_type'   => $assignment->instrument_type,
                 'instrument_config' => $assignment->instrument_config,
+                'scoring_tool'      => $assignment->scoring_tool,
+                'scoring_tool_config' => $assignment->scoring_tool_config,
                 'submissions'       => $assignment->submissions->map(fn ($s) => [
                     'id'           => $s->id,
                     'student_id'   => $s->student_id,
@@ -495,6 +510,8 @@ class AssignmentController extends Controller
                 'assessment_type'     => $assignment->assessment_type,
                 'instrument_type'     => $assignment->instrument_type,
                 'instrument_config'   => $assignment->instrument_config,
+                'scoring_tool'        => $assignment->scoring_tool,
+                'scoring_tool_config'  => $assignment->scoring_tool_config,
                 'due_date'            => $assignment->due_date?->format('Y-m-d\TH:i'),
                 'max_points'          => $assignment->max_points,
                 'passing_grade'       => $assignment->passing_grade,
@@ -517,7 +534,9 @@ class AssignmentController extends Controller
                     ['id' => 'reflective_journal',     'name' => 'Jurnal Reflektif',              'icon' => 'book-open',       'desc' => 'Siswa menulis refleksi pemahaman sendiri'],
                     ['id' => 'self_assessment',        'name' => 'Penilaian Diri',                'icon' => 'user-check',      'desc' => 'Siswa menilai capaian belajar mandiri'],
                     ['id' => 'peer_assessment',        'name' => 'Penilaian Antarteman',          'icon' => 'users',           'desc' => 'Siswa mengevaluasi hasil kerja teman'],
-                    ['id' => 'rubric',                 'name' => 'Rubrik Formatif',               'icon' => 'list-checks',     'desc' => 'Kriteria capaian kinerja bertingkat'],
+                    ['id' => 'formative_quiz',         'name' => 'Kuis Formatif',                 'icon' => 'clipboard-check', 'desc' => 'Tes singkat untuk mengecek pemahaman selama proses belajar'],
+                    ['id' => 'guided_discussion',      'name' => 'Diskusi Terpandu',              'icon' => 'message-square',  'desc' => 'Dialog terstruktur untuk menilai penalaran siswa'],
+                    ['id' => 'structured_assignment',   'name' => 'Penugasan Terstruktur (LKPD)',  'icon' => 'file-text',       'desc' => 'Lembar kerja untuk menilai proses berpikir'],
                     ['id' => 'exit_ticket',            'name' => 'Exit Ticket / CATs',            'icon' => 'ticket',          'desc' => 'Evaluasi cepat sebelum kelas berakhir'],
                     ['id' => 'concept_map',            'name' => 'Peta Konsep',                   'icon' => 'git-branch',      'desc' => 'Pemetaan hubungan antar konsep'],
                     ['id' => 'performance_observation','name' => 'Observasi Kinerja',             'icon' => 'activity',        'desc' => 'Pengamatan partisipasi dan diskusi siswa'],
@@ -529,6 +548,12 @@ class AssignmentController extends Controller
                     ['id' => 'project',                'name' => 'Penilaian Proyek & Produk',     'icon' => 'folder-kanban',   'desc' => 'Evaluasi hasil karya dari perencanaan hingga pelaporan'],
                     ['id' => 'portfolio',              'name' => 'Portofolio',                    'icon' => 'briefcase',       'desc' => 'Kumpulan rekam jejak capaian siswa'],
                 ],
+            ],
+            'scoring_tools' => [
+                ['id' => 'rubric',           'name' => 'Rubrik',              'icon' => 'list-checks',  'desc' => 'Panduan kriteria dan level capaian bertingkat'],
+                ['id' => 'rating_scale',     'name' => 'Skala Penilaian',     'icon' => 'gauge',        'desc' => 'Skala numerik/deskriptif untuk mengukur tingkat capaian'],
+                ['id' => 'checklist',        'name' => 'Checklist',           'icon' => 'check-square', 'desc' => 'Daftar periksa ya/tidak untuk aspek yang dinilai'],
+                ['id' => 'anecdotal_notes',  'name' => 'Catatan Anekdotal',   'icon' => 'file-text',    'desc' => 'Catatan naratif pengamatan guru'],
             ],
         ]);
     }
@@ -545,6 +570,8 @@ class AssignmentController extends Controller
             'assessment_type'       => 'required|in:initial,formative,summative',
             'instrument_type'       => 'nullable|string|max:50',
             'instrument_config'     => 'nullable|array',
+            'scoring_tool'          => 'nullable|string|max:50',
+            'scoring_tool_config'   => 'nullable|array',
             'subject_id'            => 'required|exists:mysql_absensi.subjects,id',
             'learning_objective_id' => 'nullable|exists:lms_learning_objectives,id',
             'school_class_id'       => 'required|exists:mysql_absensi.school_classes,id',

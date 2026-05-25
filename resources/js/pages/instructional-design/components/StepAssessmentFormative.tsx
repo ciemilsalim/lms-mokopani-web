@@ -3,7 +3,7 @@ import {
     Activity, Trash2, Plus, Sparkles, Loader2, Compass, Info,
     MessageSquare, ClipboardCheck, Eye, Star, Clock 
 } from 'lucide-react';
-import { Instrument } from './types';
+import { Instrument, ScoringTool } from './types';
 import QuizBuilder from './QuizBuilder';
 import ObservationBuilder from './ObservationBuilder';
 import KKTPSection from './KKTPSection';
@@ -12,6 +12,7 @@ interface StepAssessmentFormativeProps {
     data: any;
     setData: (key: any, value?: any) => void;
     instruments: Instrument[];
+    scoringTools: ScoringTool[];
     processing: boolean;
     isSuggesting: boolean;
     handleAssessmentSuggest: (key: 'initial' | 'formative' | 'summative', type: string, instIdx?: number) => void;
@@ -23,6 +24,7 @@ export default function StepAssessmentFormative({
     data,
     setData,
     instruments,
+    scoringTools,
     processing,
     isSuggesting,
     handleAssessmentSuggest,
@@ -33,13 +35,14 @@ export default function StepAssessmentFormative({
     const formInstances = data.formative?.instruments || [];
 
     const addInstrument = () => {
-        const defaultType = instruments[0]?.id || 'rubric';
+        const defaultType = instruments[0]?.id || 'formative_quiz';
         const defaultApproach = getDefaultKKTPApproach('formative', defaultType);
 
         const newInst = {
             id: 'form_' + Math.random().toString(36).substr(2, 9),
             title: 'Asesmen Formatif ' + (formInstances.length + 1),
             instrument_type: defaultType,
+            scoring_tool: '',
             due_date: '',
             instrument_config: {
                 stimulus: '',
@@ -212,6 +215,19 @@ export default function StepAssessmentFormative({
                                     className={`h-8 w-full bg-card text-card-foreground border rounded-md px-3 text-[12px] text-foreground outline-none [color-scheme:light] dark:[color-scheme:dark] transition ${localErrors?.[`formative.instruments.${activeTab}.due_date`] ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500/20' : 'border-border focus:border-primary'}`}
                                 />
                             </div>
+                            <div className="space-y-1.5">
+                                <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.05em] ml-1">Alat Penskoran (Opsional)</label>
+                                <select
+                                    value={activeInst.scoring_tool || ''}
+                                    onChange={e => updateInstrumentField(activeTab, 'scoring_tool', e.target.value || null)}
+                                    className="h-8 w-full bg-card text-card-foreground border border-border rounded-md px-3 text-[12px] text-foreground outline-none focus:border-primary transition"
+                                >
+                                    <option value="">-- Tanpa Alat Penskoran --</option>
+                                    {scoringTools.map(tool => (
+                                        <option key={tool.id} value={tool.id}>{tool.name}</option>
+                                    ))}
+                                </select>
+                            </div>
                             <button
                                 type="button"
                                 onClick={() => handleAssessmentSuggest('formative', activeInst.instrument_type, activeTab)}
@@ -277,7 +293,7 @@ export default function StepAssessmentFormative({
                                 </div>
                             )}
 
-                            {(activeInst.instrument_type === 'quiz_survey' || activeInst.instrument_type === 'written_test') && (
+                            {(activeInst.instrument_type === 'quiz_survey' || activeInst.instrument_type === 'written_test' || activeInst.instrument_type === 'formative_quiz') && (
                                 <QuizBuilder
                                     assessmentKey="formative"
                                     instIdx={activeTab}
@@ -288,7 +304,7 @@ export default function StepAssessmentFormative({
                                 />
                             )}
 
-                            {(activeInst.instrument_type === 'observation_checklist' || activeInst.instrument_type === 'performance_observation' || activeInst.instrument_type === 'self_assessment' || activeInst.instrument_type === 'peer_assessment') && (
+                            {(activeInst.instrument_type === 'observation_checklist' || activeInst.instrument_type === 'performance_observation' || activeInst.instrument_type === 'self_assessment' || activeInst.instrument_type === 'peer_assessment' || activeInst.instrument_type === 'guided_discussion') && (
                                 <div className="space-y-4">
                                     {activeConfig.stimulus !== undefined && (
                                         <div className="space-y-1.5">
@@ -383,7 +399,7 @@ export default function StepAssessmentFormative({
                                 </div>
                             )}
 
-                            {(activeInst.instrument_type === 'concept_map' || activeInst.instrument_type === 'project' || activeInst.instrument_type === 'portfolio') && (
+                            {(activeInst.instrument_type === 'concept_map' || activeInst.instrument_type === 'project' || activeInst.instrument_type === 'portfolio' || activeInst.instrument_type === 'structured_assignment') && (
                                 <div className="space-y-4">
                                     <div className="space-y-1.5">
                                         <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.05em] ml-1">Instruksi Penilaian</label>
@@ -391,7 +407,7 @@ export default function StepAssessmentFormative({
                                             value={activeConfig.stimulus || ''}
                                             onChange={e => updateFormativeConfig(activeTab, 'stimulus', e.target.value)}
                                             rows={4}
-                                            placeholder="Tuliskan petunjuk penugasan peta konsep/portofolio..."
+                                            placeholder="Tuliskan petunjuk penugasan atau lembar kerja..."
                                             className="w-full bg-card text-card-foreground rounded border border-border p-3 text-[12px] focus:border-primary outline-none resize-none leading-relaxed"
                                         />
                                     </div>

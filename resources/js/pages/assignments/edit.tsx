@@ -64,6 +64,8 @@ interface EditAssignmentProps {
         assessment_type: string;
         instrument_type: string;
         instrument_config: any;
+        scoring_tool: string | null;
+        scoring_tool_config: any;
         due_date: string;
         max_points: number;
         passing_grade: number | null;
@@ -73,6 +75,7 @@ interface EditAssignmentProps {
     assessment_types: { id: string; name: string }[];
     instruments: Record<string, Instrument[]>;
     holidays: { title: string; date: string; end: string }[];
+    scoring_tools: any[];
 }
 
 const iconMap: Record<string, any> = {
@@ -99,12 +102,14 @@ const assessmentColors: Record<string, { bg: string; border: string; text: strin
     summative: { bg: 'bg-success/10 text-success border border-success/20',       border: 'border-success',    text: 'text-success',       activeBg: 'bg-success' },
 };
 
-export default function EditAssignment({ assignment, teachings, objectives, assessment_types, instruments, holidays }: EditAssignmentProps) {
+export default function EditAssignment({ assignment, teachings, objectives, assessment_types, instruments, holidays, scoring_tools }: EditAssignmentProps) {
     const [holidayWarning, setHolidayWarning] = useState<string | null>(null);
 
     const { data, setData, post, processing, errors } = useForm({
         assessment_type: assignment.assessment_type,
         instrument_type: assignment.instrument_type,
+        scoring_tool: assignment.scoring_tool ?? '',
+        scoring_tool_config: assignment.scoring_tool_config ?? {} as any,
         subject_id: assignment.subject_id.toString(),
         learning_objective_id: assignment.learning_objective_id?.toString() ?? '',
         school_class_id: assignment.school_class_id.toString(),
@@ -290,38 +295,60 @@ export default function EditAssignment({ assignment, teachings, objectives, asse
 
                     {/* Step 2: Instrument Type */}
                     {data.assessment_type && (
-                        <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
-                            <div className="flex items-center gap-2">
-                                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-[10px] font-semibold text-primary-foreground">2</span>
-                                <h2 className="text-sm font-semibold text-foreground">Pilih Instrumen Asesmen</h2>
+                        <div className="space-y-6 animate-in fade-in slide-in-from-top-2 duration-300">
+                            <div className="space-y-3">
+                                <div className="flex items-center gap-2">
+                                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-[10px] font-semibold text-primary-foreground">2</span>
+                                    <h2 className="text-sm font-semibold text-foreground">Pilih Instrumen Asesmen</h2>
+                                </div>
+
+                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                                    {currentInstruments.map((inst) => {
+                                        const Icon = iconMap[inst.icon] || FileText;
+                                        const isActive = data.instrument_type === inst.id;
+                                        return (
+                                            <button
+                                                key={inst.id}
+                                                type="button"
+                                                onClick={() => setData('instrument_type', inst.id)}
+                                                className={`group flex flex-col items-start gap-3 rounded-xl border p-4 text-left transition-all cursor-pointer ${
+                                                    isActive
+                                                    ? `${colors.border} ${colors.bg} shadow-sm`
+                                                    : 'border-border bg-card hover:border-primary/50'
+                                                }`}
+                                            >
+                                                <div className={`flex h-9 w-9 items-center justify-center rounded-lg transition-all ${isActive ? `${colors.activeBg} text-white` : 'bg-muted text-muted-foreground'}`}>
+                                                    <Icon className="h-4 w-4" />
+                                                </div>
+                                                <div>
+                                                    <h4 className="text-xs font-semibold text-foreground line-clamp-1">{inst.name}</h4>
+                                                    <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2 leading-relaxed">{inst.desc}</p>
+                                                </div>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
                             </div>
 
-                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                                {currentInstruments.map((inst) => {
-                                    const Icon = iconMap[inst.icon] || FileText;
-                                    const isActive = data.instrument_type === inst.id;
-                                    return (
-                                        <button
-                                            key={inst.id}
-                                            type="button"
-                                            onClick={() => setData('instrument_type', inst.id)}
-                                            className={`group flex flex-col items-start gap-3 rounded-xl border p-4 text-left transition-all cursor-pointer ${
-                                                isActive
-                                                ? `${colors.border} ${colors.bg} shadow-sm`
-                                                : 'border-border bg-card hover:border-primary/50'
-                                            }`}
+                            {data.instrument_type && (
+                                <div className="space-y-3 pt-4 border-t border-border animate-in fade-in duration-200">
+                                    <div className="flex items-center gap-2">
+                                        <h2 className="text-sm font-semibold text-foreground">Pilih Alat Penskoran (Opsional)</h2>
+                                    </div>
+                                    <div className="max-w-md">
+                                        <select
+                                            value={data.scoring_tool || ''}
+                                            onChange={(e) => setData('scoring_tool', e.target.value || '')}
+                                            className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 dark:bg-popover transition"
                                         >
-                                            <div className={`flex h-9 w-9 items-center justify-center rounded-lg transition-all ${isActive ? `${colors.activeBg} text-white` : 'bg-muted text-muted-foreground'}`}>
-                                                <Icon className="h-4 w-4" />
-                                            </div>
-                                            <div>
-                                                <h4 className="text-xs font-semibold text-foreground line-clamp-1">{inst.name}</h4>
-                                                <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2 leading-relaxed">{inst.desc}</p>
-                                            </div>
-                                        </button>
-                                    );
-                                })}
-                            </div>
+                                            <option value="">-- Tanpa Alat Penskoran (Opsional) --</option>
+                                            {scoring_tools.map((tool) => (
+                                                <option key={tool.id} value={tool.id}>{tool.name} — {tool.desc}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
 

@@ -19,6 +19,7 @@ interface Assignment {
     max_points: number;
     assessment_type: string | null;
     instrument_type: string | null;
+    scoring_tool?: string | null;
     submissions_count: number;
 }
 
@@ -62,6 +63,14 @@ const instrumentLabels: Record<string, string> = {
     rubric: 'Rubrik', exit_ticket: 'Exit Ticket', concept_map: 'Peta Konsep', performance_observation: 'Observasi Kinerja',
     written_test: 'Tes Tertulis', oral_test: 'Tes Lisan', performance: 'Unjuk Kerja',
     project: 'Proyek', portfolio: 'Portofolio',
+    formative_quiz: 'Kuis Formatif', guided_discussion: 'Diskusi Terpandu', structured_assignment: 'Penugasan Terstruktur',
+};
+
+const scoringToolLabels: Record<string, string> = {
+    rubric: 'Rubrik',
+    rating_scale: 'Skala Penilaian',
+    checklist: 'Checklist',
+    anecdotal_notes: 'Catatan Anekdotal',
 };
 
 const typeStyles: Record<string, { bg: string; text: string; icon: any }> = {
@@ -137,6 +146,11 @@ function AssignmentCard({ asgn, isTeacher = false }: { asgn: Assignment; isTeach
                 {asgn.instrument_type && (
                     <span className="rounded-full bg-muted px-2 py-0.5 text-[9px] font-bold text-muted-foreground uppercase tracking-wider">
                         {instrumentLabels[asgn.instrument_type] || asgn.instrument_type}
+                    </span>
+                )}
+                {asgn.scoring_tool && (
+                    <span className="rounded-full bg-primary/10 border border-primary/20 px-2 py-0.5 text-[9px] font-bold text-primary uppercase tracking-wider">
+                        {scoringToolLabels[asgn.scoring_tool] || asgn.scoring_tool}
                     </span>
                 )}
             </div>

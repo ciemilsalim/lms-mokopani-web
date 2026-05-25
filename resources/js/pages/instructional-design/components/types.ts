@@ -21,6 +21,13 @@ export interface Instrument {
     desc: string;
 }
 
+export interface ScoringTool {
+    id: string;
+    name: string;
+    icon: string;
+    desc: string;
+}
+
 export interface CpItem {
     id: number;
     kode: string;
@@ -34,6 +41,7 @@ export interface InstructionalDesignProps {
     teachings: Teaching[];
     objectives: Objective[];
     instruments: Record<string, Instrument[]>;
+    scoring_tools: ScoringTool[];
     cpList: CpItem[];
     period: string;
 }

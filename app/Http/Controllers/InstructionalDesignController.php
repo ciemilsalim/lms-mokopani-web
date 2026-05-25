@@ -50,7 +50,9 @@ class InstructionalDesignController extends Controller
                 ['id' => 'reflective_journal',     'name' => 'Jurnal Reflektif',              'icon' => 'book-open',       'desc' => 'Siswa menulis refleksi pemahaman sendiri'],
                 ['id' => 'self_assessment',        'name' => 'Penilaian Diri',                'icon' => 'user-check',      'desc' => 'Siswa menilai capaian belajar mandiri'],
                 ['id' => 'peer_assessment',        'name' => 'Penilaian Antarteman',          'icon' => 'users',           'desc' => 'Siswa mengevaluasi hasil kerja teman'],
-                ['id' => 'rubric',                 'name' => 'Rubrik Formatif',               'icon' => 'list-checks',     'desc' => 'Kriteria capaian kinerja bertingkat'],
+                ['id' => 'formative_quiz',         'name' => 'Kuis Formatif',                 'icon' => 'clipboard-check', 'desc' => 'Tes singkat untuk mengecek pemahaman selama proses belajar'],
+                ['id' => 'guided_discussion',      'name' => 'Diskusi Terpandu',              'icon' => 'message-square',  'desc' => 'Dialog terstruktur untuk menilai penalaran siswa'],
+                ['id' => 'structured_assignment',   'name' => 'Penugasan Terstruktur (LKPD)',  'icon' => 'file-text',       'desc' => 'Lembar kerja untuk menilai proses berpikir'],
                 ['id' => 'exit_ticket',            'name' => 'Exit Ticket / CATs',            'icon' => 'ticket',          'desc' => 'Evaluasi cepat sebelum kelas berakhir'],
                 ['id' => 'concept_map',            'name' => 'Peta Konsep',                   'icon' => 'git-branch',      'desc' => 'Pemetaan hubungan antar konsep'],
                 ['id' => 'performance_observation','name' => 'Observasi Kinerja',             'icon' => 'activity',        'desc' => 'Pengamatan partisipasi dan diskusi siswa'],
@@ -64,17 +66,25 @@ class InstructionalDesignController extends Controller
             ],
         ];
 
+        $scoringTools = [
+            ['id' => 'rubric',           'name' => 'Rubrik',              'icon' => 'list-checks',  'desc' => 'Panduan kriteria dan level capaian bertingkat'],
+            ['id' => 'rating_scale',     'name' => 'Skala Penilaian',     'icon' => 'gauge',        'desc' => 'Skala numerik/deskriptif untuk mengukur tingkat capaian'],
+            ['id' => 'checklist',        'name' => 'Checklist',           'icon' => 'check-square', 'desc' => 'Daftar periksa ya/tidak untuk aspek yang dinilai'],
+            ['id' => 'anecdotal_notes',  'name' => 'Catatan Anekdotal',   'icon' => 'file-text',    'desc' => 'Catatan naratif pengamatan guru'],
+        ];
+
         $subjectIds = $teachings->pluck('subject_id')->unique();
         $cpList = LmsCapaianPembelajaran::with('subject')
             ->whereIn('subject_id', $subjectIds)
             ->get();
 
         return Inertia::render('instructional-design/create', [
-            'teachings'   => $teachings,
-            'objectives'  => $objectives,
-            'instruments' => $instruments,
-            'cpList'      => $cpList,
-            'period'      => $activeYear?->name . ' - ' . $activeSemester?->name,
+            'teachings'     => $teachings,
+            'objectives'    => $objectives,
+            'instruments'   => $instruments,
+            'scoring_tools' => $scoringTools,
+            'cpList'        => $cpList,
+            'period'        => $activeYear?->name . ' - ' . $activeSemester?->name,
         ]);
     }
 
@@ -103,23 +113,29 @@ class InstructionalDesignController extends Controller
             'material.thumbnail'              => 'nullable|image|max:2048',
 
             // Assessments
-            'initial.enabled'           => 'required|boolean',
-            'initial.instrument_type'   => 'required_if:initial.enabled,true|nullable|string',
-            'initial.instrument_config' => 'nullable|array',
-            'initial.title'             => 'required_if:initial.enabled,true|nullable|string|max:255',
-            'initial.due_date'          => 'required_if:initial.enabled,true|nullable|date',
+            'initial.enabled'              => 'required|boolean',
+            'initial.instrument_type'      => 'required_if:initial.enabled,true|nullable|string',
+            'initial.instrument_config'    => 'nullable|array',
+            'initial.scoring_tool'         => 'nullable|string',
+            'initial.scoring_tool_config'  => 'nullable|array',
+            'initial.title'                => 'required_if:initial.enabled,true|nullable|string|max:255',
+            'initial.due_date'             => 'required_if:initial.enabled,true|nullable|date',
 
-            'formative.enabled'                => 'required|boolean',
-            'formative.instruments'            => 'nullable|array',
+            'formative.enabled'                         => 'required|boolean',
+            'formative.instruments'                     => 'nullable|array',
             'formative.instruments.*.instrument_type'   => 'required|string',
             'formative.instruments.*.instrument_config' => 'nullable|array',
+            'formative.instruments.*.scoring_tool'      => 'nullable|string',
+            'formative.instruments.*.scoring_tool_config' => 'nullable|array',
             'formative.instruments.*.title'             => 'required|string|max:255',
             'formative.instruments.*.due_date'          => 'required|date',
 
-            'summative.enabled'                => 'required|boolean',
-            'summative.instruments'            => 'nullable|array',
+            'summative.enabled'                         => 'required|boolean',
+            'summative.instruments'                     => 'nullable|array',
             'summative.instruments.*.instrument_type'   => 'required|string',
             'summative.instruments.*.instrument_config' => 'nullable|array',
+            'summative.instruments.*.scoring_tool'      => 'nullable|string',
+            'summative.instruments.*.scoring_tool_config' => 'nullable|array',
             'summative.instruments.*.title'             => 'required|string|max:255',
             'summative.instruments.*.due_date'          => 'required|date',
         ]);
@@ -203,6 +219,8 @@ class InstructionalDesignController extends Controller
                     'assessment_type'       => 'initial',
                     'instrument_type'       => $initialData['instrument_type'],
                     'instrument_config'     => $config,
+                    'scoring_tool'          => $initialData['scoring_tool'] ?? null,
+                    'scoring_tool_config'   => $initialData['scoring_tool_config'] ?? [],
                     'title'                 => $initialData['title'],
                     'description'           => $initialData['description'] ?? "Asesmen awal untuk materi " . $materialData['title'],
                     'due_date'              => $initialData['due_date'],
@@ -225,6 +243,8 @@ class InstructionalDesignController extends Controller
                             'assessment_type'       => $type,
                             'instrument_type'       => $inst['instrument_type'],
                             'instrument_config'     => $inst['instrument_config'] ?? [],
+                            'scoring_tool'          => $inst['scoring_tool'] ?? null,
+                            'scoring_tool_config'   => $inst['scoring_tool_config'] ?? [],
                             'title'                 => $inst['title'],
                             'description'           => $inst['description'] ?? "Asesmen {$type} untuk materi " . $materialData['title'],
                             'due_date'              => $inst['due_date'],

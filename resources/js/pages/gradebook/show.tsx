@@ -24,6 +24,7 @@ interface Header {
     id: number;
     title: string;
     tp?: string;
+    tp_desc?: string;
     type?: string;
     max?: number;
 }
@@ -158,9 +159,12 @@ export default function GradebookShow({ summative_headers, other_headers, gradeD
                                     {viewMode === 'summative' ? (
                                         summative_headers.map(h => (
                                             <th key={h.id} className="px-6 py-5 font-bold text-foreground min-w-[140px] text-center border-l border-border">
-                                                <div className="flex flex-col gap-0.5">
+                                                <div className="flex flex-col gap-0.5" title={h.tp_desc || ''}>
                                                     <span className="truncate max-w-[120px] mx-auto">{h.title}</span>
-                                                    <span className="text-[10px] font-bold text-primary uppercase">{h.tp || 'Tanpa TP'}</span>
+                                                    <span className="text-[10px] font-bold text-primary uppercase">{h.tp}</span>
+                                                    {h.tp_desc && (
+                                                        <span className="text-[9px] font-medium text-muted-foreground line-clamp-2 max-w-[130px] mx-auto leading-tight">{h.tp_desc}</span>
+                                                    )}
                                                 </div>
                                             </th>
                                         ))

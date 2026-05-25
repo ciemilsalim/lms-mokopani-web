@@ -2,7 +2,7 @@ import React from 'react';
 import { 
     Target, Compass, Sparkles, Loader2, MessageSquare, ClipboardCheck, Eye 
 } from 'lucide-react';
-import { Instrument } from './types';
+import { Instrument, ScoringTool } from './types';
 import QuizBuilder from './QuizBuilder';
 import ObservationBuilder from './ObservationBuilder';
 import KKTPSection from './KKTPSection';
@@ -11,6 +11,7 @@ interface StepAssessmentInitialProps {
     data: any;
     setData: (key: any, value?: any) => void;
     instruments: Instrument[];
+    scoringTools: ScoringTool[];
     processing: boolean;
     isSuggesting: boolean;
     handleAssessmentSuggest: (key: 'initial' | 'formative' | 'summative', type: string) => void;
@@ -22,6 +23,7 @@ export default function StepAssessmentInitial({
     data,
     setData,
     instruments,
+    scoringTools,
     processing,
     isSuggesting,
     handleAssessmentSuggest,
@@ -157,6 +159,19 @@ export default function StepAssessmentInitial({
                                     onChange={e => setData('initial', { ...data.initial, due_date: e.target.value })}
                                     className={`h-8 w-full bg-card text-card-foreground border rounded-md px-3 text-[12px] text-foreground outline-none [color-scheme:light] dark:[color-scheme:dark] transition ${localErrors?.['initial.due_date'] ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500/20' : 'border-border focus:border-primary'}`}
                                 />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.05em] ml-1">Alat Penskoran (Opsional)</label>
+                                <select 
+                                    value={data.initial.scoring_tool || ''}
+                                    onChange={e => setData('initial', { ...data.initial, scoring_tool: e.target.value || null })}
+                                    className="h-8 w-full bg-card text-card-foreground border border-border rounded-md px-3 text-[12px] text-foreground outline-none focus:border-primary transition"
+                                >
+                                    <option value="">-- Tanpa Alat Penskoran --</option>
+                                    {scoringTools.map(tool => (
+                                        <option key={tool.id} value={tool.id}>{tool.name}</option>
+                                    ))}
+                                </select>
                             </div>
                             <button
                                 type="button"

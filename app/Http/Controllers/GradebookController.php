@@ -150,7 +150,12 @@ class GradebookController extends Controller
         });
 
         return Inertia::render('gradebook/show', [
-            'summative_headers' => $tps->map(fn($tp) => ['id' => $tp->id, 'title' => 'Sumatif', 'tp' => $tp->code]),
+            'summative_headers' => $tps->values()->map(fn($tp, $index) => [
+                'id' => $tp->id,
+                'title' => 'Sumatif',
+                'tp' => $tp->code ?: ('TP ' . ($index + 1)),
+                'tp_desc' => $tp->description,
+            ]),
             'other_headers'     => $otherAssignments->map(fn($a) => ['id' => $a->id, 'title' => $a->title, 'type' => $a->assessment_type]),
             'gradeData'         => $gradeData,
             'period'            => $activeYear?->name . ' - ' . $activeSemester?->name,

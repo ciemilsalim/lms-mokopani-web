@@ -7,7 +7,8 @@ import { ChevronLeft, ChevronRight, Save, Loader2, AlertTriangle, X } from 'luci
 import 'react-quill-new/dist/quill.snow.css';
 
 // Modular Subcomponents & Types
-import { Teaching, Objective, CpItem, Instrument } from './components/types';
+// Modular Subcomponents & Types
+import { Teaching, Objective, CpItem, Instrument, ScoringTool } from './components/types';
 import StepMaterial from './components/StepMaterial';
 import StepAssessmentInitial from './components/StepAssessmentInitial';
 import StepAssessmentFormative from './components/StepAssessmentFormative';
@@ -26,6 +27,7 @@ interface InstructionalDesignProps {
     teachings: Teaching[];
     objectives: Objective[];
     instruments: Record<string, Instrument[]>;
+    scoring_tools: ScoringTool[];
     cpList: CpItem[];
     period: string;
 }
@@ -107,6 +109,7 @@ export default function InstructionalDesignCreate({
     teachings,
     objectives,
     instruments,
+    scoring_tools,
     cpList,
     period,
 }: InstructionalDesignProps) {
@@ -156,6 +159,8 @@ export default function InstructionalDesignCreate({
         initial: {
             enabled: false,
             instrument_type: '',
+            scoring_tool: '',
+            scoring_tool_config: {} as any,
             title: '',
             due_date: '',
             instrument_config: {
@@ -747,6 +752,7 @@ export default function InstructionalDesignCreate({
                             data={data}
                             setData={setData}
                             instruments={instruments.initial || []}
+                            scoringTools={scoring_tools}
                             processing={processing}
                             isSuggesting={isSuggesting}
                             handleAssessmentSuggest={handleAssessmentSuggest}
@@ -760,6 +766,7 @@ export default function InstructionalDesignCreate({
                             data={data}
                             setData={setData}
                             instruments={instruments.formative || []}
+                            scoringTools={scoring_tools}
                             processing={processing}
                             isSuggesting={isSuggesting}
                             handleAssessmentSuggest={handleAssessmentSuggest}
@@ -773,6 +780,7 @@ export default function InstructionalDesignCreate({
                             data={data}
                             setData={setData}
                             instruments={instruments.summative || []}
+                            scoringTools={scoring_tools}
                             processing={processing}
                             isSuggesting={isSuggesting}
                             handleAssessmentSuggest={handleAssessmentSuggest}

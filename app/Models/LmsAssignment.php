@@ -15,6 +15,8 @@ class LmsAssignment extends Model
         'assessment_type',
         'instrument_type',
         'instrument_config',
+        'scoring_tool',
+        'scoring_tool_config',
         'subject_id',
         'teacher_id',
         'learning_objective_id',
@@ -30,8 +32,9 @@ class LmsAssignment extends Model
     ];
 
     protected $casts = [
-        'due_date'          => 'datetime',
-        'instrument_config' => 'array',
+        'due_date'             => 'datetime',
+        'instrument_config'    => 'array',
+        'scoring_tool_config'  => 'array',
     ];
 
     public function subject()

@@ -299,6 +299,13 @@ const ConceptMapCanvas = ({ data, setData, readOnly = false }: { data: any, setD
     );
 };
 
+const scoringToolLabels: Record<string, string> = {
+    rubric: 'Rubrik',
+    rating_scale: 'Skala Penilaian',
+    checklist: 'Checklist',
+    anecdotal_notes: 'Catatan Anekdotal',
+};
+
 interface ShowAssignmentProps {
     assignment: any;
     students: Student[];
@@ -1093,6 +1100,11 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                 {assignment.assessment_type === 'initial' && (
                                     <span className="inline-flex rounded-full bg-amber-50 dark:bg-amber-950/40 px-3 py-1 text-[10px] font-black text-warning uppercase tracking-widest border border-amber-100 dark:border-amber-900/30">
                                         Asesmen Diagnostik
+                                    </span>
+                                )}
+                                {assignment.scoring_tool && (
+                                    <span className="inline-flex rounded-full bg-emerald-50 dark:bg-emerald-950/40 px-3 py-1 text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest border border-emerald-100 dark:border-emerald-900/30">
+                                        Skoring: {scoringToolLabels[assignment.scoring_tool] || assignment.scoring_tool}
                                     </span>
                                 )}
                             </div>

@@ -3,7 +3,7 @@ import {
     Layers, Trash2, Plus, Sparkles, Loader2, Compass, Info,
     MessageSquare, ClipboardCheck, Eye, Star, Activity, Clock
 } from 'lucide-react';
-import { Instrument } from './types';
+import { Instrument, ScoringTool } from './types';
 import QuizBuilder from './QuizBuilder';
 import ObservationBuilder from './ObservationBuilder';
 import KKTPSection from './KKTPSection';
@@ -12,6 +12,7 @@ interface StepAssessmentSummativeProps {
     data: any;
     setData: (key: any, value?: any) => void;
     instruments: Instrument[];
+    scoringTools: ScoringTool[];
     processing: boolean;
     isSuggesting: boolean;
     handleAssessmentSuggest: (key: 'initial' | 'formative' | 'summative', type: string, instIdx?: number) => void;
@@ -23,6 +24,7 @@ export default function StepAssessmentSummative({
     data,
     setData,
     instruments,
+    scoringTools,
     processing,
     isSuggesting,
     handleAssessmentSuggest,
@@ -40,6 +42,7 @@ export default function StepAssessmentSummative({
             id: 'sum_' + Math.random().toString(36).substr(2, 9),
             title: 'Asesmen Sumatif ' + (sumInstances.length + 1),
             instrument_type: defaultType,
+            scoring_tool: '',
             due_date: '',
             instrument_config: {
                 stimulus: '',
@@ -215,6 +218,19 @@ export default function StepAssessmentSummative({
                                     onChange={e => updateInstrumentField(activeTab, 'due_date', e.target.value)}
                                     className={`h-8 w-full bg-card text-card-foreground border rounded-md px-3 text-[12px] text-foreground outline-none [color-scheme:light] dark:[color-scheme:dark] transition ${localErrors?.[`summative.instruments.${activeTab}.due_date`] ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500/20' : 'border-border focus:border-primary'}`}
                                 />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.05em] ml-1">Alat Penskoran (Opsional)</label>
+                                <select
+                                    value={activeInst.scoring_tool || ''}
+                                    onChange={e => updateInstrumentField(activeTab, 'scoring_tool', e.target.value || null)}
+                                    className="h-8 w-full bg-card text-card-foreground border border-border rounded-md px-3 text-[12px] text-foreground outline-none focus:border-primary transition"
+                                >
+                                    <option value="">-- Tanpa Alat Penskoran --</option>
+                                    {scoringTools.map(tool => (
+                                        <option key={tool.id} value={tool.id}>{tool.name}</option>
+                                    ))}
+                                </select>
                             </div>
                             <button
                                 type="button"

@@ -311,6 +311,9 @@ class GeminiApiService
             'portfolio'               => 'Penilaian Portofolio',
             'performance'             => 'Penilaian Unjuk Kerja',
             'written_test'            => 'Tes Tertulis',
+            'formative_quiz'          => 'Kuis Formatif',
+            'guided_discussion'       => 'Diskusi Terpandu',
+            'structured_assignment'   => 'Penugasan Terstruktur (LKPD)',
             default                   => $type,
         };
     }

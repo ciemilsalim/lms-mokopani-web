@@ -70,21 +70,23 @@ class LearningObjectiveController extends Controller
             'formulation_method' => 'required|in:direct,analysis,cross_element',
         ]);
 
+        $order = LmsLearningObjective::where('subject_id', $validated['subject_id'])
+                            ->where('school_class_id', $validated['school_class_id'])
+                            ->count() + 1;
+
         $objective = LmsLearningObjective::create([
             'subject_id'         => $validated['subject_id'],
             'school_class_id'    => $validated['school_class_id'],
             'teacher_id'         => $teacher->id,
             'academic_year_id'   => $activeYear?->id,
             'semester_id'        => $activeSemester?->id,
-            'code'               => $validated['code'],
+            'code'               => $validated['code'] ?: ('TP-' . $order),
             'description'        => $validated['description'],
             'cp_id'              => $validated['cp_id'],
             'competence'         => $validated['competence'],
             'content'            => $validated['content'],
             'formulation_method' => $validated['formulation_method'],
-            'order'              => LmsLearningObjective::where('subject_id', $validated['subject_id'])
-                                    ->where('school_class_id', $validated['school_class_id'])
-                                    ->count() + 1,
+            'order'              => $order,
         ]);
 
         if (!empty($validated['cp_ids'])) {

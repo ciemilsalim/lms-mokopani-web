@@ -260,6 +260,14 @@ class InstructionalSmartService
         $tp = LmsLearningObjective::find($tpId);
         if (!$tp) return [];
 
+        if ($type === 'formative_quiz') {
+            $type = 'quiz_survey';
+        } elseif ($type === 'guided_discussion') {
+            $type = 'performance_observation';
+        } elseif ($type === 'structured_assignment') {
+            $type = 'concept_map';
+        }
+
         $description = $tp->description ?? '';
 
         // Chaining Context: Gunakan judul & uraian materi riil hasil ketikan guru jika dikirim, fallback ke TP content jika kosong
