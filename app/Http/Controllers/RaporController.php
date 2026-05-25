@@ -1,0 +1,199 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\AcademicYear;
+use App\Models\GradebookFinalScore;
+use App\Models\LmsAssignment;
+use App\Models\LmsLearningObjective;
+use App\Models\LmsP5Dimensi;
+use App\Models\LmsP5Project;
+use App\Models\LmsP5ProjectScore;
+use App\Models\LmsSubmission;
+use App\Models\SchoolClass;
+use App\Models\Semester;
+use App\Models\Student;
+use App\Models\Subject;
+use App\Models\SubjectAttendance;
+use App\Models\TeachingAssignment;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+
+class RaporController extends Controller
+{
+    public function preview(Request $request)
+    {
+        $data = $this->buildReportData($request);
+        if ($data['redirect']) return $data['redirect'];
+
+        $pdf = Pdf::loadView('pdf.rapor', $data['view']);
+        $pdf->setPaper('A4', 'portrait');
+
+        return $pdf->stream("rapor-{$data['filename']}.pdf");
+    }
+
+    public function download(Request $request)
+    {
+        $data = $this->buildReportData($request);
+        if ($data['redirect']) return $data['redirect'];
+
+        $pdf = Pdf::loadView('pdf.rapor', $data['view']);
+        $pdf->setPaper('A4', 'portrait');
+
+        return $pdf->download("rapor-{$data['filename']}.pdf");
+    }
+
+    private function buildReportData(Request $request): array
+    {
+        $teacher = Auth::user()->teacher;
+        if (!$teacher) abort(403);
+
+        $classId = $request->query('class_id');
+        $subjectId = $request->query('subject_id');
+
+        if (!$classId || !$subjectId) {
+            return ['redirect' => redirect()->route('gradebook.index')];
+        }
+
+        $activeYear = AcademicYear::getActive();
+        $activeSemester = Semester::getActive();
+
+        $subject = Subject::find($subjectId);
+        $schoolClass = SchoolClass::find($classId);
+        $teacherAssignment = TeachingAssignment::where('teacher_id', $teacher->id)
+            ->where('subject_id', $subjectId)
+            ->where('school_class_id', $classId)
+            ->first();
+
+        $tps = LmsLearningObjective::where('subject_id', $subjectId)->orderBy('code')->get();
+
+        $assignments = LmsAssignment::where('school_class_id', $classId)
+            ->where('subject_id', $subjectId)
+            ->where('academic_year_id', $activeYear?->id)
+            ->where('semester_id', $activeSemester?->id)
+            ->where('assessment_type', 'summative')
+            ->get();
+
+        $students = Student::where('school_class_id', $classId)->orderBy('name', 'asc')->get();
+        $submissions = LmsSubmission::whereIn('assignment_id', $assignments->pluck('id'))->get();
+
+        $finalScores = GradebookFinalScore::where('subject_id', $subjectId)
+            ->where('school_class_id', $classId)
+            ->where('academic_year_id', $activeYear?->id)
+            ->where('semester_id', $activeSemester?->id)
+            ->get()
+            ->keyBy('student_id');
+
+        $attendances = SubjectAttendance::with(['schedule.teachingAssignment'])
+            ->whereIn('student_id', $students->pluck('id'))
+            ->where('academic_year_id', $activeYear?->id)
+            ->where('semester_id', $activeSemester?->id)
+            ->get()
+            ->groupBy('student_id');
+
+        // ── P5 Data ────────────────────────────────────────────────────
+        $p5Projects = LmsP5Project::with(['scores'])
+            ->where('school_class_id', $classId)
+            ->where('academic_year_id', $activeYear?->id)
+            ->where('semester_id', $activeSemester?->id)
+            ->get();
+
+        $p5Structure = $p5Projects->map(function ($project) {
+            $dimensi = LmsP5Dimensi::whereIn('id', $project->dimensi_ids ?? [])
+                ->with('elements.subElements')
+                ->get();
+            return [
+                'project' => $project,
+                'dimensi' => $dimensi,
+            ];
+        });
+
+        $allP5Scores = LmsP5ProjectScore::whereIn('project_id', $p5Projects->pluck('id'))
+            ->get()
+            ->groupBy('student_id');
+
+        $reportData = $students->map(function ($student) use ($assignments, $submissions, $tps, $finalScores, $attendances, $subjectId, $allP5Scores) {
+            $studentSubmissions = $submissions->where('student_id', $student->id);
+
+            $tpScores = $tps->map(function ($tp) use ($assignments, $studentSubmissions) {
+                $tpAssignments = $assignments->where('learning_objective_id', $tp->id);
+                $tpSubmissions = $studentSubmissions->whereIn('assignment_id', $tpAssignments->pluck('id'));
+                $score = $tpSubmissions->count() > 0 ? round($tpSubmissions->avg('score')) : 0;
+                return ['code' => $tp->code, 'score' => $score];
+            });
+
+            $totalScore = $tpScores->sum('score');
+            $count = $tpScores->count();
+            $average = $count > 0 ? round($totalScore / $count) : 0;
+            $finalScore = $finalScores->get($student->id)?->score ?? $average;
+
+            $tpPerformances = $tps->map(function ($tp) use ($assignments, $studentSubmissions) {
+                $tpAssignments = $assignments->where('learning_objective_id', $tp->id);
+                $tpSubmissions = $studentSubmissions->whereIn('assignment_id', $tpAssignments->pluck('id'));
+                return [
+                    'code' => $tp->code, 'description' => $tp->description,
+                    'avg' => $tpSubmissions->count() > 0 ? $tpSubmissions->avg('score') : 0,
+                    'count' => $tpSubmissions->count(),
+                ];
+            })->filter(fn($tp) => $tp['count'] > 0);
+
+            $kktp = get_kktp($subjectId);
+            $description = '';
+            if ($tpPerformances->count() > 0) {
+                $highest = $tpPerformances->sortByDesc('avg')->first();
+                $lowest = $tpPerformances->sortBy('avg')->first();
+                $description = "Menunjukkan penguasaan yang sangat baik dalam {$highest['description']}.";
+                if ($lowest && $lowest['avg'] < $kktp && $highest['code'] !== $lowest['code']) {
+                    $description .= " Perlu bimbingan lebih lanjut dalam {$lowest['description']}.";
+                }
+            } else {
+                $description = 'Data penilaian belum mencukupi.';
+            }
+
+            $studentAttendances = $attendances->get($student->id, collect());
+            $subjectAttendances = $studentAttendances->filter(function ($a) use ($subjectId) {
+                return $a->schedule?->teachingAssignment?->subject_id == $subjectId;
+            });
+
+            $studentP5Scores = ($allP5Scores->get($student->id) ?? collect())
+                ->keyBy(fn($s) => $s->project_id . '-' . $s->sub_element_id);
+
+            return [
+                'nis' => $student->nis, 'name' => $student->name,
+                'tp_scores' => $tpScores, 'average' => $average,
+                'final_score' => $finalScore, 'description' => $description,
+                'total_meetings' => $subjectAttendances->count(),
+                'sick' => $subjectAttendances->where('status', 'Sakit')->count(),
+                'permit' => $subjectAttendances->where('status', 'Izin')->count(),
+                'absent' => $subjectAttendances->where('status', 'Alpa')->count(),
+                'p5_scores' => $studentP5Scores,
+            ];
+        });
+
+        $schoolName = school_setting('school_name', config('app.name'));
+        $schoolAddress = school_setting('school_address', '');
+        $schoolPhone = school_setting('school_phone', '');
+        $schoolEmail = school_setting('school_email', '');
+        $headmasterName = school_setting('school_headmaster_name', '');
+        $headmasterNip = school_setting('school_headmaster_nip', '');
+
+        $kktp = get_kktp($subjectId);
+
+        return [
+            'redirect' => null,
+            'filename' => "{$schoolName}-{$subject?->name}-{$schoolClass->name}",
+            'view' => [
+                'reportData' => $reportData, 'subject' => $subject,
+                'schoolClass' => $schoolClass, 'teacher' => $teacherAssignment,
+                'period' => $activeYear?->name . ' - ' . $activeSemester?->name,
+                'tps' => $tps,
+                'schoolName' => $schoolName, 'schoolAddress' => $schoolAddress,
+                'schoolPhone' => $schoolPhone, 'schoolEmail' => $schoolEmail,
+                'headmasterName' => $headmasterName, 'headmasterNip' => $headmasterNip,
+                'p5Structure' => $p5Structure,
+                'kktp' => $kktp,
+            ],
+        ];
+    }
+}

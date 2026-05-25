@@ -1,0 +1,448 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\LmsMaterial;
+use App\Models\LmsStudentMaterial;
+use App\Models\TeachingAssignment;
+use App\Models\AcademicYear;
+use App\Models\Semester;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Inertia\Inertia;
+
+class MaterialController extends Controller
+{
+    public function index()
+    {
+        $user = Auth::user();
+        $activeYear = AcademicYear::getActive();
+        $activeSemester = Semester::getActive();
+
+        $query = LmsMaterial::with(['subject', 'teacher', 'schoolClass'])
+            ->where('academic_year_id', $activeYear?->id)
+            ->where('semester_id', $activeSemester?->id);
+
+        if ($user->teacher) {
+            $query->where('teacher_id', $user->teacher->id);
+        } elseif ($user->student) {
+            $query->where('school_class_id', $user->student->school_class_id);
+        }
+
+        $models = $query->latest()->get();
+
+        // ── Teacher: group by class → subject ────────────────────────
+        if ($user->teacher) {
+            $teacherGrouped = $models->groupBy('school_class_id')->map(function ($classItems, $classId) {
+                $first = $classItems->first();
+                $subjectGroups = $classItems->groupBy('subject_id');
+                $subjects = $subjectGroups->map(function ($items, $subjectId) {
+                    $firstItem = $items->first();
+                    return [
+                        'subject_id'   => (int) $subjectId,
+                        'subject_name' => $firstItem->subject?->name ?? '-',
+                        'materials'    => $items->map(fn ($m) => [
+                            'id'           => $m->id,
+                            'title'        => $m->title,
+                            'subject_name' => $m->subject?->name ?? '-',
+                            'teacher_name' => $m->teacher?->name ?? '-',
+                            'file_type'    => $m->file_type,
+                            'created_at'   => $m->created_at->format('d M Y'),
+                        ])->values(),
+                    ];
+                })->values();
+
+                return [
+                    'class_id'   => (int) $classId,
+                    'class_name' => $first->schoolClass?->name ?? 'Kelas',
+                    'subjects'   => $subjects,
+                ];
+            })->values();
+
+            return Inertia::render('materials/index', [
+                'teacher_grouped' => $teacherGrouped,
+                'active_year'     => $activeYear?->name,
+                'active_semester' => $activeSemester?->name,
+                'user_role'       => 'teacher',
+            ]);
+        }
+
+        // ── Student (and admin): group by subject ────────────────────
+        $grouped = $models->groupBy('subject_id')->map(function ($items, $subjectId) {
+            $first = $items->first();
+            return [
+                'subject_id'   => (int) $subjectId,
+                'subject_name' => $first->subject?->name ?? '-',
+                'materials'    => $items->map(fn ($m) => [
+                    'id'           => $m->id,
+                    'title'        => $m->title,
+                    'subject_name' => $m->subject?->name ?? '-',
+                    'teacher_name' => $m->teacher?->name ?? '-',
+                    'file_type'    => $m->file_type,
+                    'created_at'   => $m->created_at->format('d M Y'),
+                ])->values(),
+                'total' => $items->count(),
+            ];
+        })->values();
+
+        return Inertia::render('materials/index', [
+            'grouped_materials' => $grouped,
+            'active_year'       => $activeYear?->name,
+            'active_semester'   => $activeSemester?->name,
+            'user_role'         => $user->role ?? 'student',
+        ]);
+    }
+
+    public function create()
+    {
+        $teacher = Auth::user()->teacher;
+        $activeYear = \App\Models\AcademicYear::getActive();
+        $activeSemester = \App\Models\Semester::getActive();
+
+        // Ambil data pengampuan
+        $teachings = \App\Models\TeachingAssignment::with(['subject', 'schoolClass'])
+            ->where('teacher_id', $teacher->id)
+            ->get();
+
+        // Ambil TP
+        $objectives = \App\Models\LmsLearningObjective::where('teacher_id', $teacher->id)
+            ->where('academic_year_id', $activeYear?->id)
+            ->where('semester_id', $activeSemester?->id)
+            ->get();
+
+        return Inertia::render('materials/create', [
+            'teachings'  => $teachings,
+            'objectives' => $objectives,
+        ]);
+    }
+
+    public function store(Request $request)
+    {
+        $teacher = Auth::user()->teacher;
+        $activeYear = \App\Models\AcademicYear::getActive();
+        $activeSemester = \App\Models\Semester::getActive();
+
+        $validated = $request->validate([
+            'subject_id'            => 'required|exists:mysql_absensi.subjects,id',
+            'school_class_id'       => 'required|exists:mysql_absensi.school_classes,id',
+            'learning_objective_id' => 'nullable|exists:lms_learning_objectives,id',
+            'title'                 => 'required|string|max:255',
+            'content'               => 'nullable|string',
+            'external_link'         => 'nullable|url|max:255',
+            'file'                  => 'nullable|file|max:10240', // 10MB
+        ]);
+
+        $filePath = null;
+        $fileType = null;
+        if ($request->hasFile('file')) {
+            $filePath = $request->file('file')->store('lms/materials', 'public');
+            $fileType = $request->file('file')->getClientOriginalExtension();
+        }
+
+        \App\Models\LmsMaterial::create([
+            'teacher_id'            => $teacher->id,
+            'subject_id'            => $validated['subject_id'],
+            'school_class_id'       => $validated['school_class_id'],
+            'learning_objective_id' => $validated['learning_objective_id'],
+            'academic_year_id'      => $activeYear?->id,
+            'semester_id'           => $activeSemester?->id,
+            'title'                 => $validated['title'],
+            'content'               => $validated['content'],
+            'external_link'         => $validated['external_link'],
+            'file_path'             => $filePath,
+            'file_type'             => $fileType,
+        ]);
+
+        return redirect()->route('materials.index')->with('success', 'Materi berhasil diterbitkan.');
+    }
+
+    public function show(LmsMaterial $material)
+    {
+        $user = Auth::user();
+        $material->load(['subject', 'teacher', 'learningObjective', 'resources', 'schoolClass', 'semester', 'academicYear']);
+
+        // Ambil komentar untuk materi ini
+        $comments = \App\Models\LmsComment::with('user')
+            ->where('material_id', $material->id)
+            ->latest()
+            ->get()
+            ->map(fn($c) => [
+                'id'         => $c->id,
+                'user_id'    => $c->user_id,
+                'user_name'  => $c->user->name ?? 'User Terhapus',
+                'user_role'  => $c->user ? ($c->user->role ?? ($c->user->teacher ? 'teacher' : 'student')) : 'student',
+                'body'       => $c->body,
+                'created_at' => $c->created_at->diffForHumans(),
+            ]);
+
+        // Ambil refleksi siswa jika ada
+        $myReflection = null;
+        $allReflections = [];
+        $isCompleted = false;
+
+        if ($user->student) {
+            $myReflection = \App\Models\LmsReflection::where('material_id', $material->id)
+                ->where('student_id', $user->student->id)
+                ->first();
+            
+            $isCompleted = $myReflection !== null;
+        }
+
+        if ($user->teacher || $user->role === 'admin') {
+            $allReflections = \App\Models\LmsReflection::with('student')
+                ->where('material_id', $material->id)
+                ->latest()
+                ->get()
+                ->map(fn($r) => [
+                    'id'                  => $r->id,
+                    'student_name'        => $r->student->name ?? 'Siswa Terhapus',
+                    'student_photo'       => ($r->student && $r->student->photo) ? asset('storage/' . $r->student->photo) : null,
+                    'understanding_level' => $r->understanding_level,
+                    'interesting_thing'   => $r->interesting_thing,
+                    'difficulty'          => $r->difficulty,
+                    'created_at'          => $r->created_at->diffForHumans(),
+                ]);
+        }
+
+        // Ambil semua asesmen terkait materi ini (initial, formative, summative)
+        $assignments = \App\Models\LmsAssignment::where('subject_id', $material->subject_id)
+            ->where('school_class_id', $material->school_class_id)
+            ->where('learning_objective_id', $material->learning_objective_id)
+            ->get()
+            ->map(fn($a) => [
+                'id'                => $a->id,
+                'assessment_type'   => $a->assessment_type,
+                'instrument_type'   => $a->instrument_type,
+                'instrument_config' => $a->instrument_config,
+                'title'             => $a->title,
+                'description'       => $a->description,
+                'due_date'          => $a->due_date ? $a->due_date->format('Y-m-d') : null,
+                'max_points'        => $a->max_points,
+                'passing_grade'     => $a->passing_grade,
+            ]);
+
+        // Ambil nama sekolah dari settings
+        $schoolNameSetting = \App\Models\Setting::where('key', 'school_name')->first();
+        $schoolName = $schoolNameSetting ? $schoolNameSetting->value : 'SMA Negeri 1 Mokopani';
+
+        // Ambil Kepala Sekolah dan NIP dari settings
+        $headmasterNameSetting = \App\Models\Setting::where('key', 'school_headmaster_name')->first();
+        $headmasterNipSetting = \App\Models\Setting::where('key', 'school_headmaster_nip')->first();
+        $headmasterName = $headmasterNameSetting ? $headmasterNameSetting->value : 'Marlinda, S.Pd';
+        $headmasterNip = $headmasterNipSetting ? $headmasterNipSetting->value : '19791116 200604 2 016';
+
+        return Inertia::render('materials/show', [
+            'material' => [
+                'id'                     => $material->id,
+                'title'                  => $material->title,
+                'content'                => $material->content,
+                'thumbnail'              => $material->thumbnail ? asset('storage/' . $material->thumbnail) : null,
+                'file_path'              => $material->file_path,
+                'file_type'              => $material->file_type,
+                'external_link'          => $material->external_link,
+                'subject_name'           => $material->subject?->name,
+                'teacher_name'           => $material->teacher?->name,
+                'teacher_id'             => $material->teacher_id,
+                'teacher_nip'            => $material->teacher?->nip,
+                'school_class_name'      => $material->schoolClass?->name,
+                'fase'                   => $material->subject?->fase,
+                'semester_name'          => $material->semester?->name,
+                'academic_year_name'     => $material->academicYear?->name,
+                'pedagogical_model'      => $material->pedagogical_model,
+                'learning_environment'   => $material->learning_environment,
+                'understanding_activity' => $material->understanding_activity,
+                'application_activity'   => $material->application_activity,
+                'reflection_activity'    => $material->reflection_activity,
+                'tp_code'                => $material->learningObjective?->code,
+                'tp_desc'                => $material->learningObjective?->description,
+                'subject_kktp'           => $material->subject?->kktp ?? 70,
+                'resources'              => $material->resources->map(fn($r) => [
+                    'id'        => $r->id,
+                    'type'      => $r->type,
+                    'title'     => $r->title,
+                    'path'      => $r->path,
+                    'file_type' => $r->file_type,
+                ]),
+                'created_at'             => $material->created_at->format('d M Y'),
+            ],
+            'comments'        => $comments,
+            'my_reflection'   => $myReflection,
+            'all_reflections' => $allReflections,
+            'is_completed'    => $isCompleted,
+            'user_role'       => $user->role ?? ($user->teacher ? 'teacher' : 'student'),
+            'auth_id'         => $user->id,
+            'assignments'     => $assignments,
+            'school_name'     => $schoolName,
+            'headmaster_name' => $headmasterName,
+            'headmaster_nip'  => $headmasterNip,
+        ]);
+    }
+
+    public function edit(LmsMaterial $material)
+    {
+        $teacher = Auth::user()->teacher;
+        
+        // Ensure user owns this material
+        if ($material->teacher_id !== $teacher->id) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $activeYear = \App\Models\AcademicYear::getActive();
+        $activeSemester = \App\Models\Semester::getActive();
+
+        // Ambil data pengampuan
+        $teachings = \App\Models\TeachingAssignment::with(['subject', 'schoolClass'])
+            ->where('teacher_id', $teacher->id)
+            ->get();
+
+        // Ambil TP
+        $objectives = \App\Models\LmsLearningObjective::where('teacher_id', $teacher->id)
+            ->where('academic_year_id', $activeYear?->id)
+            ->where('semester_id', $activeSemester?->id)
+            ->get();
+
+        $material->load('resources');
+        return Inertia::render('materials/edit', [
+            'material' => [
+                'id' => $material->id,
+                'title' => $material->title,
+                'content' => $material->content,
+                'thumbnail' => $material->thumbnail ? asset('storage/' . $material->thumbnail) : null,
+                'subject_id' => $material->subject_id,
+                'school_class_id' => $material->school_class_id,
+                'learning_objective_id' => $material->learning_objective_id,
+                'resources' => $material->resources->map(fn($r) => [
+                    'id' => $r->id,
+                    'type' => $r->type,
+                    'title' => $r->title,
+                    'path' => $r->path,
+                    'file_type' => $r->file_type,
+                ]),
+            ],
+            'teachings'  => $teachings,
+            'objectives' => $objectives,
+        ]);
+    }
+
+    public function update(Request $request, LmsMaterial $material)
+    {
+        $teacher = Auth::user()->teacher;
+        
+        if ($material->teacher_id !== $teacher->id) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $validated = $request->validate([
+            'subject_id'            => 'required|exists:mysql_absensi.subjects,id',
+            'school_class_id'       => 'required|exists:mysql_absensi.school_classes,id',
+            'learning_objective_id' => 'nullable|exists:lms_learning_objectives,id',
+            'title'                 => 'required|string|max:255',
+            'content'               => 'nullable|string',
+            'thumbnail'             => 'nullable|image|max:2048',
+            'resources'             => 'nullable|array',
+            'resources_to_delete'   => 'nullable|array',
+        ]);
+
+        $updateData = [
+            'subject_id'            => $validated['subject_id'],
+            'school_class_id'       => $validated['school_class_id'],
+            'learning_objective_id' => $validated['learning_objective_id'],
+            'title'                 => $validated['title'],
+            'content'               => $validated['content'],
+        ];
+
+        if ($request->hasFile('thumbnail')) {
+            if ($material->thumbnail) {
+                Storage::disk('public')->delete($material->thumbnail);
+            }
+            $updateData['thumbnail'] = $request->file('thumbnail')->store('lms/thumbnails', 'public');
+        }
+
+        $material->update($updateData);
+
+        // Handle resources to delete
+        if (!empty($validated['resources_to_delete'])) {
+            $toDelete = \App\Models\LmsMaterialResource::whereIn('id', $validated['resources_to_delete'])
+                            ->where('material_id', $material->id)->get();
+            foreach ($toDelete as $res) {
+                if ($res->type === 'file' && $res->path) {
+                    Storage::disk('public')->delete($res->path);
+                }
+                $res->delete();
+            }
+        }
+
+        // Handle new resources
+        if (!empty($validated['resources'])) {
+            foreach ($validated['resources'] as $index => $resData) {
+                $type = $resData['type'] ?? 'link';
+                $title = $resData['title'] ?? null;
+                $path = null;
+                $fileType = null;
+
+                if ($type === 'link') {
+                    $path = $resData['value'] ?? null;
+                } else if ($type === 'file') {
+                    if ($request->hasFile("resources.{$index}.file")) {
+                        $file = $request->file("resources.{$index}.file");
+                        $path = $file->store('lms/materials', 'public');
+                        $fileType = $file->getClientOriginalExtension();
+                    }
+                }
+
+                if ($path) {
+                    \App\Models\LmsMaterialResource::create([
+                        'material_id' => $material->id,
+                        'type'        => $type,
+                        'title'       => $title,
+                        'path'        => $path,
+                        'file_type'   => $fileType,
+                    ]);
+                }
+            }
+        }
+
+        return redirect()->route('materials.show', $material->id)->with('success', 'Materi berhasil diperbarui.');
+    }
+
+    public function destroy(LmsMaterial $material)
+    {
+        if ($material->teacher_id !== Auth::user()->teacher?->id) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        DB::transaction(function () use ($material) {
+            if ($material->file_path) {
+                Storage::disk('public')->delete($material->file_path);
+            }
+
+            foreach ($material->resources as $res) {
+                if ($res->type === 'file' && $res->path) {
+                    Storage::disk('public')->delete($res->path);
+                }
+                $res->delete();
+            }
+
+            $material->delete();
+        });
+
+        return redirect()->route('materials.index')->with('success', 'Materi berhasil dihapus.');
+    }
+
+    public function complete(Request $request, LmsMaterial $material)
+    {
+        $student = Auth::user()->student;
+        if (!$student) {
+            return back()->with('error', 'Hanya siswa yang dapat menandai materi sebagai selesai.');
+        }
+
+        LmsStudentMaterial::updateOrCreate(
+            ['student_id' => $student->id, 'material_id' => $material->id],
+            ['completed_at' => now()]
+        );
+
+        return back()->with('success', 'Materi ditandai sebagai selesai.');
+    }
+}
