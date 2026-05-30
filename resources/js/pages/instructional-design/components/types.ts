@@ -19,6 +19,7 @@ export interface Instrument {
     name: string;
     icon: string;
     desc: string;
+    category?: 'cognitive' | 'non_cognitive';
 }
 
 export interface ScoringTool {

@@ -147,7 +147,12 @@ Kamu adalah asisten cerdas perancang instrumen asesmen Kurikulum Merdeka Indones
 Konteks:
 - Tujuan Pembelajaran: {tp}
 - Konten/Materi Utama: {content}
-- Jenis Instrumen: {instrument_label}
+- Jenis Asesmen: {instrument_label}
+
+Jika Jenis Asesmen adalah 'Kuis / Survei Diagnostik' (Asesmen Awal), maka buatlah tepat 3 pertanyaan dengan format gradasi tingkat kesulitan (tanpa bobot nilai/points, tanpa Pilihan Ganda):
+- Soal 1 (Level 1): Kemampuan Dasar/Prasyarat (Tipe Isian Singkat atau Uraian/Essay). Pertanyaan konsep dasar sekali sebelum memulai materi inti.
+- Soal 2 (Level 2): Kemampuan Sesuai Target (Tipe Isian Singkat atau Uraian/Essay). Menguji pemahaman standar/inti dari materi.
+- Soal 3 (Level 3): Kemampuan Di Atas Rata-rata/Pengayaan (Tipe Uraian/Essay). Berupa analisis, pemecahan masalah, atau troubleshooting tingkat tinggi.
 
 Buatkan instrumen asesmen lengkap dalam format JSON sesuai jenis instrumen yang diminta.
 Pastikan instrumen dirancang secara profesional, tidak generik, serta menggunakan bahasa yang sederhana, jelas, komunikatif, dan ramah dipahami siswa SMP. Hindari penggunaan istilah ilmiah atau akademis yang terlalu tinggi. Jika ada istilah teknis, berikan penjelasan singkat di dalam tanda kurung.
@@ -156,20 +161,16 @@ PENTING: Kembalikan HANYA JSON valid tanpa penjelasan tambahan, tanpa markdown c
 
 Format JSON sesuai jenis instrumen yang diminta:
 
-Untuk jenis rubrik/penilaian bertingkat ("rubric" atau "oral_qa"):
+Untuk jenis kuis asesmen awal ("quiz_survey" ketika digunakan sebagai kuis gradasi):
 {
-  "stimulus": "Deskripsi stimulus/konteks asesmen yang menarik, kontekstual, dan mudah dipahami anak SMP",
-  "criteria": "Nama kriteria yang dinilai",
-  "levels": [
-    {"name": "Perlu Bimbingan", "desc": "Deskripsi kriteria performa murid yang belum memadai"},
-    {"name": "Cukup", "desc": "Deskripsi kriteria performa murid yang mencapai standar minimal"},
-    {"name": "Baik", "desc": "Deskripsi kriteria performa murid yang menguasai materi dengan baik"},
-    {"name": "Sangat Baik", "desc": "Deskripsi kriteria performa murid yang melampaui ekspektasi"}
-  ],
-  "kktp": {"approach": "rubric", "passing_level": "Baik"}
+  "questions": [
+    {"id": "q1", "type": "short_answer", "text": "Pertanyaan Level 1 (Kemampuan Dasar/Prasyarat)...", "correct_answer": "kunci jawaban singkat"},
+    {"id": "q2", "type": "short_answer", "text": "Pertanyaan Level 2 (Kemampuan Sesuai Target)...", "correct_answer": "kunci jawaban singkat"},
+    {"id": "q3", "type": "essay", "text": "Pertanyaan Level 3 (Kemampuan Di Atas Rata-rata/Pengayaan)...", "correct_answer": "pedoman penskoran atau penjelasan jawaban ideal"}
+  ]
 }
 
-Untuk jenis tes/kuis ("quiz_survey" atau "written_test"):
+Untuk jenis kuis formatif ("formative_quiz" atau "written_test" lainnya):
 {
   "questions": [
     {"id": "q1", "type": "multiple_choice", "text": "Pertanyaan yang dikemas dengan kalimat ringkas dan bersahabat bagi anak SMP...", "options": [{"id": "a", "text": "..."}, {"id": "b", "text": "..."}, {"id": "c", "text": "..."}, {"id": "d", "text": "..."}], "answer": "a"},

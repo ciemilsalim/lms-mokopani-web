@@ -215,19 +215,7 @@ export default function StepAssessmentFormative({
                                     className={`h-8 w-full bg-card text-card-foreground border rounded-md px-3 text-[12px] text-foreground outline-none [color-scheme:light] dark:[color-scheme:dark] transition ${localErrors?.[`formative.instruments.${activeTab}.due_date`] ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500/20' : 'border-border focus:border-primary'}`}
                                 />
                             </div>
-                            <div className="space-y-1.5">
-                                <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.05em] ml-1">Alat Penskoran (Opsional)</label>
-                                <select
-                                    value={activeInst.scoring_tool || ''}
-                                    onChange={e => updateInstrumentField(activeTab, 'scoring_tool', e.target.value || null)}
-                                    className="h-8 w-full bg-card text-card-foreground border border-border rounded-md px-3 text-[12px] text-foreground outline-none focus:border-primary transition"
-                                >
-                                    <option value="">-- Tanpa Alat Penskoran --</option>
-                                    {scoringTools.map(tool => (
-                                        <option key={tool.id} value={tool.id}>{tool.name}</option>
-                                    ))}
-                                </select>
-                            </div>
+
                             <button
                                 type="button"
                                 onClick={() => handleAssessmentSuggest('formative', activeInst.instrument_type, activeTab)}
@@ -252,10 +240,61 @@ export default function StepAssessmentFormative({
                                             const type = e.target.value;
                                             const defaultApproach = getDefaultKKTPApproach('formative', type);
                                             updateInstrumentField(activeTab, 'instrument_type', type);
-                                            updateFormativeConfig(activeTab, 'kktp', {
-                                                ...activeConfig.kktp,
-                                                approach: defaultApproach
+                                            
+                                            // Pre-populate default reflective questions if empty
+                                            let defaultQuestions: any[] = [];
+                                            if (type === 'reflective_journal') {
+                                                defaultQuestions = [
+                                                    { text: 'Apa konsep paling menarik yang saya pelajari bab ini?' },
+                                                    { text: 'Di bagian mana saya merasa kesulitan atau melakukan kesalahan?' },
+                                                    { text: 'Apa strategi yang akan saya lakukan untuk memperbaiki kesalahan tersebut?' }
+                                                ];
+                                            } else if (type === 'exit_ticket') {
+                                                defaultQuestions = [
+                                                    { text: 'Tuliskan 1 hal yang paling kamu pahami pada pelajaran hari ini.' },
+                                                    { text: 'Tuliskan 1 hal yang masih membingungkan atau belum kamu pahami.' }
+                                                ];
+                                            }
+
+                                            // Pre-populate default indicators if empty
+                                            let defaultIndicators: any[] = [];
+                                            if (type === 'self_assessment') {
+                                                defaultIndicators = [
+                                                    { name: 'Saya berkontribusi aktif mencari materi saat diskusi kelompok.' },
+                                                    { name: 'Saya mendengarkan pendapat teman dengan menghargai.' },
+                                                    { name: 'Saya fokus menyelesaikan tugas bagian saya tepat waktu.' }
+                                                ];
+                                            } else if (type === 'peer_assessment') {
+                                                defaultIndicators = [
+                                                    { name: 'Teman saya berkontribusi aktif mencari materi saat diskusi kelompok.' },
+                                                    { name: 'Teman saya mendengarkan pendapat orang lain dengan menghargai.' },
+                                                    { name: 'Teman saya bersedia membantu anggota kelompok lain yang kesulitan.' }
+                                                ];
+                                            }
+
+                                            const updated = [...formInstances];
+                                            updated[activeTab] = {
+                                                ...updated[activeTab],
+                                                instrument_type: type,
+                                                instrument_config: {
+                                                    ...updated[activeTab].instrument_config,
+                                                    kktp: {
+                                                        ...updated[activeTab].instrument_config?.kktp,
+                                                        approach: defaultApproach
+                                                    },
+                                                    questions: (updated[activeTab].instrument_config?.questions?.length > 0) 
+                                                        ? updated[activeTab].instrument_config.questions 
+                                                        : defaultQuestions,
+                                                    indicators: (updated[activeTab].instrument_config?.indicators?.length > 0)
+                                                        ? updated[activeTab].instrument_config.indicators
+                                                        : defaultIndicators
+                                                }
+                                            };
+                                            setData('formative', {
+                                                ...data.formative,
+                                                instruments: updated
                                             });
+
                                             handleAssessmentSuggest('formative', type, activeTab);
                                         }}
                                         className="h-8 rounded border border-border bg-popover text-foreground px-3 text-[12px] font-semibold outline-none focus:border-primary transition"
@@ -426,14 +465,7 @@ export default function StepAssessmentFormative({
                                 </div>
                             )}
 
-                            <KKTPSection
-                                assessmentKey="formative"
-                                instIdx={activeTab}
-                                data={data}
-                                updateInitialConfig={() => {}}
-                                updateFormativeConfig={updateFormativeConfig}
-                                updateSummativeConfig={() => {}}
-                            />
+
                         </div>
                     </div>
                 </div>

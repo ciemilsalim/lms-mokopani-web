@@ -18,7 +18,9 @@ import {
     Trash2,
     CheckCircle2,
     Star,
-    Printer
+    Printer,
+    Lock,
+    AlertTriangle
 } from 'lucide-react';
 
 import { ConfirmDialog } from '@/components/confirm-dialog';
@@ -83,6 +85,12 @@ interface ShowMaterialProps {
     assignments: Assignment[];
     school_name: string;
     headmaster_name?: string;
+    headmaster_nip?: string;
+    readiness_status?: {
+        status: 'ready' | 'needs_intervention' | 'not_taken';
+        assessment_id?: number | null;
+        diagnostic_result?: any;
+    } | null;
 }
 
 const stripHtml = (html: string | null): string => {
@@ -468,7 +476,8 @@ export default function ShowMaterial({
     assignments = [],
     school_name,
     headmaster_name = 'Marlinda, S.Pd',
-    headmaster_nip = '19791116 200604 2 016'
+    headmaster_nip = '19791116 200604 2 016',
+    readiness_status = null
 }: ShowMaterialProps) {
     const { delete: destroy } = useForm();
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -1386,7 +1395,54 @@ export default function ShowMaterial({
                 <div className="grid gap-6 lg:grid-cols-3">
                     {/* Main Content */}
                     <div className="lg:col-span-2 space-y-6">
-                        <div className="rounded-3xl border border-[#2C2C3A]/20 dark:border-[#2C2C3A] bg-white dark:bg-[#1B1B25] p-8 shadow-sm">
+                        {readiness_status && readiness_status.status !== 'ready' ? (
+                            <div className="rounded-[2.5rem] border border-rose-500/10 dark:border-rose-500/5 bg-rose-500/[0.02] dark:bg-rose-950/[0.02] p-12 text-center space-y-8 shadow-2xl shadow-slate-100/50 dark:shadow-none flex flex-col items-center justify-center py-20 min-h-[450px] animate-in fade-in duration-700">
+                                <div className="h-20 w-20 rounded-[2rem] bg-rose-500/10 dark:bg-rose-500/5 text-rose-500 flex items-center justify-center animate-bounce shadow-inner border border-rose-500/20">
+                                    <Lock className="h-10 w-10" />
+                                </div>
+                                <div className="space-y-3 max-w-md">
+                                    <h2 className="text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight">
+                                        {readiness_status.status === 'not_taken' ? 'Materi Belum Terbuka 🔒' : 'Butuh Pendampingan Guru 🔒'}
+                                    </h2>
+                                    <p className="text-xs text-muted-foreground leading-relaxed font-semibold">
+                                        {readiness_status.status === 'not_taken' 
+                                            ? 'Kamu perlu menyelesaikan Asesmen Awal (Diagnostik) terlebih dahulu sebelum bisa mengakses materi pembelajaran ini.'
+                                            : 'Status Kesiapan Belajar kamu saat ini adalah Belum Siap. Untuk membuka materi ini, kamu perlu menyelesaikan latihan prasyarat bersama Guru Anda atau menunggu persetujuan/intervensi dari Guru.'}
+                                    </p>
+                                </div>
+
+                                {readiness_status.status === 'not_taken' && readiness_status.assessment_id && (
+                                    <Link
+                                        href={route('assignments.show', readiness_status.assessment_id)}
+                                        className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-rose-500 to-indigo-600 px-6 py-3 text-xs font-black uppercase tracking-widest text-white transition hover:opacity-90 shadow-lg shadow-rose-250 dark:shadow-none hover:scale-[1.02] active:scale-95"
+                                    >
+                                        <ArrowRight className="h-4 w-4 animate-pulse" /> Mulai Asesmen Awal
+                                    </Link>
+                                )}
+
+                                {readiness_status.status === 'needs_intervention' && (
+                                    <div className="w-full bg-white dark:bg-[#101014] border border-rose-500/20 dark:border-rose-500/10 rounded-3xl p-6 text-left space-y-4 max-w-lg mt-4 shadow-sm">
+                                        <div className="flex items-center gap-2 text-rose-500 font-black text-[10px] uppercase tracking-widest">
+                                            <AlertTriangle className="h-4 w-4 shrink-0" />
+                                            <span>Rekomendasi Strategi Belajar:</span>
+                                        </div>
+                                        <div className="grid gap-3">
+                                            {readiness_status.diagnostic_result?.recommendations?.map((rec: any, idx: number) => (
+                                                <div key={idx} className="flex items-start gap-2 text-xs font-semibold text-slate-700 dark:text-slate-350">
+                                                    <span className="text-rose-500 shrink-0">•</span>
+                                                    <span>{rec.message}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <p className="text-[10px] text-rose-500 font-bold text-center pt-2 italic">
+                                            Silakan hubungi Guru Anda untuk mendapatkan bimbingan atau persetujuan agar materi ini dapat dibuka.
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            <>
+                                <div className="rounded-3xl border border-[#2C2C3A]/20 dark:border-[#2C2C3A] bg-white dark:bg-[#1B1B25] p-8 shadow-sm">
                             <div className="space-y-4">
                                 <div className="flex items-center gap-2 flex-wrap">
                                     <span className="rounded-full bg-[#5E6AD2]/10 dark:bg-[#5E6AD2]/10 px-3 py-1 text-[10px] font-bold text-[#5E6AD2] uppercase tracking-widest">
@@ -1662,6 +1718,8 @@ export default function ShowMaterial({
                                 userRole={user_role} 
                             />
                         </div>
+                        </>
+                        )}
                     </div>
 
                     {/* Sidebar / Resources */}

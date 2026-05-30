@@ -20,11 +20,69 @@ class AdaptiveLearningService
         $maxPoints = $assignment->max_points ?? 100;
         $passThreshold = $config['pass_threshold'] ?? 60;
 
-        $score = $this->calculateScore($submission->content, $config, $maxPoints);
-        $isPassed = $score >= $passThreshold;
+        $questions = $config['questions'] ?? [];
+        $q1Correct = false;
+        $q2Correct = false;
+        $q3Correct = false;
 
-        $topicBreakdown = $this->buildTopicBreakdown($submission->content, $config);
-        $recommendations = $this->buildRecommendations($assignment, $isPassed, $score, $topicBreakdown, $config);
+        $parsed = json_decode($submission->content, true);
+        if ($parsed && !empty($questions)) {
+            $answers = $parsed['answers'] ?? [];
+            
+            // Q1 (Level 1)
+            if (isset($questions[0])) {
+                $q1 = $questions[0];
+                $ans = $answers[$q1['id']] ?? null;
+                $correctVal = $q1['correct_answer'] ?? ($q1['answer'] ?? null);
+                $q1Correct = (!empty($correctVal) && strtolower(trim((string) $ans)) === strtolower(trim((string) $correctVal)));
+            }
+            // Q2 (Level 2)
+            if (isset($questions[1])) {
+                $q2 = $questions[1];
+                $ans = $answers[$q2['id']] ?? null;
+                $correctVal = $q2['correct_answer'] ?? ($q2['answer'] ?? null);
+                $q2Correct = (!empty($correctVal) && strtolower(trim((string) $ans)) === strtolower(trim((string) $correctVal)));
+            }
+            // Q3 (Level 3)
+            if (isset($questions[2])) {
+                $q3 = $questions[2];
+                $ans = $answers[$q3['id']] ?? null;
+                $correctVal = $q3['correct_answer'] ?? ($q3['answer'] ?? null);
+                $q3Correct = (!empty($correctVal) && strtolower(trim((string) $ans)) === strtolower(trim((string) $correctVal)));
+            }
+        }
+
+        $categoryRating = 1; // 1 = Belum Siap, 2 = Siap, 3 = Sangat Siap
+        if ($q1Correct && $q2Correct && $q3Correct) {
+            $categoryRating = 3;
+        } elseif ($q1Correct && $q2Correct) {
+            $categoryRating = 2;
+        }
+
+        // Use the explicitly graded score if it has been graded by the teacher
+        if ($submission->score !== null) {
+            if ($submission->score == 3) {
+                $categoryRating = 3;
+            } elseif ($submission->score == 2) {
+                $categoryRating = 2;
+            } elseif ($submission->score == 1) {
+                $categoryRating = 1;
+            } else {
+                $categoryRating = $submission->score >= 70 ? 2 : 1;
+            }
+        }
+
+        $score = $categoryRating;
+        $isPassed = $score >= 2; // Siap and Sangat Siap are passed to start the material
+
+        $topicBreakdown = [
+            'q1_correct' => $q1Correct,
+            'q2_correct' => $q2Correct,
+            'q3_correct' => $q3Correct,
+            'category' => $score == 3 ? 'Sangat Siap' : ($score == 2 ? 'Siap' : 'Belum Siap'),
+        ];
+        
+        $recommendations = $this->buildRecommendations($submission, $isPassed, $score, $topicBreakdown, $config);
 
         return StudentDiagnosticResult::updateOrCreate(
             [
@@ -35,7 +93,7 @@ class AdaptiveLearningService
                 'subject_id'            => $assignment->subject_id,
                 'learning_objective_id' => $assignment->learning_objective_id,
                 'total_score'           => $score,
-                'pass_threshold'        => $passThreshold,
+                'pass_threshold'        => 2, // Standard Siap threshold
                 'is_passed'             => $isPassed,
                 'topic_breakdown'       => $topicBreakdown,
                 'recommendations'       => $recommendations,
@@ -196,38 +254,62 @@ class AdaptiveLearningService
     /**
      * Generate recommendations based on diagnostic result.
      */
-    private function buildRecommendations(LmsAssignment $assignment, bool $isPassed, float $score, array $topicBreakdown, array $config): array
+    private function buildRecommendations(LmsSubmission $submission, bool $isPassed, float $score, array $topicBreakdown, array $config): array
     {
+        $assignment = $submission->assignment;
         $recommendations = [];
 
-        if ($isPassed) {
+        $category = $topicBreakdown['category'] ?? ($score == 3 ? 'Sangat Siap' : ($score == 2 ? 'Siap' : 'Belum Siap'));
+
+        if ($category === 'Sangat Siap') {
             $recommendations[] = [
                 'type'    => 'skip',
-                'message' => $config['follow_up_high'] ?? 'Kamu sudah menguasai materi ini. Langsung lanjut ke materi berikutnya.',
+                'message' => 'Luar biasa! Kamu berada di kelompok SANGAT SIAP. Kamu diperbolehkan mendampingi teman-temanmu sebagai tutor sebaya atau mengerjakan proyek pengayaan.',
                 'icon'    => 'zap',
             ];
-
-            if ($score >= 90) {
-                $recommendations[] = [
-                    'type'    => 'enrichment',
-                    'message' => 'Nilai kamu sangat baik! Coba tantang diri dengan soal pengayaan.',
-                    'icon'    => 'star',
-                ];
-            }
+        } elseif ($category === 'Siap') {
+            $recommendations[] = [
+                'type'    => 'skip',
+                'message' => 'Bagus! Kamu berada di kelompok SIAP. Kamu bisa langsung memulai mempelajari materi inti.',
+                'icon' => 'book-open',
+            ];
         } else {
             $recommendations[] = [
                 'type'    => 'remedial',
-                'message' => $config['follow_up_low'] ?? 'Pelajari ulang materi prasyarat sebelum lanjut ke topik berikutnya.',
-                'icon'    => 'book-open',
+                'message' => 'Kamu berada di kelompok BELUM SIAP. Jangan khawatir, Guru akan mendampingimu untuk mempelajari konsep prasyarat terlebih dahulu sebelum masuk ke materi inti.',
+                'icon'    => 'alert-triangle',
             ];
 
-            foreach ($topicBreakdown as $topic) {
-                if ($topic['mastery_level'] === 'rendah') {
+            // Integrasi Asesmen Non-Kognitif
+            $nonCognitive = \App\Models\StudentNonCognitiveDiagnostic::where('student_id', $submission->student_id)
+                ->where('subject_id', $assignment->subject_id)
+                ->first();
+
+            if ($nonCognitive) {
+                $style = strtolower($nonCognitive->learning_style ?? 'visual');
+                $styleMsg = "";
+                if ($style === 'visual') {
+                    $styleMsg = "Gunakan media visual seperti infografis, diagram, atau video dengan teks saat melakukan remedial.";
+                } elseif (in_array($style, ['auditori', 'auditory'])) {
+                    $styleMsg = "Dengarkan rekaman penjelasan materi, podcast, atau lakukan diskusi lisan dengan guru saat remedial.";
+                } elseif (in_array($style, ['kinestetik', 'kinesthetic'])) {
+                    $styleMsg = "Gunakan alat peraga fisik, lakukan eksperimen langsung, atau proyek mandiri saat remedial.";
+                }
+
+                if ($styleMsg) {
                     $recommendations[] = [
-                        'type'    => 'focus',
-                        'topic'   => $topic['topic'],
-                        'message' => "Fokus pelajari kembali topik \"{$topic['topic']}\" (pencapaian {$topic['mastery_pct']}%).",
-                        'icon'    => 'target',
+                        'type'    => 'differentiation_style',
+                        'message' => "Rekomendasi Gaya Belajar ({$nonCognitive->learning_style}): {$styleMsg}",
+                        'icon'    => 'compass',
+                    ];
+                }
+
+                if ($nonCognitive->interests && is_array($nonCognitive->interests)) {
+                    $interestsStr = implode(', ', $nonCognitive->interests);
+                    $recommendations[] = [
+                        'type'    => 'differentiation_interest',
+                        'message' => "Minat Kamu ({$interestsStr}): Hubungkan materi prasyarat dengan minat kamu agar remedial lebih menyenangkan.",
+                        'icon'    => 'sparkles',
                     ];
                 }
             }

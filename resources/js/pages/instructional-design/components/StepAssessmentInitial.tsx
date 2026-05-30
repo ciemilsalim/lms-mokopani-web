@@ -1,6 +1,6 @@
 import React from 'react';
 import { 
-    Target, Compass, Sparkles, Loader2, MessageSquare, ClipboardCheck, Eye 
+    Target, Compass, Sparkles, Loader2, MessageSquare, ClipboardCheck, Eye, FileText 
 } from 'lucide-react';
 import { Instrument, ScoringTool } from './types';
 import QuizBuilder from './QuizBuilder';
@@ -86,60 +86,59 @@ export default function StepAssessmentInitial({
                 <div className="grid gap-8 lg:grid-cols-12">
                     {/* Left Column: Instrument Selection */}
                     <div className="lg:col-span-4 space-y-6">
-                        <div className="space-y-3">
-                            <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.05em] ml-1">
-                                Pilih Instrumen
-                            </label>
-                            <div className="grid gap-2">
-                                {instruments.map((type) => {
-                                    const Icon = type.icon === 'message-square' 
-                                        ? MessageSquare 
-                                        : (type.icon === 'clipboard-check' ? ClipboardCheck : Eye);
-                                    
-                                    const isSelected = data.initial.instrument_type === type.id;
-
-                                    return (
-                                        <button
-                                            key={type.id}
-                                            type="button"
-                                            onClick={() => {
-                                                const defaultApproach = getDefaultKKTPApproach('initial', type.id);
-                                                setData('initial', { 
-                                                    ...data.initial, 
-                                                    instrument_type: type.id,
-                                                    instrument_config: {
-                                                        ...initialConfig,
-                                                        kktp: {
-                                                            ...initialConfig?.kktp,
-                                                            approach: defaultApproach
+                            <div className="space-y-4">
+                                <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.05em] ml-1">
+                                    Pilih Instrumen Asesmen Awal (Kognitif)
+                                </label>
+                                <div className="grid gap-2">
+                                    {instruments.map((type) => {
+                                        const Icon = type.icon === 'message-square' 
+                                            ? MessageSquare 
+                                            : (type.icon === 'clipboard-check' ? ClipboardCheck : (type.icon === 'file-text' ? FileText : Eye));
+                                        const isSelected = data.initial.instrument_type === type.id;
+                                        return (
+                                            <button
+                                                key={type.id}
+                                                type="button"
+                                                onClick={() => {
+                                                    const defaultApproach = getDefaultKKTPApproach('initial', type.id);
+                                                    setData('initial', { 
+                                                        ...data.initial, 
+                                                        instrument_type: type.id,
+                                                        instrument_config: {
+                                                            ...initialConfig,
+                                                            kktp: {
+                                                                ...initialConfig?.kktp,
+                                                                approach: defaultApproach
+                                                            }
                                                         }
-                                                    }
-                                                });
-                                                handleAssessmentSuggest('initial', type.id);
-                                            }}
-                                            className={`flex items-center gap-3 p-3 rounded-md border transition-all duration-150 ${
-                                                isSelected 
-                                                ? 'border-primary/50 bg-primary/10 shadow-[0_0_12px_rgba(94,106,210,0.15)]' 
-                                                : localErrors?.['initial.instrument_type']
-                                                ? 'border-red-500 bg-red-500/5 focus:border-red-500 focus:ring-1 focus:ring-red-500/20'
-                                                : 'border-border bg-card dark:bg-popover hover:border-[#8A8F98]/30'
-                                            }`}
-                                        >
-                                            <div className={`h-8 w-8 rounded-md flex items-center justify-center ${
-                                                isSelected ? 'bg-primary text-white shadow-[0_0_12px_rgba(94,106,210,0.15)]' : 'bg-muted/50 dark:bg-border/60 text-muted-foreground'
-                                            }`}>
-                                                <Icon className="h-4 w-4" />
-                                            </div>
-                                            <div className="text-left">
-                                                <p className={`text-[12px] font-semibold ${isSelected ? 'text-foreground' : 'text-muted-foreground'}`}>
-                                                    {type.name}
-                                                </p>
-                                            </div>
-                                        </button>
-                                    );
-                                })}
+                                                    });
+                                                    handleAssessmentSuggest('initial', type.id);
+                                                }}
+                                                className={`flex items-center gap-3 p-3 rounded-md border transition-all duration-150 ${
+                                                    isSelected 
+                                                    ? 'border-primary/50 bg-primary/10 shadow-[0_0_12px_rgba(94,106,210,0.15)]' 
+                                                    : localErrors?.['initial.instrument_type']
+                                                    ? 'border-red-500 bg-red-500/5 focus:border-red-500 focus:ring-1 focus:ring-red-500/20'
+                                                    : 'border-border bg-card dark:bg-popover hover:border-[#8A8F98]/30'
+                                                }`}
+                                            >
+                                                <div className={`h-8 w-8 rounded-md flex items-center justify-center ${
+                                                    isSelected ? 'bg-primary text-white shadow-[0_0_12px_rgba(94,106,210,0.15)]' : 'bg-muted/50 dark:bg-border/60 text-muted-foreground'
+                                                }`}>
+                                                    <Icon className="h-4 w-4" />
+                                                </div>
+                                                <div className="text-left">
+                                                    <p className={`text-[12px] font-semibold ${isSelected ? 'text-foreground' : 'text-muted-foreground'}`}>
+                                                        {type.name}
+                                                    </p>
+                                                    <p className="text-[10px] text-muted-foreground font-normal line-clamp-1">{type.desc}</p>
+                                                </div>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
                             </div>
-                        </div>
 
                         <div className="space-y-4 pt-4 border-t border-border">
                             <div className="space-y-1.5">
@@ -159,19 +158,6 @@ export default function StepAssessmentInitial({
                                     onChange={e => setData('initial', { ...data.initial, due_date: e.target.value })}
                                     className={`h-8 w-full bg-card text-card-foreground border rounded-md px-3 text-[12px] text-foreground outline-none [color-scheme:light] dark:[color-scheme:dark] transition ${localErrors?.['initial.due_date'] ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500/20' : 'border-border focus:border-primary'}`}
                                 />
-                            </div>
-                            <div className="space-y-1.5">
-                                <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.05em] ml-1">Alat Penskoran (Opsional)</label>
-                                <select 
-                                    value={data.initial.scoring_tool || ''}
-                                    onChange={e => setData('initial', { ...data.initial, scoring_tool: e.target.value || null })}
-                                    className="h-8 w-full bg-card text-card-foreground border border-border rounded-md px-3 text-[12px] text-foreground outline-none focus:border-primary transition"
-                                >
-                                    <option value="">-- Tanpa Alat Penskoran --</option>
-                                    {scoringTools.map(tool => (
-                                        <option key={tool.id} value={tool.id}>{tool.name}</option>
-                                    ))}
-                                </select>
                             </div>
                             <button
                                 type="button"
@@ -237,15 +223,6 @@ export default function StepAssessmentInitial({
                                         updateSummativeConfig={() => {}}
                                     />
                                 )}
-
-                                <KKTPSection
-                                    assessmentKey="initial"
-                                    instIdx={null}
-                                    data={data}
-                                    updateInitialConfig={updateInitialConfig}
-                                    updateFormativeConfig={() => {}}
-                                    updateSummativeConfig={() => {}}
-                                />
                             </div>
                         )}
                     </div>

@@ -170,6 +170,52 @@ class MaterialController extends Controller
         $user = Auth::user();
         $material->load(['subject', 'teacher', 'learningObjective', 'resources', 'schoolClass', 'semester', 'academicYear']);
 
+        $readinessStatus = [
+            'status' => 'ready', // ready, needs_intervention, not_taken
+            'assessment_id' => null,
+            'diagnostic_result' => null,
+        ];
+
+        if ($user->student) {
+            $accessibleTpIds = app(\App\Services\AdaptiveLearningService::class)->getStudentAccessibleTpIds($user->student->id, $user->student->school_class_id);
+            if ($material->learning_objective_id && !in_array($material->learning_objective_id, $accessibleTpIds)) {
+                abort(403, 'Akses ditolak. Silakan selesaikan materi atau asesmen sebelumnya terlebih dahulu sesuai alur belajar.');
+            }
+
+            if ($material->learning_objective_id) {
+                // Find initial cognitive assessment
+                $initialCognitiveAssignment = \App\Models\LmsAssignment::where('learning_objective_id', $material->learning_objective_id)
+                    ->where('assessment_type', 'initial')
+                    ->where(function($q) {
+                        $q->whereNull('instrument_type')
+                          ->orWhere('instrument_type', 'quiz_survey');
+                    })
+                    ->first();
+
+                if ($initialCognitiveAssignment) {
+                    $readinessStatus['assessment_id'] = $initialCognitiveAssignment->id;
+                    
+                    $diagnosticResult = \App\Models\StudentDiagnosticResult::where('student_id', $user->student->id)
+                        ->where('assignment_id', $initialCognitiveAssignment->id)
+                        ->first();
+
+                    if (!$diagnosticResult) {
+                        $readinessStatus['status'] = 'not_taken';
+                    } elseif (!$diagnosticResult->is_passed) {
+                        $readinessStatus['status'] = 'needs_intervention';
+                        $readinessStatus['diagnostic_result'] = [
+                            'score' => $diagnosticResult->total_score,
+                            'threshold' => $diagnosticResult->pass_threshold,
+                            'recommendations' => $diagnosticResult->recommendations,
+                            'topic_breakdown' => $diagnosticResult->topic_breakdown,
+                        ];
+                    } else {
+                        $readinessStatus['status'] = 'ready';
+                    }
+                }
+            }
+        }
+
         // Ambil komentar untuk materi ini
         $comments = \App\Models\LmsComment::with('user')
             ->where('material_id', $material->id)
@@ -289,6 +335,7 @@ class MaterialController extends Controller
             'school_name'     => $schoolName,
             'headmaster_name' => $headmasterName,
             'headmaster_nip'  => $headmasterNip,
+            'readiness_status' => $readinessStatus,
         ]);
     }
 

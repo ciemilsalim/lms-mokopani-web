@@ -42,9 +42,8 @@ class InstructionalDesignController extends Controller
 
         $instruments = [
             'initial' => [
-                ['id' => 'oral_qa',                'name' => 'Tanya Jawab Lisan',             'icon' => 'message-square',  'desc' => 'Mengecek pemahaman konsep dasar di awal'],
-                ['id' => 'quiz_survey',            'name' => 'Kuis Singkat / Survei',         'icon' => 'clipboard-check', 'desc' => 'Pemetaan pemahaman dasar secara cepat'],
-                ['id' => 'observation_checklist',  'name' => 'Observasi & Permainan',         'icon' => 'eye',             'desc' => 'Pengamatan kesiapan melalui aktivitas'],
+                ['id' => 'quiz_survey',            'name' => 'Kuis Singkat / Survei',         'icon' => 'clipboard-check', 'desc' => 'Pemetaan pemahaman dasar secara cepat', 'category' => 'cognitive'],
+                ['id' => 'observation_checklist',  'name' => 'Observasi Ceklis',              'icon' => 'eye',             'desc' => 'Pengamatan kesiapan melalui aktivitas', 'category' => 'cognitive'],
             ],
             'formative' => [
                 ['id' => 'reflective_journal',     'name' => 'Jurnal Reflektif',              'icon' => 'book-open',       'desc' => 'Siswa menulis refleksi pemahaman sendiri'],
@@ -209,6 +208,9 @@ class InstructionalDesignController extends Controller
                     $config['stimulus_image'] = $stimulusImagePath;
                 }
 
+                $instrumentType = $initialData['instrument_type'];
+                $config['diagnostic_category'] = 'cognitive';
+
                 LmsAssignment::create([
                     'teacher_id'            => $teacher->id,
                     'subject_id'            => $request->subject_id,
@@ -217,7 +219,7 @@ class InstructionalDesignController extends Controller
                     'academic_year_id'      => $activeYear?->id,
                     'semester_id'           => $activeSemester?->id,
                     'assessment_type'       => 'initial',
-                    'instrument_type'       => $initialData['instrument_type'],
+                    'instrument_type'       => $instrumentType,
                     'instrument_config'     => $config,
                     'scoring_tool'          => $initialData['scoring_tool'] ?? null,
                     'scoring_tool_config'   => $initialData['scoring_tool_config'] ?? [],

@@ -29,7 +29,8 @@ import {
     Plus,
     Star,
     AlignLeft,
-    Layers
+    Layers,
+    X
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -718,6 +719,113 @@ export default function EditAssignment({ assignment, teachings, objectives, asse
                                                 onChange={(e) => updateConfig('context', e.target.value)}
                                                 className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm outline-none focus:border-primary transition"
                                             />
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* PETA KONSEP */}
+                                {data.instrument_type === 'concept_map' && (
+                                    <div className="space-y-6">
+                                        <div className="grid gap-6 md:grid-cols-2">
+                                            <div className="space-y-2">
+                                                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Topik Utama Peta Konsep</label>
+                                                <input
+                                                    type="text"
+                                                    placeholder="Contoh: Perangkat Komputer, Siklus Air, Sistem Pencernaan..."
+                                                    value={data.instrument_config?.central_topic || ''}
+                                                    onChange={(e) => updateConfig('central_topic', e.target.value)}
+                                                    className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm outline-none focus:border-primary transition text-foreground"
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Metode Pengumpulan Tugas</label>
+                                                <select
+                                                    value={data.instrument_config?.submission_mode || 'hybrid'}
+                                                    onChange={(e) => updateConfig('submission_mode', e.target.value)}
+                                                    className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm outline-none focus:border-primary transition text-foreground"
+                                                >
+                                                    <option value="hybrid">Hibrida (Siswa Bebas Memilih Kanvas Digital / Unggah Foto)</option>
+                                                    <option value="canvas">Hanya Kanvas Digital Interaktif</option>
+                                                    <option value="upload">Hanya Unggah Foto/File Peta Konsep</option>
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Instruksi / Petunjuk Peta Konsep</label>
+                                            <textarea
+                                                placeholder="Contoh: Susunlah kata kunci di bawah ini menjadi peta konsep yang logis, hubungkan dengan garis relasi, dan berikan kata sambung yang tepat..."
+                                                value={data.instrument_config?.instructions || ''}
+                                                onChange={(e) => updateConfig('instructions', e.target.value)}
+                                                rows={3}
+                                                className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm outline-none focus:border-primary transition resize-none leading-relaxed text-foreground"
+                                            />
+                                        </div>
+
+                                        <div className="space-y-3">
+                                            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Daftar Kata Kunci Acak (Keywords)</label>
+                                            <div className="flex gap-2">
+                                                <input
+                                                    type="text"
+                                                    id="new-keyword-input"
+                                                    placeholder="Ketik kata kunci lalu tekan Enter..."
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === 'Enter') {
+                                                            e.preventDefault();
+                                                            const val = e.currentTarget.value.trim();
+                                                            if (val) {
+                                                                const kws = [...(data.instrument_config?.keywords || [])];
+                                                                if (!kws.includes(val)) {
+                                                                    updateConfig('keywords', [...kws, val]);
+                                                                }
+                                                                e.currentTarget.value = '';
+                                                            }
+                                                        }
+                                                    }}
+                                                    className="flex-1 rounded-xl border border-border bg-background px-4 py-2.5 text-sm outline-none focus:border-primary transition text-foreground"
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        const el = document.getElementById('new-keyword-input') as HTMLInputElement;
+                                                        const val = el?.value.trim();
+                                                        if (val) {
+                                                            const kws = [...(data.instrument_config?.keywords || [])];
+                                                            if (!kws.includes(val)) {
+                                                                updateConfig('keywords', [...kws, val]);
+                                                            }
+                                                            el.value = '';
+                                                        }
+                                                    }}
+                                                    className="px-4 py-2 bg-primary text-white rounded-xl text-xs font-bold hover:scale-[1.02] active:scale-[0.98] transition cursor-pointer"
+                                                >
+                                                    Tambah
+                                                </button>
+                                            </div>
+
+                                            <div className="flex flex-wrap gap-2 pt-2">
+                                                {(data.instrument_config?.keywords || []).map((keyword: string, idx: number) => (
+                                                    <span
+                                                        key={idx}
+                                                        className="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/40 rounded-full text-xs font-semibold animate-in scale-in duration-100"
+                                                    >
+                                                        {keyword}
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                const kws = (data.instrument_config?.keywords || []).filter((_: any, i: number) => i !== idx);
+                                                                updateConfig('keywords', kws);
+                                                            }}
+                                                            className="text-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-200 shrink-0"
+                                                        >
+                                                            <X className="h-3 w-3" />
+                                                        </button>
+                                                    </span>
+                                                ))}
+                                                {(data.instrument_config?.keywords || []).length === 0 && (
+                                                    <p className="text-xs text-muted-foreground italic">Belum ada kata kunci. Tambahkan kata kunci di atas untuk memudahkan murid menyusun peta konsep.</p>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
                                 )}

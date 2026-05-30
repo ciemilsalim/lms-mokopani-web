@@ -28,7 +28,17 @@ class AssignmentController extends Controller
         } elseif ($user->teacher) {
             $query->where('teacher_id', $user->teacher->id);
         } elseif ($user->student) {
-            $query->where('school_class_id', $user->student->school_class_id);
+            $query->where('school_class_id', $user->student->school_class_id)
+                ->where(function($q) {
+                    $q->where('assessment_type', '!=', 'initial')
+                      ->orWhere(function($subQ) {
+                          $subQ->where('assessment_type', 'initial')
+                               ->where(function($instQ) {
+                                   $instQ->whereNull('instrument_type')
+                                         ->orWhere('instrument_type', 'quiz_survey');
+                               });
+                      });
+                });
         }
 
         $models = $query->withCount('submissions')->latest()->get();
@@ -288,6 +298,29 @@ class AssignmentController extends Controller
         $user = Auth::user();
         $assignment->load(['subject', 'submissions.student']);
 
+        $readinessStatus = null;
+        if ($user->student && $assignment->assessment_type === 'initial') {
+            // Check access: observasi is teacher-only!
+            if ($assignment->instrument_type === 'observation_checklist') {
+                abort(403, 'Akses ditolak. Asesmen observasi ceklis hanya diisi oleh Guru.');
+            }
+
+            // Get readiness status
+            $diagnosticResult = \App\Models\StudentDiagnosticResult::where('student_id', $user->student->id)
+                ->where('assignment_id', $assignment->id)
+                ->first();
+
+            $readinessStatus = [
+                'status' => !$diagnosticResult ? 'not_taken' : ($diagnosticResult->is_passed ? 'ready' : 'needs_intervention'),
+                'diagnostic_result' => $diagnosticResult ? [
+                    'score' => $diagnosticResult->total_score,
+                    'threshold' => $diagnosticResult->pass_threshold,
+                    'recommendations' => $diagnosticResult->recommendations,
+                    'topic_breakdown' => $diagnosticResult->topic_breakdown,
+                ] : null,
+            ];
+        }
+
         // Ambil komentar untuk tugas ini
         $comments = \App\Models\LmsComment::with('user')
             ->where('assignment_id', $assignment->id)
@@ -387,7 +420,7 @@ class AssignmentController extends Controller
                     'file_path'    => $s->file_path,
                     'score'        => $s->score,
                     'attempts'     => $s->attempts,
-                    'is_passed'    => $s->score !== null && $s->score >= ($assignment->passing_grade ?? 70),
+                    'is_passed'    => $assignment->assessment_type === 'formative' ? true : ($s->score !== null && $s->score >= ($assignment->passing_grade ?? 70)),
                     'feedback'     => $s->feedback,
                     'submitted_at' => $s->created_at->format('d M Y, H:i'),
                 ]),
@@ -400,7 +433,7 @@ class AssignmentController extends Controller
                 'file_path'    => $mySubmission->file_path,
                 'score'        => $mySubmission->score,
                 'attempts'     => $mySubmission->attempts,
-                'is_passed'    => $mySubmission->score !== null && $mySubmission->score >= ($assignment->passing_grade ?? 70),
+                'is_passed'    => $assignment->assessment_type === 'formative' ? true : ($mySubmission->score !== null && $mySubmission->score >= ($assignment->passing_grade ?? 70)),
                 'feedback'     => $mySubmission->feedback,
                 'submitted_at' => $mySubmission->created_at->format('d M Y, H:i'),
             ] : null,
@@ -408,6 +441,7 @@ class AssignmentController extends Controller
             'user_role'       => $user->role ?? ($user->teacher ? 'teacher' : 'student'),
             'auth_id'         => $user->id,
             'available_peers' => $availablePeers,
+            'readiness_status' => $readinessStatus,
         ]);
     }
 

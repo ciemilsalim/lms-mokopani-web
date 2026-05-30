@@ -321,6 +321,111 @@ interface ShowAssignmentProps {
 export default function ShowAssignment({ assignment, students, my_submission, my_reflection, comments, user_role, auth_id, available_peers = [] }: ShowAssignmentProps) {
     const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+    const [emojiFilter, setEmojiFilter] = useState<'all' | 'paham' | 'ragu' | 'bingung'>('all');
+    const [conceptRubric, setConceptRubric] = useState({
+        koneksi: false,
+        kataHubung: false,
+        kelengkapan: false
+    });
+
+    const handleGenerateDescriptiveFeedback = (rubricState: typeof conceptRubric) => {
+        const { koneksi, kataHubung, kelengkapan } = rubricState;
+        if (koneksi && kataHubung && kelengkapan) {
+            return "Peta konsepmu sangat luar biasa! Hubungan antar konsep tergambar dengan logis, kata sambung di atas garis panah sudah tepat makna, dan semua materi penting disajikan dengan lengkap. Pertahankan kemampuan berpikir terstrukturmu!";
+        }
+        
+        let intro = "Peta konsepmu sudah mulai berkembang secara visual. Untuk menyempurnakan pemahaman konseptualmu, ada beberapa hal yang perlu ditingkatkan:\n";
+        let points = "";
+        if (!koneksi) {
+            points += "- Koneksi Antar Konsep: Pastikan hubungan logis antar kata kunci sudah tepat dan tidak terbalik.\n";
+        }
+        if (!kataHubung) {
+            points += "- Ketepatan Kata Hubung: Kata sambung di atas garis panah harus menggambarkan relasi antar konsep secara akurat.\n";
+        }
+        if (!kelengkapan) {
+            points += "- Kelengkapan Materi: Lengkapi beberapa kata kunci penting atau materi esensial yang masih terlewatkan.\n";
+        }
+        
+        return intro + points + "\nSilakan ulas kembali materi terkait untuk penguasaan konsep yang lebih mendalam!";
+    };
+
+    const handleRubricCheckboxChange = (field: 'koneksi' | 'kataHubung' | 'kelengkapan', checked: boolean) => {
+        const nextState = { ...conceptRubric, [field]: checked };
+        setConceptRubric(nextState);
+        const feedbackString = handleGenerateDescriptiveFeedback(nextState);
+        teacherForm.setData('feedback', feedbackString);
+    };
+
+    const exitTicketStats = useMemo(() => {
+        if (assignment.instrument_type !== 'exit_ticket') return null;
+        let paham = 0, ragu = 0, bingung = 0;
+        const reflections: { student_name: string; emoji: string; text: string }[] = [];
+        
+        (assignment.submissions || []).forEach((s: any) => {
+            try {
+                const p = JSON.parse(s.content || '');
+                const emoji = p.answers?.emoji;
+                const text = p.answers?.reflection || '';
+                if (emoji === 'paham') paham++;
+                else if (emoji === 'ragu') ragu++;
+                else if (emoji === 'bingung') bingung++;
+                
+                if (emoji || text) {
+                    reflections.push({
+                        student_name: s.student_name,
+                        emoji: emoji || 'ragu',
+                        text: text
+                    });
+                }
+            } catch(e) {}
+        });
+        
+        const total = paham + ragu + bingung;
+        return { paham, ragu, bingung, total, reflections };
+    }, [assignment.submissions, assignment.instrument_type]);
+
+    const formativeDifficultyStats = useMemo(() => {
+        if (assignment.instrument_type !== 'formative_quiz') return null;
+        const questions = assignment.instrument_config?.questions || [];
+        const submissions = assignment.submissions || [];
+        const stats: { id: string; num: number; text: string; wrongCount: number; totalCount: number; wrongPct: number }[] = [];
+        
+        questions.forEach((q: any, idx: number) => {
+            const correctOptId = q.answer || q.options?.find((o: any) => o.is_correct)?.id;
+            let wrongCount = 0;
+            let totalCount = 0;
+            
+            submissions.forEach((s: any) => {
+                try {
+                    const p = JSON.parse(s.content || '');
+                    const ans = p.answers?.[q.id];
+                    if (ans !== undefined && ans !== '') {
+                        totalCount++;
+                        const isMcq = q.type === 'multiple_choice';
+                        const isCorrect = isMcq 
+                            ? (ans == correctOptId) 
+                            : (q.type === 'short_answer' && (q.correct_answer || q.answer) && ans?.trim().toLowerCase() == (q.correct_answer || q.answer)?.trim().toLowerCase());
+                        
+                        if (!isCorrect) wrongCount++;
+                    }
+                } catch(e) {}
+            });
+            
+            if (totalCount > 0) {
+                stats.push({
+                    id: q.id,
+                    num: idx + 1,
+                    text: q.text,
+                    wrongCount,
+                    totalCount,
+                    wrongPct: Math.round((wrongCount / totalCount) * 100)
+                });
+            }
+        });
+        
+        const hardQuestions = stats.filter(s => s.wrongPct > 50);
+        return { stats, hardQuestions };
+    }, [assignment.submissions, assignment.instrument_config, assignment.instrument_type]);
     
     // Form for Teacher (Grading & Recording)
     const teacherForm = useForm({
@@ -409,6 +514,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
         nodes: [] as any[],
         edges: [] as any[]
     });
+    const [conceptMapSubMode, setConceptMapSubMode] = useState<'canvas' | 'upload'>('canvas');
 
     // Rubric State (Teacher)
     const [rubricData, setRubricData] = useState<Record<string, string>>({});
@@ -491,6 +597,9 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                         nodes: parsed.nodes || [],
                         edges: parsed.edges || []
                     });
+                    if (parsed.submission_type) {
+                        setConceptMapSubMode(parsed.submission_type);
+                    }
                 } else if (parsed.type === 'written_test' || parsed.type === 'formative_quiz') {
                     studentForm.setData('answers', parsed.answers || {});
                 } else if (parsed.type === 'quiz_response') {
@@ -501,8 +610,48 @@ export default function ShowAssignment({ assignment, students, my_submission, my
         }
     }, [my_submission, assignment.instrument_type]);
 
+    // Initialize Concept Map nodes with teacher's keywords if not already loaded or submitted
+    useEffect(() => {
+        if (assignment.instrument_type === 'concept_map' && !my_submission?.content) {
+            const keywords = assignment.instrument_config?.keywords || [];
+            if (keywords.length > 0 && conceptMapData.nodes.length === 0) {
+                // Position keywords in a grid layout
+                const initialNodes = keywords.map((keyword: string, idx: number) => {
+                    const row = Math.floor(idx / 3);
+                    const col = idx % 3;
+                    return {
+                        id: `node_kw_${idx}_${Date.now()}`,
+                        text: keyword,
+                        x: 100 + col * 180 + Math.random() * 20,
+                        y: 120 + row * 100 + Math.random() * 20,
+                        color: 'indigo'
+                    };
+                });
+                setConceptMapData({
+                    nodes: initialNodes,
+                    edges: []
+                });
+            }
+        }
+    }, [assignment.instrument_config, assignment.instrument_type, my_submission]);
+
+    // Enforce submission mode from teacher's configuration
+    useEffect(() => {
+        if (assignment.instrument_type === 'concept_map') {
+            const mode = assignment.instrument_config?.submission_mode;
+            if (mode && mode !== 'hybrid') {
+                setConceptMapSubMode(mode);
+            }
+        }
+    }, [assignment.instrument_config, assignment.instrument_type]);
+
     const openGradeModal = (s: Submission) => {
         setSelectedSubmission(s);
+        setConceptRubric({
+            koneksi: false,
+            kataHubung: false,
+            kelengkapan: false
+        });
         
         const calculatedSystemScore = calculateSystemScore(s.content || '');
         const finalScoreToSet = (s.score !== null && s.score !== undefined) ? s.score : calculatedSystemScore;
@@ -1024,7 +1173,12 @@ export default function ShowAssignment({ assignment, students, my_submission, my
         } else if (assignment.instrument_type === 'exit_ticket') {
             finalContent = JSON.stringify({ type: 'exit_ticket', answers: studentForm.data.answers });
         } else if (assignment.instrument_type === 'concept_map') {
-            finalContent = JSON.stringify({ type: 'concept_map', nodes: conceptMapData.nodes, edges: conceptMapData.edges });
+            finalContent = JSON.stringify({ 
+                type: 'concept_map', 
+                submission_type: conceptMapSubMode,
+                nodes: conceptMapSubMode === 'canvas' ? conceptMapData.nodes : [], 
+                edges: conceptMapSubMode === 'canvas' ? conceptMapData.edges : [] 
+            });
         }
 
         router.post(route('assignments.submit', assignment.id), {
@@ -1283,58 +1437,208 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                             </div>
                         ) : (
                             <div className="space-y-4 animate-in fade-in duration-500">
-                                {assignment.instrument_type === 'exit_ticket' && (
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in slide-in-from-top-4 duration-500">
-                                        {(assignment.instrument_config?.questions || []).map((q: any, qIdx: number) => {
-                                            const qKey = q.id ?? `et_${qIdx}`;
-                                            const answers = (assignment.submissions || []).map((s: Submission) => {
-                                                try {
-                                                    const p = JSON.parse(s.content || '');
-                                                    return p.answers?.[qKey];
-                                                } catch(e) { return null; }
-                                            }).filter(Boolean);
+                                {assignment.instrument_type === 'exit_ticket' && exitTicketStats && (
+                                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in slide-in-from-top-4 duration-500 mb-8">
+                                        {/* SVG Donut Chart Card */}
+                                        <div className="rounded-[8px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#1B1B25] p-6 shadow-none flex flex-col justify-between">
+                                            <div>
+                                                <h3 className="text-sm font-semibold tracking-[-0.03em] text-slate-800 dark:text-[#F1F1F4]">Distribusi Pemahaman</h3>
+                                                <p className="text-[10px] text-slate-500 dark:text-[#8A8F98] uppercase tracking-wider mt-1">Rasio Evaluasi Cepat Refleksi</p>
+                                            </div>
 
-                                            return (
-                                                <div key={qKey} className="rounded-[8px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#1B1B25] p-6 shadow-none flex flex-col h-full">
-                                                    <div className="flex items-center gap-3 mb-4">
-                                                        <div className="h-8 w-8 rounded-[6px] bg-[#5E6AD2]/10 dark:bg-[#5E6AD2] text-[#5E6AD2] dark:text-white flex items-center justify-center border border-[#5E6AD2]/20 dark:border-transparent">
-                                                            <MessageSquare className="h-4 w-4" />
+                                            <div className="flex items-center justify-center py-6 relative">
+                                                {exitTicketStats.total > 0 ? (
+                                                    <>
+                                                        <svg width="150" height="150" viewBox="0 0 100 100" className="transform -rotate-90">
+                                                            {/* Background Circle */}
+                                                            <circle cx="50" cy="50" r="40" fill="transparent" stroke="#E2E8F0" strokeWidth="12" className="dark:stroke-slate-800" />
+                                                            
+                                                            {(() => {
+                                                                const total = exitTicketStats.total;
+                                                                const circ = 251.2;
+                                                                
+                                                                const pahamDash = (exitTicketStats.paham / total) * circ;
+                                                                const raguDash = (exitTicketStats.ragu / total) * circ;
+                                                                const bingungDash = (exitTicketStats.bingung / total) * circ;
+                                                                
+                                                                return (
+                                                                    <>
+                                                                        {/* Paham Circle (😊 Emerald) */}
+                                                                        {exitTicketStats.paham > 0 && (
+                                                                            <circle 
+                                                                                cx="50" cy="50" r="40" 
+                                                                                fill="transparent" 
+                                                                                stroke="#10B981" 
+                                                                                strokeWidth="12" 
+                                                                                strokeDasharray={`${pahamDash} ${circ - pahamDash}`} 
+                                                                                strokeDashoffset="0" 
+                                                                                className="transition-all duration-1000"
+                                                                            />
+                                                                        )}
+                                                                        
+                                                                        {/* Ragu Circle (😐 Amber) */}
+                                                                        {exitTicketStats.ragu > 0 && (
+                                                                            <circle 
+                                                                                cx="50" cy="50" r="40" 
+                                                                                fill="transparent" 
+                                                                                stroke="#F59E0B" 
+                                                                                strokeWidth="12" 
+                                                                                strokeDasharray={`${raguDash} ${circ - raguDash}`} 
+                                                                                strokeDashoffset={-pahamDash} 
+                                                                                className="transition-all duration-1000"
+                                                                            />
+                                                                        )}
+                                                                        
+                                                                        {/* Bingung Circle (🙁 Rose) */}
+                                                                        {exitTicketStats.bingung > 0 && (
+                                                                            <circle 
+                                                                                cx="50" cy="50" r="40" 
+                                                                                fill="transparent" 
+                                                                                stroke="#EF4444" 
+                                                                                strokeWidth="12" 
+                                                                                strokeDasharray={`${bingungDash} ${circ - bingungDash}`} 
+                                                                                strokeDashoffset={-(pahamDash + raguDash)} 
+                                                                                className="transition-all duration-1000"
+                                                                            />
+                                                                        )}
+                                                                    </>
+                                                                );
+                                                            })()}
+                                                        </svg>
+                                                        <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+                                                            <span className="text-2xl font-black tracking-tight">{exitTicketStats.total}</span>
+                                                            <span className="text-[8px] font-black text-muted-foreground uppercase tracking-widest">Respon</span>
                                                         </div>
-                                                        <h4 className="text-[10px] font-semibold text-slate-500 dark:text-[#8A8F98] uppercase tracking-wider leading-tight">{q.text}</h4>
+                                                    </>
+                                                ) : (
+                                                    <div className="h-[120px] flex items-center justify-center text-slate-300">
+                                                        <p className="text-[10px] font-semibold uppercase tracking-widest italic">Belum ada respon</p>
                                                     </div>
-                                                    
-                                                    <div className="flex-1 space-y-3 overflow-y-auto max-h-[200px] pr-2 custom-scrollbar">
-                                                        {answers.length > 0 ? (
-                                                            answers.map((ans: string, idx: number) => (
-                                                                <div key={idx} className="p-4 rounded-[6px] bg-slate-50 dark:bg-[#101014] border border-slate-200 dark:border-[#2C2C3A] hover:border-[#5E6AD2]/30 transition-all">
-                                                                    <p className="text-[11px] font-medium text-slate-600 dark:text-[#8A8F98] leading-relaxed italic">"{ans}"</p>
-                                                                </div>
-                                                            ))
-                                                        ) : (
-                                                            <div className="h-full flex items-center justify-center py-8">
-                                                                <p className="text-[10px] font-semibold text-slate-300 dark:text-[#8A8F98] uppercase tracking-widest italic">Belum ada respon</p>
-                                                            </div>
-                                                        )}
+                                                )}
+                                            </div>
+
+                                            <div className="space-y-2 border-t border-slate-100 dark:border-[#2C2C3A] pt-4">
+                                                <div className="flex items-center justify-between text-xs">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="h-3 w-3 rounded-full bg-emerald-500" />
+                                                        <span className="font-semibold text-slate-600 dark:text-[#8A8F98]">😊 Paham</span>
                                                     </div>
-                                                    
-                                                    <div className="mt-4 pt-4 border-t border-slate-100 dark:border-[#2C2C3A] flex items-center justify-between">
-                                                        <span className="text-[10px] font-semibold text-slate-500 dark:text-[#8A8F98] uppercase tracking-wider">{answers.length} Respon</span>
-                                                        <div className="flex -space-x-2">
-                                                            {(assignment.submissions || []).slice(0, 3).map((s: Submission) => (
-                                                                <div key={s.id} className="h-6 w-6 rounded-[4px] bg-slate-50 dark:bg-[#101014] border-2 border-white dark:border-[#1B1B25] flex items-center justify-center text-[8px] font-semibold text-slate-500 dark:text-[#8A8F98] uppercase">
-                                                                    {s.student_name.charAt(0)}
-                                                                </div>
-                                                            ))}
-                                                            {assignment.submissions?.length > 3 && (
-                                                                <div className="h-6 w-6 rounded-[4px] bg-[#5E6AD2] border-2 border-white dark:border-[#1B1B25] flex items-center justify-center text-[8px] font-semibold text-white">
-                                                                    +{assignment.submissions.length - 3}
-                                                                </div>
-                                                            )}
-                                                        </div>
+                                                    <span className="font-bold">{exitTicketStats.paham} siswa ({exitTicketStats.total > 0 ? Math.round((exitTicketStats.paham / exitTicketStats.total) * 100) : 0}%)</span>
+                                                </div>
+                                                <div className="flex items-center justify-between text-xs">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="h-3 w-3 rounded-full bg-amber-500" />
+                                                        <span className="font-semibold text-slate-600 dark:text-[#8A8F98]">😐 Ragu-Ragu</span>
+                                                    </div>
+                                                    <span className="font-bold">{exitTicketStats.ragu} siswa ({exitTicketStats.total > 0 ? Math.round((exitTicketStats.ragu / exitTicketStats.total) * 100) : 0}%)</span>
+                                                </div>
+                                                <div className="flex items-center justify-between text-xs">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="h-3 w-3 rounded-full bg-rose-500" />
+                                                        <span className="font-semibold text-slate-600 dark:text-[#8A8F98]">🙁 Bingung</span>
+                                                    </div>
+                                                    <span className="font-bold text-rose-500">{exitTicketStats.bingung} siswa ({exitTicketStats.total > 0 ? Math.round((exitTicketStats.bingung / exitTicketStats.total) * 100) : 0}%)</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Emotional-Qualitative Sorting Dashboard */}
+                                        <div className="rounded-[8px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#1B1B25] p-6 shadow-none flex flex-col h-full lg:col-span-2 justify-between">
+                                            <div>
+                                                <div className="flex items-center justify-between border-b border-slate-100 dark:border-[#2C2C3A] pb-4">
+                                                    <div>
+                                                        <h3 className="text-sm font-semibold tracking-[-0.03em] text-slate-800 dark:text-[#F1F1F4]">Umpan Balik Kualitatif</h3>
+                                                        <p className="text-[10px] text-slate-500 dark:text-[#8A8F98] uppercase tracking-wider mt-1">Pemetaan Emosional Siswa</p>
+                                                    </div>
+                                                    <div className="flex gap-1.5 bg-slate-100 dark:bg-[#101014] p-1 rounded-lg">
+                                                        {[
+                                                            { id: 'all', label: 'Semua', count: exitTicketStats.total },
+                                                            { id: 'paham', label: '😊 Paham', count: exitTicketStats.paham },
+                                                            { id: 'ragu', label: '😐 Ragu', count: exitTicketStats.ragu },
+                                                            { id: 'bingung', label: '🙁 Bingung', count: exitTicketStats.bingung }
+                                                        ].map((tab) => (
+                                                            <button
+                                                                key={tab.id}
+                                                                type="button"
+                                                                onClick={() => setEmojiFilter(tab.id as any)}
+                                                                className={`px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-wider transition-all ${
+                                                                    emojiFilter === tab.id 
+                                                                        ? tab.id === 'bingung'
+                                                                            ? 'bg-rose-500 text-white shadow-sm'
+                                                                            : 'bg-[#5E6AD2] text-white shadow-sm'
+                                                                        : 'text-slate-500 hover:text-slate-700 dark:text-[#8A8F98] dark:hover:text-[#F1F1F4]'
+                                                                }`}
+                                                            >
+                                                                {tab.label} <span className="ml-1 opacity-70">({tab.count})</span>
+                                                            </button>
+                                                        ))}
                                                     </div>
                                                 </div>
-                                            );
-                                        })}
+
+                                                <div className="space-y-3 overflow-y-auto max-h-[220px] mt-4 pr-2 custom-scrollbar">
+                                                    {exitTicketStats.reflections
+                                                        .filter((r) => emojiFilter === 'all' || r.emoji === emojiFilter)
+                                                        .length > 0 ? (
+                                                            exitTicketStats.reflections
+                                                                .filter((r) => emojiFilter === 'all' || r.emoji === emojiFilter)
+                                                                .map((ref, idx) => (
+                                                                    <div 
+                                                                        key={idx} 
+                                                                        className={`p-4 rounded-[6px] border transition-all ${
+                                                                            ref.emoji === 'bingung'
+                                                                                ? 'border-rose-100 bg-rose-500/5 dark:border-rose-950/20 dark:bg-rose-950/10'
+                                                                                : ref.emoji === 'ragu'
+                                                                                    ? 'border-amber-100 bg-amber-500/5 dark:border-amber-950/20 dark:bg-amber-950/10'
+                                                                                    : 'border-emerald-100 bg-emerald-500/5 dark:border-emerald-950/20 dark:bg-emerald-950/10'
+                                                                        }`}
+                                                                    >
+                                                                        <div className="flex justify-between items-center mb-1.5">
+                                                                            <span className="text-[10px] font-black uppercase tracking-widest">{ref.student_name}</span>
+                                                                            <span className="text-xs">{ref.emoji === 'paham' ? '😊 Paham' : ref.emoji === 'ragu' ? '😐 Ragu' : '🙁 Bingung'}</span>
+                                                                        </div>
+                                                                        <p className="text-[11px] font-medium text-slate-600 dark:text-[#8A8F98] leading-relaxed italic">
+                                                                            "{ref.text || 'Tidak menuliskan umpan balik teks'}"
+                                                                        </p>
+                                                                    </div>
+                                                                ))
+                                                        ) : (
+                                                            <div className="py-12 flex flex-col items-center justify-center text-center">
+                                                                <span className="text-2xl mb-2">🎈</span>
+                                                                <p className="text-[10px] font-semibold text-slate-350 dark:text-[#8A8F98] uppercase tracking-widest italic">Tidak ada respon refleksi untuk kategori ini</p>
+                                                            </div>
+                                                        )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Concept Difficulty Alert for Formative Quiz */}
+                                {assignment.instrument_type === 'formative_quiz' && formativeDifficultyStats && formativeDifficultyStats.hardQuestions.length > 0 && (
+                                    <div className="rounded-[8px] border border-rose-500/30 bg-rose-500/5 dark:bg-rose-950/15 p-6 animate-in slide-in-from-top-4 duration-500 mb-6 flex items-start gap-4">
+                                        <div className="h-10 w-10 rounded-[6px] bg-rose-500 text-white flex items-center justify-center flex-shrink-0 shadow-lg shadow-rose-200/50 dark:shadow-none">
+                                            <AlertCircle className="h-5 w-5" />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <h3 className="text-sm font-black text-rose-600 dark:text-rose-450 uppercase tracking-wider">Deteksi Konsep Sulit (Auto-Analisis)</h3>
+                                            <p className="text-xs text-slate-600 dark:text-[#8A8F98] leading-relaxed font-medium">
+                                                Terdapat <strong>{formativeDifficultyStats.hardQuestions.length} pertanyaan</strong> dengan persentase kegagalan <strong>di atas 50%</strong>. Siswa kelas Anda mengalami kesulitan serius di konsep-konsep ini:
+                                            </p>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
+                                                {formativeDifficultyStats.hardQuestions.map((q) => (
+                                                    <div key={q.id} className="p-3.5 rounded-[6px] bg-white dark:bg-[#101014] border border-rose-200 dark:border-rose-950 flex flex-col justify-between">
+                                                        <div>
+                                                            <div className="flex justify-between items-center mb-1.5">
+                                                                <span className="text-[9px] font-black uppercase tracking-wider text-rose-500">Soal Nomor {q.num}</span>
+                                                                <span className="text-[10px] font-mono font-bold text-rose-500">{q.wrongPct}% Siswa Salah</span>
+                                                            </div>
+                                                            <p className="text-[11px] font-semibold text-slate-700 dark:text-[#F1F1F4] line-clamp-2 leading-relaxed">"{q.text}"</p>
+                                                        </div>
+                                                        <p className="text-[9px] text-slate-400 mt-2 font-bold uppercase tracking-widest italic">Rekomendasi: Review Pembahasan Besok Pagi</p>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
                                     </div>
                                 )}
                                 <div className="flex items-center justify-between px-4">
@@ -1674,9 +1978,11 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                         </div>
                                                         <div>
                                                             <h3 className="font-semibold tracking-[-0.03em] text-lg text-slate-800 dark:text-[#F1F1F4]">
-                                                                {assignment.instrument_type === 'formative_quiz' ? 'Lembar Kuis Formatif' : 'Lembar Tes Tertulis'}
+                                                                {assignment.instrument_type === 'formative_quiz' ? 'Kuis Formatif Interaktif (Umpan Balik Instan)' : 'Lembar Tes Tertulis'}
                                                             </h3>
-                                                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider mt-1">Fokus & Teliti • {assignment.instrument_config?.questions?.length || 0} Pertanyaan</p>
+                                                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider mt-1">
+                                                                {assignment.instrument_type === 'formative_quiz' ? 'Jawab & Pelajari Langsung Pembahasannya!' : 'Fokus & Teliti'} • {assignment.instrument_config?.questions?.length || 0} Pertanyaan
+                                                            </p>
                                                         </div>
                                                     </div>
                                                     <div className="text-right">
@@ -1702,14 +2008,37 @@ export default function ShowAssignment({ assignment, students, my_submission, my
 
                                             <div className="space-y-8">
                                                 {(assignment.instrument_config?.questions || []).map((q: any, idx: number) => {
-                                                    const isAnswered = studentForm.data.answers[q.id];
+                                                    const isAnswered = studentForm.data.answers[q.id] !== undefined && studentForm.data.answers[q.id] !== '';
+                                                    const studentAns = studentForm.data.answers[q.id];
+                                                    
+                                                    // Determine correct option for formative instant check
+                                                    const correctOptId = q.answer || q.options?.find((o: any) => o.is_correct)?.id;
+                                                    const isCorrect = isAnswered && studentAns == correctOptId;
+
                                                     return (
                                                         <div 
                                                             key={q.id} 
-                                                            className={`group relative transition-all duration-150 rounded-[8px] border border-slate-200 bg-white dark:border-[#2C2C3A] dark:bg-[#1B1B25] p-6 shadow-none ${isAnswered ? 'border-[#5E6AD2]/50 bg-[#5E6AD2]/5 dark:bg-[#1E1E2A]' : 'hover:border-[#6E79D6]/50 hover:bg-slate-50/50 dark:hover:bg-[#1E1E2A]/20'}`}
+                                                            className={`group relative transition-all duration-150 rounded-[8px] border border-slate-200 bg-white dark:border-[#2C2C3A] dark:bg-[#1B1B25] p-6 shadow-none ${
+                                                                isAnswered 
+                                                                    ? assignment.instrument_type === 'formative_quiz'
+                                                                        ? isCorrect
+                                                                            ? 'border-emerald-500/50 bg-emerald-500/5 dark:bg-emerald-950/10'
+                                                                            : 'border-rose-500/50 bg-rose-500/5 dark:bg-rose-950/10'
+                                                                        : 'border-[#5E6AD2]/50 bg-[#5E6AD2]/5 dark:bg-[#1E1E2A]' 
+                                                                    : 'hover:border-[#6E79D6]/50 hover:bg-slate-50/50 dark:hover:bg-[#1E1E2A]/20'
+                                                            }`}
                                                         >
                                                             <div className="flex items-center gap-3 mb-6">
                                                                 <span className="font-mono text-xs font-semibold text-slate-500 dark:text-[#8A8F98] bg-slate-50 dark:bg-[#101014] px-2.5 py-1 rounded-[4px] border border-slate-200 dark:border-[#2C2C3A]">Q{idx + 1}</span>
+                                                                {assignment.instrument_type === 'formative_quiz' && isAnswered && (
+                                                                    <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded ${
+                                                                        isCorrect 
+                                                                            ? 'bg-emerald-500 text-white animate-bounce' 
+                                                                            : 'bg-rose-500 text-white'
+                                                                    }`}>
+                                                                        {isCorrect ? '✨ Benar!' : '❌ Kurang Tepat'}
+                                                                    </span>
+                                                                )}
                                                                 <div className="h-px flex-1 bg-slate-200 dark:bg-[#2C2C3A]"></div>
                                                             </div>
 
@@ -1729,32 +2058,86 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                 <div className="space-y-3">
                                                                     {q.type === 'multiple_choice' && (
                                                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                                                            {q.options?.map((opt: any, optIdx: number) => (
-                                                                                <button 
-                                                                                    key={opt.id}
-                                                                                    type="button"
-                                                                                    onClick={() => studentForm.setData('answers', { ...studentForm.data.answers, [q.id]: opt.id })}
-                                                                                    className={`flex items-center gap-3 p-3.5 rounded-[8px] border transition-all text-left group/opt ${studentForm.data.answers[q.id] === opt.id ? 'border-[#5E6AD2] bg-[#5E6AD2]/10 dark:bg-[#1E1E2A]' : 'border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#101014] hover:bg-slate-50 dark:hover:bg-[#1F1F2E] hover:border-[#6E79D6]/50'}`}
-                                                                                >
-                                                                                    <div className={`h-6 w-6 rounded-full border flex items-center justify-center flex-shrink-0 font-semibold text-[11px] font-mono transition-all ${studentForm.data.answers[q.id] === opt.id ? 'bg-[#5E6AD2] border-[#5E6AD2] text-white' : 'border-slate-200 dark:border-[#2C2C3A] bg-slate-50 dark:bg-[#1B1B25] text-slate-500 dark:text-[#8A8F98] group-hover/opt:border-[#6E79D6] group-hover/opt:text-[#6E79D6]'}`}>
-                                                                                        {String.fromCharCode(65 + optIdx)}
-                                                                                    </div>
-                                                                                    <span className={`text-xs font-semibold ${studentForm.data.answers[q.id] === opt.id ? 'text-[#5E6AD2] dark:text-[#F1F1F4]' : 'text-slate-700 dark:text-[#8A8F98]'}`}>{opt.text}</span>
-                                                                                </button>
-                                                                            ))}
+                                                                            {q.options?.map((opt: any, optIdx: number) => {
+                                                                                const isSelected = studentAns == opt.id;
+                                                                                const isOptCorrect = opt.id == correctOptId;
+
+                                                                                // For Formative Quiz: Show green if this option is correct (and question is answered), or red if selected but incorrect.
+                                                                                let btnStyle = 'border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#101014] hover:bg-slate-50 dark:hover:bg-[#1F1F2E] hover:border-[#6E79D6]/50';
+                                                                                let badgeStyle = 'border-slate-200 dark:border-[#2C2C3A] bg-slate-50 dark:bg-[#1B1B25] text-slate-500 dark:text-[#8A8F98] group-hover/opt:border-[#6E79D6] group-hover/opt:text-[#6E79D6]';
+                                                                                
+                                                                                if (assignment.instrument_type === 'formative_quiz' && isAnswered) {
+                                                                                    if (isOptCorrect) {
+                                                                                        btnStyle = 'border-emerald-500 bg-emerald-500/10 dark:bg-emerald-950/20';
+                                                                                        badgeStyle = 'bg-emerald-500 border-emerald-500 text-white';
+                                                                                    } else if (isSelected && !isOptCorrect) {
+                                                                                        btnStyle = 'border-rose-500 bg-rose-500/10 dark:bg-rose-950/20';
+                                                                                        badgeStyle = 'bg-rose-500 border-rose-500 text-white';
+                                                                                    } else {
+                                                                                        btnStyle = 'border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#101014] opacity-50 cursor-not-allowed';
+                                                                                    }
+                                                                                } else {
+                                                                                    // Default written test style
+                                                                                    if (isSelected) {
+                                                                                        btnStyle = 'border-[#5E6AD2] bg-[#5E6AD2]/10 dark:bg-[#1E1E2A]';
+                                                                                        badgeStyle = 'bg-[#5E6AD2] border-[#5E6AD2] text-white';
+                                                                                    }
+                                                                                }
+
+                                                                                return (
+                                                                                    <button 
+                                                                                        key={opt.id}
+                                                                                        type="button"
+                                                                                        onClick={() => {
+                                                                                            // Prevent changing formative quiz answers to support active instant study
+                                                                                            if (assignment.instrument_type === 'formative_quiz' && isAnswered) return;
+                                                                                            studentForm.setData('answers', { ...studentForm.data.answers, [q.id]: opt.id });
+                                                                                        }}
+                                                                                        className={`flex items-center gap-3 p-3.5 rounded-[8px] border transition-all text-left group/opt ${btnStyle}`}
+                                                                                    >
+                                                                                        <div className={`h-6 w-6 rounded-full border flex items-center justify-center flex-shrink-0 font-semibold text-[11px] font-mono transition-all ${badgeStyle}`}>
+                                                                                            {String.fromCharCode(65 + optIdx)}
+                                                                                        </div>
+                                                                                        <span className={`text-xs font-semibold ${isSelected ? 'text-[#5E6AD2] dark:text-[#F1F1F4]' : 'text-slate-700 dark:text-[#8A8F98]'}`}>{opt.text}</span>
+                                                                                    </button>
+                                                                                );
+                                                                            })}
                                                                         </div>
                                                                     )}
 
                                                                     {q.type === 'short_answer' && (
-                                                                        <div className="relative">
-                                                                            <input 
-                                                                                type="text"
-                                                                                value={studentForm.data.answers[q.id] || ''}
-                                                                                onChange={(e) => studentForm.setData('answers', { ...studentForm.data.answers, [q.id]: e.target.value })}
-                                                                                placeholder="Ketik jawaban singkat Anda..."
-                                                                                className="w-full rounded-[6px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#101014] px-4 py-3 text-xs font-medium focus:border-[#5E6AD2] focus:ring-1 focus:ring-[#5E6AD2]/15 transition-all text-slate-800 dark:text-[#F1F1F4] placeholder-slate-450 dark:placeholder-[#8A8F98]"
-                                                                            />
-                                                                            <PenTool className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                                                                        <div className="space-y-2">
+                                                                            <div className="relative">
+                                                                                <input 
+                                                                                    type="text"
+                                                                                    value={studentForm.data.answers[q.id] || ''}
+                                                                                    disabled={assignment.instrument_type === 'formative_quiz' && isAnswered}
+                                                                                    onChange={(e) => studentForm.setData('answers', { ...studentForm.data.answers, [q.id]: e.target.value })}
+                                                                                    placeholder="Ketik jawaban singkat Anda..."
+                                                                                    className={`w-full rounded-[6px] border bg-white dark:bg-[#101014] px-4 py-3 text-xs font-medium focus:ring-1 focus:ring-[#5E6AD2]/15 transition-all text-slate-800 dark:text-[#F1F1F4] placeholder-slate-450 dark:placeholder-[#8A8F98] ${
+                                                                                        assignment.instrument_type === 'formative_quiz' && isAnswered
+                                                                                            ? isCorrect
+                                                                                                ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400 bg-emerald-500/5'
+                                                                                                : 'border-rose-500 text-rose-600 dark:text-rose-450 bg-rose-500/5'
+                                                                                            : 'border-slate-200 dark:border-[#2C2C3A] focus:border-[#5E6AD2]'
+                                                                                    }`}
+                                                                                />
+                                                                                <PenTool className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                                                                            </div>
+                                                                            {assignment.instrument_type === 'formative_quiz' && !isAnswered && (
+                                                                                <button
+                                                                                    type="button"
+                                                                                    onClick={() => {
+                                                                                        if (studentForm.data.answers[q.id]?.trim()) {
+                                                                                            // Toggle answer lock
+                                                                                            studentForm.setData('answers', { ...studentForm.data.answers, [q.id]: studentForm.data.answers[q.id] });
+                                                                                        }
+                                                                                    }}
+                                                                                    className="text-[10px] text-primary hover:underline font-bold uppercase tracking-wider block mt-1"
+                                                                                >
+                                                                                    Konfirmasi Jawaban
+                                                                                </button>
+                                                                            )}
                                                                         </div>
                                                                     )}
 
@@ -1768,6 +2151,19 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                                 className="w-full rounded-[6px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#101014] px-4 py-3 text-xs font-medium focus:border-[#5E6AD2] focus:ring-1 focus:ring-[#5E6AD2]/15 transition-all text-slate-800 dark:text-[#F1F1F4] placeholder-slate-450 dark:placeholder-[#8A8F98] resize-none leading-relaxed"
                                                                             />
                                                                             <FileText className="absolute right-4 top-4 h-4 w-4 text-slate-400" />
+                                                                        </div>
+                                                                    )}
+
+                                                                    {/* Formative Instant Feedback Discussion Block */}
+                                                                    {assignment.instrument_type === 'formative_quiz' && isAnswered && (
+                                                                        <div className="mt-4 p-4 rounded-[6px] bg-slate-50 dark:bg-[#101014] border border-slate-200 dark:border-[#2C2C3A] animate-in slide-in-from-top-2 duration-300">
+                                                                            <div className="flex items-center gap-2 mb-2 text-primary">
+                                                                                <Info className="h-3.5 w-3.5" />
+                                                                                <span className="text-[10px] font-bold uppercase tracking-wider">Pembahasan Kunci Jawaban</span>
+                                                                            </div>
+                                                                            <p className="text-xs text-slate-600 dark:text-[#8A8F98] leading-relaxed">
+                                                                                {q.explanation || `Kunci jawaban yang benar adalah ${q.type === 'multiple_choice' ? String.fromCharCode(65 + q.options?.findIndex((o: any) => o.id == correctOptId)) : q.correct_answer || q.answer || '-'}. Silakan ulas kembali materi terkait untuk penguasaan konsep yang lebih mendalam.`}
+                                                                            </p>
                                                                         </div>
                                                                     )}
                                                                 </div>
@@ -1859,9 +2255,9 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                         </div>
                                                         <div>
                                                             <h3 className="font-semibold tracking-[-0.03em] text-lg text-slate-800 dark:text-[#F1F1F4]">
-                                                                Exit Ticket / CATs
+                                                                Exit Ticket / Refleksi Akhir Kelas
                                                             </h3>
-                                                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider mt-1">Refleksi Cepat • {assignment.instrument_config?.questions?.length || 0} Pertanyaan</p>
+                                                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider mt-1">Bagikan pemahamanmu hari ini secara instan!</p>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -1869,105 +2265,155 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                 {/* Progress Bar */}
                                                 <div className="mt-8">
                                                     <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider mb-2 text-slate-500 dark:text-[#8A8F98]">
-                                                        <span>Progres Pengerjaan</span>
-                                                        <span>{Math.round((Object.values(studentForm.data.answers).filter((v: any) => v && String(v).trim()).length / (assignment.instrument_config?.questions?.length || 1)) * 100)}%</span>
+                                                        <span>Progres Pengisian</span>
+                                                        <span>{studentForm.data.answers.emoji ? '100%' : '50%'}</span>
                                                     </div>
                                                     <div className="h-1.5 w-full rounded-full bg-slate-200 dark:bg-[#101014] overflow-hidden">
                                                         <div 
                                                             className="h-full bg-[#5E6AD2] transition-all duration-500"
-                                                            style={{ width: `${(Object.values(studentForm.data.answers).filter((v: any) => v && String(v).trim()).length / (assignment.instrument_config?.questions?.length || 1)) * 100}%` }}
+                                                            style={{ width: `${studentForm.data.answers.emoji ? 100 : 50}%` }}
                                                         />
                                                     </div>
                                                 </div>
                                             </div>
 
                                             <div className="space-y-8">
-                                                {(assignment.instrument_config?.questions || []).map((q: any, idx: number) => {
-                                                    const qKey = q.id ?? `et_${idx}`;
-                                                    const isAnswered = studentForm.data.answers[qKey] && String(studentForm.data.answers[qKey]).trim();
-                                                    return (
-                                                        <div 
-                                                            key={qKey} 
-                                                            className={`group relative transition-all duration-150 rounded-[8px] border border-slate-200 bg-white dark:border-[#2C2C3A] dark:bg-[#1B1B25] p-6 shadow-none ${isAnswered ? 'border-[#5E6AD2]/50 bg-[#5E6AD2]/5 dark:bg-[#1E1E2A]' : 'hover:border-[#6E79D6]/50 hover:bg-slate-50/50 dark:hover:bg-[#1E1E2A]/20'}`}
-                                                        >
-                                                            <div className="flex items-center gap-3 mb-6">
-                                                                <span className="font-mono text-xs font-semibold text-slate-500 dark:text-[#8A8F98] bg-slate-50 dark:bg-[#101014] px-2.5 py-1 rounded-[4px] border border-slate-200 dark:border-[#2C2C3A]">Q{idx + 1}</span>
-                                                                <div className="h-px flex-1 bg-slate-200 dark:bg-[#2C2C3A]"></div>
-                                                            </div>
+                                                {/* Emoji Rating Cards */}
+                                                <div className="rounded-[8px] border border-slate-200 bg-white dark:border-[#2C2C3A] dark:bg-[#1B1B25] p-6 shadow-none space-y-6">
+                                                    <div>
+                                                        <h4 className="text-sm font-semibold tracking-[-0.01em] text-slate-850 dark:text-[#F1F1F4] leading-relaxed">
+                                                            Seberapa baik kamu memahami materi pembelajaran hari ini?
+                                                        </h4>
+                                                        <p className="text-xs text-slate-500 dark:text-[#8A8F98] mt-1">Pilih emoji yang paling menggambarkan tingkat kepahamanmu.</p>
+                                                    </div>
 
-                                                            <div className="space-y-6">
-                                                                <div className="space-y-4">
-                                                                    <h4 className="text-sm font-semibold tracking-[-0.01em] text-slate-850 dark:text-[#F1F1F4] leading-relaxed">{q.text}</h4>
-                                                                </div>
+                                                    <div className="grid grid-cols-3 gap-4">
+                                                        {[
+                                                            { id: 'paham', emoji: '😊', label: 'Paham', desc: 'Sangat paham materi hari ini', color: 'border-emerald-500 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' },
+                                                            { id: 'ragu', emoji: '😐', label: 'Ragu-Ragu', desc: 'Masih butuh latihan/baca lagi', color: 'border-amber-500 bg-amber-500/10 text-amber-600 dark:text-amber-400' },
+                                                            { id: 'bingung', emoji: 'bingung', label: 'Bingung', desc: 'Sulit mengerti penjelasan guru', color: 'border-rose-500 bg-rose-500/10 text-rose-600 dark:text-rose-450' }
+                                                        ].map((item) => {
+                                                            const isSelected = studentForm.data.answers.emoji === item.id;
+                                                            return (
+                                                                <button
+                                                                    key={item.id}
+                                                                    type="button"
+                                                                    onClick={() => studentForm.setData('answers', { ...studentForm.data.answers, emoji: item.id })}
+                                                                    className={`flex flex-col items-center justify-center p-5 rounded-[8px] border-2 transition-all duration-300 hover:scale-[1.03] active:scale-95 text-center ${
+                                                                        isSelected 
+                                                                            ? item.color + ' border-current shadow-lg shadow-slate-100 dark:shadow-none' 
+                                                                            : 'border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#101014] hover:border-[#5E6AD2]/50'
+                                                                    }`}
+                                                                >
+                                                                    <span className="text-4xl mb-2 transition-transform duration-300 hover:rotate-12 select-none">
+                                                                        {item.id === 'bingung' ? '🙁' : item.emoji}
+                                                                    </span>
+                                                                    <span className="text-xs font-bold block mb-1">{item.label}</span>
+                                                                    <span className="text-[9px] font-medium text-slate-400 dark:text-[#8A8F98] max-w-[120px] hidden md:inline-block">{item.desc}</span>
+                                                                </button>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
 
-                                                                <div className="space-y-3">
-                                                                    {q.type === 'multiple_choice' ? (
-                                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                                                            {(q.options || []).map((opt: any, optIdx: number) => (
-                                                                                <button 
-                                                                                    key={opt.id}
-                                                                                    type="button"
-                                                                                    onClick={() => studentForm.setData('answers', { ...studentForm.data.answers, [qKey]: opt.id.toString() })}
-                                                                                    className={`flex items-center gap-3 p-3.5 rounded-[8px] border transition-all text-left group/opt ${studentForm.data.answers[qKey] === opt.id.toString() ? 'border-[#5E6AD2] bg-[#5E6AD2]/10 dark:bg-[#1E1E2A]' : 'border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#101014] hover:bg-slate-50 dark:hover:bg-[#1F1F2E] hover:border-[#6E79D6]/50'}`}
-                                                                                >
-                                                                                    <div className={`h-6 w-6 rounded-full border flex items-center justify-center flex-shrink-0 font-semibold text-[11px] font-mono transition-all ${studentForm.data.answers[qKey] === opt.id.toString() ? 'bg-[#5E6AD2] border-[#5E6AD2] text-white' : 'border-slate-200 dark:border-[#2C2C3A] bg-slate-50 dark:bg-[#1B1B25] text-slate-500 dark:text-[#8A8F98] group-hover/opt:border-[#6E79D6] group-hover/opt:text-[#6E79D6]'}`}>
-                                                                                        {String.fromCharCode(65 + optIdx)}
-                                                                                    </div>
-                                                                                    <span className={`text-xs font-semibold ${studentForm.data.answers[qKey] === opt.id.toString() ? 'text-[#5E6AD2] dark:text-[#F1F1F4]' : 'text-slate-700 dark:text-[#8A8F98]'}`}>{opt.text}</span>
-                                                                                </button>
-                                                                            ))}
-                                                                        </div>
-                                                                    ) : q.type === 'short_answer' ? (
-                                                                        <div className="relative">
-                                                                            <input 
-                                                                                type="text"
-                                                                                value={studentForm.data.answers[qKey] || ''}
-                                                                                onChange={(e) => studentForm.setData('answers', { ...studentForm.data.answers, [qKey]: e.target.value })}
-                                                                                placeholder="Ketik jawaban singkat Anda..."
-                                                                                className="w-full rounded-[6px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#101014] px-4 py-3 text-xs font-medium focus:border-[#5E6AD2] focus:ring-1 focus:ring-[#5E6AD2]/15 transition-all text-slate-800 dark:text-[#F1F1F4] placeholder-slate-450 dark:placeholder-[#8A8F98]"
-                                                                            />
-                                                                            <PenTool className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                                                                        </div>
-                                                                    ) : (
-                                                                        <div className="relative">
-                                                                            <textarea 
-                                                                                rows={4}
-                                                                                value={studentForm.data.answers[qKey] || ''}
-                                                                                onChange={(e) => studentForm.setData('answers', { ...studentForm.data.answers, [qKey]: e.target.value })}
-                                                                                placeholder="Tuliskan jawaban atau refleksi Anda..."
-                                                                                className="w-full rounded-[6px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#101014] px-4 py-3 text-xs font-medium focus:border-[#5E6AD2] focus:ring-1 focus:ring-[#5E6AD2]/15 transition-all text-slate-800 dark:text-[#F1F1F4] placeholder-slate-450 dark:placeholder-[#8A8F98] resize-none leading-relaxed"
-                                                                            />
-                                                                            <FileText className="absolute right-4 top-4 h-4 w-4 text-slate-400" />
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-                                                            </div>
+                                                {/* Reflection Comments Area with Max Length 280 & Live Count */}
+                                                <div className="rounded-[8px] border border-slate-200 bg-white dark:border-[#2C2C3A] dark:bg-[#1B1B25] p-6 shadow-none space-y-6">
+                                                    <div>
+                                                        <h4 className="text-sm font-semibold tracking-[-0.01em] text-slate-850 dark:text-[#F1F1F4] leading-relaxed">
+                                                            Tuliskan refleksi singkat pembelajaranmu hari ini
+                                                        </h4>
+                                                        <p className="text-xs text-slate-500 dark:text-[#8A8F98] mt-1">Sebutkan bagian tersulit atau hal baru menarik yang kamu pelajari.</p>
+                                                    </div>
+
+                                                    <div className="relative">
+                                                        <textarea 
+                                                            rows={4}
+                                                            maxLength={280}
+                                                            value={studentForm.data.answers.reflection || ''}
+                                                            onChange={(e) => studentForm.setData('answers', { ...studentForm.data.answers, reflection: e.target.value })}
+                                                            placeholder="Apa yang paling menantang dari materi hari ini? Apa yang ingin kamu tanyakan lebih lanjut? (Maksimal 280 karakter)"
+                                                            className="w-full rounded-[6px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#101014] px-4 py-3 text-xs font-medium focus:border-[#5E6AD2] focus:ring-1 focus:ring-[#5E6AD2]/15 transition-all text-slate-800 dark:text-[#F1F1F4] placeholder-slate-450 dark:placeholder-[#8A8F98] resize-none leading-relaxed"
+                                                        />
+                                                        <div className="absolute right-4 bottom-4 flex items-center gap-2">
+                                                            <span className={`text-[10px] font-mono font-bold ${
+                                                                (280 - (studentForm.data.answers.reflection?.length || 0)) <= 20 
+                                                                    ? 'text-rose-500' 
+                                                                    : 'text-slate-400'
+                                                            }`}>
+                                                                {280 - (studentForm.data.answers.reflection?.length || 0)} karakter tersisa
+                                                            </span>
                                                         </div>
-                                                    );
-                                                })}
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     ) : assignment.instrument_type === 'concept_map' ? (
                                         <div className="space-y-8 animate-in fade-in duration-500">
                                             <div className="p-6 rounded-[2.5rem] bg-indigo-50/30 dark:bg-indigo-950/10 border border-indigo-100 dark:border-indigo-900/30">
-                                                <div className="flex items-center gap-4 mb-4">
-                                                    <div className="h-10 w-10 rounded-2xl bg-indigo-500 text-white flex items-center justify-center shadow-lg shadow-indigo-200">
-                                                        <GitBranch className="h-5 w-5" />
+                                                <div className="flex items-center justify-between flex-wrap gap-4 mb-4">
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="h-10 w-10 rounded-2xl bg-indigo-500 text-white flex items-center justify-center shadow-lg shadow-indigo-200">
+                                                            <GitBranch className="h-5 w-5" />
+                                                        </div>
+                                                        <div>
+                                                            <h4 className="text-xs font-black text-foreground uppercase tracking-widest leading-none mb-1">Peta Konsep (Concept Map)</h4>
+                                                            <p className="text-[10px] text-primary font-bold uppercase tracking-widest">Topik: {assignment.instrument_config?.central_topic}</p>
+                                                        </div>
                                                     </div>
-                                                    <div>
-                                                        <h4 className="text-xs font-black text-foreground uppercase tracking-widest leading-none mb-1">Peta Konsep (Concept Map)</h4>
-                                                        <p className="text-[10px] text-primary font-bold uppercase tracking-widest">Topik: {assignment.instrument_config?.central_topic}</p>
-                                                    </div>
+
+                                                    {/* Toggle for Hybrid Mode */}
+                                                    {(assignment.instrument_config?.submission_mode === 'hybrid' || !assignment.instrument_config?.submission_mode) && (
+                                                        <div className="flex items-center bg-slate-100 dark:bg-slate-900 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-800">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setConceptMapSubMode('canvas')}
+                                                                className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer ${
+                                                                    conceptMapSubMode === 'canvas'
+                                                                        ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                                                                        : 'text-muted-foreground hover:text-foreground'
+                                                                }`}
+                                                            >
+                                                                Kanvas Digital
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setConceptMapSubMode('upload')}
+                                                                className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer ${
+                                                                    conceptMapSubMode === 'upload'
+                                                                        ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                                                                        : 'text-muted-foreground hover:text-foreground'
+                                                                }`}
+                                                            >
+                                                                Unggah Foto
+                                                            </button>
+                                                        </div>
+                                                    )}
                                                 </div>
                                                 <p className="text-xs text-muted-foreground dark:text-muted-foreground font-medium italic leading-relaxed ml-14">
                                                     "{assignment.instrument_config?.instructions}"
                                                 </p>
                                             </div>
 
-                                            <ConceptMapCanvas 
-                                                data={conceptMapData} 
-                                                setData={setConceptMapData} 
-                                            />
+                                            {conceptMapSubMode === 'canvas' && (
+                                                <div className="animate-in fade-in duration-300">
+                                                    <ConceptMapCanvas 
+                                                        data={conceptMapData} 
+                                                        setData={setConceptMapData} 
+                                                    />
+                                                </div>
+                                            )}
+
+                                            {conceptMapSubMode === 'upload' && (
+                                                <div className="animate-in fade-in duration-300 space-y-4 p-8 rounded-[2.5rem] border-2 border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/20 dark:bg-slate-950/20 text-center flex flex-col items-center justify-center">
+                                                    <div className="h-16 w-16 rounded-[2rem] bg-indigo-500/10 text-indigo-500 flex items-center justify-center mb-4">
+                                                        <ImageIcon className="h-8 w-8" />
+                                                    </div>
+                                                    <h5 className="text-sm font-bold text-foreground">Unggah Foto Peta Konsep Anda</h5>
+                                                    <p className="text-xs text-muted-foreground max-w-md leading-relaxed">
+                                                        Silakan gambar peta konsep Anda secara manual di kertas karton, buku tulis, atau aplikasi eksternal (Canva/XMind). Ambil foto atau ekspor sebagai gambar (JPG, PNG) lalu lampirkan pada area berkas di bawah.
+                                                    </p>
+                                                </div>
+                                            )}
                                         </div>
                                     ) : (
                                         <div className="space-y-4 animate-in fade-in duration-500">
@@ -2434,10 +2880,25 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                         <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-1 leading-none">Topik Utama:</p>
                                                                         <p className="text-sm font-black text-foreground">{assignment.instrument_config?.central_topic}</p>
                                                                     </div>
-                                                                    <ConceptMapCanvas 
-                                                                        data={{ nodes: p.nodes || [], edges: p.edges || [] }} 
-                                                                        readOnly={true} 
-                                                                    />
+                                                                    {p.submission_type === 'upload' ? (
+                                                                        <div className="relative overflow-hidden rounded-[2.5rem] border border-border bg-slate-50 dark:bg-slate-900 p-6 text-center">
+                                                                            <p className="text-[9px] font-black text-indigo-500 uppercase tracking-widest mb-3 text-left">Foto Peta Konsep Terunggah:</p>
+                                                                            {my_submission.file_path ? (
+                                                                                <img 
+                                                                                    src={`/storage/${my_submission.file_path}`} 
+                                                                                    alt="Peta Konsep" 
+                                                                                    className="max-h-[500px] w-auto mx-auto rounded-3xl object-contain shadow-lg border border-border hover:scale-[1.01] transition-all"
+                                                                                />
+                                                                            ) : (
+                                                                                <p className="text-xs text-muted-foreground italic">File tidak ditemukan.</p>
+                                                                            )}
+                                                                        </div>
+                                                                    ) : (
+                                                                        <ConceptMapCanvas 
+                                                                            data={{ nodes: p.nodes || [], edges: p.edges || [] }} 
+                                                                            readOnly={true} 
+                                                                        />
+                                                                    )}
                                                                 </div>
                                                             );
                                                         }
@@ -3508,12 +3969,28 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                     <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-1 leading-none">Topik Utama:</p>
                                                     <p className="text-sm font-black text-foreground">{assignment.instrument_config?.central_topic}</p>
                                                 </div>
-                                                <div className="scale-90 origin-top">
-                                                    <ConceptMapCanvas 
-                                                        data={{ nodes: parsed.nodes || [], edges: parsed.edges || [] }} 
-                                                        readOnly={true} 
-                                                    />
-                                                </div>
+                                                {parsed.submission_type === 'upload' ? (
+                                                    <div className="relative overflow-hidden rounded-[2.5rem] border border-border bg-slate-50 dark:bg-slate-900 p-6 text-center">
+                                                        <p className="text-[9px] font-black text-indigo-500 uppercase tracking-widest mb-3 text-left">Foto Peta Konsep Murid:</p>
+                                                        {selectedSubmission.file_path ? (
+                                                            <img 
+                                                                src={`/storage/${selectedSubmission.file_path}`} 
+                                                                alt="Peta Konsep Murid" 
+                                                                className="max-h-[500px] w-auto mx-auto rounded-3xl object-contain shadow-lg border border-border cursor-zoom-in"
+                                                                onClick={() => window.open(`/storage/${selectedSubmission.file_path}`, '_blank')}
+                                                            />
+                                                        ) : (
+                                                            <p className="text-xs text-muted-foreground italic">Foto tidak ditemukan.</p>
+                                                        )}
+                                                    </div>
+                                                ) : (
+                                                    <div className="scale-90 origin-top">
+                                                        <ConceptMapCanvas 
+                                                            data={{ nodes: parsed.nodes || [], edges: parsed.edges || [] }} 
+                                                            readOnly={true} 
+                                                        />
+                                                    </div>
+                                                )}
                                             </div>
                                         );
                                     }
@@ -3679,6 +4156,54 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                         className="w-full rounded-2xl border border-slate-100 bg-white px-5 py-4 text-xl font-black text-slate-800 outline-none focus:border-sky-400 focus:ring-4 focus:ring-sky-50 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-100 transition-all text-center"
                                     />
                                 </div>
+
+                                {assignment.instrument_type === 'concept_map' && (
+                                    <div className="space-y-4 p-5 rounded-[2rem] bg-indigo-50/40 dark:bg-indigo-950/15 border border-indigo-100/60 dark:border-indigo-900/35 animate-in slide-in-from-top-2 duration-200">
+                                        <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest leading-none mb-1">Ceklis Rubrik Komponen</p>
+                                        <p className="text-[9px] text-muted-foreground font-medium mb-3">Centang untuk menghasilkan umpan balik otomatis</p>
+                                        
+                                        <div className="space-y-3">
+                                            <label className="flex items-start gap-2.5 text-xs font-bold text-slate-700 dark:text-slate-200 cursor-pointer select-none">
+                                                <input 
+                                                    type="checkbox"
+                                                    checked={conceptRubric.koneksi}
+                                                    onChange={(e) => handleRubricCheckboxChange('koneksi', e.target.checked)}
+                                                    className="mt-0.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 h-4 w-4"
+                                                />
+                                                <div>
+                                                    <p className="leading-none">Koneksi Logis</p>
+                                                    <p className="text-[9px] text-muted-foreground font-medium mt-1">Hubungan antar kata kunci terjalin logis</p>
+                                                </div>
+                                            </label>
+
+                                            <label className="flex items-start gap-2.5 text-xs font-bold text-slate-700 dark:text-slate-200 cursor-pointer select-none">
+                                                <input 
+                                                    type="checkbox"
+                                                    checked={conceptRubric.kataHubung}
+                                                    onChange={(e) => handleRubricCheckboxChange('kataHubung', e.target.checked)}
+                                                    className="mt-0.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 h-4 w-4"
+                                                />
+                                                <div>
+                                                    <p className="leading-none">Kata Hubung Tepat</p>
+                                                    <p className="text-[9px] text-muted-foreground font-medium mt-1">Kata sambung di atas garis panah tepat makna</p>
+                                                </div>
+                                            </label>
+
+                                            <label className="flex items-start gap-2.5 text-xs font-bold text-slate-700 dark:text-slate-200 cursor-pointer select-none">
+                                                <input 
+                                                    type="checkbox"
+                                                    checked={conceptRubric.kelengkapan}
+                                                    onChange={(e) => handleRubricCheckboxChange('kelengkapan', e.target.checked)}
+                                                    className="mt-0.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 h-4 w-4"
+                                                />
+                                                <div>
+                                                    <p className="leading-none">Kelengkapan Materi</p>
+                                                    <p className="text-[9px] text-muted-foreground font-medium mt-1">Semua kata kunci utama disajikan lengkap</p>
+                                                </div>
+                                            </label>
+                                        </div>
+                                    </div>
+                                )}
 
                                 <div className="space-y-3">
                                     <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Umpan Balik Kualitatif</label>

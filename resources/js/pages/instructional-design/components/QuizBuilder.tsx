@@ -37,7 +37,20 @@ export default function QuizBuilder({
         }
     };
 
+    // Auto-initialize 3 tiered questions for Initial Assessment
+    React.useEffect(() => {
+        if (assessmentKey === 'initial' && questions.length !== 3) {
+            const initialQs = [
+                { id: 'q1', type: 'short_answer', text: '', answer: '', correct_answer: '' },
+                { id: 'q2', type: 'short_answer', text: '', answer: '', correct_answer: '' },
+                { id: 'q3', type: 'essay', text: '', answer: '', correct_answer: '' }
+            ];
+            updateConfig('questions', initialQs);
+        }
+    }, [assessmentKey, questions.length]);
+
     const addQuestion = () => {
+        if (assessmentKey === 'initial') return;
         const newQs = [...questions, {
             type: 'multiple_choice',
             text: '',
@@ -53,6 +66,7 @@ export default function QuizBuilder({
     };
 
     const removeQuestion = (qIdx: number) => {
+        if (assessmentKey === 'initial') return;
         const newQs = questions.filter((_: any, idx: number) => idx !== qIdx);
         updateConfig('questions', newQs);
     };
@@ -71,19 +85,28 @@ export default function QuizBuilder({
         updateConfig('questions', newQs);
     };
 
+    // Difficulty labels for Initial Tiered Quiz
+    const tieredLabels = [
+        'Level 1: Prasyarat (Konsep Dasar)',
+        'Level 2: Target (Kompetensi Inti)',
+        'Level 3: Pengayaan (Tantangan Tinggi)'
+    ];
+
     return (
         <div className="space-y-4">
             <div className="flex items-center justify-between">
                 <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.05em] ml-1">
-                    Daftar Pertanyaan
+                    {assessmentKey === 'initial' ? 'Pertanyaan Kuis Diagnostik (Gradasi 3 Level Soal)' : 'Daftar Pertanyaan'}
                 </label>
-                <button
-                    type="button"
-                    onClick={addQuestion}
-                    className="h-6 px-2 text-[10px] font-semibold text-primary hover:bg-primary/10 rounded transition-colors"
-                >
-                    + Tambah Soal
-                </button>
+                {assessmentKey !== 'initial' && (
+                    <button
+                        type="button"
+                        onClick={addQuestion}
+                        className="h-6 px-2 text-[10px] font-semibold text-primary hover:bg-primary/10 rounded transition-colors"
+                    >
+                        + Tambah Soal
+                    </button>
+                )}
             </div>
             <div className="grid gap-3">
                 {questions.map((q: any, qIdx: number) => (
@@ -91,22 +114,28 @@ export default function QuizBuilder({
                         key={qIdx}
                         className="group relative flex flex-col gap-3 p-4 bg-card text-card-foreground rounded-md border border-border hover:border-primary/30 transition-all"
                     >
-                        <button
-                            type="button"
-                            onClick={() => removeQuestion(qIdx)}
-                            className="absolute top-3 right-3 text-muted-foreground/40 hover:text-[#EB5757] transition-colors p-1 opacity-0 group-hover:opacity-100"
-                        >
-                            <Trash2 className="h-4 w-4" />
-                        </button>
+                        {assessmentKey !== 'initial' && (
+                            <button
+                                type="button"
+                                onClick={() => removeQuestion(qIdx)}
+                                className="absolute top-3 right-3 text-muted-foreground/40 hover:text-[#EB5757] transition-colors p-1 opacity-0 group-hover:opacity-100"
+                            >
+                                <Trash2 className="h-4 w-4" />
+                            </button>
+                        )}
 
                         <div className="flex items-start gap-3">
-                            <div className="h-6 w-6 rounded bg-muted/50 dark:bg-border/60 text-muted-foreground flex items-center justify-center text-[10px] font-mono shrink-0">
-                                Q{qIdx + 1}
+                            <div className="h-6 w-6 rounded bg-primary/10 text-primary flex items-center justify-center text-[10px] font-black shrink-0">
+                                L{qIdx + 1}
                             </div>
                             <div className="flex-1 space-y-3">
-                                <div className="flex gap-2 items-center">
+                                <div className="flex gap-2 items-center flex-wrap">
+                                    <span className="text-[10px] font-black text-foreground uppercase tracking-wider">
+                                        {assessmentKey === 'initial' ? (tieredLabels[qIdx] || `Soal Level ${qIdx + 1}`) : `Soal #${qIdx + 1}`}
+                                    </span>
+                                    
                                     <select
-                                        value={q.type || 'multiple_choice'}
+                                        value={q.type || 'short_answer'}
                                         onChange={(e) => {
                                             const type = e.target.value;
                                             const opts = type === 'multiple_choice' ? [
@@ -121,32 +150,37 @@ export default function QuizBuilder({
                                         }}
                                         className="h-7 rounded border border-border bg-popover text-foreground px-2 text-[10px] font-semibold outline-none focus:border-primary transition"
                                     >
-                                        <option value="multiple_choice">Pilihan Ganda</option>
+                                        {assessmentKey !== 'initial' && <option value="multiple_choice">Pilihan Ganda</option>}
                                         <option value="short_answer">Isian Singkat</option>
                                         <option value="essay">Uraian / Esai</option>
                                     </select>
 
-                                    <div className="flex items-center gap-1.5 ml-auto">
-                                        <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Bobot</label>
-                                        <input
-                                            type="number"
-                                            value={q.points !== undefined ? q.points : 1}
-                                            onChange={(e) => updateQuestionField(qIdx, 'points', parseInt(e.target.value) || 0)}
-                                            min="0"
-                                            className="w-14 h-7 text-center rounded border border-border bg-popover text-foreground px-2 text-[10px] font-semibold outline-none focus:border-primary transition"
-                                        />
-                                    </div>
+                                    {assessmentKey !== 'initial' && (
+                                        <div className="flex items-center gap-1.5 ml-auto">
+                                            <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Bobot</label>
+                                            <input
+                                                type="number"
+                                                value={q.points !== undefined ? q.points : 1}
+                                                onChange={(e) => updateQuestionField(qIdx, 'points', parseInt(e.target.value) || 0)}
+                                                min="0"
+                                                className="w-14 h-7 text-center rounded border border-border bg-popover text-foreground px-2 text-[10px] font-semibold outline-none focus:border-primary transition"
+                                            />
+                                        </div>
+                                    )}
                                 </div>
 
                                 <textarea
                                     value={q.text || ''}
                                     onChange={(e) => updateQuestionField(qIdx, 'text', e.target.value)}
-                                    placeholder="Tuliskan pertanyaan..."
+                                    placeholder={assessmentKey === 'initial' 
+                                        ? `Tuliskan pertanyaan untuk ${tieredLabels[qIdx]}...`
+                                        : "Tuliskan pertanyaan..."
+                                    }
                                     rows={2}
                                     className="w-full rounded border border-border bg-popover text-foreground px-3 py-2 text-[12px] outline-none focus:border-primary transition resize-none leading-relaxed"
                                 />
 
-                                {(q.type === 'multiple_choice' || !q.type) && (
+                                {(q.type === 'multiple_choice') && (
                                     <div className="space-y-2 mt-2 pl-1">
                                         <div className="flex items-center justify-between">
                                             <span className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider">
@@ -196,10 +230,10 @@ export default function QuizBuilder({
                                     </div>
                                 )}
 
-                                {q.type === 'short_answer' && (
+                                {(q.type === 'short_answer' || q.type === 'essay') && (
                                     <div className="space-y-1.5 mt-2 pl-1">
                                         <label className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider ml-0.5">
-                                            Kunci Jawaban Singkat
+                                            {q.type === 'short_answer' ? 'Kunci Jawaban Singkat' : 'Pedoman Penskoran / Jawaban Ideal'}
                                         </label>
                                         <input
                                             type="text"
@@ -210,7 +244,10 @@ export default function QuizBuilder({
                                                 newQs[qIdx] = { ...newQs[qIdx], answer: val, correct_answer: val };
                                                 updateConfig('questions', newQs);
                                             }}
-                                            placeholder="Tuliskan kunci jawaban yang benar di sini..."
+                                            placeholder={q.type === 'short_answer' 
+                                                ? "Tuliskan kunci jawaban yang benar di sini..."
+                                                : "Tuliskan pedoman penilaian atau uraian jawaban ideal..."
+                                            }
                                             className="w-full h-8 rounded border border-border bg-popover text-foreground px-3 text-[11px] outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20 transition"
                                         />
                                     </div>
@@ -221,7 +258,7 @@ export default function QuizBuilder({
                 ))}
                 {questions.length === 0 && (
                     <div className="text-center py-6 border border-dashed border-border rounded-lg bg-muted/10">
-                        <p className="text-[11px] text-muted-foreground font-medium">Belum ada pertanyaan. Silakan tambahkan pertanyaan baru.</p>
+                        <p className="text-[11px] text-muted-foreground font-medium">Memuat draf pertanyaan kuis awal...</p>
                     </div>
                 )}
             </div>
