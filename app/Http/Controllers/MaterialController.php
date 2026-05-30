@@ -7,6 +7,7 @@ use App\Models\LmsStudentMaterial;
 use App\Models\TeachingAssignment;
 use App\Models\AcademicYear;
 use App\Models\Semester;
+use App\Services\AdaptiveLearningService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -70,7 +71,12 @@ class MaterialController extends Controller
         }
 
         // ── Student (and admin): group by subject ────────────────────
-        $grouped = $models->groupBy('subject_id')->map(function ($items, $subjectId) {
+        $accessibleTpIds = [];
+        if ($user->role === 'student' && $user->student) {
+            $accessibleTpIds = app(AdaptiveLearningService::class)->getStudentAccessibleTpIds($user->student->id, $user->student->school_class_id);
+        }
+
+        $grouped = $models->groupBy('subject_id')->map(function ($items, $subjectId) use ($accessibleTpIds, $user) {
             $first = $items->first();
             return [
                 'subject_id'   => (int) $subjectId,
@@ -82,6 +88,7 @@ class MaterialController extends Controller
                     'teacher_name' => $m->teacher?->name ?? '-',
                     'file_type'    => $m->file_type,
                     'created_at'   => $m->created_at->format('d M Y'),
+                    'is_accessible'=> $user->role === 'admin' || !$m->learning_objective_id || in_array($m->learning_objective_id, $accessibleTpIds),
                 ])->values(),
                 'total' => $items->count(),
             ];
@@ -145,12 +152,12 @@ class MaterialController extends Controller
             'teacher_id'            => $teacher->id,
             'subject_id'            => $validated['subject_id'],
             'school_class_id'       => $validated['school_class_id'],
-            'learning_objective_id' => $validated['learning_objective_id'],
+            'learning_objective_id' => $validated['learning_objective_id'] ?? null,
             'academic_year_id'      => $activeYear?->id,
             'semester_id'           => $activeSemester?->id,
             'title'                 => $validated['title'],
-            'content'               => $validated['content'],
-            'external_link'         => $validated['external_link'],
+            'content'               => $validated['content'] ?? null,
+            'external_link'         => $validated['external_link'] ?? null,
             'file_path'             => $filePath,
             'file_type'             => $fileType,
         ]);
@@ -187,7 +194,12 @@ class MaterialController extends Controller
                 ->where('student_id', $user->student->id)
                 ->first();
             
-            $isCompleted = $myReflection !== null;
+            // Cek penyelesaian dari dua sumber: refleksi ATAU tanda selesai eksplisit
+            $studentMaterial = LmsStudentMaterial::where('student_id', $user->student->id)
+                ->where('material_id', $material->id)
+                ->first();
+
+            $isCompleted = $myReflection !== null || ($studentMaterial && $studentMaterial->completed_at !== null);
         }
 
         if ($user->teacher || $user->role === 'admin') {
@@ -348,9 +360,9 @@ class MaterialController extends Controller
         $updateData = [
             'subject_id'            => $validated['subject_id'],
             'school_class_id'       => $validated['school_class_id'],
-            'learning_objective_id' => $validated['learning_objective_id'],
+            'learning_objective_id' => $validated['learning_objective_id'] ?? null,
             'title'                 => $validated['title'],
-            'content'               => $validated['content'],
+            'content'               => $validated['content'] ?? null,
         ];
 
         if ($request->hasFile('thumbnail')) {

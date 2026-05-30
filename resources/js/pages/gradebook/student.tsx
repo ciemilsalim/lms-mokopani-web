@@ -18,7 +18,16 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 interface SubjectReport {
     subject_name: string;
-    assignments: { title: string; score: any; max_points: number; status: string }[];
+    cps: {
+        id: number;
+        label: string;
+        description: string;
+        tps: {
+            id: number;
+            label: string;
+            assignments: { title: string; score: any; max_points: number; status: string }[];
+        }[];
+    }[];
     average: number;
     description: string;
     attendance_percentage: number;
@@ -102,28 +111,51 @@ export default function StudentGrade({ report, period }: StudentGradeProps) {
                                         <Info className="h-5 w-5 flex-shrink-0" />
                                         <p><strong>Capaian Kompetensi:</strong> {subject.description}</p>
                                     </div>
-                                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                                        {subject.assignments.map((item, iIdx) => (
-                                            <div key={iIdx} className="rounded-xl border border-border/50 bg-muted/30 p-4">
-                                                <div className="mb-3 flex items-start justify-between">
-                                                    {item.status === 'Selesai' ? (
-                                                        <CheckCircle2 className="h-4 w-4 text-success" />
-                                                    ) : (
-                                                        <Clock className="h-4 w-4 text-warning" />
-                                                    )}
-                                                    <span className={`rounded-full px-2 py-0.5 text-[9px] font-black uppercase ${item.status === 'Selesai' ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'}`}>
-                                                        {item.status}
-                                                    </span>
+                                    <div className="space-y-8">
+                                        {subject.cps.map((cp, cIdx) => (
+                                            <div key={cIdx} className="rounded-2xl border border-border/60 bg-card shadow-sm overflow-hidden">
+                                                <div className="bg-slate-50 dark:bg-slate-900/50 p-4 border-b border-border/60">
+                                                    <h4 className="text-sm font-black text-primary uppercase tracking-wider mb-1">Capaian Pembelajaran (CP)</h4>
+                                                    <p className="text-base font-bold text-foreground">{cp.label}</p>
+                                                    {cp.description && <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{cp.description}</p>}
                                                 </div>
-                                                <h4 className="mb-2 line-clamp-1 text-sm font-bold text-foreground" title={item.title}>
-                                                    {item.title}
-                                                </h4>
-                                                <div className="flex items-end justify-between">
-                                                    <div className="text-2xl font-black text-foreground">
-                                                        {item.score}
-                                                        <span className="text-xs font-normal text-muted-foreground"> / {item.max_points}</span>
-                                                    </div>
-                                                    <TrendingUp className="h-4 w-4 text-muted-foreground/30" />
+                                                <div className="p-4 space-y-6">
+                                                    {cp.tps.map((tp, tIdx) => (
+                                                        <div key={tIdx} className="space-y-4">
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="h-6 w-1.5 rounded-full bg-indigo-400"></div>
+                                                                <h5 className="text-sm font-bold text-slate-700 dark:text-slate-300">
+                                                                    {tp.label}
+                                                                </h5>
+                                                            </div>
+                                                            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 pl-4">
+                                                                {tp.assignments.map((item, iIdx) => (
+                                                                    <div key={iIdx} className="rounded-xl border border-border/50 bg-muted/30 p-4 transition-all hover:bg-muted/50 hover:shadow-sm">
+                                                                        <div className="mb-3 flex items-start justify-between">
+                                                                            {item.status === 'Selesai' ? (
+                                                                                <CheckCircle2 className="h-4 w-4 text-success" />
+                                                                            ) : (
+                                                                                <Clock className="h-4 w-4 text-warning" />
+                                                                            )}
+                                                                            <span className={`rounded-full px-2 py-0.5 text-[9px] font-black uppercase ${item.status === 'Selesai' ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'}`}>
+                                                                                {item.status}
+                                                                            </span>
+                                                                        </div>
+                                                                        <h6 className="mb-2 line-clamp-1 text-sm font-bold text-foreground" title={item.title}>
+                                                                            {item.title}
+                                                                        </h6>
+                                                                        <div className="flex items-end justify-between">
+                                                                            <div className="text-2xl font-black text-foreground">
+                                                                                {item.score}
+                                                                                <span className="text-xs font-normal text-muted-foreground"> / {item.max_points}</span>
+                                                                            </div>
+                                                                            <TrendingUp className="h-4 w-4 text-muted-foreground/30" />
+                                                                        </div>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    ))}
                                                 </div>
                                             </div>
                                         ))}

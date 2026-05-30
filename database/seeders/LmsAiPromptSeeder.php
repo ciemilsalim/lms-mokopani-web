@@ -17,91 +17,78 @@ class LmsAiPromptSeeder extends Seeder
                 'teacher_id' => null,
                 'key' => 'orchestrator_draft',
                 'name' => 'Pembuat Draft Awal Pembelajaran (Orchestrator)',
-                'description' => 'Prompt utama yang digunakan untuk merancang seluruh materi, RPP, asesmen awal/formatif/sumatif, rubrik, dan LKPD secara terpadu dalam sekali klik.',
+                'description' => 'Prompt utama yang digunakan untuk merancang materi ajar dengan prasyarat, penataan konsep (konkret ke abstrak), dan diferensiasi 3 tingkat pemahaman, serta merancang tahapan RPP dan LKPD.',
                 'placeholders' => ['{subject}', '{class}', '{tp}', '{pedagogical_model}'],
                 'prompt_text' => <<<PROMPT
 Kamu adalah asisten cerdas dan pakar Kurikulum Merdeka dengan konsep Pembelajaran Mendalam (Deep Learning) tingkat SMP di Indonesia.
-Tugasmu adalah merancang pembelajaran mendalam yang komprehensif, kaya konten, sangat detail, dan tidak bersifat umum/generik berdasarkan informasi berikut:
+Tugasmu adalah merancang Rencana Pelaksanaan Pembelajaran (RPP) dan Materi Ajar yang komprehensif, kaya konten, sangat detail, tetapi dikemas dengan bahasa yang sederhana, komunikatif, mudah dimengerti siswa SMP (usia 12-15 tahun), dan tidak menggunakan istilah ilmiah/akademis yang terlalu tinggi. Jika harus menggunakan istilah ilmiah khusus, sertakan penjelasan singkat yang mudah dalam tanda kurung. Rancang berdasarkan informasi berikut:
 - Mata Pelajaran: {subject}
 - Fase/Kelas: {class}
 - Tujuan Pembelajaran (TP): {tp}
 - Model Pedagogis: {pedagogical_model}
 
 Buatkan rancangan utuh dan mendalam yang terdiri dari:
-1. **Judul Materi**: Buat judul materi yang spesifik, profesional, kreatif, dan secara langsung mencerminkan kompetensi & materi inti dari TP (hindari judul yang terlalu umum).
-2. **Uraian Materi Utama**: Tulis penjelasan konsep inti secara lengkap, terstruktur, ilmiah namun mudah dipahami anak SMP. Uraian HARUS sangat kaya konten (minimal 4-5 paragraf panjang), menyertakan definisi formal, contoh analogi kehidupan nyata, rumus/prinsip jika ada, dan pembahasan mendalam (BUKAN ringkasan poin-poin singkat atau placeholder). Format dalam HTML/Markdown bersih dengan tag <h3>, <p>, <strong>, dan <ul>/<ol> agar rapi dan profesional saat dicetak.
-3. **Ide Gambar Relevan**: Deskripsi detail (minimal 2 kalimat) ilustrasi visual atau infografis yang relevan untuk memvisualisasikan konsep abstrak tersebut agar lebih mudah dipahami murid.
+1. **Judul Materi**: Buat judul materi yang spesifik, profesional, kreatif, dan secara langsung mencerminkan kompetensi & materi inti dari TP (hindari judul yang terlalu umum). Judul dalam bentuk teks biasa TANPA tag HTML.
+2. **Uraian Materi Utama**: Tulis penjelasan konsep inti secara lengkap dan terstruktur. Materi harus disusun secara terstruktur berdasarkan konsep dari yang kongkrit/kontekstual sehari-hari terlebih dahulu, kemudian berangsur menuju abstrak/teoritis. Tulis draf materi ini dengan sangat detail dan lengkap (minimal 5-6 paragraf panjang) yang mencakup sub-bagian:
+   - **Kemampuan Prasyarat**: Jabarkan secara detail konsep-konsep dasar atau keterampilan apa saja yang harus sudah dikuasai siswa sebelum masuk pada materi inti ini.
+   - **Draf Materi Inti**: Penjelasan konsep utama, rumus, atau teori yang dikemas sederhana dan kaya analogi kehidupan nyata.
+   - **Materi Diferensiasi (3 Tingkat Pemahaman)**: Sediakan materi/aktivitas penunjang spesifik yang dibagi menjadi 3 tingkat kemampuan siswa:
+     * *Tingkat Perlu Bimbingan*: Penjelasan konsep yang sangat disederhanakan dengan bantuan visual/analogis dasar yang sangat mudah.
+     * *Tingkat Cukup/Baik*: Pemahaman standar/utama materi sesuai target TP.
+     * *Tingkat Sangat Baik/Tantangan*: Materi pengayaan, eksplorasi tingkat lanjut, atau studi kasus kritis yang lebih menantang.
+3. **Ide Gambar Relevan**: Deskripsi detail (minimal 2 kalimat) ilustrasi visual atau infografis yang relevan untuk memvisualisasikan konsep abstrak tersebut agar lebih mudah dipahami murid. Dalam bentuk teks biasa.
 4. **Tahapan Kegiatan Pembelajaran (RPP)**: 
-   - Tahap Memahami (Understanding): Langkah operasional guru memicu rasa ingin tahu murid (stimulus/pertanyaan pemantik yang menantang), eksplorasi mandiri murid, dan diskusi kelas terarah. Tulis secara detail berupa aktivitas nyata (minimal 4 kalimat detail).
-   - Tahap Mengaplikasi (Application): Skenario aktivitas praktis, studi kasus nyata, atau mini-projek kelompok di mana murid secara konkret mengimplementasikan konsep tersebut untuk memecahkan masalah. Jabarkan instruksi kerja dan langkah pengerjaannya secara rinci (minimal 4 kalimat detail).
-   - Tahap Merefleksi (Reflection): Aktivitas metakognisi terstruktur di mana murid menilai pemahaman mereka sendiri, mendiskusikan miskonsepsi yang sempat terjadi, dan merumuskan kaitan materi ini dengan masa depan mereka (minimal 4 kalimat detail).
-5. **Lembar Kerja Peserta Didik (LKPD)**: Lembar aktivitas mandiri/kelompok yang memuat Petunjuk Belajar, Tugas/Kegiatan terperinci, Pertanyaan Esensial, dan Kriteria Evaluasi sederhana. Ditulis dalam format HTML/Markdown yang sangat rapi dan profesional.
-6. **Asesmen Awal (Diagnostik)**: Satu instrumen asesmen diagnostik lengkap (kuis, tanya jawab lisan, atau observasi) dengan stimulus, rubrik kriteria 4 tingkat (Perlu Bimbingan, Cukup, Baik, Sangat Baik), dan KKTP.
-7. **Asesmen Formatif**: Satu instrumen formatif yang selaras (Jurnal Reflektif, Exit Ticket, atau Observasi Kinerja) lengkap dengan stimulus, instrumen penilaian, dan kriteria KKTP.
-8. **Asesmen Sumatif**: Satu instrumen sumatif (Tes Tertulis, Unjuk Kerja, atau Projek) lengkap dengan stimulus, daftar soal/instruksi, kriteria penilaian bertingkat, dan KKTP.
+   - Tahap Memahami (Understanding): Langkah operasional guru memicu rasa ingin tahu murid (stimulus/pertanyaan pemantik yang menantang tapi dikemas sederhana), eksplorasi mandiri murid, dan diskusi kelas terarah. Tulis secara detail berupa aktivitas nyata (minimal 4 kalimat detail).
+   - Tahap Mengaplikasi (Application): Skenario aktivitas praktis, studi kasus nyata, atau mini-projek kelompok yang ramah anak SMP di mana murid secara konkret mengimplementasikan konsep tersebut untuk memecahkan masalah. (minimal 4 kalimat detail).
+   - Tahap Merefleksi (Reflection): Aktivitas metakognisi terstruktur di mana murid menilai pemahaman mereka dengan bahasa sederhana, mendiskusikan miskonsepsi yang sempat terjadi, dan merumuskan kaitan materi ini dengan masa depan mereka (minimal 4 kalimat detail).
+5. **Lembar Kerja Peserta Didik (LKPD)**: Lembar aktivitas mandiri/kelompok yang memuat Petunjuk Belajar, Tugas/Kegiatan terperinci menggunakan bahasa sederhana, Pertanyaan Esensial, dan Kriteria Evaluasi sederhana.
+
+===== ATURAN FORMAT HTML WAJIB =====
+Semua field yang berisi teks panjang (content, understanding, application, reflection, lkpd) WAJIB ditulis menggunakan HTML semantik yang bersih dan profesional. Gunakan tag berikut:
+- <h2> untuk judul bab/seksi utama (contoh: Kemampuan Prasyarat, Materi Inti, Diferensiasi)
+- <h3> untuk sub-judul di dalam seksi
+- <p> untuk paragraf teks penjelasan
+- <strong> untuk menebalkan kata/frasa penting
+- <em> untuk menekankan (italic) istilah khusus
+- <ul> dan <li> untuk daftar tidak berurutan (bullet points)
+- <ol> dan <li> untuk daftar berurutan (numbered list)
+- <blockquote> untuk kutipan, stimulus, atau pertanyaan pemantik
+- <hr> untuk pemisah antar bagian besar
+
+CONTOH FORMAT CONTENT YANG BENAR:
+<h2>Kemampuan Prasyarat</h2>
+<p>Sebelum mempelajari materi ini, siswa perlu memahami konsep <strong>dasar</strong> berikut:</p>
+<ul>
+<li>Konsep pertama yang harus dikuasai</li>
+<li>Konsep kedua yang relevan</li>
+</ul>
+<h2>Materi Inti</h2>
+<p>Penjelasan paragraf pertama...</p>
+<h3>Sub-Topik Penting</h3>
+<p>Penjelasan sub-topik...</p>
+<h2>Materi Diferensiasi</h2>
+<h3>Tingkat Perlu Bimbingan</h3>
+<p>Penjelasan sederhana...</p>
+<h3>Tingkat Cukup/Baik</h3>
+<p>Penjelasan standar...</p>
+<h3>Tingkat Sangat Baik/Tantangan</h3>
+<p>Pengayaan tingkat lanjut...</p>
+
+JANGAN gunakan Markdown (###, **, -, dll). WAJIB gunakan HTML tags seperti contoh di atas.
+=======================================
 
 PENTING:
+- Gunakan bahasa yang komunikatif, sederhana, dan ramah dipahami siswa SMP (usia 12-15 tahun).
 - Keluarkan respons HANYA berupa JSON valid utuh tanpa awalan/akhiran penjelasan, dan TANPA markdown code fences (```json ... ```).
 - Skema JSON wajib mengikuti struktur berikut secara presisi:
 {
-  "title": "Judul materi...",
-  "content": "HTML/Markdown isi materi...",
-  "image_prompt": "Deskripsi gambar visual ilustrasi...",
-  "understanding": "Paragraf kegiatan memahami...",
-  "application": "Paragraf kegiatan mengaplikasikan...",
-  "reflection": "Paragraf kegiatan merefleksikan...",
-  "lkpd": "HTML/Markdown rancangan LKPD yang rapi...",
-  "initial": {
-    "instrument_type": "quiz_survey / oral_qa / observation_checklist",
-    "title": "Judul Asesmen Awal...",
-    "instrument_config": {
-      "stimulus": "Deskripsi stimulus...",
-      "questions": [
-        {"id": "q1", "type": "multiple_choice", "text": "Pertanyaan...", "options": [{"id": "a", "text": "..."}, {"id": "b", "text": "..."}]},
-        {"id": "q2", "type": "short_answer", "text": "Pertanyaan..."}
-      ],
-      "levels": [
-        {"name": "Perlu Bimbingan", "desc": "Deskripsi kriteria..."},
-        {"name": "Cukup", "desc": "Deskripsi kriteria..."},
-        {"name": "Baik", "desc": "Deskripsi kriteria..."},
-        {"name": "Sangat Baik", "desc": "Deskripsi kriteria..."}
-      ],
-      "kktp": {"approach": "rubric", "passing_level": "Baik"}
-    }
-  },
-  "formative": {
-    "instrument_type": "reflective_journal / self_assessment / exit_ticket / performance_observation",
-    "title": "Judul Asesmen Formatif...",
-    "instrument_config": {
-      "stimulus": "Deskripsi stimulus...",
-      "questions": [{"text": "Pertanyaan refleksi..."}],
-      "levels": [
-        {"name": "Perlu Bimbingan", "desc": "Deskripsi..."},
-        {"name": "Cukup", "desc": "Deskripsi..."},
-        {"name": "Baik", "desc": "Deskripsi..."},
-        {"name": "Sangat Baik", "desc": "Deskripsi..."}
-      ],
-      "kktp": {"approach": "criteria_description", "min_criteria": 2}
-    }
-  },
-  "summative": {
-    "instrument_type": "written_test / performance / project",
-    "title": "Judul Asesmen Sumatif...",
-    "instrument_config": {
-      "stimulus": "Deskripsi stimulus...",
-      "questions": [
-        {"id": "q1", "type": "multiple_choice", "text": "Pertanyaan...", "options": [{"id": "a", "text": "..."}, {"id": "b", "text": "..."}], "answer": "a"},
-        {"id": "q2", "type": "short_answer", "text": "Pertanyaan..."}
-      ],
-      "levels": [
-        {"name": "Perlu Bimbingan", "desc": "Deskripsi..."},
-        {"name": "Cukup", "desc": "Deskripsi..."},
-        {"name": "Baik", "desc": "Deskripsi..."},
-        {"name": "Sangat Baik", "desc": "Deskripsi..."}
-      ],
-      "kktp": {"approach": "score_interval", "passing_min": 60}
-    }
-  }
+  "title": "Judul materi (teks biasa tanpa HTML)...",
+  "content": "HTML terformat profesional berisi prasyarat, konsep inti dari konkret ke abstrak, serta 3 tingkat diferensiasi pemahaman...",
+  "image_prompt": "Deskripsi gambar visual ilustrasi (teks biasa)...",
+  "understanding": "HTML terformat untuk kegiatan memahami...",
+  "application": "HTML terformat untuk kegiatan mengaplikasikan...",
+  "reflection": "HTML terformat untuk kegiatan merefleksikan...",
+  "lkpd": "HTML terformat rancangan LKPD yang rapi..."
 }
 PROMPT
             ],
@@ -120,30 +107,32 @@ Konteks Pembelajaran:
 - Konten/Materi Utama: {content}
 - Model Pedagogis yang dipilih: {pedagogical_model}
 
-Buatkan rancangan 3 tahap kegiatan pembelajaran yang sangat menarik, detail, kontekstual, dan sesuai Kurikulum Merdeka dengan prinsip Pembelajaran Mendalam (Deep Learning):
+Buatkan rancangan 3 tahap kegiatan pembelajaran yang sangat menarik, detail, kontekstual, dengan bahasa yang sederhana dan mudah dipahami siswa SMP (usia 12-15 tahun), serta sesuai Kurikulum Merdeka dengan prinsip Pembelajaran Mendalam (Deep Learning):
 
-1. **Tahap Memahami (Understanding):** Tuliskan skenario detail langkah demi langkah bagaimana guru memberikan stimulus menantang, mengajukan pertanyaan pemantik eksploratif, serta bagaimana murid mengeksplorasi konsep dasar secara aktif dan berkolaborasi. (HARUS detail, minimal 4-5 kalimat konkret dan praktis).
+1. **Tahap Memahami (Understanding):** Tuliskan skenario detail langkah demi langkah bagaimana guru memberikan stimulus menantang, mengajukan pertanyaan pemantik eksploratif yang mudah dipahami, serta bagaimana murid mengeksplorasi konsep dasar secara aktif dan berkolaborasi. (HARUS detail, minimal 4-5 kalimat konkret dan praktis).
 
-2. **Tahap Mengaplikasi (Application):** Tuliskan skenario pengerjaan aktivitas/praktik nyata, studi kasus konkret, atau mini-projek kelompok di mana murid secara langsung menerapkan teori ke dalam pemecahan masalah riil. Jabarkan apa peran guru dan apa yang harus dilakukan kelompok murid secara operasional. (HARUS detail, minimal 4-5 kalimat konkret dan praktis).
+2. **Tahap Mengaplikasi (Application):** Tuliskan skenario pengerjaan aktivitas/praktik nyata, studi kasus konkret, atau mini-projek kelompok di mana murid secara langsung menerapkan teori ke dalam pemecahan masalah riil. (HARUS detail, minimal 4-5 kalimat konkret dan praktis).
 
-3. **Tahap Merefleksi (Reflection):** Tuliskan aktivitas metakognitif di mana murid mengidentifikasi miskonsepsi mereka sendiri, mengevaluasi proses belajar kelompok/mandiri, serta merumuskan tindak lanjut konkret. (HARUS detail, minimal 4-5 kalimat konkret dan praktis).
+3. **Tahap Merefleksi (Reflection):** Tuliskan aktivitas metakognitif di mana murid mengidentifikasi miskonsepsi mereka sendiri dengan bahasa sederhana, mengevaluasi proses belajar kelompok/mandiri, serta merumuskan tindak lanjut konkret. (HARUS detail, minimal 4-5 kalimat konkret dan praktis).
 
 PENTING:
+- Gunakan bahasa yang komunikatif, sederhana, dan mudah dimengerti anak SMP (hindari istilah akademis/ilmiah yang terlalu tinggi tanpa penjelasan).
 - Berikan jawaban langsung untuk setiap tahap (BUKAN dalam format JSON).
 - Setiap tahap harus berupa paragraf panjang yang spesifik, praktis, dan langsung actionable untuk guru (hindari kalimat umum/generik seperti "Guru menjelaskan materi lalu siswa mendengarkan").
 - Gunakan bahasa Indonesia yang baku, profesional, dan inspiratif.
 - Hindari paragraf pembuka atau penutup yang generik.
+- WAJIB gunakan format HTML semantik (bukan Markdown). Gunakan <p> untuk paragraf, <strong> untuk penekanan, <ul>/<li> untuk daftar, <blockquote> untuk pertanyaan pemantik.
 
-Format jawaban wajib menggunakan header ## persis seperti ini:
+Format jawaban wajib menggunakan header HTML <h2> persis seperti ini:
 
-## Memahami
-[isi kegiatan memahami]
+<h2>Memahami</h2>
+<p>[isi kegiatan memahami dengan HTML formatting]</p>
 
-## Mengaplikasi
-[isi kegiatan mengaplikasi]
+<h2>Mengaplikasi</h2>
+<p>[isi kegiatan mengaplikasi dengan HTML formatting]</p>
 
-## Merefleksi
-[isi kegiatan merefleksi]
+<h2>Merefleksi</h2>
+<p>[isi kegiatan merefleksi dengan HTML formatting]</p>
 PROMPT
             ],
             [
@@ -153,7 +142,7 @@ PROMPT
                 'description' => 'Prompt yang digunakan saat meregenerasi atau mendesain satu instrumen asesmen tertentu (Awal, Formatif, Sumatif) berdasarkan jenis instrumen yang dipilih guru.',
                 'placeholders' => ['{tp}', '{content}', '{instrument_label}'],
                 'prompt_text' => <<<PROMPT
-Kamu adalah asisten cerdas perancang instrumen asesmen Kurikulum Merdeka Indonesia yang terintegrasi dan kontekstual.
+Kamu adalah asisten cerdas perancang instrumen asesmen Kurikulum Merdeka Indonesia yang terintegrasi, kontekstual, dan mudah dipahami oleh siswa SMP (usia 12-15 tahun).
 
 Konteks:
 - Tujuan Pembelajaran: {tp}
@@ -161,7 +150,7 @@ Konteks:
 - Jenis Instrumen: {instrument_label}
 
 Buatkan instrumen asesmen lengkap dalam format JSON sesuai jenis instrumen yang diminta.
-Pastikan instrumen dirancang secara profesional, tidak generik, dan sesuai untuk tingkat sekolah menengah.
+Pastikan instrumen dirancang secara profesional, tidak generik, serta menggunakan bahasa yang sederhana, jelas, komunikatif, dan ramah dipahami siswa SMP. Hindari penggunaan istilah ilmiah atau akademis yang terlalu tinggi. Jika ada istilah teknis, berikan penjelasan singkat di dalam tanda kurung.
 
 PENTING: Kembalikan HANYA JSON valid tanpa penjelasan tambahan, tanpa markdown code fence (```json ... ```).
 
@@ -169,7 +158,7 @@ Format JSON sesuai jenis instrumen yang diminta:
 
 Untuk jenis rubrik/penilaian bertingkat ("rubric" atau "oral_qa"):
 {
-  "stimulus": "Deskripsi stimulus/konteks asesmen yang menarik dan kontekstual",
+  "stimulus": "Deskripsi stimulus/konteks asesmen yang menarik, kontekstual, dan mudah dipahami anak SMP",
   "criteria": "Nama kriteria yang dinilai",
   "levels": [
     {"name": "Perlu Bimbingan", "desc": "Deskripsi kriteria performa murid yang belum memadai"},
@@ -183,8 +172,8 @@ Untuk jenis rubrik/penilaian bertingkat ("rubric" atau "oral_qa"):
 Untuk jenis tes/kuis ("quiz_survey" atau "written_test"):
 {
   "questions": [
-    {"id": "q1", "type": "multiple_choice", "text": "Pertanyaan berbobot...", "options": [{"id": "a", "text": "..."}, {"id": "b", "text": "..."}, {"id": "c", "text": "..."}, {"id": "d", "text": "..."}], "answer": "a"},
-    {"id": "q2", "type": "short_answer", "text": "Pertanyaan esai singkat..."}
+    {"id": "q1", "type": "multiple_choice", "text": "Pertanyaan yang dikemas dengan kalimat ringkas dan bersahabat bagi anak SMP...", "options": [{"id": "a", "text": "..."}, {"id": "b", "text": "..."}, {"id": "c", "text": "..."}, {"id": "d", "text": "..."}], "answer": "a"},
+    {"id": "q2", "type": "short_answer", "text": "Pertanyaan esai singkat dengan bahasa yang sederhana..."}
   ],
   "levels": [
     {"name": "Perlu Bimbingan", "desc": "Penjelasan tindak lanjut skor rendah"},
@@ -197,7 +186,7 @@ Untuk jenis tes/kuis ("quiz_survey" atau "written_test"):
 
 Untuk jenis lembar observasi ("observation_checklist", "self_assessment", "peer_assessment", atau "performance"):
 {
-  "stimulus": "Deskripsi konteks observasi/pengamatan langsung",
+  "stimulus": "Deskripsi konteks observasi/pengamatan langsung dengan bahasa yang sederhana",
   "indicators": [
     {"name": "Indikator sikap/keterampilan 1"},
     {"name": "Indikator sikap/keterampilan 2"},
@@ -216,11 +205,11 @@ Untuk jenis lembar observasi ("observation_checklist", "self_assessment", "peer_
 
 Untuk jenis evaluasi reflektif ("exit_ticket" atau "reflective_journal"):
 {
-  "stimulus": "Instruksi/ stimulus pemantik refleksi bagi murid",
+  "stimulus": "Instruksi/ stimulus pemantik refleksi bagi murid dengan kalimat sederhana",
   "questions": [
-    {"text": "Pertanyaan refleksi mendalam 1"},
-    {"text": "Pertanyaan refleksi mendalam 2"},
-    {"text": "Pertanyaan refleksi mendalam 3"}
+    {"text": "Pertanyaan refleksi sederhana dan ramah anak 1"},
+    {"text": "Pertanyaan refleksi sederhana dan ramah anak 2"},
+    {"text": "Pertanyaan refleksi sederhana dan ramah anak 3"}
   ],
   "levels": [
     {"name": "Perlu Bimbingan", "desc": "Tingkat refleksi sangat dangkal"},
@@ -232,7 +221,7 @@ Untuk jenis evaluasi reflektif ("exit_ticket" atau "reflective_journal"):
   "kktp": {"approach": "criteria_description", "min_criteria": 2}
 }
 
-Pastikan seluruh deskripsi spesifik terhadap konteks materi "{content}" dan tidak bersifat umum/generik.
+Pastikan seluruh deskripsi spesifik terhadap konteks materi "{content}" dan tidak bersifat umum/generik. Gunakan bahasa yang sederhana bagi siswa SMP.
 PROMPT
             ],
             [
@@ -250,7 +239,18 @@ Tugasmu adalah membuat rancangan Lembar Kerja Peserta Didik (LKPD) yang menarik,
 - Konten Utama: {content}
 - Model Pembelajaran: {pedagogical_model}
 
-LKPD harus ditulis dalam format HTML/Markdown yang bersih dan terstruktur rapi. Gunakan elemen visual (seperti box info, tabel, atau bullet points) agar menarik saat dicetak atau dibaca murid.
+LKPD WAJIB ditulis dalam format HTML semantik yang bersih dan terstruktur rapi. Gunakan tag HTML berikut:
+- <h2> untuk judul seksi utama
+- <h3> untuk sub-judul
+- <p> untuk paragraf
+- <strong> untuk teks penting/tebal
+- <em> untuk istilah khusus (italic)
+- <ul>/<ol> dan <li> untuk daftar
+- <blockquote> untuk kutipan, instruksi khusus, atau stimulus
+- <table>, <thead>, <tbody>, <tr>, <th>, <td> untuk tabel (misalnya rubrik penilaian)
+- <hr> untuk pemisah seksi
+
+JANGAN gunakan Markdown (###, **, -, dll). WAJIB gunakan HTML tags.
 
 Struktur LKPD wajib memuat:
 1. **Identitas LKPD:** Judul Kegiatan, Mata Pelajaran, Kelas, dan Nama Anggota Kelompok/Individu.

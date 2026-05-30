@@ -117,11 +117,31 @@ const getDynamicLkpdLangkah = (material: Material): string => {
     const appText = stripHtml(material.application_activity);
     const refText = stripHtml(material.reflection_activity);
     
-    return `1. Diskusikan konsep utama bersama anggota kelompok Anda untuk menyamakan persepsi.\n` +
+    return `1. Diskusikan konsep utama bersama anggota kelompok Anda untuk menyamakan percepsi.\n` +
            `2. **Langkah Aplikasi (Mengaplikasi):** Sesuai skenario rencana pelaksanaan pembelajaran (Mengaplikasi), lakukan aktivitas berikut secara kolaboratif:\n   > ${appText || 'Terapkan konsep pembelajaran untuk memecahkan studi kasus/pertanyaan pemantik di atas.'}\n` +
            `3. Susunlah hasil pengerjaan/laporan kelompok secara rapi, sistematis, dan diskusikan solusi bersama.\n` +
            `4. **Langkah Refleksi (Merefleksi):** Lakukan aktivitas refleksi, presentasi hasil, dan umpan balik kelompok berikut:\n   > ${refText || 'Siapkan materi untuk presentasi di kelas dan berikan tanggapan konstruktif pada kelompok lain.'}\n` +
            `5. Tarik kesimpulan bersama mengenai pembelajaran hari ini, lakukan evaluasi diri/peer-assessment, dan kumpulkan hasil karya kelompok kepada guru.`;
+};
+
+const ASSESSMENT_TYPE_MAP: Record<string, string> = {
+    initial: 'Awal (Diagnostik)',
+    formative: 'Formatif (Proses)',
+    summative: 'Sumatif (Akhir)'
+};
+
+const INSTRUMENT_MAP: Record<string, string> = {
+    written_test: 'Tes Tertulis',
+    quiz_survey: 'Kuis Singkat / Survei',
+    formative_quiz: 'Kuis Formatif',
+    observation_checklist: 'Lembar Observasi & Ceklis',
+    performance: 'Penilaian Kinerja / Unjuk Kerja',
+    project: 'Penilaian Projek',
+    exit_ticket: 'Exit Ticket',
+    reflective_journal: 'Jurnal Reflektif',
+    anecdotal_notes: 'Catatan Anekdotal',
+    rubric: 'Rubrik Penilaian Kustom',
+    oral_qa: 'Tanya Jawab Lisan'
 };
 
 const renderAssessmentDetails = (assignments: Assignment[]) => {
@@ -139,27 +159,6 @@ const renderAssessmentDetails = (assignments: Assignment[]) => {
                 const questions = config.questions || [];
                 const indicators = config.indicators || [];
                 const levels = config.levels || [];
-                
-                // Translate assessment type
-                const typeMap: Record<string, string> = {
-                    initial: 'Awal (Diagnostik)',
-                    formative: 'Formatif (Proses)',
-                    summative: 'Sumatif (Akhir)'
-                };
-                
-                // Translate instrument type
-                const instMap: Record<string, string> = {
-                    written_test: 'Tes Tertulis',
-                    quiz_survey: 'Kuis Singkat / Survei',
-                    observation_checklist: 'Lembar Observasi & Ceklis',
-                    performance: 'Penilaian Kinerja / Unjuk Kerja',
-                    project: 'Penilaian Projek',
-                    exit_ticket: 'Exit Ticket',
-                    reflective_journal: 'Jurnal Reflektif',
-                    anecdotal_notes: 'Catatan Anekdotal',
-                    rubric: 'Rubrik Penilaian Kustom',
-                    oral_qa: 'Tanya Jawab Lisan'
-                };
 
                 return (
                     <div key={asm.id} className="border border-black p-4 rounded-md space-y-4 print-avoid-break bg-gray-50/10" style={{ color: '#000000', borderColor: '#000000' }}>
@@ -170,7 +169,7 @@ const renderAssessmentDetails = (assignments: Assignment[]) => {
                                     {asmIdx + 1}. {asm.title || 'Asesmen Tanpa Judul'}
                                 </h5>
                                 <p className="text-[8.5pt] font-bold text-gray-700 uppercase mt-0.5">
-                                    Jenis: Asesmen {typeMap[asm.assessment_type] || asm.assessment_type} | Instrumen: {instMap[asm.instrument_type] || asm.instrument_type}
+                                    Jenis: Asesmen {ASSESSMENT_TYPE_MAP[asm.assessment_type] || asm.assessment_type} | Instrumen: {INSTRUMENT_MAP[asm.instrument_type] || asm.instrument_type}
                                 </p>
                             </div>
                             <div className="text-right">
@@ -197,7 +196,7 @@ const renderAssessmentDetails = (assignments: Assignment[]) => {
 
                         {/* 2. Instrument Questions / Indicators / Focus */}
                         {/* Quiz & Written Test Questions */}
-                        {(asm.instrument_type === 'quiz_survey' || asm.instrument_type === 'written_test') && questions.length > 0 && (
+                        {(asm.instrument_type === 'quiz_survey' || asm.instrument_type === 'written_test' || asm.instrument_type === 'formative_quiz') && questions.length > 0 && (
                             <div className="space-y-3">
                                 <strong className="text-[9.5pt] font-bold text-black block">Daftar Pertanyaan & Kunci Jawaban:</strong>
                                 <div className="space-y-3 pl-2">
@@ -230,6 +229,16 @@ const renderAssessmentDetails = (assignments: Assignment[]) => {
                                                 <p className="pl-4 text-[9pt] text-gray-700 italic">
                                                     Kunci Jawaban Singkat: <strong className="font-bold text-emerald-700">{q.answer || '-'}</strong>
                                                 </p>
+                                            )}
+
+                                            {/* Render essay info */}
+                                            {q.type === 'essay' && (
+                                                <div className="pl-4 text-[9pt] text-gray-700 space-y-1">
+                                                    <p className="italic">Jenis Soal: <strong className="font-bold text-gray-800">Uraian / Esai</strong> | Bobot Nilai: <strong className="font-bold text-gray-800">{q.points || 0} Poin</strong></p>
+                                                    {(q.answer || q.correct_answer) && (
+                                                        <p className="italic">Pedoman Penskoran / Kunci Jawaban: <span className="font-semibold text-emerald-700">{q.answer || q.correct_answer}</span></p>
+                                                    )}
+                                                </div>
                                             )}
                                         </div>
                                     ))}
@@ -947,7 +956,7 @@ export default function RppPrintPreview({ material, assignments = [], school_nam
                                     <tr>
                                         <td className="font-semibold" style={{ border: '1px solid black', padding: '8px 12px' }}>Asesmen Awal (Diagnostik)</td>
                                         <td style={{ border: '1px solid black', padding: '8px 12px' }}>
-                                            {assignments.filter(a => a.assessment_type === 'initial').map(a => `${a.title} (${a.instrument_type === 'quiz_survey' ? 'Kuis Singkat' : a.instrument_type === 'oral_qa' ? 'Tanya Jawab Lisan' : 'Observasi'})`).join(', ') || 'Tanya Jawab Lisan / Kuis Diagnostik Singkat'}
+                                            {assignments.filter(a => a.assessment_type === 'initial').map(a => `${a.title} (${INSTRUMENT_MAP[a.instrument_type] || a.instrument_type})`).join(', ') || 'Tanya Jawab Lisan / Kuis Diagnostik Singkat'}
                                         </td>
                                         <td style={{ border: '1px solid black', padding: '8px 12px' }}>Awal Pertemuan Pertama</td>
                                     </tr>
@@ -955,7 +964,7 @@ export default function RppPrintPreview({ material, assignments = [], school_nam
                                     <tr>
                                         <td className="font-semibold" style={{ border: '1px solid black', padding: '8px 12px' }}>Asesmen Formatif (Proses)</td>
                                         <td style={{ border: '1px solid black', padding: '8px 12px' }}>
-                                            {assignments.filter(a => a.assessment_type === 'formative').map(a => `${a.title}`).join(', ') || 'Observasi Keterlibatan Diskusi & Umpan Balik Langsung Saat Penyusunan Draf Tabel'}
+                                            {assignments.filter(a => a.assessment_type === 'formative').map(a => `${a.title} (${INSTRUMENT_MAP[a.instrument_type] || a.instrument_type})`).join(', ') || 'Observasi Keterlibatan Diskusi & Umpan Balik Langsung Saat Penyusunan Draf Tabel'}
                                         </td>
                                         <td style={{ border: '1px solid black', padding: '8px 12px' }}>Selama Proses Pembelajaran</td>
                                     </tr>
@@ -963,7 +972,7 @@ export default function RppPrintPreview({ material, assignments = [], school_nam
                                     <tr>
                                         <td className="font-semibold" style={{ border: '1px solid black', padding: '8px 12px' }}>Asesmen Sumatif (Akhir)</td>
                                         <td style={{ border: '1px solid black', padding: '8px 12px' }}>
-                                            {assignments.filter(a => a.assessment_type === 'summative').map(a => `${a.title} (Rubrik Asesmen Kinerja)`).join(', ') || 'Penilaian Kinerja Presentasi Infografis Digital & Gallery Walk'}
+                                            {assignments.filter(a => a.assessment_type === 'summative').map(a => `${a.title} (${INSTRUMENT_MAP[a.instrument_type] || a.instrument_type})`).join(', ') || 'Penilaian Kinerja Presentasi Infografis Digital & Gallery Walk'}
                                         </td>
                                         <td style={{ border: '1px solid black', padding: '8px 12px' }}>Akhir Pertemuan Kedua / Projek</td>
                                     </tr>

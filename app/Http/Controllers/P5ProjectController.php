@@ -30,37 +30,46 @@ class P5ProjectController extends Controller
             ->where('semester_id', $activeSemester?->id)
             ->get();
 
-        $result = $projects->map(function ($project) use ($student) {
-            $dimensi = LmsP5Dimensi::whereIn('id', $project->dimensi_ids ?? [])
-                ->with(['elements.subElements' => function ($q) use ($project) {
-                    if (!empty($project->sub_element_ids)) {
-                        $q->whereIn('id', $project->sub_element_ids);
-                    }
-                }])
-                ->get();
+        // Pre-fetch semua dimensi yang dibutuhkan (menghindari N+1 query)
+        $allDimensiIds = $projects->pluck('dimensi_ids')->flatten()->unique()->filter()->values()->toArray();
+        $allDimensi = LmsP5Dimensi::whereIn('id', $allDimensiIds)
+            ->with(['elements.subElements'])
+            ->get()
+            ->keyBy('id');
+
+        $result = $projects->map(function ($project) use ($student, $allDimensi) {
+            // Filter dimensi dari pre-fetched collection berdasarkan project
+            $projectDimensiIds = $project->dimensi_ids ?? [];
+            $projectSubElementIds = $project->sub_element_ids ?? [];
+
+            $dimensi = collect($projectDimensiIds)
+                ->map(fn($id) => $allDimensi->get($id))
+                ->filter();
 
             $studentScores = $project->scores
                 ->where('student_id', $student->id)
                 ->keyBy('sub_element_id');
 
-            $dimensiData = collect($dimensi)
+            $dimensiData = $dimensi
                 ->map(fn($d) => [
                     'id'       => $d->id,
                     'kode'     => $d->kode,
                     'nama'     => $d->nama,
                     'elements' => $d->elements
-                        ->filter(fn($e) => $e->subElements->isNotEmpty())
-                        ->values()
                         ->map(fn($e) => [
                             'id'           => $e->id,
                             'nama'         => $e->nama,
-                            'sub_elements' => $e->subElements->map(fn($se) => [
-                                'id'      => $se->id,
-                                'nama'    => $se->nama,
-                                'nilai'   => $studentScores->get($se->id)?->nilai ?? '-',
-                                'catatan' => $studentScores->get($se->id)?->catatan ?? '',
-                            ]),
-                        ]),
+                            'sub_elements' => $e->subElements
+                                ->when(!empty($projectSubElementIds), fn($col) => $col->whereIn('id', $projectSubElementIds))
+                                ->map(fn($se) => [
+                                    'id'      => $se->id,
+                                    'nama'    => $se->nama,
+                                    'nilai'   => $studentScores->get($se->id)?->nilai ?? '-',
+                                    'catatan' => $studentScores->get($se->id)?->catatan ?? '',
+                                ]),
+                        ])
+                        ->filter(fn($e) => count($e['sub_elements']) > 0)
+                        ->values(),
                 ])
                 ->filter(fn($d) => !empty($d['elements']))
                 ->values();

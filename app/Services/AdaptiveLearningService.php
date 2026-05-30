@@ -319,4 +319,81 @@ class AdaptiveLearningService
 
         return $strategy;
     }
+
+    /**
+     * Get accessible Learning Objective (TP) IDs for a student based on sequential learning path.
+     */
+    public function getStudentAccessibleTpIds(int $studentId, int $schoolClassId): array
+    {
+        $accessibleTpIds = [];
+        $tpsBySubject = \App\Models\LmsLearningObjective::where('school_class_id', $schoolClassId)
+            ->orderBy('order')
+            ->orderBy('code')
+            ->get()
+            ->groupBy('subject_id');
+
+        $tpIds = $tpsBySubject->flatten()->pluck('id');
+        
+        $assignments = \App\Models\LmsAssignment::whereIn('learning_objective_id', $tpIds)
+            ->where('school_class_id', $schoolClassId)
+            ->get()->groupBy('learning_objective_id');
+            
+        $materials = \App\Models\LmsMaterial::whereIn('learning_objective_id', $tpIds)
+            ->where('school_class_id', $schoolClassId)
+            ->get()->groupBy('learning_objective_id');
+
+        $submissions = \App\Models\LmsSubmission::whereIn('assignment_id', $assignments->flatten()->pluck('id'))
+            ->where('student_id', $studentId)
+            ->get()->groupBy('assignment_id');
+
+        $reflections = \App\Models\LmsReflection::whereIn('material_id', $materials->flatten()->pluck('id'))
+            ->where('student_id', $studentId)
+            ->get()->groupBy('material_id');
+            
+        $studentMaterials = \App\Models\LmsStudentMaterial::whereIn('material_id', $materials->flatten()->pluck('id'))
+            ->where('student_id', $studentId)
+            ->whereNotNull('completed_at')
+            ->get()->groupBy('material_id');
+
+        $diagnosticResults = \App\Models\StudentDiagnosticResult::where('student_id', $studentId)
+            ->where('is_passed', true)
+            ->pluck('learning_objective_id')
+            ->toArray();
+
+        foreach ($tpsBySubject as $subjectId => $tps) {
+            $previousCompleted = true;
+            
+            foreach ($tps as $tp) {
+                if ($previousCompleted || in_array($tp->id, $diagnosticResults)) {
+                    $accessibleTpIds[] = $tp->id;
+                } else {
+                    continue;
+                }
+                
+                if (in_array($tp->id, $diagnosticResults)) {
+                    $previousCompleted = true;
+                    continue;
+                }
+                
+                $tpAssignments = $assignments->get($tp->id, collect());
+                $tpMaterials = $materials->get($tp->id, collect());
+                
+                $assignmentsCompleted = $tpAssignments->isEmpty() || $tpAssignments->every(function($a) use ($submissions) {
+                    return $submissions->has($a->id);
+                });
+                
+                $materialsCompleted = $tpMaterials->isEmpty() || $tpMaterials->every(function($m) use ($reflections, $studentMaterials) {
+                    return $reflections->has($m->id) || $studentMaterials->has($m->id);
+                });
+                
+                if ($tpAssignments->isEmpty() && $tpMaterials->isEmpty()) {
+                    $previousCompleted = false;
+                } else {
+                    $previousCompleted = $assignmentsCompleted && $materialsCompleted;
+                }
+            }
+        }
+        
+        return $accessibleTpIds;
+    }
 }

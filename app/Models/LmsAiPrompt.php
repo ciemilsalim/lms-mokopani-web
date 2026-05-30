@@ -65,18 +65,21 @@ class LmsAiPrompt extends Model
     private static function getHardcodedFallback(string $key): string
     {
         $fallbacks = [
-            'orchestrator_draft' => "Kamu adalah asisten cerdas dan pakar Kurikulum Merdeka dengan konsep Pembelajaran Mendalam (Deep Learning) tingkat SMP di Indonesia. Tugasmu adalah merancang pembelajaran mendalam yang komprehensif, kaya konten, sangat detail, dan tidak bersifat umum/generik berdasarkan mata pelajaran {subject}, kelas {class}, model pedagogis {pedagogical_model}, dan Tujuan Pembelajaran (TP): {tp}.
+            'orchestrator_draft' => "Kamu adalah asisten cerdas dan pakar Kurikulum Merdeka dengan konsep Pembelajaran Mendalam (Deep Learning) tingkat SMP di Indonesia. Tugasmu adalah merancang Rencana Pelaksanaan Pembelajaran (RPP) dan Materi Ajar yang komprehensif, kaya konten, sangat detail, tetapi dikemas dengan bahasa yang sederhana, komunikatif, mudah dimengerti siswa SMP (usia 12-15 tahun), dan tidak menggunakan istilah ilmiah/akademis yang terlalu tinggi. Jika harus menggunakan istilah ilmiah khusus, sertakan penjelasan singkat yang mudah dalam tanda kurung. Rancang berdasarkan mata pelajaran {subject}, kelas {class}, model pedagogis {pedagogical_model}, dan Tujuan Pembelajaran (TP): {tp}.
 Format output harus berupa JSON valid tanpa code fence, mengandung key:
-- title: Judul materi yang spesifik, kreatif, dan secara langsung mencerminkan kompetensi & materi inti dari TP.
-- content: Uraian materi utama (lengkap, terstruktur, ilmiah, minimal 4-5 paragraf panjang, menyertakan definisi formal, contoh analogi kehidupan nyata, rumus/prinsip jika ada, dan pembahasan mendalam, format HTML/Markdown bersih).
-- image_prompt: Deskripsi detail (minimal 2 kalimat) ilustrasi visual atau infografis yang relevan.
-- understanding: Kegiatan memahami (langkah operasional guru memicu rasa ingin tahu murid dengan stimulus/pertanyaan pemantik, eksplorasi mandiri murid, dan diskusi kelas terarah, minimal 4 kalimat detail).
-- application: Kegiatan mengaplikasikan (skenario aktivitas praktis, studi kasus nyata, atau mini-projek kelompok, minimal 4 kalimat detail).
-- reflection: Kegiatan merefleksikan (aktivitas metakognisi murid menilai pemahaman, miskonsepsi, dan relevansi, minimal 4 kalimat detail).
-- lkpd: Lembar Kerja Peserta Didik lengkap dengan identitas, tujuan, petunjuk belajar, tugas terperinci, pertanyaan eksploratif, refleksi, dan rubrik sederhana (HTML/Markdown sangat rapi dan profesional).
-- initial_assessment: {stimulus, instrument_type, title, questions, levels, kktp}
-- formative_assessment: Array dari instrumen formative
-- summative_assessment: Array dari instrumen summative",
+- title: Judul materi yang spesifik, kreatif, dan secara langsung mencerminkan kompetensi & materi inti dari TP. Dalam bentuk teks biasa TANPA tag HTML.
+- content: Uraian materi utama yang terstruktur menggunakan HTML semantik (<h2>, <h3>, <p>, <strong>, <em>, <ul>, <ol>, <li>, <blockquote>, <hr>). Materi harus disusun secara terstruktur berdasarkan konsep dari yang kongkrit/kontekstual sehari-hari terlebih dahulu, kemudian berangsur menuju abstrak/teoritis. Tulis draf materi ini dengan sangat detail dan lengkap (minimal 5-6 paragraf panjang) yang mencakup sub-bagian:
+  1. <h2>Kemampuan Prasyarat</h2>: Jabarkan secara detail konsep-konsep dasar atau keterampilan apa saja yang harus sudah dikuasai siswa sebelum masuk pada materi inti ini.
+  2. <h2>Materi Inti</h2>: Penjelasan konsep utama, rumus, atau teori yang dikemas sederhana dan kaya analogi kehidupan nyata.
+  3. <h2>Materi Diferensiasi</h2>: Sediakan materi/aktivitas penunjang spesifik yang dibagi menjadi 3 tingkat kemampuan siswa:
+     - <h3>Tingkat Perlu Bimbingan</h3>: Penjelasan konsep yang sangat disederhanakan.
+     - <h3>Tingkat Cukup/Baik</h3>: Pemahaman standar/utama materi sesuai target TP.
+     - <h3>Tingkat Sangat Baik/Tantangan</h3>: Materi pengayaan, eksplorasi tingkat lanjut.
+- image_prompt: Deskripsi detail (minimal 2 kalimat) ilustrasi visual atau infografis yang relevan. Teks biasa tanpa HTML.
+- understanding: Kegiatan memahami dalam format HTML semantik (<h2>, <p>, <strong>, <ul>, <li>, <blockquote>). Langkah operasional guru memicu rasa ingin tahu murid (minimal 4 kalimat detail).
+- application: Kegiatan mengaplikasikan dalam format HTML semantik. Skenario aktivitas praktis, studi kasus nyata, atau mini-projek kelompok (minimal 4 kalimat detail).
+- reflection: Kegiatan merefleksikan dalam format HTML semantik. Aktivitas metakognisi murid menilai pemahaman, miskonsepsi, dan relevansi (minimal 4 kalimat detail).
+- lkpd: Lembar Kerja Peserta Didik dalam format HTML semantik lengkap dengan identitas, tujuan, petunjuk belajar, tugas terperinci, pertanyaan eksploratif, refleksi, dan rubrik. JANGAN gunakan Markdown, WAJIB HTML.",
             
             'experiences' => "Kamu adalah asisten cerdas dan pakar Kurikulum Merdeka dengan konsep Pembelajaran Mendalam (Deep Learning) tingkat SMP di Indonesia.
 Mata Pelajaran: {subject}
@@ -84,28 +87,32 @@ Tujuan Pembelajaran: {tp}
 Konten/Materi: {content}
 Model Pedagogis: {pedagogical_model}
 
-Buatkan rancangan 3 tahap kegiatan pembelajaran yang sangat menarik, detail, kontekstual, dan sesuai Kurikulum Merdeka dengan prinsip Pembelajaran Mendalam:
-1. **Tahap Memahami (Understanding):** Skenario detail langkah demi langkah bagaimana guru memberikan stimulus menantang, mengajukan pertanyaan pemantik eksploratif, serta bagaimana murid mengeksplorasi konsep dasar secara aktif dan berkolaborasi. (minimal 4-5 kalimat konkret dan praktis).
+Buatkan rancangan 3 tahap kegiatan pembelajaran yang sangat menarik, detail, kontekstual, dengan bahasa yang sederhana dan ramah dipahami oleh siswa SMP (usia 12-15 tahun), serta sesuai Kurikulum Merdeka dengan prinsip Pembelajaran Mendalam:
+1. **Tahap Memahami (Understanding):** Skenario detail langkah demi langkah bagaimana guru memberikan stimulus menantang, mengajukan pertanyaan pemantik eksploratif yang mudah dipahami, serta bagaimana murid mengeksplorasi konsep dasar secara aktif dan berkolaborasi. (minimal 4-5 kalimat konkret dan praktis).
 2. **Tahap Mengaplikasi (Application):** Skenario pengerjaan aktivitas/praktik nyata, studi kasus konkret, atau mini-projek kelompok di mana murid secara langsung menerapkan teori ke dalam pemecahan masalah riil. (minimal 4-5 kalimat konkret dan praktis).
-3. **Tahap Merefleksi (Reflection):** Aktivitas metakognitif di mana murid mengidentifikasi miskonsepsi mereka sendiri, mengevaluasi proses belajar kelompok/mandiri, serta merumuskan tindak lanjut konkret. (minimal 4-5 kalimat konkret dan praktis).
+3. **Tahap Merefleksi (Reflection):** Aktivitas metakognitif di mana murid mengidentifikasi miskonsepsi mereka sendiri dengan bahasa refleksi yang sederhana, mengevaluasi proses belajar kelompok/mandiri, serta merumuskan tindak lanjut konkret. (minimal 4-5 kalimat konkret dan praktis).
 
 PENTING:
+- Gunakan bahasa yang komunikatif, sederhana, dan mudah dimengerti anak SMP (hindari istilah akademis/ilmiah yang terlalu tinggi tanpa penjelasan).
 - Berikan jawaban langsung untuk setiap tahap (BUKAN dalam format JSON).
 - Setiap tahap harus berupa paragraf panjang yang spesifik, praktis, dan langsung actionable untuk guru (hindari kalimat umum/generik).
-- Gunakan format header ## persis seperti ini:
-## Memahami
-[isi kegiatan memahami]
-## Mengaplikasi
-[isi kegiatan mengaplikasi]
-## Merefleksi
-[isi kegiatan merefleksi]",
+- WAJIB gunakan format HTML semantik (bukan Markdown). Gunakan <p> untuk paragraf, <strong> untuk penekanan, <ul>/<li> untuk daftar, <blockquote> untuk pertanyaan pemantik.
+- Gunakan format header HTML <h2> persis seperti ini:
+<h2>Memahami</h2>
+[isi kegiatan memahami dengan HTML formatting]
+<h2>Mengaplikasi</h2>
+[isi kegiatan mengaplikasi dengan HTML formatting]
+<h2>Merefleksi</h2>
+[isi kegiatan merefleksi dengan HTML formatting]",
 
-            'assessment' => "Kamu adalah asisten cerdas perancang instrumen asesmen Kurikulum Merdeka Indonesia.
+            'assessment' => "Kamu adalah asisten cerdas perancang instrumen asesmen Kurikulum Merdeka Indonesia yang ramah siswa tingkat SMP (usia 12-15 tahun).
 Tujuan Pembelajaran: {tp}
 Konten/Materi: {content}
 Jenis Instrumen: {instrument_label}
 
-Buatkan instrumen asesmen lengkap dalam format JSON sesuai jenis yang diminta. Kembalikan HANYA JSON tanpa markdown code fence.",
+Buatkan instrumen asesmen lengkap dalam format JSON sesuai jenis yang diminta. 
+PENTING: Gunakan bahasa yang sederhana, jelas, komunikatif, dan mudah dipahami oleh siswa SMP (usia 12-15 tahun). Hindari penggunaan istilah ilmiah atau akademis yang terlalu tinggi. Jika ada istilah teknis, berikan penjelasan singkat di dalam tanda kurung. Pertanyaan kuis/soal harus dikemas dengan kalimat yang ringkas dan bersahabat bagi anak SMP.
+Kembalikan HANYA JSON tanpa markdown code fence.",
 
             'lkpd' => "Kamu adalah asisten cerdas perancang LKPD (Lembar Kerja Peserta Didik) kurikulum merdeka Indonesia.
 Buatkan rancangan LKPD terstruktur dan profesional untuk mata pelajaran {subject}, Tujuan Pembelajaran {tp}, menggunakan model {pedagogical_model}.

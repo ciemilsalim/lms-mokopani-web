@@ -32,48 +32,71 @@ interface InstructionalDesignProps {
     period: string;
 }
 
-const cleanAiMarkup = (text: string | null | undefined): string => {
+/**
+ * Sanitize AI-generated HTML: preserve safe semantic tags for ReactQuill,
+ * strip dangerous tags (script, style, iframe, etc.), and convert Markdown to HTML.
+ */
+const sanitizeAiHtml = (text: string | null | undefined): string => {
     if (!text) return '';
-    
-    // Convert paragraph and break tags into newlines to preserve formatting
+    let html = text;
+
+    // 1. Strip dangerous tags entirely (including content)
+    html = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+    html = html.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '');
+    html = html.replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '');
+    html = html.replace(/<object\b[^<]*(?:(?!<\/object>)<[^<]*)*<\/object>/gi, '');
+    html = html.replace(/<embed\b[^>]*\/?>/gi, '');
+
+    // 2. Remove on* event attributes (onclick, onerror, etc.)
+    html = html.replace(/\s+on\w+="[^"]*"/gi, '');
+    html = html.replace(/\s+on\w+='[^']*'/gi, '');
+
+    // 3. Convert Markdown to HTML if AI returned Markdown instead of HTML
+    const hasHtmlTags = /<(h[1-6]|p|ul|ol|li|strong|em|blockquote|table)\b/i.test(html);
+    const hasMarkdown = /^#{1,6}\s+/m.test(html) || /\*\*[^*]+\*\*/m.test(html);
+
+    if (!hasHtmlTags && hasMarkdown) {
+        html = html.replace(/^######\s+(.*)$/gm, '<h6>$1</h6>');
+        html = html.replace(/^#####\s+(.*)$/gm, '<h5>$1</h5>');
+        html = html.replace(/^####\s+(.*)$/gm, '<h4>$1</h4>');
+        html = html.replace(/^###\s+(.*)$/gm, '<h3>$1</h3>');
+        html = html.replace(/^##\s+(.*)$/gm, '<h2>$1</h2>');
+        html = html.replace(/^#\s+(.*)$/gm, '<h1>$1</h1>');
+
+        html = html.replace(/\*\*\*([^*]+)\*\*\*/g, '<strong><em>$1</em></strong>');
+        html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+        html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+
+        html = html.replace(/^[\-\*]\s+(.*)$/gm, '<li>$1</li>');
+        html = html.replace(/((?:<li>.*<\/li>\s*)+)/g, '<ul>$1</ul>');
+        html = html.replace(/^\d+\.\s+(.*)$/gm, '<li>$1</li>');
+
+        html = html.replace(/^(?!<[hupol]|<li|<bl|<ta)(.+)$/gm, '<p>$1</p>');
+    }
+
+    // 4. Decode HTML entities
+    html = html.replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&apos;/g, "'")
+        .replace(/&ldquo;/g, '\u201C').replace(/&rdquo;/g, '\u201D')
+        .replace(/&lsquo;/g, '\u2018').replace(/&rsquo;/g, '\u2019');
+
+    html = html.replace(/>\s{2,}</g, '> <');
+
+    return html.trim();
+};
+
+/**
+ * Clean plain text: strip all HTML/Markdown for fields like titles, question text, etc.
+ */
+const cleanPlainText = (text: string | null | undefined): string => {
+    if (!text) return '';
     let cleaned = text
-        .replace(/<\/p>/gi, '\n\n')
-        .replace(/<\/div>/gi, '\n')
-        .replace(/<br\s*\/?>/gi, '\n')
-        .replace(/<li>/gi, '• ')
-        .replace(/<\/li>/gi, '\n');
-
-    // Strip all remaining HTML tags
-    cleaned = cleaned.replace(/<[^>]*>/g, '');
-
-    // Strip Markdown bold (**text** or __text__)
-    cleaned = cleaned.replace(/(\*\*|__)(.*?)\1/g, '$2');
-    
-    // Strip Markdown italic (*text* or _text_)
-    cleaned = cleaned.replace(/(\*|_)(.*?)\1/g, '$2');
-    
-    // Strip Markdown headers (e.g. ### Header)
-    cleaned = cleaned.replace(/^#+\s+(.*)$/gm, '$1');
-
-    // Strip Markdown bullet points (e.g. - list item or * list item) at start of lines
-    cleaned = cleaned.replace(/^-\s+/gm, '• ');
-
-    // Decode common HTML entities
-    cleaned = cleaned
-        .replace(/&nbsp;/g, ' ')
-        .replace(/&amp;/g, '&')
-        .replace(/&lt;/g, '<')
-        .replace(/&gt;/g, '>')
-        .replace(/&quot;/g, '"')
-        .replace(/&#39;/g, "'")
-        .replace(/&apos;/g, "'")
-        .replace(/&ldquo;/g, '"')
-        .replace(/&rdquo;/g, '"')
-        .replace(/&lsquo;/g, "'")
-        .replace(/&rsquo;/g, "'");
-
-    cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
-
+        .replace(/<[^>]*>/g, '')
+        .replace(/(\*\*|__)(.*?)\1/g, '$2')
+        .replace(/(\*|_)(.*?)\1/g, '$2')
+        .replace(/^#+\s+(.*)$/gm, '$1')
+        .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"').replace(/&#39;/g, "'");
     return cleaned.trim();
 };
 
@@ -406,13 +429,13 @@ export default function InstructionalDesignCreate({
 
                 setData((prev: any) => ({
                     ...prev,
-                    material_title: cleanAiMarkup(draft.title) || '',
-                    material_content: cleanAiMarkup(draft.content) || '',
-                    image_prompt: cleanAiMarkup(draft.image_prompt) || '',
-                    activity_understanding: cleanAiMarkup(draft.understanding) || '',
-                    activity_application: cleanAiMarkup(draft.application) || '',
-                    activity_reflection: cleanAiMarkup(draft.reflection) || '',
-                    lkpd: cleanAiMarkup(draft.lkpd) || ''
+                    material_title: cleanPlainText(draft.title) || '',
+                    material_content: sanitizeAiHtml(draft.content) || '',
+                    image_prompt: cleanPlainText(draft.image_prompt) || '',
+                    activity_understanding: sanitizeAiHtml(draft.understanding) || '',
+                    activity_application: sanitizeAiHtml(draft.application) || '',
+                    activity_reflection: sanitizeAiHtml(draft.reflection) || '',
+                    lkpd: sanitizeAiHtml(draft.lkpd) || ''
                 }));
             }
         } catch (error) {
@@ -448,9 +471,9 @@ export default function InstructionalDesignCreate({
 
                 setData((prev: any) => ({
                     ...prev,
-                    activity_understanding: cleanAiMarkup(suggestions.understanding) || '',
-                    activity_application: cleanAiMarkup(suggestions.application) || '',
-                    activity_reflection: cleanAiMarkup(suggestions.reflection) || '',
+                    activity_understanding: sanitizeAiHtml(suggestions.understanding) || '',
+                    activity_application: sanitizeAiHtml(suggestions.application) || '',
+                    activity_reflection: sanitizeAiHtml(suggestions.reflection) || '',
                 }));
             }
         } catch (error) {
@@ -506,26 +529,26 @@ export default function InstructionalDesignCreate({
                         instrument_type: type,
                         instrument_config: {
                             ...instrumentsArray[idx].instrument_config,
-                            stimulus: cleanAiMarkup(suggestion.stimulus || instrumentsArray[idx].instrument_config.stimulus),
+                            stimulus: cleanPlainText(suggestion.stimulus || instrumentsArray[idx].instrument_config.stimulus),
                             levels: (suggestion.levels || instrumentsArray[idx].instrument_config.levels || []).map((lvl: any) => ({
                                 ...lvl,
-                                name: cleanAiMarkup(lvl.name),
-                                desc: cleanAiMarkup(lvl.desc)
+                                name: cleanPlainText(lvl.name),
+                                desc: cleanPlainText(lvl.desc)
                             })),
                             questions: (suggestion.questions || instrumentsArray[idx].instrument_config.questions || []).map((q: any) => ({
                                 ...q,
-                                text: cleanAiMarkup(q.text),
+                                text: cleanPlainText(q.text),
                                 options: (q.options || []).map((opt: any) => ({
                                     ...opt,
-                                    text: cleanAiMarkup(opt.text)
+                                    text: cleanPlainText(opt.text)
                                 }))
                             })),
                             indicators: (suggestion.indicators || instrumentsArray[idx].instrument_config.indicators || []).map((ind: any) => ({
                                 ...ind,
-                                name: cleanAiMarkup(ind.name)
+                                name: cleanPlainText(ind.name)
                             })),
-                            criteria: cleanAiMarkup(suggestion.criteria || instrumentsArray[idx].instrument_config.criteria),
-                            teacher_notes: cleanAiMarkup(suggestion.teacher_notes || instrumentsArray[idx].instrument_config.teacher_notes),
+                            criteria: cleanPlainText(suggestion.criteria || instrumentsArray[idx].instrument_config.criteria),
+                            teacher_notes: cleanPlainText(suggestion.teacher_notes || instrumentsArray[idx].instrument_config.teacher_notes),
                             kktp: suggestion.kktp || instrumentsArray[idx].instrument_config.kktp,
                         }
                     };
@@ -537,26 +560,26 @@ export default function InstructionalDesignCreate({
                         instrument_type: type,
                         instrument_config: {
                             ...currentSection.instrument_config,
-                            stimulus: cleanAiMarkup(suggestion.stimulus || currentSection.instrument_config.stimulus),
+                            stimulus: cleanPlainText(suggestion.stimulus || currentSection.instrument_config.stimulus),
                             levels: (suggestion.levels || currentSection.instrument_config.levels || []).map((lvl: any) => ({
                                 ...lvl,
-                                name: cleanAiMarkup(lvl.name),
-                                desc: cleanAiMarkup(lvl.desc)
+                                name: cleanPlainText(lvl.name),
+                                desc: cleanPlainText(lvl.desc)
                             })),
                             questions: (suggestion.questions || currentSection.instrument_config.questions || []).map((q: any) => ({
                                 ...q,
-                                text: cleanAiMarkup(q.text),
+                                text: cleanPlainText(q.text),
                                 options: (q.options || []).map((opt: any) => ({
                                     ...opt,
-                                    text: cleanAiMarkup(opt.text)
+                                    text: cleanPlainText(opt.text)
                                 }))
                             })),
                             indicators: (suggestion.indicators || currentSection.instrument_config.indicators || []).map((ind: any) => ({
                                 ...ind,
-                                name: cleanAiMarkup(ind.name)
+                                name: cleanPlainText(ind.name)
                             })),
-                            criteria: cleanAiMarkup(suggestion.criteria || currentSection.instrument_config.criteria),
-                            teacher_notes: cleanAiMarkup(suggestion.teacher_notes || currentSection.instrument_config.teacher_notes),
+                            criteria: cleanPlainText(suggestion.criteria || currentSection.instrument_config.criteria),
+                            teacher_notes: cleanPlainText(suggestion.teacher_notes || currentSection.instrument_config.teacher_notes),
                             kktp: suggestion.kktp || currentSection.instrument_config.kktp,
                         }
                     };
@@ -599,21 +622,21 @@ export default function InstructionalDesignCreate({
             if (activeTPTab === 'direct') {
                 const cleanedDirect = (response.data.suggestions || []).map((s: any) => ({
                     ...s,
-                    text: cleanAiMarkup(s.text)
+                    text: cleanPlainText(s.text)
                 }));
                 setDirectSuggestions(cleanedDirect);
             } else if (activeTPTab === 'analysis') {
                 const { analysis } = response.data;
-                const competenceStr = cleanAiMarkup(analysis.competences.map((c: any) => c.verb).join(', '));
-                const contentStr = cleanAiMarkup(analysis.content);
+                const competenceStr = cleanPlainText(analysis.competences.map((c: any) => c.verb).join(', '));
+                const contentStr = cleanPlainText(analysis.content);
                 setTpForm({
                     ...tpForm,
                     competence: competenceStr,
                     content: contentStr,
-                    description: cleanAiMarkup(`${competenceStr.charAt(0).toUpperCase() + competenceStr.slice(1)} ${contentStr}`)
+                    description: cleanPlainText(`${competenceStr.charAt(0).toUpperCase() + competenceStr.slice(1)} ${contentStr}`)
                 });
             } else if (activeTPTab === 'cross_element') {
-                setTpForm({ ...tpForm, description: cleanAiMarkup(response.data.suggestion || '') });
+                setTpForm({ ...tpForm, description: cleanPlainText(response.data.suggestion || '') });
             }
         } catch (error) {
             console.error("Auto suggest TP failed", error);

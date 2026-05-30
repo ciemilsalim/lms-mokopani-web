@@ -1,7 +1,7 @@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, useForm } from '@inertiajs/react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
     ChevronLeft, 
     Upload, 
@@ -19,7 +19,10 @@ import {
     Trash2,
     X,
     Plus,
+    Sparkles,
+    AlertTriangle,
 } from 'lucide-react';
+import axios from 'axios';
 import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
 
@@ -68,8 +71,87 @@ interface CreateMaterialProps {
     objectives: Objective[];
 }
 
+/**
+ * Sanitize AI-generated HTML: preserve safe semantic tags for ReactQuill,
+ * strip dangerous tags (script, style, iframe, etc.), and convert Markdown to HTML.
+ */
+const sanitizeAiHtml = (text: string | null | undefined): string => {
+    if (!text) return '';
+    let html = text;
+
+    // 1. Strip dangerous tags entirely (including content)
+    html = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+    html = html.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '');
+    html = html.replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '');
+    html = html.replace(/<object\b[^<]*(?:(?!<\/object>)<[^<]*)*<\/object>/gi, '');
+    html = html.replace(/<embed\b[^>]*\/?>/gi, '');
+
+    // 2. Remove on* event attributes (onclick, onerror, etc.)
+    html = html.replace(/\s+on\w+="[^"]*"/gi, '');
+    html = html.replace(/\s+on\w+='[^']*'/gi, '');
+
+    // 3. Convert Markdown to HTML if AI returned Markdown instead of HTML
+    // Only apply if the content looks like Markdown (has ### headers or **bold** but no <h> tags)
+    const hasHtmlTags = /<(h[1-6]|p|ul|ol|li|strong|em|blockquote|table)\b/i.test(html);
+    const hasMarkdown = /^#{1,6}\s+/m.test(html) || /\*\*[^*]+\*\*/m.test(html);
+
+    if (!hasHtmlTags && hasMarkdown) {
+        // Convert Markdown headers to HTML
+        html = html.replace(/^######\s+(.*)$/gm, '<h6>$1</h6>');
+        html = html.replace(/^#####\s+(.*)$/gm, '<h5>$1</h5>');
+        html = html.replace(/^####\s+(.*)$/gm, '<h4>$1</h4>');
+        html = html.replace(/^###\s+(.*)$/gm, '<h3>$1</h3>');
+        html = html.replace(/^##\s+(.*)$/gm, '<h2>$1</h2>');
+        html = html.replace(/^#\s+(.*)$/gm, '<h1>$1</h1>');
+
+        // Convert bold & italic
+        html = html.replace(/\*\*\*([^*]+)\*\*\*/g, '<strong><em>$1</em></strong>');
+        html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+        html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+
+        // Convert bullet lists (lines starting with - or *)
+        html = html.replace(/^[\-\*]\s+(.*)$/gm, '<li>$1</li>');
+        html = html.replace(/((?:<li>.*<\/li>\s*)+)/g, '<ul>$1</ul>');
+
+        // Convert numbered lists
+        html = html.replace(/^\d+\.\s+(.*)$/gm, '<li>$1</li>');
+
+        // Wrap remaining loose lines in <p> tags
+        html = html.replace(/^(?!<[hupol]|<li|<bl|<ta)(.+)$/gm, '<p>$1</p>');
+    }
+
+    // 4. Decode HTML entities
+    html = html.replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&apos;/g, "'")
+        .replace(/&ldquo;/g, '\u201C').replace(/&rdquo;/g, '\u201D')
+        .replace(/&lsquo;/g, '\u2018').replace(/&rsquo;/g, '\u2019');
+
+    // 5. Clean up excessive whitespace between tags
+    html = html.replace(/>\s{2,}</g, '> <');
+
+    return html.trim();
+};
+
+/**
+ * Clean plain text: strip all HTML/Markdown for fields like titles that shouldn't have formatting.
+ */
+const cleanPlainText = (text: string | null | undefined): string => {
+    if (!text) return '';
+    let cleaned = text
+        .replace(/<[^>]*>/g, '')
+        .replace(/(\*\*|__)(.*?)\1/g, '$2')
+        .replace(/(\*|_)(.*?)\1/g, '$2')
+        .replace(/^#+\s+(.*)$/gm, '$1')
+        .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+    return cleaned.trim();
+};
+
 export default function CreateMaterial({ teachings, objectives }: CreateMaterialProps) {
     const [resources, setResources] = useState<Resource[]>([]);
+    const [isSuggesting, setIsSuggesting] = useState(false);
+    const [aiNotification, setAiNotification] = useState<{ message: string; type: 'info' | 'warning' | 'error' } | null>(null);
+    const [fullDraftClickCount, setFullDraftClickCount] = useState(0);
 
     const { data, setData, post, processing, errors } = useForm({
         subject_id: '',
@@ -80,6 +162,55 @@ export default function CreateMaterial({ teachings, objectives }: CreateMaterial
         file: null as File | null,
         thumbnail: null as File | null,
     });
+
+    useEffect(() => {
+        if (aiNotification) {
+            const timer = setTimeout(() => {
+                setAiNotification(null);
+            }, 6000);
+            return () => clearTimeout(timer);
+        }
+    }, [aiNotification]);
+
+    const handleSuggestAI = async () => {
+        if (!data.learning_objective_id) return;
+        setIsSuggesting(true);
+
+        try {
+            const response = await axios.post(route('instructional-design.auto-suggest'), {
+                learning_objective_id: data.learning_objective_id,
+                pedagogical_model: 'Direct',
+                suggest_type: 'full_draft',
+                regenerate: fullDraftClickCount > 0
+            });
+
+            if (response.data) {
+                setFullDraftClickCount(prev => prev + 1);
+                const draft = response.data;
+
+                if (draft.ai_active === false) {
+                    setAiNotification({
+                        message: 'Koneksi AI (Gemini) tidak aktif atau kuota API telah habis. Sistem secara otomatis beralih menggunakan draf offline berkualitas tinggi.',
+                        type: 'warning'
+                    });
+                }
+
+                setData((prev: any) => ({
+                    ...prev,
+                    title: cleanPlainText(draft.title) || prev.title,
+                    content: sanitizeAiHtml(draft.content) || prev.content,
+                }));
+            }
+        } catch (error) {
+            console.error('Error orchestrating AI lesson draft:', error);
+            setAiNotification({
+                message: 'Gagal menghubungi server AI. Silakan coba lagi.',
+                type: 'error'
+            });
+        } finally {
+            setIsSuggesting(false);
+        }
+    };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -207,6 +338,36 @@ export default function CreateMaterial({ teachings, objectives }: CreateMaterial
                                     }
                                 </select>
                             </div>
+
+                            {data.learning_objective_id && (
+                                <div className="space-y-3 p-4 rounded-xl border border-border bg-gradient-to-r from-violet-500/5 to-indigo-500/5 col-span-1 md:col-span-2">
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                        <div className="space-y-0.5">
+                                            <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                                                <Sparkles className="h-4 w-4 text-primary" />
+                                                Asisten AI Mokopani
+                                            </h3>
+                                            <p className="text-xs text-muted-foreground">Buat draf judul dan isi materi secara otomatis berdasarkan Tujuan Pembelajaran (TP).</p>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={handleSuggestAI}
+                                            disabled={isSuggesting}
+                                            className="shrink-0 rounded-lg bg-gradient-to-r from-violet-600 to-indigo-600 px-5 py-2.5 text-[12px] font-bold text-white shadow-lg shadow-violet-500/25 transition-all hover:brightness-110 active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50 disabled:scale-100"
+                                        >
+                                            <Sparkles className={`h-4 w-4 ${isSuggesting ? 'animate-pulse' : ''}`} />
+                                            {isSuggesting ? 'Merancang Materi...' : 'Rancang Cerdas dengan AI'}
+                                        </button>
+                                    </div>
+                                    
+                                    {aiNotification && (
+                                        <div className={`p-3 rounded-lg border flex items-start gap-2 text-xs mt-3 ${aiNotification.type === 'error' ? 'bg-red-500/10 border-red-500/20 text-red-600' : 'bg-amber-500/10 border-amber-500/20 text-amber-600'}`}>
+                                            <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+                                            <p>{aiNotification.message}</p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
 
                             <div className="space-y-2">
                                 <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">

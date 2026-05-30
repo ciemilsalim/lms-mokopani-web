@@ -1,5 +1,5 @@
 import AppLayout from '@/layouts/app-layout';
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, useForm, router } from '@inertiajs/react';
 import { 
     ChevronLeft, 
     Download, 
@@ -155,6 +155,26 @@ const getDynamicLkpdLangkah = (material: Material): string => {
            `5. Tarik kesimpulan bersama mengenai pembelajaran hari ini, lakukan evaluasi diri/peer-assessment, dan kumpulkan hasil karya kelompok kepada guru.`;
 };
 
+const ASSESSMENT_TYPE_MAP: Record<string, string> = {
+    initial: 'Awal (Diagnostik)',
+    formative: 'Formatif (Proses)',
+    summative: 'Sumatif (Akhir)'
+};
+
+const INSTRUMENT_MAP: Record<string, string> = {
+    written_test: 'Tes Tertulis',
+    quiz_survey: 'Kuis Singkat / Survei',
+    formative_quiz: 'Kuis Formatif',
+    observation_checklist: 'Lembar Observasi & Ceklis',
+    performance: 'Penilaian Kinerja / Unjuk Kerja',
+    project: 'Penilaian Projek',
+    exit_ticket: 'Exit Ticket',
+    reflective_journal: 'Jurnal Reflektif',
+    anecdotal_notes: 'Catatan Anekdotal',
+    rubric: 'Rubrik Penilaian Kustom',
+    oral_qa: 'Tanya Jawab Lisan'
+};
+
 const renderAssessmentDetails = (assignments: Assignment[]) => {
     if (!assignments || assignments.length === 0) {
         return (
@@ -170,27 +190,6 @@ const renderAssessmentDetails = (assignments: Assignment[]) => {
                 const questions = config.questions || [];
                 const indicators = config.indicators || [];
                 const levels = config.levels || [];
-                
-                // Translate assessment type
-                const typeMap: Record<string, string> = {
-                    initial: 'Awal (Diagnostik)',
-                    formative: 'Formatif (Proses)',
-                    summative: 'Sumatif (Akhir)'
-                };
-                
-                // Translate instrument type
-                const instMap: Record<string, string> = {
-                    written_test: 'Tes Tertulis',
-                    quiz_survey: 'Kuis Singkat / Survei',
-                    observation_checklist: 'Lembar Observasi & Ceklis',
-                    performance: 'Penilaian Kinerja / Unjuk Kerja',
-                    project: 'Penilaian Projek',
-                    exit_ticket: 'Exit Ticket',
-                    reflective_journal: 'Jurnal Reflektif',
-                    anecdotal_notes: 'Catatan Anekdotal',
-                    rubric: 'Rubrik Penilaian Kustom',
-                    oral_qa: 'Tanya Jawab Lisan'
-                };
 
                 return (
                     <div key={asm.id} className="border border-black p-4 rounded-md space-y-4 print-avoid-break bg-gray-50/10" style={{ color: '#000000', borderColor: '#000000' }}>
@@ -201,7 +200,7 @@ const renderAssessmentDetails = (assignments: Assignment[]) => {
                                     {asmIdx + 1}. {asm.title || 'Asesmen Tanpa Judul'}
                                 </h5>
                                 <p className="text-[8.5pt] font-bold text-gray-700 uppercase mt-0.5">
-                                    Jenis: Asesmen {typeMap[asm.assessment_type] || asm.assessment_type} | Instrumen: {instMap[asm.instrument_type] || asm.instrument_type}
+                                    Jenis: Asesmen {ASSESSMENT_TYPE_MAP[asm.assessment_type] || asm.assessment_type} | Instrumen: {INSTRUMENT_MAP[asm.instrument_type] || asm.instrument_type}
                                 </p>
                             </div>
                             <div className="text-right">
@@ -228,7 +227,7 @@ const renderAssessmentDetails = (assignments: Assignment[]) => {
 
                         {/* 2. Instrument Questions / Indicators / Focus */}
                         {/* Quiz & Written Test Questions */}
-                        {(asm.instrument_type === 'quiz_survey' || asm.instrument_type === 'written_test') && questions.length > 0 && (
+                        {(asm.instrument_type === 'quiz_survey' || asm.instrument_type === 'written_test' || asm.instrument_type === 'formative_quiz') && questions.length > 0 && (
                             <div className="space-y-3">
                                 <strong className="text-[9.5pt] font-bold text-black block">Daftar Pertanyaan & Kunci Jawaban:</strong>
                                 <div className="space-y-3 pl-2">
@@ -261,6 +260,16 @@ const renderAssessmentDetails = (assignments: Assignment[]) => {
                                                 <p className="pl-4 text-[9pt] text-gray-700 italic">
                                                     Kunci Jawaban Singkat: <strong className="font-bold text-emerald-700">{q.answer || '-'}</strong>
                                                 </p>
+                                            )}
+
+                                            {/* Render essay info */}
+                                            {q.type === 'essay' && (
+                                                <div className="pl-4 text-[9pt] text-gray-700 space-y-1">
+                                                    <p className="italic">Jenis Soal: <strong className="font-bold text-gray-800">Uraian / Esai</strong> | Bobot Nilai: <strong className="font-bold text-gray-800">{q.points || 0} Poin</strong></p>
+                                                    {(q.answer || q.correct_answer) && (
+                                                        <p className="italic">Pedoman Penskoran / Kunci Jawaban: <span className="font-semibold text-emerald-700">{q.answer || q.correct_answer}</span></p>
+                                                    )}
+                                                </div>
                                             )}
                                         </div>
                                     ))}
@@ -400,6 +409,52 @@ const renderAssessmentDetails = (assignments: Assignment[]) => {
             })}
         </div>
     );
+};
+
+// Helper untuk memformat teks yang bertumpuk (misal akibat copy-paste dari PDF)
+const formatDocumentLayout = (html: string | null) => {
+    if (!html) return '';
+
+    // If the content already has proper HTML structure (from ReactQuill/AI),
+    // only apply light formatting fixes without breaking the structure
+    const hasSemanticHtml = /<(h[1-6]|ul|ol|li|blockquote|table)\b/i.test(html);
+    
+    if (hasSemanticHtml) {
+        // Light fix: fix commas without spaces
+        let cleaned = html.replace(/,([a-zA-Z])/g, ', $1');
+        // Clean newlines between tags (e.g. </h2>\n<p> or </li>\n<li>) to prevent duplicate spacing in whitespace-pre-wrap
+        cleaned = cleaned.replace(/>\s*\n\s*</g, '><');
+        return cleaned;
+    }
+
+    // Legacy fallback for plain-text content (old data without HTML formatting)
+    const parts = html.split(/(<[^>]+>)/g);
+    
+    for (let i = 0; i < parts.length; i++) {
+        if (i % 2 === 0 && parts[i].trim() !== '') {
+            let text = parts[i];
+
+            const exceptions = ['WhatsApp', 'MacBook', 'PowerPoint', 'JavaScript', 'YouTube', 'LinkedIn', 'FACT'];
+            exceptions.forEach((ex, j) => {
+                text = text.replace(new RegExp(ex, 'g'), `__EX${j}__`);
+            });
+
+            text = text.replace(/([a-z])([A-Z])/g, '$1<br/><br/>$2');
+            text = text.replace(/([a-zA-Z]')([A-Z])/g, '$1<br/><br/>$2');
+            text = text.replace(/\s*•\s*/g, '<br/><br/>• ');
+            text = text.replace(/([a-z\.])\s+(\d+\.)\s+/gi, '$1<br/><br/>$2 ');
+            text = text.replace(/(?<!Dr|Mr|Ms|Prof)\.\s+([A-Z])/g, '.<br/><br/>$1');
+            text = text.replace(/,([a-zA-Z])/g, ', $1');
+
+            exceptions.forEach((ex, j) => {
+                text = text.replace(new RegExp(`__EX${j}__`, 'g'), ex);
+            });
+
+            parts[i] = text;
+        }
+    }
+
+    return parts.join('');
 };
 
 export default function ShowMaterial({ 
@@ -1087,7 +1142,7 @@ export default function ShowMaterial({
                                             <tr>
                                                 <td className="font-semibold" style={{ border: '1px solid black', padding: '8px 12px' }}>Asesmen Awal (Diagnostik)</td>
                                                 <td style={{ border: '1px solid black', padding: '8px 12px' }}>
-                                                    {assignments.filter(a => a.assessment_type === 'initial').map(a => `${a.title} (${a.instrument_type === 'quiz_survey' ? 'Kuis Singkat' : a.instrument_type === 'oral_qa' ? 'Tanya Jawab Lisan' : 'Observasi'})`).join(', ') || 'Tanya Jawab Lisan / Kuis Diagnostik Singkat'}
+                                                    {assignments.filter(a => a.assessment_type === 'initial').map(a => `${a.title} (${INSTRUMENT_MAP[a.instrument_type] || a.instrument_type})`).join(', ') || 'Tanya Jawab Lisan / Kuis Diagnostik Singkat'}
                                                 </td>
                                                 <td style={{ border: '1px solid black', padding: '8px 12px' }}>Awal Pertemuan Pertama</td>
                                             </tr>
@@ -1095,7 +1150,7 @@ export default function ShowMaterial({
                                             <tr>
                                                 <td className="font-semibold" style={{ border: '1px solid black', padding: '8px 12px' }}>Asesmen Formatif (Proses)</td>
                                                 <td style={{ border: '1px solid black', padding: '8px 12px' }}>
-                                                    {assignments.filter(a => a.assessment_type === 'formative').map(a => `${a.title}`).join(', ') || 'Observasi Keterlibatan Diskusi & Umpan Balik Langsung Saat Penyusunan Draf Tabel'}
+                                                    {assignments.filter(a => a.assessment_type === 'formative').map(a => `${a.title} (${INSTRUMENT_MAP[a.instrument_type] || a.instrument_type})`).join(', ') || 'Observasi Keterlibatan Diskusi & Umpan Balik Langsung Saat Penyusunan Draf Tabel'}
                                                 </td>
                                                 <td style={{ border: '1px solid black', padding: '8px 12px' }}>Selama Proses Pembelajaran</td>
                                             </tr>
@@ -1103,7 +1158,7 @@ export default function ShowMaterial({
                                             <tr>
                                                 <td className="font-semibold" style={{ border: '1px solid black', padding: '8px 12px' }}>Asesmen Sumatif (Akhir)</td>
                                                 <td style={{ border: '1px solid black', padding: '8px 12px' }}>
-                                                    {assignments.filter(a => a.assessment_type === 'summative').map(a => `${a.title} (Rubrik Asesmen Kinerja)`).join(', ') || 'Penilaian Kinerja Presentasi Infografis Digital & Gallery Walk'}
+                                                    {assignments.filter(a => a.assessment_type === 'summative').map(a => `${a.title} (${INSTRUMENT_MAP[a.instrument_type] || a.instrument_type})`).join(', ') || 'Penilaian Kinerja Presentasi Infografis Digital & Gallery Walk'}
                                                 </td>
                                                 <td style={{ border: '1px solid black', padding: '8px 12px' }}>Akhir Pertemuan Kedua / Projek</td>
                                             </tr>
@@ -1333,7 +1388,7 @@ export default function ShowMaterial({
                     <div className="lg:col-span-2 space-y-6">
                         <div className="rounded-3xl border border-[#2C2C3A]/20 dark:border-[#2C2C3A] bg-white dark:bg-[#1B1B25] p-8 shadow-sm">
                             <div className="space-y-4">
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2 flex-wrap">
                                     <span className="rounded-full bg-[#5E6AD2]/10 dark:bg-[#5E6AD2]/10 px-3 py-1 text-[10px] font-bold text-[#5E6AD2] uppercase tracking-widest">
                                         {material.subject_name}
                                     </span>
@@ -1341,6 +1396,12 @@ export default function ShowMaterial({
                                         <span className="inline-flex items-center gap-1 rounded-full bg-[#5E6AD2]/10 dark:bg-[#5E6AD2]/10 px-3 py-1 text-[10px] font-bold text-[#5E6AD2] uppercase tracking-widest">
                                             <Target className="h-3 w-3" />
                                             {material.tp_code}
+                                        </span>
+                                    )}
+                                    {user_role === 'student' && is_completed && (
+                                        <span className="inline-flex items-center gap-1 rounded-full bg-[#3DD68C]/10 px-3 py-1 text-[10px] font-black text-[#3DD68C] uppercase tracking-widest">
+                                            <CheckCircle2 className="h-3 w-3" />
+                                            Selesai
                                         </span>
                                     )}
                                 </div>
@@ -1381,10 +1442,23 @@ export default function ShowMaterial({
                                 </div>
                             )}
 
-                            <div className="mt-10 prose prose-neutral dark:prose-invert prose-lg max-w-none prose-headings:font-bold prose-a:text-[#5E6AD2] dark:prose-a:text-[#5E6AD2] hover:prose-a:text-[#5E6AD2]/80 break-words">
+                            <div className="mt-10 prose prose-neutral dark:prose-invert max-w-none 
+                                prose-p:text-[#3f3f46] dark:prose-p:text-[#D1D5DB] prose-p:leading-relaxed prose-p:text-[1.05rem]
+                                prose-headings:font-black prose-headings:tracking-tight prose-headings:text-[#1B1B25] dark:prose-headings:text-[#F1F1F4] 
+                                prose-h1:text-3xl prose-h2:text-2xl prose-h3:text-xl
+                                prose-a:font-bold prose-a:text-[#5E6AD2] prose-a:no-underline hover:prose-a:text-[#5E6AD2]/80 hover:prose-a:underline
+                                prose-strong:font-bold prose-strong:text-[#1B1B25] dark:prose-strong:text-[#F1F1F4]
+                                prose-ul:text-[#3f3f46] dark:prose-ul:text-[#D1D5DB] prose-ul:leading-relaxed prose-li:marker:text-[#5E6AD2]
+                                prose-ol:text-[#3f3f46] dark:prose-ol:text-[#D1D5DB] prose-ol:leading-relaxed
+                                prose-blockquote:border-l-4 prose-blockquote:border-[#5E6AD2] prose-blockquote:bg-[#5E6AD2]/5 prose-blockquote:py-3 prose-blockquote:px-6 prose-blockquote:rounded-r-2xl prose-blockquote:text-[#2C2C3A] dark:prose-blockquote:text-[#F1F1F4] prose-blockquote:not-italic prose-blockquote:font-medium
+                                prose-img:rounded-3xl prose-img:shadow-lg prose-img:border prose-img:border-[#2C2C3A]/10 dark:prose-img:border-[#2C2C3A]/50
+                                prose-hr:border-[#2C2C3A]/10 dark:prose-hr:border-[#2C2C3A]/50
+                                prose-code:text-[#5E6AD2] prose-code:bg-[#5E6AD2]/10 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded-md prose-code:before:content-none prose-code:after:content-none
+                                prose-pre:bg-[#1B1B25] prose-pre:border prose-pre:border-[#2C2C3A]/30 prose-pre:rounded-2xl
+                                break-words">
                                 <div 
-                                    className="leading-relaxed text-[#8A8F98]"
-                                    dangerouslySetInnerHTML={{ __html: material.content || '' }} 
+                                    className="leading-relaxed whitespace-pre-wrap"
+                                    dangerouslySetInnerHTML={{ __html: formatDocumentLayout(material.content) }} 
                                 />
                             </div>
 
@@ -1484,6 +1558,41 @@ export default function ShowMaterial({
                                 materialId={material.id} 
                                 existingReflection={my_reflection} 
                             />
+                        )}
+
+                        {/* Tandai Selesai Button (Student Only, if not yet completed & no reflection) */}
+                        {user_role === 'student' && !is_completed && (
+                            <div className="rounded-3xl border border-[#2C2C3A]/20 dark:border-[#2C2C3A] bg-white dark:bg-[#1B1B25] p-6 shadow-sm">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-sm font-bold text-[#1B1B25] dark:text-[#F1F1F4]">Belum ingin menulis jurnal refleksi?</p>
+                                        <p className="text-xs text-[#8A8F98] mt-1">Tandai materi ini sebagai selesai agar tercatat di progress belajar Anda.</p>
+                                    </div>
+                                    <button
+                                        id="btn-mark-complete"
+                                        onClick={() => router.post(`/materials/${material.id}/complete`)}
+                                        className="flex items-center gap-2 rounded-xl bg-[#3DD68C]/10 hover:bg-[#3DD68C]/20 px-5 py-2.5 text-xs font-black text-[#3DD68C] transition-all cursor-pointer"
+                                    >
+                                        <CheckCircle2 className="h-4 w-4" />
+                                        Tandai Selesai
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Completion Badge (Student, already completed) */}
+                        {user_role === 'student' && is_completed && !my_reflection && (
+                            <div className="rounded-3xl border border-[#3DD68C]/30 bg-[#3DD68C]/5 dark:bg-[#3DD68C]/10 p-6 shadow-sm">
+                                <div className="flex items-center gap-3">
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#3DD68C]/20">
+                                        <CheckCircle2 className="h-5 w-5 text-[#3DD68C]" />
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-black text-[#3DD68C]">Materi Telah Selesai</p>
+                                        <p className="text-xs text-[#8A8F98] mt-0.5">Anda sudah menandai materi ini sebagai selesai.</p>
+                                    </div>
+                                </div>
+                            </div>
                         )}
 
                         {/* Reflections List (Teacher Only) */}

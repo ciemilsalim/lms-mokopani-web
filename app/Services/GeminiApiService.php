@@ -7,16 +7,19 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Auth;
 use App\Models\LmsAiPrompt;
+use App\Contracts\AiProviderInterface;
 
-class GeminiApiService
+class GeminiApiService implements AiProviderInterface
 {
-    private string $apiKey;
+    private array $apiKeys;
+    private int $currentKeyIndex = 0;
     private string $model;
     private string $baseUrl;
 
     public function __construct()
     {
-        $this->apiKey  = config('services.gemini.api_key', '');
+        $keysString = config('services.gemini.api_key', '');
+        $this->apiKeys = array_filter(array_map('trim', explode(',', $keysString)));
         $this->model   = config('services.gemini.model', 'gemini-2.0-flash');
         $this->baseUrl = config('services.gemini.base_url', 'https://generativelanguage.googleapis.com/v1beta');
     }
@@ -26,7 +29,12 @@ class GeminiApiService
      */
     public function isConfigured(): bool
     {
-        return !empty($this->apiKey);
+        return count($this->apiKeys) > 0;
+    }
+
+    public function getProviderName(): string
+    {
+        return 'gemini';
     }
 
     /**
@@ -194,41 +202,61 @@ class GeminiApiService
      */
     private function generateContent(string $prompt): ?string
     {
-        try {
-            $url = "{$this->baseUrl}/models/{$this->model}:generateContent?key={$this->apiKey}";
+        if (empty($this->apiKeys)) return null;
 
-            $response = Http::timeout(120)->post($url, [
-                'contents' => [
-                    [
-                        'parts' => [
-                            ['text' => $prompt],
+        $attempts = 0;
+        $maxAttempts = count($this->apiKeys);
+
+        while ($attempts < $maxAttempts) {
+            $currentKey = $this->apiKeys[$this->currentKeyIndex];
+            
+            try {
+                $url = "{$this->baseUrl}/models/{$this->model}:generateContent?key={$currentKey}";
+
+                $response = Http::timeout(60)->post($url, [
+                    'contents' => [
+                        [
+                            'parts' => [
+                                ['text' => $prompt],
+                            ],
                         ],
                     ],
-                ],
-                'generationConfig' => [
-                    'temperature'     => 0.7,
-                    'topP'            => 0.9,
-                    'maxOutputTokens' => 8192,
-                ],
-            ]);
+                    'generationConfig' => [
+                        'temperature'     => 0.7,
+                        'topP'            => 0.9,
+                        'maxOutputTokens' => 8192,
+                    ],
+                ]);
 
-            if (!$response->successful()) {
+                if ($response->successful()) {
+                    $data = $response->json();
+                    return $data['candidates'][0]['content']['parts'][0]['text'] ?? null;
+                }
+
+                // If rate limited (429) or forbidden/quota (403), rotate key
+                if ($response->status() === 429 || $response->status() === 403) {
+                    Log::warning('Gemini API rate limit/quota reached on key index ' . $this->currentKeyIndex);
+                    $this->currentKeyIndex = ($this->currentKeyIndex + 1) % $maxAttempts;
+                    $attempts++;
+                    continue; // Coba key berikutnya
+                }
+
                 Log::warning('Gemini API request failed', [
                     'status' => $response->status(),
                     'body'   => $response->body(),
                 ]);
                 return null;
+
+            } catch (\Exception $e) {
+                Log::error('Gemini API error', [
+                    'message' => $e->getMessage(),
+                ]);
+                return null;
             }
-
-            $data = $response->json();
-            return $data['candidates'][0]['content']['parts'][0]['text'] ?? null;
-
-        } catch (\Exception $e) {
-            Log::error('Gemini API error', [
-                'message' => $e->getMessage(),
-            ]);
-            return null;
         }
+        
+        Log::error('Gemini API all keys exhausted or rate limited.');
+        return null;
     }
 
     /**
@@ -242,20 +270,25 @@ class GeminiApiService
             'reflection'    => '',
         ];
 
-        // Parse berdasarkan header ## Memahami, ## Mengaplikasi, ## Merefleksi
-        $sections = preg_split('/##\s+(Memahami|Mengaplikasi|Merefleksi)/i', $text, -1, PREG_SPLIT_DELIM_CAPTURE);
+        // Parse berdasarkan header HTML <h2>Memahami</h2> atau Markdown ## Memahami
+        // Supports both formats for backward compatibility
+        $sections = preg_split('/<h2>\s*(Memahami|Mengaplikasi|Merefleksi)\s*<\/h2>|##\s+(Memahami|Mengaplikasi|Merefleksi)/i', $text, -1, PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY);
 
         if ($sections && count($sections) > 1) {
-            for ($i = 1; $i < count($sections); $i += 2) {
-                $header  = strtolower(trim($sections[$i]));
-                $content = trim($sections[$i + 1] ?? '');
-
-                if (str_contains($header, 'memahami')) {
-                    $result['understanding'] = $content;
-                } elseif (str_contains($header, 'mengaplikasi')) {
-                    $result['application'] = $content;
-                } elseif (str_contains($header, 'merefleksi')) {
-                    $result['reflection'] = $content;
+            for ($i = 0; $i < count($sections); $i++) {
+                $headerCandidate = strtolower(trim($sections[$i]));
+                
+                if (in_array($headerCandidate, ['memahami', 'mengaplikasi', 'merefleksi'])) {
+                    $content = trim($sections[$i + 1] ?? '');
+                    
+                    if (str_contains($headerCandidate, 'memahami')) {
+                        $result['understanding'] = $content;
+                    } elseif (str_contains($headerCandidate, 'mengaplikasi')) {
+                        $result['application'] = $content;
+                    } elseif (str_contains($headerCandidate, 'merefleksi')) {
+                        $result['reflection'] = $content;
+                    }
+                    $i++; // skip the content part since we consumed it
                 }
             }
         }

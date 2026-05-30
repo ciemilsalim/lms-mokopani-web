@@ -275,7 +275,11 @@ class GradebookController extends Controller
             ->where('semester_id', $activeSemester?->id)
             ->get();
 
-        $report = $assignments->groupBy('subject_id')->map(function ($subjectAssignments) use ($submissions, $attendances, $student) {
+        // Pre-fetch semua Learning Objectives yang dibutuhkan (menghindari N+1 query)
+        $allTpIds = $assignments->pluck('learning_objective_id')->unique()->filter()->values();
+        $allTps = \App\Models\LmsLearningObjective::with('capaianPembelajaran')->whereIn('id', $allTpIds)->get()->keyBy('id');
+
+        $report = $assignments->groupBy('subject_id')->map(function ($subjectAssignments) use ($submissions, $attendances, $student, $allTps) {
             $subjectId = $subjectAssignments->first()->subject_id;
             $subjectName = $subjectAssignments->first()->subject->name;
             $subjectKktp = get_kktp($subjectId);
@@ -313,8 +317,9 @@ class GradebookController extends Controller
                 $highest = $summativeItems->sortByDesc('score')->first();
                 $lowest = $summativeItems->sortBy('score')->first();
                 
-                $highTp = \App\Models\LmsLearningObjective::find($highest['tp_id']);
-                $lowTp = \App\Models\LmsLearningObjective::find($lowest['tp_id']);
+                // Lookup dari pre-fetched collection (bukan individual query)
+                $highTp = $allTps->get($highest['tp_id']);
+                $lowTp = $allTps->get($lowest['tp_id']);
 
                 if ($highTp) {
                     $description = "Menunjukkan penguasaan yang sangat baik dalam " . $highTp->description . ".";
@@ -325,9 +330,59 @@ class GradebookController extends Controller
                 }
             }
 
+            // Grouping by CP -> TP -> Assignments
+            $groupedByCp = [];
+            foreach ($items as $item) {
+                $tp = $allTps->get($item['tp_id']);
+                $cp = $tp ? $tp->capaianPembelajaran : null;
+                
+                $cpId = $cp ? $cp->id : 0;
+                $cpLabel = $cp ? $cp->elemen : 'Lainnya';
+                if (!$cpLabel && $cp && $cp->deskripsi) {
+                    $cpLabel = mb_strimwidth(strip_tags($cp->deskripsi), 0, 50, '...');
+                }
+                $cpDesc = $cp ? $cp->deskripsi : '';
+                
+                $tpId = $tp ? $tp->id : 0;
+                $tpLabel = $tp ? ($tp->code . ': ' . $tp->description) : 'Tanpa TP';
+                
+                if (!isset($groupedByCp[$cpId])) {
+                    $groupedByCp[$cpId] = [
+                        'id' => $cpId,
+                        'label' => $cpLabel,
+                        'description' => $cpDesc,
+                        'tps' => []
+                    ];
+                }
+                
+                if (!isset($groupedByCp[$cpId]['tps'][$tpId])) {
+                    $groupedByCp[$cpId]['tps'][$tpId] = [
+                        'id' => $tpId,
+                        'label' => $tpLabel,
+                        'assignments' => []
+                    ];
+                }
+                
+                $groupedByCp[$cpId]['tps'][$tpId]['assignments'][] = $item;
+            }
+            
+            // Format to indexed array and sort assignments
+            $cpGroups = array_values(array_map(function($cpGrp) {
+                $cpGrp['tps'] = array_values(array_map(function($tpGrp) {
+                    $typeOrder = ['initial' => 1, 'formative' => 2, 'summative' => 3];
+                    usort($tpGrp['assignments'], function($a, $b) use ($typeOrder) {
+                        $orderA = $typeOrder[$a['type']] ?? 99;
+                        $orderB = $typeOrder[$b['type']] ?? 99;
+                        return $orderA <=> $orderB;
+                    });
+                    return $tpGrp;
+                }, $cpGrp['tps']));
+                return $cpGrp;
+            }, $groupedByCp));
+
             return [
                 'subject_name'          => $subjectName,
-                'assignments'           => $items->values(),
+                'cps'                   => $cpGroups,
                 'average'               => $average,
                 'description'           => $description,
                 'attendance_percentage' => $attendancePercentage,

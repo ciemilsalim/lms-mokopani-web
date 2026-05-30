@@ -32,6 +32,7 @@ interface Material {
     teacher_name: string;
     file_type: string | null;
     created_at: string;
+    is_accessible?: boolean;
 }
 
 interface SubjectGroup {
@@ -74,17 +75,23 @@ const getFileIcon = (type: string | null) => {
 
 function MaterialCard({ m, onDelete }: { m: Material; onDelete?: (id: number) => void }) {
     const Icon = getFileIcon(m.file_type);
+    const isAccessible = m.is_accessible !== false;
 
     return (
-        <div className="group relative rounded-xl border border-[#2C2C3A]/20 bg-white p-5 shadow-sm transition-shadow hover:border-[#5E6AD2]/30 hover:shadow-md dark:border-[#2C2C3A] dark:bg-[#1B1B25] dark:hover:border-[#5E6AD2]/40 dark:hover:shadow-lg dark:hover:shadow-black/20">
+        <div className={`group relative rounded-xl border border-[#2C2C3A]/20 bg-white p-5 shadow-sm transition-shadow hover:border-[#5E6AD2]/30 hover:shadow-md dark:border-[#2C2C3A] dark:bg-[#1B1B25] dark:hover:border-[#5E6AD2]/40 dark:hover:shadow-lg dark:hover:shadow-black/20 ${!isAccessible ? 'opacity-60 grayscale-[30%] cursor-not-allowed' : ''}`}>
             <div className="mb-4 flex items-start justify-between">
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#F1F1F4]/30 text-[#8A8F98] dark:bg-[#2C2C3A] dark:text-[#8A8F98]">
+                <div className="relative flex h-12 w-12 items-center justify-center rounded-xl bg-[#F1F1F4]/30 text-[#8A8F98] dark:bg-[#2C2C3A] dark:text-[#8A8F98]">
                     <Icon className="h-6 w-6" />
+                    {!isAccessible && (
+                        <div className="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-muted border border-border text-muted-foreground">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-lock"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                        </div>
+                    )}
                 </div>
                 {onDelete && (
                     <button
                         onClick={() => onDelete(m.id)}
-                        className="p-2 text-[#8A8F98]/40 hover:text-[#EB5757] transition"
+                        className="p-2 text-[#8A8F98]/40 hover:text-[#EB5757] transition cursor-pointer"
                     >
                         <Trash2 className="h-4 w-4" />
                     </button>
@@ -103,13 +110,19 @@ function MaterialCard({ m, onDelete }: { m: Material; onDelete?: (id: number) =>
 
             <div className="mt-6 flex items-center justify-between border-t border-[#2C2C3A]/10 pt-4 dark:border-[#2C2C3A]">
                 <span className="text-[10px] font-medium text-[#8A8F98]">{m.created_at}</span>
-                <Link
-                    href={route('materials.show', m.id)}
-                    className="flex items-center gap-1.5 text-xs font-bold text-[#5E6AD2] hover:underline"
-                >
-                    Buka Materi
-                    <ExternalLink className="h-3 w-3" />
-                </Link>
+                {isAccessible ? (
+                    <Link
+                        href={route('materials.show', m.id)}
+                        className="flex items-center gap-1.5 text-xs font-bold text-[#5E6AD2] hover:underline"
+                    >
+                        Buka Materi
+                        <ExternalLink className="h-3 w-3" />
+                    </Link>
+                ) : (
+                    <span className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground cursor-not-allowed">
+                        Terkunci
+                    </span>
+                )}
             </div>
         </div>
     );
@@ -318,38 +331,45 @@ export default function Materials({ materials, grouped_materials, teacher_groupe
 
             <div className="flex h-full flex-1 flex-col gap-6 p-6">
                 {/* Header */}
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                        <div className="flex items-center gap-2">
-                            <h1 className="text-2xl font-bold text-[#1B1B25] dark:text-[#F1F1F4]">Materi Pembelajaran</h1>
-                            {active_year && (
-                                <span className="rounded-full bg-[#F1F1F4]/50 dark:bg-[#2C2C3A] px-2.5 py-0.5 text-[10px] font-bold text-[#8A8F98] uppercase tracking-tight">
-                                    {active_year} • {active_semester}
-                                </span>
-                            )}
+                <div className="rounded-2xl bg-gradient-to-br from-primary via-primary/80 to-primary/60 p-8 text-white shadow-xl shadow-primary/20 dark:shadow-none">
+                    <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                        <div className="flex items-center gap-4">
+                            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-md flex-shrink-0">
+                                <BookOpen className="h-10 w-10" />
+                            </div>
+                            <div>
+                                <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                                    <h1 className="text-2xl font-black">Materi Pembelajaran</h1>
+                                    {active_year && (
+                                        <span className="rounded-full bg-white/20 px-2.5 py-0.5 text-[10px] font-bold text-white uppercase tracking-widest mt-1 sm:mt-0">
+                                            {active_year} • {active_semester}
+                                        </span>
+                                    )}
+                                </div>
+                                <p className="text-sm font-bold text-white/70 mt-1">
+                                    {user_role === 'teacher' ? 'Kelola materi pembelajaran untuk siswa Anda' : 'Pusat sumber belajar digital siswa'}
+                                </p>
+                            </div>
                         </div>
-                        <p className="text-sm text-[#8A8F98]">
-                            {user_role === 'teacher' ? 'Kelola materi pembelajaran untuk siswa Anda' : 'Pusat sumber belajar digital siswa'}
-                        </p>
+                        {user_role === 'teacher' && (
+                            <div className="flex items-center gap-3">
+                                <Link
+                                    href={route('materials.create')}
+                                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-5 py-2.5 text-sm font-bold text-primary shadow-lg transition hover:bg-white/90"
+                                >
+                                    <FilePlus className="h-4 w-4" />
+                                    Tambah
+                                </Link>
+                                <Link
+                                    href={route('instructional-design.create')}
+                                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-white/10 backdrop-blur-md px-5 py-2.5 text-sm font-bold text-white shadow-lg transition hover:bg-white/20"
+                                >
+                                    <Plus className="h-4 w-4" />
+                                    AI
+                                </Link>
+                            </div>
+                        )}
                     </div>
-                    {user_role === 'teacher' && (
-                        <div className="flex items-center gap-3">
-                            <Link
-                                href={route('materials.create')}
-                                className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#3DD68C] px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-[#3DD68C]/20 transition hover:bg-[#3DD68C]/90 dark:shadow-none"
-                            >
-                                <FilePlus className="h-4 w-4" />
-                                Tambah Materi
-                            </Link>
-                            <Link
-                                href={route('instructional-design.create')}
-                                className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#5E6AD2] px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-[#5E6AD2]/20 transition hover:bg-[#5E6AD2]/90 dark:shadow-none"
-                            >
-                                <Plus className="h-4 w-4" />
-                                Rancang Pembelajaran
-                            </Link>
-                        </div>
-                    )}
                 </div>
 
                 {/* Search */}

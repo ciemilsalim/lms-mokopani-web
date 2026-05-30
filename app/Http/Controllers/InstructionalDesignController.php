@@ -280,12 +280,26 @@ class InstructionalDesignController extends Controller
                 $regenerate
             );
         } elseif ($suggestType === 'assessment') {
+            $materialTitle = $request->input('material_title');
+            $materialContent = $request->input('material_content');
+
+            // If empty, auto-fetch the actual material associated with this TP & Subject
+            if (empty($materialContent)) {
+                $material = \App\Models\LmsMaterial::where('learning_objective_id', $request->learning_objective_id)
+                    ->where('subject_id', $request->input('subject_id'))
+                    ->first();
+                if ($material) {
+                    $materialTitle = $material->title;
+                    $materialContent = $material->content;
+                }
+            }
+
             $suggestions = $service->suggestAssessment(
                 $request->learning_objective_id,
                 $request->input('instrument_type', 'rubric'),
                 $regenerate,
-                $request->input('material_title'),
-                $request->input('material_content')
+                $materialTitle,
+                $materialContent
             );
         } else {
             $suggestions = $service->suggestExperiences(

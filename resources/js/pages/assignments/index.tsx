@@ -21,12 +21,20 @@ interface Assignment {
     instrument_type: string | null;
     scoring_tool?: string | null;
     submissions_count: number;
+    is_accessible?: boolean;
+}
+
+interface SubjectObjectiveGroup {
+    objective_id: number | null;
+    objective_code: string;
+    objective_description: string;
+    assignments: Assignment[];
 }
 
 interface SubjectGroup {
     subject_id: number;
     subject_name: string;
-    assignments: Assignment[];
+    objectives: SubjectObjectiveGroup[];
     total: number;
 }
 
@@ -83,6 +91,7 @@ function AssignmentCard({ asgn, isTeacher = false }: { asgn: Assignment; isTeach
     const overdue = isOverdue(asgn.due_date);
     const style = typeStyles[asgn.assessment_type || 'summative'];
     const TypeIcon = style?.icon || ClipboardList;
+    const isAccessible = asgn.is_accessible !== false; // default true if undefined
 
     const handleEdit = (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -91,19 +100,22 @@ function AssignmentCard({ asgn, isTeacher = false }: { asgn: Assignment; isTeach
 
     const handleDelete = (e: React.MouseEvent) => {
         e.stopPropagation();
-        if (confirm('Yakin ingin menghapus asesmen ini? Semua data pengumpulan siswa juga akan dihapus.')) {
-            router.delete(`/assignments/${asgn.id}`);
-        }
+        router.visit(`/assignments/${asgn.id}`, { method: 'delete' });
     };
 
     return (
         <div
-            className="group relative cursor-pointer rounded-2xl border border-border bg-card p-5 shadow-sm hover:shadow-md hover:border-primary/30 transition-all"
-            onClick={() => router.visit(`/assignments/${asgn.id}`)}
+            onClick={() => isAccessible && router.visit(`/assignments/${asgn.id}`)}
+            className={`group flex cursor-pointer flex-col justify-between rounded-2xl border border-border/60 bg-card p-5 transition-all hover:border-primary/30 hover:shadow-md ${!isAccessible ? 'opacity-60 grayscale-[30%] cursor-not-allowed' : ''}`}
         >
             <div className="flex items-start justify-between gap-2">
-                <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${style?.bg || 'bg-muted'} ${style?.text || 'text-muted-foreground'} flex-shrink-0`}>
+                <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${style?.bg || 'bg-muted'} ${style?.text || 'text-muted-foreground'} flex-shrink-0 relative`}>
                     <TypeIcon className="h-5 w-5" />
+                    {!isAccessible && (
+                        <div className="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-muted border border-border text-muted-foreground">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-lock"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                        </div>
+                    )}
                 </div>
                 <div className="flex items-center gap-1">
                     {isTeacher && (
@@ -168,19 +180,30 @@ function AssignmentCard({ asgn, isTeacher = false }: { asgn: Assignment; isTeach
     );
 }
 
+const sortAssignments = (assignments: Assignment[]) => {
+    const order: Record<string, number> = { 'initial': 1, 'formative': 2, 'summative': 3 };
+    return assignments.sort((a, b) => (order[a.assessment_type || ''] || 99) - (order[b.assessment_type || ''] || 99));
+};
+
 function GroupedView({ groups, search, filterType }: { groups: SubjectGroup[]; search: string; filterType: string }) {
-    const [expanded, setExpanded] = useState<Record<number, boolean>>({});
+    const [expandedSubjects, setExpandedSubjects] = useState<Record<number, boolean>>({});
+    const [expandedTPs, setExpandedTPs] = useState<Record<string, boolean>>({});
 
     const visible = groups
-        .map(g => ({
-            ...g,
-            assignments: g.assignments.filter(a => {
-                const matchSearch = a.title.toLowerCase().includes(search.toLowerCase());
-                const matchType = filterType === 'all' || a.assessment_type === filterType;
-                return matchSearch && matchType;
-            }),
+        .map(subject => ({
+            ...subject,
+            objectives: subject.objectives
+                .map(obj => ({
+                    ...obj,
+                    assignments: sortAssignments(obj.assignments.filter(a => {
+                        const matchSearch = a.title.toLowerCase().includes(search.toLowerCase());
+                        const matchType = filterType === 'all' || a.assessment_type === filterType;
+                        return matchSearch && matchType;
+                    })),
+                }))
+                .filter(obj => obj.assignments.length > 0),
         }))
-        .filter(g => g.assignments.length > 0);
+        .filter(subject => subject.objectives.length > 0);
 
     if (visible.length === 0) {
         return (
@@ -194,11 +217,13 @@ function GroupedView({ groups, search, filterType }: { groups: SubjectGroup[]; s
     return (
         <div className="grid gap-6">
             {visible.map((group) => {
-                const isOpen = expanded[group.subject_id] !== false;
+                const isOpen = expandedSubjects[group.subject_id] !== false;
+                const totalVisibleAsgn = group.objectives.reduce((sum, o) => sum + o.assignments.length, 0);
+                
                 return (
                     <div key={group.subject_id} className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-all hover:shadow-md">
                         <button
-                            onClick={() => setExpanded(prev => ({ ...prev, [group.subject_id]: !isOpen }))}
+                            onClick={() => setExpandedSubjects(prev => ({ ...prev, [group.subject_id]: !isOpen }))}
                             className="flex w-full items-center justify-between border-b border-border bg-muted/30 px-6 py-4 text-left cursor-pointer"
                         >
                             <div className="flex items-center gap-3">
@@ -208,7 +233,7 @@ function GroupedView({ groups, search, filterType }: { groups: SubjectGroup[]; s
                                 <div>
                                     <h3 className="text-lg font-bold text-foreground">{group.subject_name}</h3>
                                     <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight">
-                                        {group.assignments.length} asesmen
+                                        {group.objectives.length} TP • {totalVisibleAsgn} asesmen
                                     </p>
                                 </div>
                             </div>
@@ -220,12 +245,39 @@ function GroupedView({ groups, search, filterType }: { groups: SubjectGroup[]; s
                             </div>
                         </button>
                         {isOpen && (
-                            <div className="p-6">
-                                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                                    {group.assignments.map(asgn => (
-                                        <AssignmentCard key={asgn.id} asgn={asgn} />
-                                    ))}
-                                </div>
+                            <div className="p-6 space-y-4">
+                                {group.objectives.map((obj) => {
+                                    const tpKey = `${group.subject_id}-${obj.objective_id}`;
+                                    const isTPOpen = expandedTPs[tpKey] !== false;
+                                    return (
+                                        <div key={tpKey} className="rounded-xl border border-border/50 bg-muted/20 overflow-hidden">
+                                            <button
+                                                onClick={() => setExpandedTPs(prev => ({ ...prev, [tpKey]: !isTPOpen }))}
+                                                className="flex w-full items-center justify-between px-5 py-3 text-left hover:bg-muted/30 transition cursor-pointer"
+                                            >
+                                                <div className="flex items-center gap-2 min-w-0">
+                                                    <span className="rounded-full bg-primary/10 border border-primary/20 px-2.5 py-0.5 text-[10px] font-bold text-primary shrink-0">
+                                                        {obj.objective_code}
+                                                    </span>
+                                                    <p className="text-xs font-bold text-foreground truncate">{obj.objective_description}</p>
+                                                </div>
+                                                <div className="flex items-center gap-3 shrink-0 ml-3">
+                                                    <span className="text-[10px] font-medium text-muted-foreground whitespace-nowrap">{obj.assignments.length} asesmen</span>
+                                                    {isTPOpen ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+                                                </div>
+                                            </button>
+                                            {isTPOpen && (
+                                                <div className="px-5 pb-5 pt-3">
+                                                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                                                        {obj.assignments.map(asgn => (
+                                                            <AssignmentCard key={asgn.id} asgn={asgn} isTeacher={false} />
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
                             </div>
                         )}
                     </div>
@@ -245,11 +297,11 @@ function TeacherGroupedView({ groups, search, filterType }: { groups: TeacherCla
             objectives: cls.objectives
                 .map(obj => ({
                     ...obj,
-                    assignments: obj.assignments.filter(a => {
+                    assignments: sortAssignments(obj.assignments.filter(a => {
                         const matchSearch = a.title.toLowerCase().includes(search.toLowerCase()) || a.subject_name.toLowerCase().includes(search.toLowerCase());
                         const matchType = filterType === 'all' || a.assessment_type === filterType;
                         return matchSearch && matchType;
-                    }),
+                    })),
                 }))
                 .filter(obj => obj.assignments.length > 0),
         }))
@@ -340,11 +392,11 @@ function TeacherGroupedView({ groups, search, filterType }: { groups: TeacherCla
 }
 
 function FlatView({ assignments, search, filterType }: { assignments: Assignment[]; search: string; filterType: string }) {
-    const filtered = assignments.filter(a => {
+    const filtered = sortAssignments(assignments.filter(a => {
         const matchSearch = a.title.toLowerCase().includes(search.toLowerCase());
         const matchType = filterType === 'all' || a.assessment_type === filterType;
         return matchSearch && matchType;
-    });
+    }));
 
     if (filtered.length === 0) {
         return (
@@ -389,30 +441,37 @@ export default function Assignments({ assignments, grouped_assignments, teacher_
 
             <div className="flex h-full flex-1 flex-col gap-6 p-6">
                 {/* Header */}
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                        <div className="flex items-center gap-2">
-                            <h1 className="text-xl font-bold text-foreground">Asesmen</h1>
-                            {active_year && (
-                                <span className="rounded-full bg-muted px-2.5 py-0.5 text-[10px] font-bold text-muted-foreground uppercase tracking-tight">
-                                    {active_year} • {active_semester}
-                                </span>
-                            )}
+                <div className="rounded-2xl bg-gradient-to-br from-primary via-primary/80 to-primary/60 p-8 text-white shadow-xl shadow-primary/20 dark:shadow-none">
+                    <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                        <div className="flex items-center gap-4">
+                            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-md flex-shrink-0">
+                                <ClipboardList className="h-10 w-10" />
+                            </div>
+                            <div>
+                                <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                                    <h1 className="text-2xl font-black">Asesmen</h1>
+                                    {active_year && (
+                                        <span className="rounded-full bg-white/20 px-2.5 py-0.5 text-[10px] font-bold text-white uppercase tracking-widest mt-1 sm:mt-0">
+                                            {active_year} • {active_semester}
+                                        </span>
+                                    )}
+                                </div>
+                                <p className="text-sm font-bold text-white/70 mt-1">
+                                    {user_role === 'teacher' ? 'Kelola asesmen awal, formatif, dan sumatif' : 'Daftar asesmen awal, formatif, dan sumatif'}
+                                </p>
+                            </div>
                         </div>
-                        <p className="text-sm text-muted-foreground">
-                            {user_role === 'teacher' ? 'Kelola asesmen awal, formatif, dan sumatif' : 'Daftar asesmen awal, formatif, dan sumatif'}
-                        </p>
+                        {user_role === 'teacher' && (
+                            <button
+                                id="btn-add-assignment"
+                                onClick={() => router.visit('/instructional-design/create')}
+                                className="inline-flex items-center justify-center gap-2 rounded-xl bg-white/10 backdrop-blur-md px-5 py-2.5 text-sm font-bold text-white shadow-lg transition hover:bg-white/20 cursor-pointer"
+                            >
+                                <Plus className="h-4 w-4" />
+                                Rancang Pembelajaran
+                            </button>
+                        )}
                     </div>
-                    {user_role === 'teacher' && (
-                        <button
-                            id="btn-add-assignment"
-                            onClick={() => router.visit('/instructional-design/create')}
-                            className="flex items-center gap-2 rounded-xl bg-primary hover:bg-primary-hover px-5 py-3 text-sm font-bold text-white shadow-lg shadow-primary/15 transition cursor-pointer"
-                        >
-                            <Plus className="h-4 w-4" />
-                            Rancang Pembelajaran
-                        </button>
-                    )}
                 </div>
 
                 {/* Filter & Search */}

@@ -39,7 +39,8 @@ import {
     ChevronUp,
     ChevronDown,
     FolderOpen,
-    ImageIcon
+    ImageIcon,
+    Ticket
 } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';
 import { ConfirmDialog } from '@/components/confirm-dialog';
@@ -333,7 +334,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
     const calculateSystemScore = (content: string) => {
         try {
             const parsed = JSON.parse(content || '');
-            if (parsed.type === 'written_test' || parsed.type === 'quiz_response') {
+            if (parsed.type === 'written_test' || parsed.type === 'formative_quiz' || parsed.type === 'quiz_response') {
                 const questions = assignment.instrument_config?.questions || [];
                 const answers = parsed.answers || {};
                 let total = 0;
@@ -341,10 +342,10 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                     const studentAns = answers[q.id];
                     const points = Number(q.points || 0);
                     const isMcq = q.type === 'multiple_choice';
-                    const correctOpt = isMcq ? q.options?.find((o: any) => o.is_correct) : null;
+                    const correctOpt = isMcq ? (q.options?.find((o: any) => o.is_correct) || q.options?.find((o: any) => o.id === q.answer)) : null;
                     const isCorrect = isMcq 
                         ? (correctOpt?.id == studentAns) 
-                        : (q.type === 'short_answer' && q.correct_answer && studentAns?.trim().toLowerCase() == q.correct_answer?.trim().toLowerCase());
+                        : (q.type === 'short_answer' && (q.correct_answer || q.answer) && studentAns?.trim().toLowerCase() == (q.correct_answer || q.answer)?.trim().toLowerCase());
                     
                     if (isCorrect) total += points;
                 });
@@ -490,7 +491,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                         nodes: parsed.nodes || [],
                         edges: parsed.edges || []
                     });
-                } else if (parsed.type === 'written_test') {
+                } else if (parsed.type === 'written_test' || parsed.type === 'formative_quiz') {
                     studentForm.setData('answers', parsed.answers || {});
                 } else if (parsed.type === 'quiz_response') {
                     studentForm.setData('answers', parsed.answers || {});
@@ -965,14 +966,15 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                 const studentAns = studentForm.data.answers[q.id];
                 const points = Number(q.points || 0);
                 if (q.type === 'multiple_choice') {
-                    const selectedOpt = q.options?.find((o: any) => o.id == studentAns);
-                    if (selectedOpt?.is_correct) totalScore += points;
-                    if (!q.options?.some((o: any) => o.is_correct)) canAutoGrade = false;
+                    const correctOptId = q.answer || q.options?.find((o: any) => o.is_correct)?.id;
+                    if (correctOptId && studentAns == correctOptId) totalScore += points;
+                    if (!correctOptId) canAutoGrade = false;
                 } else if (q.type === 'short_answer') {
-                    if (q.correct_answer && studentAns?.trim().toLowerCase() == q.correct_answer?.trim().toLowerCase()) {
+                    const correctAns = q.correct_answer || q.answer;
+                    if (correctAns && studentAns?.trim().toLowerCase() == correctAns?.trim().toLowerCase()) {
                         totalScore += points;
                     }
-                    if (!q.correct_answer) canAutoGrade = false;
+                    if (!correctAns) canAutoGrade = false;
                 } else {
                     canAutoGrade = false;
                 }
@@ -986,7 +988,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
             });
 
             if (canAutoGrade) finalScore = totalScore;
-        } else if (assignment.instrument_type === 'written_test') {
+        } else if (assignment.instrument_type === 'written_test' || assignment.instrument_type === 'formative_quiz') {
             const questions = assignment.instrument_config?.questions || [];
             let totalScore = 0;
             let hasEssay = false;
@@ -995,10 +997,11 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                 const studentAns = studentForm.data.answers[q.id];
                 const points = Number(q.points || 0);
                 if (q.type === 'multiple_choice') {
-                    const selectedOpt = q.options?.find((o: any) => o.id == studentAns);
-                    if (selectedOpt?.is_correct) totalScore += points;
+                    const correctOptId = q.answer || q.options?.find((o: any) => o.is_correct)?.id;
+                    if (correctOptId && studentAns == correctOptId) totalScore += points;
                 } else if (q.type === 'short_answer') {
-                    if (q.correct_answer && studentAns?.trim().toLowerCase() == q.correct_answer?.trim().toLowerCase()) {
+                    const correctAns = q.correct_answer || q.answer;
+                    if (correctAns && studentAns?.trim().toLowerCase() == correctAns?.trim().toLowerCase()) {
                         totalScore += points;
                     }
                 } else if (q.type === 'essay') {
@@ -1007,7 +1010,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
             });
 
             finalContent = JSON.stringify({
-                type: 'written_test',
+                type: assignment.instrument_type === 'formative_quiz' ? 'formative_quiz' : 'written_test',
                 answers: studentForm.data.answers,
                 auto_score: totalScore,
                 has_essay: hasEssay
@@ -1282,47 +1285,48 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                             <div className="space-y-4 animate-in fade-in duration-500">
                                 {assignment.instrument_type === 'exit_ticket' && (
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in slide-in-from-top-4 duration-500">
-                                        {(assignment.instrument_config?.questions || []).map((q: any) => {
+                                        {(assignment.instrument_config?.questions || []).map((q: any, qIdx: number) => {
+                                            const qKey = q.id ?? `et_${qIdx}`;
                                             const answers = (assignment.submissions || []).map((s: Submission) => {
                                                 try {
                                                     const p = JSON.parse(s.content || '');
-                                                    return p.answers?.[q.id];
+                                                    return p.answers?.[qKey];
                                                 } catch(e) { return null; }
                                             }).filter(Boolean);
 
                                             return (
-                                                <div key={q.id} className="rounded-[2rem] border border-slate-50 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm flex flex-col h-full">
+                                                <div key={qKey} className="rounded-[8px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#1B1B25] p-6 shadow-none flex flex-col h-full">
                                                     <div className="flex items-center gap-3 mb-4">
-                                                        <div className="h-8 w-8 rounded-xl bg-amber-50 dark:bg-amber-950/30 text-amber-500 flex items-center justify-center border border-amber-100 dark:border-amber-900/30">
+                                                        <div className="h-8 w-8 rounded-[6px] bg-[#5E6AD2]/10 dark:bg-[#5E6AD2] text-[#5E6AD2] dark:text-white flex items-center justify-center border border-[#5E6AD2]/20 dark:border-transparent">
                                                             <MessageSquare className="h-4 w-4" />
                                                         </div>
-                                                        <h4 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest leading-tight">{q.text}</h4>
+                                                        <h4 className="text-[10px] font-semibold text-slate-500 dark:text-[#8A8F98] uppercase tracking-wider leading-tight">{q.text}</h4>
                                                     </div>
                                                     
                                                     <div className="flex-1 space-y-3 overflow-y-auto max-h-[200px] pr-2 custom-scrollbar">
                                                         {answers.length > 0 ? (
                                                             answers.map((ans: string, idx: number) => (
-                                                                <div key={idx} className="p-4 rounded-2xl bg-muted/50 border border-border hover:scale-[1.02] transition-transform">
-                                                                    <p className="text-[11px] font-bold text-muted-foreground leading-relaxed italic">"{ans}"</p>
+                                                                <div key={idx} className="p-4 rounded-[6px] bg-slate-50 dark:bg-[#101014] border border-slate-200 dark:border-[#2C2C3A] hover:border-[#5E6AD2]/30 transition-all">
+                                                                    <p className="text-[11px] font-medium text-slate-600 dark:text-[#8A8F98] leading-relaxed italic">"{ans}"</p>
                                                                 </div>
                                                             ))
                                                         ) : (
                                                             <div className="h-full flex items-center justify-center py-8">
-                                                                <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest italic">Belum ada respon</p>
+                                                                <p className="text-[10px] font-semibold text-slate-300 dark:text-[#8A8F98] uppercase tracking-widest italic">Belum ada respon</p>
                                                             </div>
                                                         )}
                                                     </div>
                                                     
-                                                    <div className="mt-4 pt-4 border-t border-slate-50 dark:border-slate-800 flex items-center justify-between">
-                                                        <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">{answers.length} Respon</span>
+                                                    <div className="mt-4 pt-4 border-t border-slate-100 dark:border-[#2C2C3A] flex items-center justify-between">
+                                                        <span className="text-[10px] font-semibold text-slate-500 dark:text-[#8A8F98] uppercase tracking-wider">{answers.length} Respon</span>
                                                         <div className="flex -space-x-2">
                                                             {(assignment.submissions || []).slice(0, 3).map((s: Submission) => (
-                                                                <div key={s.id} className="h-6 w-6 rounded-lg bg-slate-100 dark:bg-slate-800 border-2 border-white dark:border-slate-900 flex items-center justify-center text-[8px] font-black text-muted-foreground uppercase">
+                                                                <div key={s.id} className="h-6 w-6 rounded-[4px] bg-slate-50 dark:bg-[#101014] border-2 border-white dark:border-[#1B1B25] flex items-center justify-center text-[8px] font-semibold text-slate-500 dark:text-[#8A8F98] uppercase">
                                                                     {s.student_name.charAt(0)}
                                                                 </div>
                                                             ))}
                                                             {assignment.submissions?.length > 3 && (
-                                                                <div className="h-6 w-6 rounded-lg bg-amber-500 border-2 border-white dark:border-slate-900 flex items-center justify-center text-[8px] font-black text-white">
+                                                                <div className="h-6 w-6 rounded-[4px] bg-[#5E6AD2] border-2 border-white dark:border-[#1B1B25] flex items-center justify-center text-[8px] font-semibold text-white">
                                                                     +{assignment.submissions.length - 3}
                                                                 </div>
                                                             )}
@@ -1436,7 +1440,10 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                         <div className="grid gap-8 lg:grid-cols-3">
                         {/* Submission Form */}
                         <div className="lg:col-span-2 space-y-4">
-                            <div className="rounded-[2.5rem] border border-border bg-white dark:bg-slate-900 p-10 shadow-2xl shadow-slate-100/50 dark:shadow-none">
+                            <div className={(assignment.instrument_type === 'formative_quiz' || assignment.instrument_type === 'exit_ticket')
+                                ? "rounded-[8px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#1B1B25] p-6 md:p-8 shadow-none"
+                                : "rounded-[2.5rem] border border-border bg-white dark:bg-slate-900 p-10 shadow-2xl shadow-slate-100/50 dark:shadow-none"
+                            }>
                                 <div className="flex items-center justify-between mb-8">
                                     <h2 className="text-xl font-black text-foreground tracking-tight uppercase tracking-widest">Kumpulkan Jawaban</h2>
                                     {assignment.assessment_type === 'initial' && (
@@ -1655,36 +1662,38 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                 </div>
                                             </div>
                                         </div>
-                                    ) : assignment.instrument_type === 'written_test' ? (
+                                    ) : (assignment.instrument_type === 'written_test' || assignment.instrument_type === 'formative_quiz') ? (
                                         <div className="space-y-12 animate-in fade-in duration-700">
                                             {/* Test Header & Progress */}
-                                            <div className="relative overflow-hidden rounded-[2.5rem] bg-slate-900 p-10 text-white shadow-2xl">
-                                                <div className="absolute top-0 right-0 -mt-10 -mr-10 h-64 w-64 rounded-full bg-rose-500/10 blur-3xl" />
+                                            <div className="relative overflow-hidden rounded-[8px] bg-slate-50 border border-slate-200 dark:bg-[#1B1B25] dark:border-[#2C2C3A] p-6 shadow-none text-slate-800 dark:text-[#F1F1F4]">
+                                                <div className="absolute top-0 right-0 -mt-10 -mr-10 h-64 w-64 rounded-full bg-[#5E6AD2]/5 blur-3xl" />
                                                 <div className="relative flex items-center justify-between">
                                                     <div className="flex items-center gap-5">
-                                                        <div className="h-14 w-14 rounded-2xl bg-rose-500 flex items-center justify-center text-white shadow-xl shadow-rose-500/20">
-                                                            <Layers className="h-7 w-7" />
+                                                        <div className="h-11 w-11 rounded-[6px] bg-[#5E6AD2]/10 dark:bg-[#5E6AD2] text-[#5E6AD2] dark:text-white shadow-none flex items-center justify-center shadow-xl">
+                                                            <ListChecks className="h-5 w-5" />
                                                         </div>
                                                         <div>
-                                                            <h3 className="text-xl font-black uppercase tracking-widest leading-none mb-2">Lembar Tes Tertulis</h3>
-                                                            <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest">Fokus & Teliti • {assignment.instrument_config?.questions?.length || 0} Pertanyaan</p>
+                                                            <h3 className="font-semibold tracking-[-0.03em] text-lg text-slate-800 dark:text-[#F1F1F4]">
+                                                                {assignment.instrument_type === 'formative_quiz' ? 'Lembar Kuis Formatif' : 'Lembar Tes Tertulis'}
+                                                            </h3>
+                                                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider mt-1">Fokus & Teliti • {assignment.instrument_config?.questions?.length || 0} Pertanyaan</p>
                                                         </div>
                                                     </div>
                                                     <div className="text-right">
-                                                        <p className="text-[10px] font-black text-rose-400 uppercase tracking-widest mb-1">Total Poin</p>
-                                                        <p className="text-3xl font-black tracking-tighter">{assignment.max_points}</p>
+                                                        <p className="text-[10px] font-semibold text-slate-500 dark:text-[#8A8F98] uppercase tracking-wider mb-1">Total Poin</p>
+                                                        <p className="text-2xl font-semibold tracking-tight">{assignment.max_points}</p>
                                                     </div>
                                                 </div>
                                                 
                                                 {/* Progress Bar */}
-                                                <div className="mt-10">
-                                                    <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest mb-2 text-muted-foreground">
+                                                <div className="mt-8">
+                                                    <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider mb-2 text-slate-500 dark:text-[#8A8F98]">
                                                         <span>Progres Pengerjaan</span>
                                                         <span>{Math.round((Object.keys(studentForm.data.answers).length / (assignment.instrument_config?.questions?.length || 1)) * 100)}%</span>
                                                     </div>
-                                                    <div className="h-2 w-full rounded-full bg-slate-800 overflow-hidden">
+                                                    <div className="h-1.5 w-full rounded-full bg-slate-200 dark:bg-[#101014] overflow-hidden">
                                                         <div 
-                                                            className="h-full bg-rose-500 transition-all duration-500"
+                                                            className="h-full bg-[#5E6AD2] transition-all duration-500"
                                                             style={{ width: `${(Object.keys(studentForm.data.answers).length / (assignment.instrument_config?.questions?.length || 1)) * 100}%` }}
                                                         />
                                                     </div>
@@ -1697,39 +1706,40 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                     return (
                                                         <div 
                                                             key={q.id} 
-                                                            className={`group relative rounded-[2.5rem] border-2 p-8 transition-all duration-300 ${isAnswered ? 'border-rose-100 bg-white dark:border-rose-900/30 dark:bg-slate-900' : 'border-slate-50 bg-slate-50/30 dark:border-slate-800 dark:bg-slate-900/50 hover:border-rose-100 hover:bg-white'}`}
+                                                            className={`group relative transition-all duration-150 rounded-[8px] border border-slate-200 bg-white dark:border-[#2C2C3A] dark:bg-[#1B1B25] p-6 shadow-none ${isAnswered ? 'border-[#5E6AD2]/50 bg-[#5E6AD2]/5 dark:bg-[#1E1E2A]' : 'hover:border-[#6E79D6]/50 hover:bg-slate-50/50 dark:hover:bg-[#1E1E2A]/20'}`}
                                                         >
-                                                            <div className="absolute -left-4 top-8 h-8 w-12 rounded-r-xl bg-rose-500 text-white flex items-center justify-center font-black text-sm shadow-lg shadow-rose-200">
-                                                                {idx + 1}
+                                                            <div className="flex items-center gap-3 mb-6">
+                                                                <span className="font-mono text-xs font-semibold text-slate-500 dark:text-[#8A8F98] bg-slate-50 dark:bg-[#101014] px-2.5 py-1 rounded-[4px] border border-slate-200 dark:border-[#2C2C3A]">Q{idx + 1}</span>
+                                                                <div className="h-px flex-1 bg-slate-200 dark:bg-[#2C2C3A]"></div>
                                                             </div>
 
-                                                            <div className="pl-10 space-y-8">
+                                                            <div className="space-y-6">
                                                                 <div className="space-y-4">
                                                                     <div className="flex items-start justify-between gap-4">
-                                                                        <h4 className="text-lg font-black text-foreground leading-relaxed">{q.text}</h4>
-                                                                        <span className="px-3 py-1 rounded-lg bg-rose-50 dark:bg-rose-950/30 text-[10px] font-black text-rose-600 uppercase tracking-widest whitespace-nowrap border border-rose-100 dark:border-rose-900/30">{q.points} Pts</span>
+                                                                        <h4 className="leading-relaxed text-sm font-semibold tracking-[-0.01em] text-slate-850 dark:text-[#F1F1F4]">{q.text}</h4>
+                                                                        <span className="px-2 py-0.5 rounded-[4px] text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap border bg-[#5E6AD2]/10 text-[#5E6AD2] dark:text-[#6E79D6] border-[#5E6AD2]/20">{q.points} Pts</span>
                                                                     </div>
                                                                     {q.image_url && (
-                                                                        <div className="rounded-3xl overflow-hidden border border-border shadow-xl max-w-2xl">
+                                                                        <div className="rounded-xl overflow-hidden border border-border shadow-md max-w-xl">
                                                                             <img src={q.image_url} alt="Stimulus" className="w-full object-cover" />
                                                                         </div>
                                                                     )}
                                                                 </div>
 
-                                                                <div className="space-y-4">
+                                                                <div className="space-y-3">
                                                                     {q.type === 'multiple_choice' && (
-                                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                                                             {q.options?.map((opt: any, optIdx: number) => (
                                                                                 <button 
                                                                                     key={opt.id}
                                                                                     type="button"
                                                                                     onClick={() => studentForm.setData('answers', { ...studentForm.data.answers, [q.id]: opt.id })}
-                                                                                    className={`flex items-center gap-4 p-5 rounded-3xl border-2 transition-all text-left group/opt ${studentForm.data.answers[q.id] === opt.id ? 'border-rose-500 bg-rose-50 dark:bg-rose-950/20' : 'border-slate-50 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-rose-200'}`}
+                                                                                    className={`flex items-center gap-3 p-3.5 rounded-[8px] border transition-all text-left group/opt ${studentForm.data.answers[q.id] === opt.id ? 'border-[#5E6AD2] bg-[#5E6AD2]/10 dark:bg-[#1E1E2A]' : 'border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#101014] hover:bg-slate-50 dark:hover:bg-[#1F1F2E] hover:border-[#6E79D6]/50'}`}
                                                                                 >
-                                                                                    <div className={`h-8 w-8 rounded-xl border-2 flex items-center justify-center font-black text-xs transition-all ${studentForm.data.answers[q.id] === opt.id ? 'bg-rose-500 border-rose-500 text-white' : 'border-slate-100 bg-slate-50 text-muted-foreground group-hover/opt:border-rose-200 group-hover/opt:text-rose-500'}`}>
+                                                                                    <div className={`h-6 w-6 rounded-full border flex items-center justify-center flex-shrink-0 font-semibold text-[11px] font-mono transition-all ${studentForm.data.answers[q.id] === opt.id ? 'bg-[#5E6AD2] border-[#5E6AD2] text-white' : 'border-slate-200 dark:border-[#2C2C3A] bg-slate-50 dark:bg-[#1B1B25] text-slate-500 dark:text-[#8A8F98] group-hover/opt:border-[#6E79D6] group-hover/opt:text-[#6E79D6]'}`}>
                                                                                         {String.fromCharCode(65 + optIdx)}
                                                                                     </div>
-                                                                                    <span className={`text-sm font-bold ${studentForm.data.answers[q.id] === opt.id ? 'text-slate-900 dark:text-slate-100' : 'text-slate-600 dark:text-muted-foreground'}`}>{opt.text}</span>
+                                                                                    <span className={`text-xs font-semibold ${studentForm.data.answers[q.id] === opt.id ? 'text-[#5E6AD2] dark:text-[#F1F1F4]' : 'text-slate-700 dark:text-[#8A8F98]'}`}>{opt.text}</span>
                                                                                 </button>
                                                                             ))}
                                                                         </div>
@@ -1742,22 +1752,22 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                                 value={studentForm.data.answers[q.id] || ''}
                                                                                 onChange={(e) => studentForm.setData('answers', { ...studentForm.data.answers, [q.id]: e.target.value })}
                                                                                 placeholder="Ketik jawaban singkat Anda..."
-                                                                                className="w-full rounded-2xl border-2 border-slate-50 bg-white dark:bg-slate-900 dark:border-slate-800 px-8 py-5 text-sm font-bold focus:border-rose-500 focus:ring-0 transition-all dark:text-slate-200 shadow-inner"
+                                                                                className="w-full rounded-[6px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#101014] px-4 py-3 text-xs font-medium focus:border-[#5E6AD2] focus:ring-1 focus:ring-[#5E6AD2]/15 transition-all text-slate-800 dark:text-[#F1F1F4] placeholder-slate-450 dark:placeholder-[#8A8F98]"
                                                                             />
-                                                                            <PenTool className="absolute right-6 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-300" />
+                                                                            <PenTool className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                                                                         </div>
                                                                     )}
 
                                                                     {q.type === 'essay' && (
                                                                         <div className="relative">
                                                                             <textarea 
-                                                                                rows={6}
+                                                                                rows={4}
                                                                                 value={studentForm.data.answers[q.id] || ''}
                                                                                 onChange={(e) => studentForm.setData('answers', { ...studentForm.data.answers, [q.id]: e.target.value })}
                                                                                 placeholder="Tuliskan uraian atau penjelasan lengkap Anda..."
-                                                                                className="w-full rounded-[2.5rem] border-2 border-slate-50 bg-white dark:bg-slate-900 dark:border-slate-800 px-8 py-6 text-sm font-medium leading-relaxed focus:border-rose-500 focus:ring-0 transition-all dark:text-slate-200 shadow-inner resize-none"
+                                                                                className="w-full rounded-[6px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#101014] px-4 py-3 text-xs font-medium focus:border-[#5E6AD2] focus:ring-1 focus:ring-[#5E6AD2]/15 transition-all text-slate-800 dark:text-[#F1F1F4] placeholder-slate-450 dark:placeholder-[#8A8F98] resize-none leading-relaxed"
                                                                             />
-                                                                            <FileText className="absolute right-8 top-8 h-5 w-5 text-slate-300" />
+                                                                            <FileText className="absolute right-4 top-4 h-4 w-4 text-slate-400" />
                                                                         </div>
                                                                     )}
                                                                 </div>
@@ -1838,30 +1848,103 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                             </div>
                                         </div>
                                     ) : assignment.instrument_type === 'exit_ticket' ? (
-                                        <div className="space-y-8 animate-in fade-in duration-500">
-                                            <div className="p-6 rounded-[2rem] bg-amber-50/30 dark:bg-amber-950/10 border border-amber-100 dark:border-amber-900/30 flex items-center gap-4">
-                                                <div className="h-12 w-12 rounded-2xl bg-amber-500 text-white flex items-center justify-center shadow-lg shadow-amber-200">
-                                                    <Zap className="h-6 w-6" />
+                                        <div className="space-y-12 animate-in fade-in duration-700">
+                                            {/* Exit Ticket Header & Progress */}
+                                            <div className="relative overflow-hidden rounded-[8px] bg-slate-50 border border-slate-200 dark:bg-[#1B1B25] dark:border-[#2C2C3A] p-6 shadow-none text-slate-800 dark:text-[#F1F1F4]">
+                                                <div className="absolute top-0 right-0 -mt-10 -mr-10 h-64 w-64 rounded-full bg-[#5E6AD2]/5 blur-3xl" />
+                                                <div className="relative flex items-center justify-between">
+                                                    <div className="flex items-center gap-5">
+                                                        <div className="h-11 w-11 rounded-[6px] bg-[#5E6AD2]/10 dark:bg-[#5E6AD2] text-[#5E6AD2] dark:text-white shadow-none flex items-center justify-center">
+                                                            <Ticket className="h-5 w-5" />
+                                                        </div>
+                                                        <div>
+                                                            <h3 className="font-semibold tracking-[-0.03em] text-lg text-slate-800 dark:text-[#F1F1F4]">
+                                                                Exit Ticket / CATs
+                                                            </h3>
+                                                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider mt-1">Refleksi Cepat • {assignment.instrument_config?.questions?.length || 0} Pertanyaan</p>
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                                <div>
-                                                    <h4 className="text-xs font-black text-foreground uppercase tracking-widest leading-none mb-1">Exit Ticket / CATs</h4>
-                                                    <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest italic">Berikan refleksi cepatmu sebelum mengakhiri kelas.</p>
-                                                </div>
-                                            </div>
-                                            
-                                            <div className="grid gap-6">
-                                                {(assignment.instrument_config?.questions || []).map((q: any) => (
-                                                    <div key={q.id} className="space-y-3">
-                                                        <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-4">{q.text}</label>
-                                                        <textarea 
-                                                            rows={3}
-                                                            placeholder="Tuliskan jawaban singkatmu..."
-                                                            value={studentForm.data.answers[q.id] || ''}
-                                                            onChange={(e) => studentForm.setData('answers', { ...studentForm.data.answers, [q.id]: e.target.value })}
-                                                            className="w-full rounded-[2rem] border border-slate-100 bg-slate-50/50 px-6 py-4 text-sm font-medium outline-none focus:border-amber-400 focus:bg-white focus:ring-4 focus:ring-amber-50 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-200 transition-all shadow-sm"
+                                                
+                                                {/* Progress Bar */}
+                                                <div className="mt-8">
+                                                    <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider mb-2 text-slate-500 dark:text-[#8A8F98]">
+                                                        <span>Progres Pengerjaan</span>
+                                                        <span>{Math.round((Object.values(studentForm.data.answers).filter((v: any) => v && String(v).trim()).length / (assignment.instrument_config?.questions?.length || 1)) * 100)}%</span>
+                                                    </div>
+                                                    <div className="h-1.5 w-full rounded-full bg-slate-200 dark:bg-[#101014] overflow-hidden">
+                                                        <div 
+                                                            className="h-full bg-[#5E6AD2] transition-all duration-500"
+                                                            style={{ width: `${(Object.values(studentForm.data.answers).filter((v: any) => v && String(v).trim()).length / (assignment.instrument_config?.questions?.length || 1)) * 100}%` }}
                                                         />
                                                     </div>
-                                                ))}
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-8">
+                                                {(assignment.instrument_config?.questions || []).map((q: any, idx: number) => {
+                                                    const qKey = q.id ?? `et_${idx}`;
+                                                    const isAnswered = studentForm.data.answers[qKey] && String(studentForm.data.answers[qKey]).trim();
+                                                    return (
+                                                        <div 
+                                                            key={qKey} 
+                                                            className={`group relative transition-all duration-150 rounded-[8px] border border-slate-200 bg-white dark:border-[#2C2C3A] dark:bg-[#1B1B25] p-6 shadow-none ${isAnswered ? 'border-[#5E6AD2]/50 bg-[#5E6AD2]/5 dark:bg-[#1E1E2A]' : 'hover:border-[#6E79D6]/50 hover:bg-slate-50/50 dark:hover:bg-[#1E1E2A]/20'}`}
+                                                        >
+                                                            <div className="flex items-center gap-3 mb-6">
+                                                                <span className="font-mono text-xs font-semibold text-slate-500 dark:text-[#8A8F98] bg-slate-50 dark:bg-[#101014] px-2.5 py-1 rounded-[4px] border border-slate-200 dark:border-[#2C2C3A]">Q{idx + 1}</span>
+                                                                <div className="h-px flex-1 bg-slate-200 dark:bg-[#2C2C3A]"></div>
+                                                            </div>
+
+                                                            <div className="space-y-6">
+                                                                <div className="space-y-4">
+                                                                    <h4 className="text-sm font-semibold tracking-[-0.01em] text-slate-850 dark:text-[#F1F1F4] leading-relaxed">{q.text}</h4>
+                                                                </div>
+
+                                                                <div className="space-y-3">
+                                                                    {q.type === 'multiple_choice' ? (
+                                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                                            {(q.options || []).map((opt: any, optIdx: number) => (
+                                                                                <button 
+                                                                                    key={opt.id}
+                                                                                    type="button"
+                                                                                    onClick={() => studentForm.setData('answers', { ...studentForm.data.answers, [qKey]: opt.id.toString() })}
+                                                                                    className={`flex items-center gap-3 p-3.5 rounded-[8px] border transition-all text-left group/opt ${studentForm.data.answers[qKey] === opt.id.toString() ? 'border-[#5E6AD2] bg-[#5E6AD2]/10 dark:bg-[#1E1E2A]' : 'border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#101014] hover:bg-slate-50 dark:hover:bg-[#1F1F2E] hover:border-[#6E79D6]/50'}`}
+                                                                                >
+                                                                                    <div className={`h-6 w-6 rounded-full border flex items-center justify-center flex-shrink-0 font-semibold text-[11px] font-mono transition-all ${studentForm.data.answers[qKey] === opt.id.toString() ? 'bg-[#5E6AD2] border-[#5E6AD2] text-white' : 'border-slate-200 dark:border-[#2C2C3A] bg-slate-50 dark:bg-[#1B1B25] text-slate-500 dark:text-[#8A8F98] group-hover/opt:border-[#6E79D6] group-hover/opt:text-[#6E79D6]'}`}>
+                                                                                        {String.fromCharCode(65 + optIdx)}
+                                                                                    </div>
+                                                                                    <span className={`text-xs font-semibold ${studentForm.data.answers[qKey] === opt.id.toString() ? 'text-[#5E6AD2] dark:text-[#F1F1F4]' : 'text-slate-700 dark:text-[#8A8F98]'}`}>{opt.text}</span>
+                                                                                </button>
+                                                                            ))}
+                                                                        </div>
+                                                                    ) : q.type === 'short_answer' ? (
+                                                                        <div className="relative">
+                                                                            <input 
+                                                                                type="text"
+                                                                                value={studentForm.data.answers[qKey] || ''}
+                                                                                onChange={(e) => studentForm.setData('answers', { ...studentForm.data.answers, [qKey]: e.target.value })}
+                                                                                placeholder="Ketik jawaban singkat Anda..."
+                                                                                className="w-full rounded-[6px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#101014] px-4 py-3 text-xs font-medium focus:border-[#5E6AD2] focus:ring-1 focus:ring-[#5E6AD2]/15 transition-all text-slate-800 dark:text-[#F1F1F4] placeholder-slate-450 dark:placeholder-[#8A8F98]"
+                                                                            />
+                                                                            <PenTool className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                                                                        </div>
+                                                                    ) : (
+                                                                        <div className="relative">
+                                                                            <textarea 
+                                                                                rows={4}
+                                                                                value={studentForm.data.answers[qKey] || ''}
+                                                                                onChange={(e) => studentForm.setData('answers', { ...studentForm.data.answers, [qKey]: e.target.value })}
+                                                                                placeholder="Tuliskan jawaban atau refleksi Anda..."
+                                                                                className="w-full rounded-[6px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#101014] px-4 py-3 text-xs font-medium focus:border-[#5E6AD2] focus:ring-1 focus:ring-[#5E6AD2]/15 transition-all text-slate-800 dark:text-[#F1F1F4] placeholder-slate-450 dark:placeholder-[#8A8F98] resize-none leading-relaxed"
+                                                                            />
+                                                                            <FileText className="absolute right-4 top-4 h-4 w-4 text-slate-400" />
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
                                             </div>
                                         </div>
                                     ) : assignment.instrument_type === 'concept_map' ? (
@@ -1946,7 +2029,11 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                     <button 
                                         type="submit"
                                         disabled={isSubmitting}
-                                        className="w-full rounded-[2rem] bg-gradient-to-r from-sky-500 to-indigo-600 py-5 text-sm font-black text-white shadow-2xl shadow-sky-200 dark:shadow-none hover:opacity-90 transition-all active:scale-[0.98] disabled:opacity-50 uppercase tracking-widest"
+                                        className={`w-full ${
+                                            (assignment.instrument_type === 'formative_quiz' || assignment.instrument_type === 'exit_ticket')
+                                                ? 'rounded-[6px] bg-[#5E6AD2] hover:bg-[#4E5BBF] shadow-none py-4 text-xs font-semibold'
+                                                : 'rounded-[2rem] bg-gradient-to-r from-sky-500 to-indigo-600 shadow-sky-200 py-5 text-sm font-black'
+                                        } text-white shadow-2xl dark:shadow-none hover:opacity-90 transition-all active:scale-[0.98] disabled:opacity-50 uppercase tracking-widest`}
                                     >
                                         {my_submission ? 'Perbarui Jawaban' : 'Kirim Jawaban Sekarang'}
                                     </button>
@@ -1955,13 +2042,28 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                         </div>
 
                         <div className="space-y-6">
-                            <div className="rounded-[2.5rem] border border-border bg-white dark:bg-slate-900 p-8 shadow-sm">
-                                <h2 className="text-xs font-black text-foreground uppercase tracking-widest mb-6 border-b border-slate-50 dark:border-slate-800 pb-4">Status Pengumpulan</h2>
+                            <div className={(assignment.instrument_type === 'formative_quiz' || assignment.instrument_type === 'exit_ticket')
+                                ? "rounded-[8px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#1B1B25] p-6 shadow-none"
+                                : "rounded-[2.5rem] border border-border bg-white dark:bg-slate-900 p-8 shadow-sm"
+                            }>
+                                <h2 className={`text-xs font-black text-foreground uppercase tracking-widest mb-6 border-b pb-4 ${
+                                    (assignment.instrument_type === 'formative_quiz' || assignment.instrument_type === 'exit_ticket')
+                                        ? 'border-slate-100 dark:border-[#2C2C3A]'
+                                        : 'border-slate-50 dark:border-slate-800'
+                                }`}>Status Pengumpulan</h2>
                                 {my_submission ? (
                                     <>
                                         <div className="space-y-6">
-                                            <div className="flex items-center gap-4 rounded-3xl bg-emerald-50 dark:bg-emerald-950/20 p-5 border border-emerald-100 dark:border-emerald-900/30">
-                                                <div className="h-10 w-10 rounded-2xl bg-emerald-500 flex items-center justify-center text-white shadow-lg shadow-emerald-200">
+                                            <div className={`flex items-center gap-4 p-5 border ${
+                                                (assignment.instrument_type === 'formative_quiz' || assignment.instrument_type === 'exit_ticket')
+                                                    ? 'rounded-[8px] bg-emerald-500/10 border-emerald-500/20 dark:bg-emerald-950/20 dark:border-emerald-900/30'
+                                                    : 'rounded-3xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30'
+                                            }`}>
+                                                <div className={`h-10 w-10 flex items-center justify-center text-white ${
+                                                    (assignment.instrument_type === 'formative_quiz' || assignment.instrument_type === 'exit_ticket')
+                                                        ? 'rounded-[6px] bg-emerald-500 shadow-none'
+                                                        : 'rounded-2xl bg-emerald-500 shadow-lg shadow-emerald-200'
+                                                }`}>
                                                     <CheckCircle2 className="h-6 w-6" />
                                                 </div>
                                                 <div>
@@ -1993,11 +2095,19 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                 : (my_submission.score !== null ? my_submission.is_passed : (Number(displayScore) >= (assignment.passing_grade || assignment.instrument_config?.pass_threshold || 70)));
                                                             
                                                             return effectivePassed ? (
-                                                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-500 text-white text-[9px] font-black uppercase tracking-widest shadow-sm">
+                                                                <span className={`inline-flex items-center gap-1.5 px-3 py-1 text-white text-[9px] font-black uppercase tracking-widest ${
+                                                                    (assignment.instrument_type === 'formative_quiz' || assignment.instrument_type === 'exit_ticket')
+                                                                        ? 'rounded-[4px] bg-emerald-500 shadow-none'
+                                                                        : 'rounded-lg bg-emerald-500 shadow-sm'
+                                                                }`}>
                                                                     <CheckCircle2 className="h-3 w-3" /> Tuntas
                                                                 </span>
                                                             ) : (
-                                                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-rose-500 text-white text-[9px] font-black uppercase tracking-widest shadow-sm">
+                                                                <span className={`inline-flex items-center gap-1.5 px-3 py-1 text-white text-[9px] font-black uppercase tracking-widest ${
+                                                                    (assignment.instrument_type === 'formative_quiz' || assignment.instrument_type === 'exit_ticket')
+                                                                        ? 'rounded-[4px] bg-rose-500 shadow-none'
+                                                                        : 'rounded-lg bg-rose-500 shadow-sm'
+                                                                }`}>
                                                                     <AlertCircle className="h-3 w-3" /> Remedial
                                                                 </span>
                                                             );
@@ -2013,9 +2123,17 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                 <div className="pt-6 border-t border-slate-50 dark:border-slate-800 animate-in slide-in-from-top-4 duration-500">
                                                     <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-4">Rekomendasi Tindak Lanjut:</p>
                                                     {Number(displayScore) >= Number(assignment.instrument_config?.pass_threshold || 60) ? (
-                                                        <div className="p-6 rounded-[2rem] bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30 space-y-4">
+                                                        <div className={`p-6 border space-y-4 ${
+                                                            (assignment.instrument_type === 'formative_quiz' || assignment.instrument_type === 'exit_ticket')
+                                                                ? 'rounded-[8px] bg-emerald-500/10 border-emerald-500/20 dark:bg-emerald-950/20 dark:border-emerald-900/30'
+                                                                : 'rounded-[2.5rem] bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30'
+                                                        }`}>
                                                             <div className="flex items-center gap-3">
-                                                                <div className="h-6 w-6 rounded-lg bg-emerald-500 flex items-center justify-center text-white shadow-sm">
+                                                                <div className={`h-6 w-6 flex items-center justify-center text-white ${
+                                                                    (assignment.instrument_type === 'formative_quiz' || assignment.instrument_type === 'exit_ticket')
+                                                                        ? 'rounded-[4px] bg-emerald-500 shadow-none'
+                                                                        : 'rounded-lg bg-emerald-500 shadow-sm'
+                                                                }`}>
                                                                     <Star className="h-3.5 w-3.5" />
                                                                 </div>
                                                                 <span className="text-[10px] font-black text-emerald-700 dark:text-emerald-400 uppercase tracking-widest">Kategori: Siap / Cakap</span>
@@ -2025,9 +2143,17 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                             </p>
                                                         </div>
                                                     ) : (
-                                                        <div className="p-6 rounded-[2rem] bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/30 space-y-4">
+                                                        <div className={`p-6 border space-y-4 ${
+                                                            (assignment.instrument_type === 'formative_quiz' || assignment.instrument_type === 'exit_ticket')
+                                                                ? 'rounded-[8px] bg-rose-500/10 border-rose-500/20 dark:bg-rose-950/20 dark:border-rose-900/30'
+                                                                : 'rounded-[2.5rem] bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/30'
+                                                        }`}>
                                                             <div className="flex items-center gap-3">
-                                                                <div className="h-6 w-6 rounded-lg bg-rose-500 flex items-center justify-center text-white shadow-sm">
+                                                                <div className={`h-6 w-6 flex items-center justify-center text-white ${
+                                                                    (assignment.instrument_type === 'formative_quiz' || assignment.instrument_type === 'exit_ticket')
+                                                                        ? 'rounded-[4px] bg-rose-500 shadow-none'
+                                                                        : 'rounded-lg bg-rose-500 shadow-sm'
+                                                                }`}>
                                                                     <Info className="h-3.5 w-3.5" />
                                                                 </div>
                                                                 <span className="text-[10px] font-black text-rose-700 dark:text-rose-400 uppercase tracking-widest">Kategori: Perlu Bimbingan</span>
@@ -2043,7 +2169,11 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                             {my_submission.feedback && (
                                                 <div className="pt-6 border-t border-slate-50 dark:border-slate-800">
                                                     <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-3">Umpan Balik Guru:</p>
-                                                    <div className="p-5 rounded-3xl bg-muted/50 border border-border">
+                                                    <div className={`p-5 border ${
+                                                        (assignment.instrument_type === 'formative_quiz' || assignment.instrument_type === 'exit_ticket')
+                                                            ? 'rounded-[8px] bg-slate-50 dark:bg-[#101014] border-slate-200 dark:border-[#2C2C3A]'
+                                                            : 'rounded-3xl bg-muted/50 border border-border'
+                                                    }`}>
                                                         <p className="text-xs text-slate-600 dark:text-slate-300 italic font-medium leading-relaxed">
                                                             "{my_submission.feedback}"
                                                         </p>
@@ -2317,15 +2447,29 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                             </div>
                                         )}
 
-                                        {assignment.instrument_type === 'written_test' && (
+                                        {(assignment.instrument_type === 'written_test' || assignment.instrument_type === 'formative_quiz') && (
                                             <div className="pt-6 border-t border-slate-50 dark:border-slate-800 animate-in slide-in-from-top-4">
                                                 <div className="flex items-center gap-2 mb-6">
-                                                    <Layers className="h-4 w-4 text-rose-500" />
-                                                    <h3 className="text-xs font-black text-foreground uppercase tracking-widest">Hasil Tes Tertulis</h3>
+                                                    {assignment.instrument_type === 'formative_quiz' ? (
+                                                        <ListChecks className="h-4 w-4 text-[#5E6AD2]" />
+                                                    ) : (
+                                                        <Layers className="h-4 w-4 text-rose-500" />
+                                                    )}
+                                                    <h3 className="text-xs font-black text-foreground uppercase tracking-widest">
+                                                        {assignment.instrument_type === 'formative_quiz' ? 'Hasil Kuis Formatif' : 'Hasil Tes Tertulis'}
+                                                    </h3>
                                                 </div>
-                                                <div className="p-5 rounded-3xl bg-muted/50 border border-border">
-                                                    <p className="text-xs text-slate-600 dark:text-slate-300 font-bold leading-relaxed">
-                                                        Anda telah menyelesaikan tes ini. {displayScore !== null ? `Skor Anda adalah ${displayScore} dari ${assignment.max_points} poin.` : 'Menunggu hasil penilaian otomatis/guru.'}
+                                                <div className={
+                                                    assignment.instrument_type === 'formative_quiz'
+                                                        ? "p-5 rounded-[8px] bg-slate-50 dark:bg-[#101014] border border-slate-200 dark:border-[#2C2C3A]"
+                                                        : "p-5 rounded-3xl bg-muted/50 border border-border"
+                                                }>
+                                                    <p className={`text-xs font-bold leading-relaxed ${
+                                                        assignment.instrument_type === 'formative_quiz'
+                                                            ? 'text-slate-700 dark:text-slate-300'
+                                                            : 'text-slate-600 dark:text-slate-300'
+                                                    }`}>
+                                                        Anda telah menyelesaikan {assignment.instrument_type === 'formative_quiz' ? 'kuis' : 'tes'} ini. {displayScore !== null ? `Skor Anda adalah ${displayScore} dari ${assignment.max_points} poin.` : 'Menunggu hasil penilaian otomatis/guru.'}
                                                     </p>
                                                 </div>
                                             </div>
@@ -3226,10 +3370,11 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                             const studentAns = answers[q.id];
                                             const points = Number(q.points || 0);
                                             if (q.type === 'multiple_choice') {
-                                                const selectedOpt = q.options?.find((o: any) => o.id == studentAns);
-                                                if (selectedOpt?.is_correct) recalculatedScore += points;
+                                                const correctOptId = q.answer || q.options?.find((o: any) => o.is_correct)?.id;
+                                                if (correctOptId && studentAns == correctOptId) recalculatedScore += points;
                                             } else if (q.type === 'short_answer') {
-                                                if (q.correct_answer && studentAns?.trim().toLowerCase() == q.correct_answer?.trim().toLowerCase()) {
+                                                const correctAns = q.correct_answer || q.answer;
+                                                if (correctAns && studentAns?.trim().toLowerCase() == correctAns?.trim().toLowerCase()) {
                                                     recalculatedScore += points;
                                                 }
                                             }
@@ -3247,7 +3392,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                 {assignment.instrument_config.questions.map((q: any, idx: number) => {
                                                     const studentAnswer = parsed.answers[q.id];
                                                     const isMcq = q.type === 'multiple_choice';
-                                                    const correctOpt = isMcq ? q.options?.find((o: any) => o.is_correct) : null;
+                                                    const correctOpt = isMcq ? (q.options?.find((o: any) => o.is_correct) || q.options?.find((o: any) => o.id === q.answer)) : null;
                                                     
                                                     return (
                                                         <div key={q.id} className="space-y-4 p-6 rounded-3xl bg-muted/50 border border-border">
@@ -3266,7 +3411,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                 <div className="space-y-2">
                                                                     <p className="text-[9px] font-black text-emerald-500 uppercase tracking-widest">Kunci / Referensi:</p>
                                                                     <div className="p-4 rounded-2xl bg-emerald-50/50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30 text-xs font-bold italic">
-                                                                        {isMcq ? (correctOpt?.text || 'Belum diatur') : (q.correct_answer || 'Belum diatur')}
+                                                                        {isMcq ? (correctOpt?.text || 'Belum diatur') : (q.correct_answer || q.answer || 'Belum diatur')}
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -3372,25 +3517,35 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                             </div>
                                         );
                                     }
-                                    if (parsed.type === 'written_test') {
+                                    if (parsed.type === 'written_test' || parsed.type === 'formative_quiz') {
                                         const systemScore = calculateSystemScore(selectedSubmission.content || '');
 
                                         return (
                                             <div className="space-y-8">
-                                                <div className="flex items-center justify-between p-6 rounded-[2rem] bg-rose-50/50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/30">
+                                                <div className={`flex items-center justify-between p-6 ${
+                                                    parsed.type === 'formative_quiz'
+                                                        ? 'rounded-[8px] bg-[#5E6AD2]/10 border border-[#5E6AD2]/20 text-[#5E6AD2]'
+                                                        : 'rounded-[2rem] bg-rose-50/50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/30 text-rose-500'
+                                                }`}>
                                                     <div>
-                                                        <h4 className="text-xs font-black text-blue-800 dark:text-blue-400 uppercase tracking-widest leading-none mb-1">Skor Sistem</h4>
+                                                        <h4 className={`text-xs font-black uppercase tracking-widest leading-none mb-1 ${
+                                                            parsed.type === 'formative_quiz'
+                                                                ? 'text-[#5E6AD2] dark:text-[#6E79D6]'
+                                                                : 'text-rose-700 dark:text-rose-450'
+                                                        }`}>Skor Sistem</h4>
                                                         <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Objektif (Pilihan Ganda & Isian)</p>
                                                     </div>
-                                                    <span className="text-3xl font-black text-blue-600 tracking-tighter">{systemScore}</span>
+                                                    <span className={`text-3xl font-black tracking-tighter ${
+                                                        parsed.type === 'formative_quiz' ? 'text-[#5E6AD2]' : 'text-rose-500'
+                                                    }`}>{systemScore}</span>
                                                 </div>
 
                                                 <div className="space-y-10">
                                                     {(assignment.instrument_config?.questions || []).map((q: any, idx: number) => {
                                                         const studentAns = parsed.answers?.[q.id];
                                                         const isMcq = q.type === 'multiple_choice';
-                                                        const correctOpt = isMcq ? q.options?.find((o: any) => o.is_correct) : null;
-                                                        const isCorrect = isMcq ? (correctOpt?.id == studentAns) : (studentAns?.trim().toLowerCase() == q.correct_answer?.trim().toLowerCase());
+                                                        const correctOpt = isMcq ? (q.options?.find((o: any) => o.is_correct) || q.options?.find((o: any) => o.id === q.answer)) : null;
+                                                        const isCorrect = isMcq ? (correctOpt?.id == studentAns) : (studentAns?.trim().toLowerCase() == (q.correct_answer || q.answer)?.trim().toLowerCase());
                                                         
                                                         return (
                                                             <div key={q.id} className="space-y-4">
@@ -3416,7 +3571,11 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                     </div>
                                                                 </div>
 
-                                                                <div className="ml-8 p-5 rounded-3xl bg-muted/50 border border-border space-y-3">
+                                                                <div className={`ml-8 p-5 border space-y-3 ${
+                                                                    parsed.type === 'formative_quiz'
+                                                                        ? 'rounded-[8px] bg-slate-50 dark:bg-[#101014] border-slate-200 dark:border-[#2C2C3A]'
+                                                                        : 'rounded-3xl bg-muted/50 border border-border'
+                                                                }`}>
                                                                     <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Jawaban Murid:</p>
                                                                     {q.type === 'multiple_choice' ? (
                                                                         <div className="flex items-center gap-2">
@@ -3437,7 +3596,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                         <div className="pt-3 mt-3 border-t border-border">
                                                                             <p className="text-[9px] font-black text-emerald-600 uppercase tracking-widest mb-1">Kunci Jawaban:</p>
                                                                             <p className="text-xs font-black text-emerald-700 dark:text-emerald-400">
-                                                                                {isMcq ? correctOpt?.text : q.correct_answer}
+                                                                                {isMcq ? correctOpt?.text : (q.correct_answer || q.answer)}
                                                                             </p>
                                                                         </div>
                                                                     )}

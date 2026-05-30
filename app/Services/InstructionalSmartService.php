@@ -3,7 +3,7 @@
 namespace App\Services;
 
 use App\Models\LmsLearningObjective;
-use App\Services\GeminiApiService;
+use App\Services\AiManager;
 
 class InstructionalSmartService
 {
@@ -26,11 +26,13 @@ class InstructionalSmartService
         $content = $tp->content ?? 'Materi Inti';
         $competence = $tp->competence ?? 'mempelajari';
 
-        // 1. Try Gemini API
-        $gemini = app(GeminiApiService::class);
-        if ($gemini->isConfigured()) {
+        // 1. Try AI via Manager
+        $aiManager = app(AiManager::class);
+        $ai = $aiManager->getActiveProvider();
+
+        if ($ai->isConfigured()) {
             try {
-                $suggested = $gemini->generateFullOrchestratorDraft($subjectName, $className, $tpDescription, $model, $regenerate);
+                $suggested = $ai->generateFullOrchestratorDraft($subjectName, $className, $tpDescription, $model, $regenerate);
                 if (!empty($suggested)) {
                     $this->isLastRequestOnline = true;
                     return $suggested;
@@ -184,11 +186,13 @@ class InstructionalSmartService
         $subjectName = $tp->subject?->name ?? 'Mata Pelajaran';
         $description = $tp->description ?? '';
 
-        // Integrasi Gemini API
-        $gemini = app(GeminiApiService::class);
-        if ($gemini->isConfigured()) {
+        // Integrasi API Manager
+        $aiManager = app(AiManager::class);
+        $ai = $aiManager->getActiveProvider();
+
+        if ($ai->isConfigured()) {
             try {
-                $suggested = $gemini->suggestLearningExperiences($description, $content, $subjectName, $model, $regenerate);
+                $suggested = $ai->suggestLearningExperiences($description, $content, $subjectName, $model, $regenerate);
                 if (!empty($suggested['understanding']) || !empty($suggested['application']) || !empty($suggested['reflection'])) {
                     $this->isLastRequestOnline = true;
                     return $suggested;
@@ -277,11 +281,13 @@ class InstructionalSmartService
             $content = $tp->content ?? 'materi ini';
         }
 
-        // Integrasi Gemini API
-        $gemini = app(GeminiApiService::class);
-        if ($gemini->isConfigured()) {
+        // Integrasi API Manager
+        $aiManager = app(AiManager::class);
+        $ai = $aiManager->getActiveProvider();
+
+        if ($ai->isConfigured()) {
             try {
-                $suggested = $gemini->suggestAssessment($description, $content, $type, $regenerate);
+                $suggested = $ai->suggestAssessment($description, $content, $type, $regenerate);
                 if (!empty($suggested)) {
                     $this->isLastRequestOnline = true;
                     return $suggested;

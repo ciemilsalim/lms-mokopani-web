@@ -41,6 +41,7 @@ export default function QuizBuilder({
         const newQs = [...questions, {
             type: 'multiple_choice',
             text: '',
+            points: 1,
             options: [
                 { id: 'a', text: '' },
                 { id: 'b', text: '' },
@@ -115,14 +116,26 @@ export default function QuizBuilder({
                                                 { id: 'd', text: '' }
                                             ] : [];
                                             const newQs = [...questions];
-                                            newQs[qIdx] = { ...newQs[qIdx], type, options: opts };
+                                            newQs[qIdx] = { ...newQs[qIdx], type, options: opts, answer: '', correct_answer: '' };
                                             updateConfig('questions', newQs);
                                         }}
                                         className="h-7 rounded border border-border bg-popover text-foreground px-2 text-[10px] font-semibold outline-none focus:border-primary transition"
                                     >
                                         <option value="multiple_choice">Pilihan Ganda</option>
                                         <option value="short_answer">Isian Singkat</option>
+                                        <option value="essay">Uraian / Esai</option>
                                     </select>
+
+                                    <div className="flex items-center gap-1.5 ml-auto">
+                                        <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Bobot</label>
+                                        <input
+                                            type="number"
+                                            value={q.points !== undefined ? q.points : 1}
+                                            onChange={(e) => updateQuestionField(qIdx, 'points', parseInt(e.target.value) || 0)}
+                                            min="0"
+                                            className="w-14 h-7 text-center rounded border border-border bg-popover text-foreground px-2 text-[10px] font-semibold outline-none focus:border-primary transition"
+                                        />
+                                    </div>
                                 </div>
 
                                 <textarea
@@ -142,12 +155,20 @@ export default function QuizBuilder({
                                         </div>
                                         <div className="grid gap-2 sm:grid-cols-2">
                                             {(q.options || []).map((opt: any, optIdx: number) => {
-                                                const isCorrect = q.answer === opt.id;
+                                                const isCorrect = q.answer === opt.id || opt.is_correct === true;
                                                 return (
                                                     <div key={optIdx} className="flex items-center gap-2 relative group/opt">
                                                         <button
                                                             type="button"
-                                                            onClick={() => updateQuestionField(qIdx, 'answer', opt.id)}
+                                                            onClick={() => {
+                                                                const newQs = [...questions];
+                                                                const newOpts = (newQs[qIdx].options || []).map((o: any) => ({
+                                                                    ...o,
+                                                                    is_correct: o.id === opt.id
+                                                                }));
+                                                                newQs[qIdx] = { ...newQs[qIdx], answer: opt.id, options: newOpts };
+                                                                updateConfig('questions', newQs);
+                                                            }}
                                                             title="Jadikan sebagai kunci jawaban"
                                                             className={`flex items-center justify-center h-6 w-6 rounded-full text-[10px] font-bold uppercase transition-all shrink-0 cursor-pointer ${
                                                                 isCorrect
@@ -182,8 +203,13 @@ export default function QuizBuilder({
                                         </label>
                                         <input
                                             type="text"
-                                            value={q.answer || ''}
-                                            onChange={(e) => updateQuestionField(qIdx, 'answer', e.target.value)}
+                                            value={q.answer || q.correct_answer || ''}
+                                            onChange={(e) => {
+                                                const val = e.target.value;
+                                                const newQs = [...questions];
+                                                newQs[qIdx] = { ...newQs[qIdx], answer: val, correct_answer: val };
+                                                updateConfig('questions', newQs);
+                                            }}
                                             placeholder="Tuliskan kunci jawaban yang benar di sini..."
                                             className="w-full h-8 rounded border border-border bg-popover text-foreground px-3 text-[11px] outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20 transition"
                                         />

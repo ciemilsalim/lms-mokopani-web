@@ -170,6 +170,7 @@ export default function EditAssignment({ assignment, teachings, objectives, asse
             id: Date.now(),
             type: 'multiple_choice',
             text: '',
+            points: 1,
             options: [
                 { id: 'a', text: '' },
                 { id: 'b', text: '' },
@@ -363,7 +364,7 @@ export default function EditAssignment({ assignment, teachings, objectives, asse
                             <div className="rounded-xl border border-border bg-card p-6 space-y-6">
 
                                 {/* 1. KUIS & TES TERTULIS (QuizBuilder Layout) */}
-                                {(data.instrument_type === 'quiz_survey' || data.instrument_type === 'written_test') && (
+                                {(data.instrument_type === 'quiz_survey' || data.instrument_type === 'written_test' || data.instrument_type === 'formative_quiz') && (
                                     <div className="space-y-4">
                                         <div className="flex items-center justify-between">
                                             <div>
@@ -412,12 +413,26 @@ export default function EditAssignment({ assignment, teachings, objectives, asse
                                                                         ] : [];
                                                                         updateQuestionField(qIdx, 'type', type);
                                                                         updateQuestionField(qIdx, 'options', opts);
+                                                                        updateQuestionField(qIdx, 'answer', '');
+                                                                        updateQuestionField(qIdx, 'correct_answer', '');
                                                                     }}
                                                                     className="h-8 rounded-lg border border-border bg-popover text-foreground px-3 text-[11px] font-semibold outline-none focus:border-primary transition"
                                                                 >
                                                                     <option value="multiple_choice">Pilihan Ganda</option>
                                                                     <option value="short_answer">Isian Singkat</option>
+                                                                    <option value="essay">Uraian / Esai</option>
                                                                 </select>
+
+                                                                <div className="flex items-center gap-1.5 ml-auto">
+                                                                    <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Bobot</label>
+                                                                    <input
+                                                                        type="number"
+                                                                        value={q.points !== undefined ? q.points : 1}
+                                                                        onChange={(e) => updateQuestionField(qIdx, 'points', parseInt(e.target.value) || 0)}
+                                                                        min="0"
+                                                                        className="w-14 h-8 text-center rounded-lg border border-border bg-popover text-foreground px-2 text-[11px] font-semibold outline-none focus:border-primary transition"
+                                                                    />
+                                                                </div>
                                                             </div>
 
                                                             <textarea
@@ -437,12 +452,23 @@ export default function EditAssignment({ assignment, teachings, objectives, asse
                                                                     </div>
                                                                     <div className="grid gap-2 sm:grid-cols-2">
                                                                         {(q.options || []).map((opt: any, optIdx: number) => {
-                                                                            const isCorrect = q.answer === opt.id;
+                                                                            const isCorrect = q.answer === opt.id || opt.is_correct === true;
                                                                             return (
                                                                                 <div key={optIdx} className="flex items-center gap-2 relative group/opt">
                                                                                     <button
                                                                                         type="button"
-                                                                                        onClick={() => updateQuestionField(qIdx, 'answer', opt.id)}
+                                                                                        onClick={() => {
+                                                                                            const newQs = [...(data.instrument_config?.questions || [])];
+                                                                                            const newOpts = (newQs[qIdx].options || []).map((o: any) => ({
+                                                                                                ...o,
+                                                                                                is_correct: o.id === opt.id
+                                                                                            }));
+                                                                                            newQs[qIdx] = { ...newQs[qIdx], answer: opt.id, options: newOpts };
+                                                                                            setData('instrument_config', {
+                                                                                                ...data.instrument_config,
+                                                                                                questions: newQs
+                                                                                            });
+                                                                                        }}
                                                                                         title="Jadikan sebagai kunci jawaban"
                                                                                         className={`flex items-center justify-center h-6 w-6 rounded-full text-[10px] font-bold uppercase transition-all shrink-0 cursor-pointer ${
                                                                                             isCorrect
@@ -477,10 +503,41 @@ export default function EditAssignment({ assignment, teachings, objectives, asse
                                                                     </label>
                                                                     <input
                                                                         type="text"
-                                                                        value={q.answer || ''}
-                                                                        onChange={(e) => updateQuestionField(qIdx, 'answer', e.target.value)}
+                                                                        value={q.answer || q.correct_answer || ''}
+                                                                        onChange={(e) => {
+                                                                            const val = e.target.value;
+                                                                            const newQs = [...(data.instrument_config?.questions || [])];
+                                                                            newQs[qIdx] = { ...newQs[qIdx], answer: val, correct_answer: val };
+                                                                            setData('instrument_config', {
+                                                                                ...data.instrument_config,
+                                                                                questions: newQs
+                                                                            });
+                                                                        }}
                                                                         placeholder="Tuliskan kunci jawaban yang benar di sini..."
                                                                         className="w-full h-8 rounded border border-border bg-popover text-foreground px-3 text-[11px] outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20 transition"
+                                                                    />
+                                                                </div>
+                                                            )}
+
+                                                            {q.type === 'essay' && (
+                                                                <div className="space-y-1.5 mt-2 pl-1">
+                                                                    <label className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider ml-0.5">
+                                                                        Pedoman Penskoran / Kunci Uraian
+                                                                    </label>
+                                                                    <textarea
+                                                                        value={q.answer || q.correct_answer || ''}
+                                                                        onChange={(e) => {
+                                                                            const val = e.target.value;
+                                                                            const newQs = [...(data.instrument_config?.questions || [])];
+                                                                            newQs[qIdx] = { ...newQs[qIdx], answer: val, correct_answer: val };
+                                                                            setData('instrument_config', {
+                                                                                ...data.instrument_config,
+                                                                                questions: newQs
+                                                                            });
+                                                                        }}
+                                                                        placeholder="Tuliskan petunjuk jawaban atau pedoman penilaian di sini..."
+                                                                        rows={3}
+                                                                        className="w-full rounded border border-border bg-popover text-foreground px-3 py-2 text-[11px] outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20 transition leading-relaxed"
                                                                     />
                                                                 </div>
                                                             )}
@@ -668,6 +725,7 @@ export default function EditAssignment({ assignment, teachings, objectives, asse
                                 {/* 5. LAINNYA (Rubric, Map, Oral QA, etc.) */}
                                 {data.instrument_type !== 'quiz_survey' && 
                                  data.instrument_type !== 'written_test' && 
+                                 data.instrument_type !== 'formative_quiz' && 
                                  data.instrument_type !== 'observation_checklist' && 
                                  data.instrument_type !== 'performance_observation' &&
                                  data.instrument_type !== 'performance' && 

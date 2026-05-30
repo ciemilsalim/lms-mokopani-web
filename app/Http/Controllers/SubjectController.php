@@ -56,22 +56,36 @@ class SubjectController extends Controller
     public function show(Subject $subject, AdaptiveLearningService $adaptiveService)
     {
         $user = auth()->user();
+        $studentClassId = ($user && $user->role === 'student' && $user->student) ? $user->student->school_class_id : null;
 
-        $tps = \App\Models\LmsLearningObjective::where('subject_id', $subject->id)
-            ->orderBy('order')
+        $tpQuery = \App\Models\LmsLearningObjective::where('subject_id', $subject->id);
+        
+        // Filter TP berdasarkan kelas siswa agar hanya menampilkan TP yang aktif untuk kelasnya
+        if ($studentClassId) {
+            $tpQuery->where('school_class_id', $studentClassId);
+        }
+
+        $tps = $tpQuery->orderBy('order')
             ->orderBy('code')
             ->get();
 
         // Eager-load all assignments and materials for these TPs
         $tpIds = $tps->pluck('id');
 
-        $allAssignments = \App\Models\LmsAssignment::whereIn('learning_objective_id', $tpIds)
-            ->orderBy('order')
+        $assignmentQuery = \App\Models\LmsAssignment::whereIn('learning_objective_id', $tpIds);
+        $materialQuery = \App\Models\LmsMaterial::whereIn('learning_objective_id', $tpIds);
+
+        // Filter berdasarkan kelas siswa
+        if ($studentClassId) {
+            $assignmentQuery->where('school_class_id', $studentClassId);
+            $materialQuery->where('school_class_id', $studentClassId);
+        }
+
+        $allAssignments = $assignmentQuery->orderBy('order')
             ->get()
             ->groupBy('learning_objective_id');
 
-        $allMaterials = \App\Models\LmsMaterial::whereIn('learning_objective_id', $tpIds)
-            ->orderBy('order')
+        $allMaterials = $materialQuery->orderBy('order')
             ->get()
             ->groupBy('learning_objective_id');
 
@@ -87,15 +101,23 @@ class SubjectController extends Controller
 
         // Eager-load reflections for the current student (if applicable)
         $reflections = collect();
+        $studentMaterials = collect();
         if ($user && $user->role === 'student' && $user->student) {
             $materialIds = $allMaterials->flatten()->pluck('id');
             $reflections = \App\Models\LmsReflection::whereIn('material_id', $materialIds)
                 ->where('student_id', $user->student->id)
                 ->get()
                 ->keyBy('material_id');
+            
+            // Juga cek LmsStudentMaterial untuk konsistensi dengan MaterialController
+            $studentMaterials = \App\Models\LmsStudentMaterial::whereIn('material_id', $materialIds)
+                ->where('student_id', $user->student->id)
+                ->whereNotNull('completed_at')
+                ->get()
+                ->keyBy('material_id');
         }
 
-        $result = $tps->map(function ($tp) use ($user, $allAssignments, $allMaterials, $submissions, $reflections) {
+        $result = $tps->map(function ($tp) use ($user, $allAssignments, $allMaterials, $submissions, $reflections, $studentMaterials) {
             $assignments = collect($allAssignments->get($tp->id, []))->map(function ($a) use ($user, $submissions) {
                 $submission = $submissions->get($a->id);
 
@@ -120,8 +142,8 @@ class SubjectController extends Controller
                 ];
             });
 
-            $materials = collect($allMaterials->get($tp->id, []))->map(function ($m) use ($reflections) {
-                $isCompleted = $reflections->has($m->id);
+            $materials = collect($allMaterials->get($tp->id, []))->map(function ($m) use ($reflections, $studentMaterials) {
+                $isCompleted = $reflections->has($m->id) || $studentMaterials->has($m->id);
 
                 return [
                     'id' => $m->id,

@@ -76,23 +76,46 @@ class AssignmentController extends Controller
         }
 
         if (in_array($user->role, ['student', 'admin'])) {
-            $grouped = $models->groupBy('subject_id')->map(function ($items, $subjectId) {
+            $accessibleTpIds = [];
+            if ($user->role === 'student' && $user->student) {
+                $accessibleTpIds = app(AdaptiveLearningService::class)->getStudentAccessibleTpIds($user->student->id, $user->student->school_class_id);
+            }
+
+            $grouped = $models->groupBy('subject_id')->map(function ($items, $subjectId) use ($accessibleTpIds, $user) {
                 $first = $items->first();
+                $tpGroups = $items->groupBy(function ($item) {
+                    return $item->learning_objective_id ?? 'null';
+                });
+                $objectives = $tpGroups->map(function ($tpItems, $tpId) use ($accessibleTpIds, $user) {
+                    $firstTp = $tpItems->first();
+                    $isAccessible = $user->role === 'admin' || $tpId === 'null' || in_array($firstTp->learning_objective_id, $accessibleTpIds);
+                    return [
+                        'objective_id'          => $firstTp->learning_objective_id,
+                        'objective_code'        => $firstTp->learningObjective?->code ?: ('TP ' . ($firstTp->learningObjective?->order ?? '?')),
+                        'objective_description' => $firstTp->learningObjective?->description ?? 'Tanpa TP',
+                        'is_accessible'         => $isAccessible,
+                        'assignments'           => $tpItems->map(fn ($a) => [
+                            'id'                => $a->id,
+                            'title'             => $a->title,
+                            'description'       => $a->description,
+                            'subject_name'      => $a->subject?->name ?? '-',
+                            'subject_id'        => $a->subject_id,
+                            'due_date'          => $a->due_date?->format('d M Y'),
+                            'max_points'        => $a->max_points,
+                            'assessment_type'   => $a->assessment_type,
+                            'instrument_type'   => $a->instrument_type,
+                            'scoring_tool'      => $a->scoring_tool,
+                            'submissions_count' => $a->submissions_count,
+                            'is_accessible'     => $isAccessible,
+                        ])->values(),
+                    ];
+                })->values();
+
                 return [
                     'subject_id'   => (int) $subjectId,
                     'subject_name' => $first->subject?->name ?? '-',
-                    'assignments'  => $items->map(fn ($a) => [
-                        'id'                => $a->id,
-                        'title'             => $a->title,
-                        'description'       => $a->description,
-                        'due_date'          => $a->due_date?->format('d M Y'),
-                        'max_points'        => $a->max_points,
-                        'assessment_type'   => $a->assessment_type,
-                        'instrument_type'   => $a->instrument_type,
-                        'scoring_tool'      => $a->scoring_tool,
-                        'submissions_count' => $a->submissions_count,
-                    ])->values(),
-                    'total' => $items->count(),
+                    'objectives'   => $objectives,
+                    'total'        => $items->count(),
                 ];
             })->values();
 
@@ -102,6 +125,11 @@ class AssignmentController extends Controller
                 'active_semester'     => $activeSemester?->name,
                 'user_role'           => $user->role ?? 'student',
             ]);
+        }
+
+        $accessibleTpIds = [];
+        if ($user->role === 'student' && $user->student) {
+            $accessibleTpIds = app(AdaptiveLearningService::class)->getStudentAccessibleTpIds($user->student->id, $user->student->school_class_id);
         }
 
         $assignments = $models->map(fn ($a) => [
@@ -115,6 +143,7 @@ class AssignmentController extends Controller
             'instrument_type'   => $a->instrument_type,
             'scoring_tool'      => $a->scoring_tool,
             'submissions_count' => $a->submissions_count,
+            'is_accessible'     => $user->role === 'admin' || $user->role === 'teacher' || !$a->learning_objective_id || in_array($a->learning_objective_id, $accessibleTpIds),
         ]);
 
         return Inertia::render('assignments/index', [
@@ -386,6 +415,12 @@ class AssignmentController extends Controller
     {
         $student = Auth::user()->student;
 
+        // Validasi batas akhir pengumpulan
+        $isLate = false;
+        if ($assignment->due_date && now()->gt($assignment->due_date)) {
+            $isLate = true;
+        }
+
         $validated = $request->validate([
             'content' => 'nullable|string',
             'file'    => 'nullable|file|mimes:pdf,doc,docx,png,jpg,jpeg|max:10240',
@@ -402,6 +437,72 @@ class AssignmentController extends Controller
             ->first();
 
         $score = $request->score;
+
+        // Auto-grade quizzes if score is not provided
+        if ($score === null && in_array($assignment->instrument_type, ['written_test', 'formative_quiz', 'quiz_survey'])) {
+            $config = is_array($assignment->instrument_config) ? $assignment->instrument_config : json_decode($assignment->instrument_config ?? '[]', true);
+            $questions = $config['questions'] ?? [];
+            $submittedData = json_decode($validated['content'] ?? '[]', true);
+            $answers = $submittedData['answers'] ?? [];
+
+            $calculatedScore = 0;
+            $maxScore = 0;
+            $allAutoGradable = true;
+
+            foreach ($questions as $q) {
+                $points = $q['points'] ?? 1;
+                $maxScore += $points;
+
+                if (($q['type'] ?? '') === 'multiple_choice') {
+                    $correctAnswerId = null;
+                    if (isset($q['answer']) && $q['answer'] !== '') {
+                        $correctAnswerId = $q['answer'];
+                    } else {
+                        $correctOption = collect($q['options'] ?? [])->firstWhere('is_correct', true);
+                        if ($correctOption) {
+                            $correctAnswerId = $correctOption['id'] ?? null;
+                        }
+                    }
+
+                    if ($correctAnswerId !== null) {
+                        $studentAnswer = $answers[$q['id']] ?? null;
+                        if ($studentAnswer == $correctAnswerId) {
+                            $calculatedScore += $points;
+                        }
+                    } else {
+                        $allAutoGradable = false;
+                    }
+                } else if (($q['type'] ?? '') === 'short_answer') {
+                    $correctAnswer = null;
+                    if (isset($q['answer']) && trim($q['answer']) !== '') {
+                        $correctAnswer = trim($q['answer']);
+                    } else if (isset($q['correct_answer']) && trim($q['correct_answer']) !== '') {
+                        $correctAnswer = trim($q['correct_answer']);
+                    }
+
+                    if ($correctAnswer !== null) {
+                        $studentAnswer = strtolower(trim($answers[$q['id']] ?? ''));
+                        if (strtolower($studentAnswer) === strtolower($correctAnswer)) {
+                            $calculatedScore += $points;
+                        }
+                    } else {
+                        $allAutoGradable = false;
+                    }
+                } else {
+                    // Essay or other types cannot be auto-graded perfectly
+                    $allAutoGradable = false;
+                }
+            }
+
+            if ($allAutoGradable && count($questions) > 0) {
+                // Scale score to assignment's max_points
+                if ($assignment->max_points > 0 && $maxScore > 0) {
+                    $score = round(($calculatedScore / $maxScore) * $assignment->max_points);
+                } else {
+                    $score = $calculatedScore;
+                }
+            }
+        }
 
         $submissionRecord = null;
         if ($submission) {
@@ -428,6 +529,10 @@ class AssignmentController extends Controller
         // Auto-analyze diagnostic results for initial assessments
         if ($assignment->assessment_type === 'initial') {
             $adaptiveService->analyzeDiagnostic($submissionRecord);
+        }
+
+        if ($isLate) {
+            return back()->with('success', 'Tugas berhasil dikumpulkan (terlambat — melewati batas akhir pengumpulan).');
         }
 
         return back()->with('success', 'Tugas berhasil dikumpulkan.');
