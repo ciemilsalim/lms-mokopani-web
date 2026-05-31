@@ -532,6 +532,16 @@ export default function ShowAssignment({ assignment, students, my_submission, my
     // Reflective Journal State
     const [journalAnswers, setJournalAnswers] = useState<{question: string; answer: string}[]>([]);
 
+    // Project State
+    const [projectData, setProjectData] = useState({ description: '', process_notes: '', file: null as File | null });
+
+    // Portfolio State
+    const [portfolioReflections, setPortfolioReflections] = useState<{question: string; answer: string}[]>([]);
+    const [portfolioFile, setPortfolioFile] = useState<File | null>(null);
+
+    // Assignment (Laporan/Studi Kasus) State
+    const [assignmentData, setAssignmentData] = useState({ report_text: '', analysis_notes: '', file: null as File | null });
+
     // Concept Map State (Student)
     const [conceptMapData, setConceptMapData] = useState({
         nodes: [] as any[],
@@ -564,7 +574,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
     });
 
     // Project Assessment State (Teacher - Summative)
-    const [projectData, setProjectData] = useState({
+    const [projectGradingData, setProjectGradingData] = useState({
         scores: {} as Record<string, string>,
         notes: ''
     });
@@ -654,6 +664,20 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                     });
                 } else if (parsed.type === 'reflective_journal') {
                     setJournalAnswers(parsed.answers || []);
+                } else if (parsed.type === 'project') {
+                    setProjectData({
+                        description: parsed.description || '',
+                        process_notes: parsed.process_notes || '',
+                        file: null
+                    });
+                } else if (parsed.type === 'portfolio') {
+                    setPortfolioReflections(parsed.reflections || []);
+                } else if (parsed.type === 'assignment') {
+                    setAssignmentData({
+                        report_text: parsed.report_text || '',
+                        analysis_notes: parsed.analysis_notes || '',
+                        file: null
+                    });
                 } else if (parsed.type === 'quiz_response') {
                     studentForm.setData('answers', parsed.answers || {});
                     studentForm.setData('content', parsed.note || '');
@@ -877,7 +901,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
             } catch(e) {}
         }
 
-        setProjectData(initialData);
+        setProjectGradingData(initialData);
         teacherForm.setData({
             assignment_id: assignment.id,
             student_id: student.id.toString(),
@@ -890,14 +914,14 @@ export default function ShowAssignment({ assignment, students, my_submission, my
     const handleSaveProject = () => {
         const content = JSON.stringify({
             type: 'project',
-            scores: projectData.scores
+            scores: projectGradingData.scores
         });
 
         router.post(route('assignments.grade'), {
             assignment_id: assignment.id,
             student_id: teacherForm.data.student_id,
             score: teacherForm.data.score,
-            feedback: projectData.notes,
+            feedback: projectGradingData.notes,
             content: content
         }, {
             preserveScroll: true,
@@ -919,9 +943,17 @@ export default function ShowAssignment({ assignment, students, my_submission, my
             try {
                 const parsed = JSON.parse(sub.content);
                 if (parsed.type === 'portfolio') {
+                    let reflections: Record<string, string> = {};
+                    if (Array.isArray(parsed.reflections)) {
+                        parsed.reflections.forEach((r: any, idx: number) => {
+                            reflections[idx] = r.answer || '';
+                        });
+                    } else {
+                        reflections = parsed.reflections || {};
+                    }
                     initialData = {
                         artifacts: parsed.artifacts || [],
-                        reflections: parsed.reflections || {},
+                        reflections: reflections,
                         notes: sub.feedback || ''
                     };
                 }
@@ -1256,6 +1288,21 @@ export default function ShowAssignment({ assignment, students, my_submission, my
             }
         } else if (assignment.instrument_type === 'reflective_journal') {
             finalContent = JSON.stringify({ type: 'reflective_journal', answers: journalAnswers });
+        } else if (assignment.instrument_type === 'project') {
+            finalContent = JSON.stringify({ type: 'project', description: projectData.description, process_notes: projectData.process_notes });
+            if (projectData.file) {
+                studentForm.setData('file', projectData.file);
+            }
+        } else if (assignment.instrument_type === 'assignment') {
+            finalContent = JSON.stringify({ type: 'assignment', report_text: assignmentData.report_text, analysis_notes: assignmentData.analysis_notes });
+            if (assignmentData.file) {
+                studentForm.setData('file', assignmentData.file);
+            }
+        } else if (assignment.instrument_type === 'portfolio') {
+            finalContent = JSON.stringify({ type: 'portfolio', reflections: portfolioReflections });
+            if (portfolioFile) {
+                studentForm.setData('file', portfolioFile);
+            }
         } else if (assignment.instrument_type === 'concept_map') {
             finalContent = JSON.stringify({ 
                 type: 'concept_map', 
@@ -2775,6 +2822,215 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                 )}
                                             </div>
                                         </div>
+                                    ) : assignment.instrument_type === 'project' ? (
+                                        <div className="space-y-8 animate-in fade-in duration-500">
+                                            <div className="relative overflow-hidden rounded-[8px] bg-slate-50 border border-slate-200 dark:bg-[#1B1B25] dark:border-[#2C2C3A] p-6 shadow-none text-slate-800 dark:text-[#F1F1F4]">
+                                                <div className="absolute top-0 right-0 -mt-10 -mr-10 h-64 w-64 rounded-full bg-[#5E6AD2]/5 blur-3xl" />
+                                                <div className="relative flex items-center gap-5">
+                                                    <div className="h-11 w-11 rounded-[6px] bg-[#5E6AD2]/10 dark:bg-[#5E6AD2] text-[#5E6AD2] dark:text-white shadow-none flex items-center justify-center">
+                                                        <FolderKanban className="h-5 w-5" />
+                                                    </div>
+                                                    <div>
+                                                        <h3 className="font-semibold tracking-[-0.03em] text-lg text-slate-800 dark:text-[#F1F1F4]">Penilaian Proyek & Produk</h3>
+                                                        <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider mt-1">Kerjakan proyek dan kumpulkan hasilnya</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {assignment.instrument_config?.stimulus && (
+                                                <div className="p-5 rounded-[8px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#1B1B25] shadow-none">
+                                                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-2">Pertanyaan Utama (Driving Question):</p>
+                                                    <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium italic">{assignment.instrument_config.stimulus}</p>
+                                                </div>
+                                            )}
+
+                                            <div className="grid md:grid-cols-3 gap-4">
+                                                {assignment.instrument_config?.phase_planning && (
+                                                    <div className="p-4 rounded-[8px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#1B1B25] shadow-none">
+                                                        <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-2">📋 Perencanaan</p>
+                                                        <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-relaxed">{assignment.instrument_config.phase_planning}</p>
+                                                    </div>
+                                                )}
+                                                {assignment.instrument_config?.phase_execution && (
+                                                    <div className="p-4 rounded-[8px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#1B1B25] shadow-none">
+                                                        <p className="text-[10px] font-black text-amber-500 uppercase tracking-widest mb-2">🔧 Pelaksanaan</p>
+                                                        <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-relaxed">{assignment.instrument_config.phase_execution}</p>
+                                                    </div>
+                                                )}
+                                                {assignment.instrument_config?.phase_product && (
+                                                    <div className="p-4 rounded-[8px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#1B1B25] shadow-none">
+                                                        <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-2">📦 Produk/Hasil</p>
+                                                        <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-relaxed">{assignment.instrument_config.phase_product}</p>
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            <div className="space-y-3">
+                                                <label className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">Deskripsi Proyek</label>
+                                                <textarea
+                                                    rows={6}
+                                                    value={projectData.description}
+                                                    onChange={(e) => setProjectData({ ...projectData, description: e.target.value })}
+                                                    placeholder="Jelaskan proyek yang Anda kerjakan: apa yang dibuat, bagaimana prosesnya, dan hasil akhirnya..."
+                                                    className="w-full rounded-[8px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#101014] px-4 py-3 text-xs font-medium focus:border-[#5E6AD2] focus:ring-1 focus:ring-[#5E6AD2]/15 transition-all text-slate-800 dark:text-[#F1F1F4] placeholder-slate-400 resize-none leading-relaxed"
+                                                />
+                                            </div>
+
+                                            <div className="space-y-3">
+                                                <label className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">Upload Bukti Proyek</label>
+                                                <p className="text-[10px] text-muted-foreground">Format: PDF, DOC, DOCX, PNG, JPG, MP4 (Maks 50MB)</p>
+                                                <input
+                                                    type="file"
+                                                    accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.mp4"
+                                                    onChange={(e) => {
+                                                        const file = e.target.files?.[0] || null;
+                                                        setProjectData({ ...projectData, file });
+                                                    }}
+                                                    className="w-full text-xs text-slate-600 dark:text-slate-300 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-[#5E6AD2]/10 file:text-[#5E6AD2] hover:file:bg-[#5E6AD2]/20 file:cursor-pointer"
+                                                />
+                                                {projectData.file && (
+                                                    <p className="text-[10px] text-emerald-600 font-medium">File dipilih: {projectData.file.name}</p>
+                                                )}
+                                            </div>
+
+                                            <div className="space-y-3">
+                                                <label className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">Catatan Proses</label>
+                                                <p className="text-[10px] text-muted-foreground">Ceritakan tantangan yang dihadapi, solusi yang diterapkan, dan pembelajaran yang didapat.</p>
+                                                <textarea
+                                                    rows={4}
+                                                    value={projectData.process_notes}
+                                                    onChange={(e) => setProjectData({ ...projectData, process_notes: e.target.value })}
+                                                    placeholder="Tantangan: ..., Solusi: ..., Pembelajaran: ..."
+                                                    className="w-full rounded-[8px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#101014] px-4 py-3 text-xs font-medium focus:border-[#5E6AD2] focus:ring-1 focus:ring-[#5E6AD2]/15 transition-all text-slate-800 dark:text-[#F1F1F4] placeholder-slate-400 resize-none leading-relaxed"
+                                                />
+                                            </div>
+                                        </div>
+                                    ) : assignment.instrument_type === 'portfolio' ? (
+                                        <div className="space-y-8 animate-in fade-in duration-500">
+                                            <div className="relative overflow-hidden rounded-[8px] bg-slate-50 border border-slate-200 dark:bg-[#1B1B25] dark:border-[#2C2C3A] p-6 shadow-none text-slate-800 dark:text-[#F1F1F4]">
+                                                <div className="absolute top-0 right-0 -mt-10 -mr-10 h-64 w-64 rounded-full bg-[#5E6AD2]/5 blur-3xl" />
+                                                <div className="relative flex items-center gap-5">
+                                                    <div className="h-11 w-11 rounded-[6px] bg-[#5E6AD2]/10 dark:bg-[#5E6AD2] text-[#5E6AD2] dark:text-white shadow-none flex items-center justify-center">
+                                                        <Briefcase className="h-5 w-5" />
+                                                    </div>
+                                                    <div>
+                                                        <h3 className="font-semibold tracking-[-0.03em] text-lg text-slate-800 dark:text-[#F1F1F4]">Portofolio</h3>
+                                                        <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider mt-1">Kumpulkan karya terbaikmu dan refleksikan perkembangan belajarmu</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {assignment.instrument_config?.stimulus && (
+                                                <div className="p-5 rounded-[8px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#1B1B25] shadow-none">
+                                                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-2">Instruksi Pengumpulan:</p>
+                                                    <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium italic">{assignment.instrument_config.stimulus}</p>
+                                                </div>
+                                            )}
+
+                                            <div className="space-y-3">
+                                                <label className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">Upload Karya Portofolio</label>
+                                                <p className="text-[10px] text-muted-foreground">Format: PDF, DOC, DOCX, PNG, JPG (Maks 10MB per file)</p>
+                                                <input
+                                                    type="file"
+                                                    accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
+                                                    multiple
+                                                    onChange={(e) => {
+                                                        const file = e.target.files?.[0] || null;
+                                                        setPortfolioFile(file);
+                                                    }}
+                                                    className="w-full text-xs text-slate-600 dark:text-slate-300 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-[#5E6AD2]/10 file:text-[#5E6AD2] hover:file:bg-[#5E6AD2]/20 file:cursor-pointer"
+                                                />
+                                                {portfolioFile && (
+                                                    <p className="text-[10px] text-emerald-600 font-medium">File dipilih: {portfolioFile.name}</p>
+                                                )}
+                                            </div>
+
+                                            <div className="space-y-6">
+                                                <label className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">Refleksi Perkembangan Belajar</label>
+                                                {(assignment.instrument_config?.reflection_prompts || []).map((prompt: string, idx: number) => (
+                                                    <div key={idx} className="p-5 rounded-[8px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#1B1B25] shadow-none space-y-3">
+                                                        <div className="flex items-start gap-3">
+                                                            <span className="h-6 w-6 rounded-full bg-[#5E6AD2]/10 text-[#5E6AD2] text-[10px] font-black flex items-center justify-center shrink-0 mt-0.5">{idx + 1}</span>
+                                                            <p className="text-sm font-bold text-slate-700 dark:text-slate-200 leading-relaxed">{prompt}</p>
+                                                        </div>
+                                                        <textarea
+                                                            rows={3}
+                                                            value={portfolioReflections[idx]?.answer || ''}
+                                                            onChange={(e) => {
+                                                                const newReflections = [...portfolioReflections];
+                                                                if (!newReflections[idx]) newReflections[idx] = { question: prompt, answer: '' };
+                                                                newReflections[idx].answer = e.target.value;
+                                                                setPortfolioReflections(newReflections);
+                                                            }}
+                                                            placeholder="Tuliskan refleksimu di sini..."
+                                                            className="w-full rounded-[8px] border border-slate-200 dark:border-[#2C2C3A] bg-slate-50/30 dark:bg-[#101014] px-4 py-3 text-xs font-medium focus:border-[#5E6AD2] focus:ring-1 focus:ring-[#5E6AD2]/15 transition-all text-slate-800 dark:text-[#F1F1F4] placeholder-slate-400 resize-none leading-relaxed"
+                                                        />
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ) : assignment.instrument_type === 'assignment' ? (
+                                        <div className="space-y-8 animate-in fade-in duration-500">
+                                            <div className="relative overflow-hidden rounded-[8px] bg-slate-50 border border-slate-200 dark:bg-[#1B1B25] dark:border-[#2C2C3A] p-6 shadow-none text-slate-800 dark:text-[#F1F1F4]">
+                                                <div className="absolute top-0 right-0 -mt-10 -mr-10 h-64 w-64 rounded-full bg-[#5E6AD2]/5 blur-3xl" />
+                                                <div className="relative flex items-center gap-5">
+                                                    <div className="h-11 w-11 rounded-[6px] bg-[#5E6AD2]/10 dark:bg-[#5E6AD2] text-[#5E6AD2] dark:text-white shadow-none flex items-center justify-center">
+                                                        <FileText className="h-5 w-5" />
+                                                    </div>
+                                                    <div>
+                                                        <h3 className="font-semibold tracking-[-0.03em] text-lg text-slate-800 dark:text-[#F1F1F4]">Penugasan (Laporan/Studi Kasus)</h3>
+                                                        <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider mt-1">Analisis studi kasus dan susun laporan pemecahan masalah</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {assignment.instrument_config?.stimulus && (
+                                                <div className="p-5 rounded-[8px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#1B1B25] shadow-none">
+                                                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-2">Deskripsi Studi Kasus:</p>
+                                                    <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium">{assignment.instrument_config.stimulus}</p>
+                                                </div>
+                                            )}
+
+                                            <div className="space-y-3">
+                                                <label className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">Laporan / Analisis</label>
+                                                <textarea
+                                                    rows={8}
+                                                    value={assignmentData.report_text}
+                                                    onChange={(e) => setAssignmentData({ ...assignmentData, report_text: e.target.value })}
+                                                    placeholder="Susun laporan analisis studi kasus: Identifikasi Masalah, Analisis, Solusi, dan Kesimpulan..."
+                                                    className="w-full rounded-[8px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#101014] px-4 py-3 text-xs font-medium focus:border-[#5E6AD2] focus:ring-1 focus:ring-[#5E6AD2]/15 transition-all text-slate-800 dark:text-[#F1F1F4] placeholder-slate-400 resize-none leading-relaxed"
+                                                />
+                                            </div>
+
+                                            <div className="space-y-3">
+                                                <label className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">Upload File Jawaban</label>
+                                                <p className="text-[10px] text-muted-foreground">Format: PDF, DOC, DOCX (Maks 10MB)</p>
+                                                <input
+                                                    type="file"
+                                                    accept=".pdf,.doc,.docx"
+                                                    onChange={(e) => {
+                                                        const file = e.target.files?.[0] || null;
+                                                        setAssignmentData({ ...assignmentData, file });
+                                                    }}
+                                                    className="w-full text-xs text-slate-600 dark:text-slate-300 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-[#5E6AD2]/10 file:text-[#5E6AD2] hover:file:bg-[#5E6AD2]/20 file:cursor-pointer"
+                                                />
+                                                {assignmentData.file && (
+                                                    <p className="text-[10px] text-emerald-600 font-medium">File dipilih: {assignmentData.file.name}</p>
+                                                )}
+                                            </div>
+
+                                            <div className="space-y-3">
+                                                <label className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">Catatan Proses Analisis</label>
+                                                <p className="text-[10px] text-muted-foreground">Jelaskan langkah analisis, sumber data, dan metode yang digunakan.</p>
+                                                <textarea
+                                                    rows={4}
+                                                    value={assignmentData.analysis_notes}
+                                                    onChange={(e) => setAssignmentData({ ...assignmentData, analysis_notes: e.target.value })}
+                                                    placeholder="Langkah analisis: 1. Identifikasi..., 2. Analisis..., 3. Solusi..."
+                                                    className="w-full rounded-[8px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#101014] px-4 py-3 text-xs font-medium focus:border-[#5E6AD2] focus:ring-1 focus:ring-[#5E6AD2]/15 transition-all text-slate-800 dark:text-[#F1F1F4] placeholder-slate-400 resize-none leading-relaxed"
+                                                />
+                                            </div>
+                                        </div>
                                     ) : assignment.instrument_type === 'concept_map' ? (
                                         <div className="space-y-8 animate-in fade-in duration-500">
                                             <div className="p-6 rounded-[2.5rem] bg-indigo-50/30 dark:bg-indigo-950/10 border border-indigo-100 dark:border-indigo-900/30">
@@ -3395,6 +3651,42 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                             </div>
                                         )}
 
+                                        {assignment.instrument_type === 'assignment' && (
+                                            <div className="pt-6 border-t border-slate-50 dark:border-slate-800 animate-in slide-in-from-top-4">
+                                                <div className="flex items-center gap-2 mb-6">
+                                                    <FileText className="h-4 w-4 text-[#5E6AD2]" />
+                                                    <h3 className="text-xs font-black text-foreground uppercase tracking-widest">Hasil Penugasan (Laporan/Studi Kasus)</h3>
+                                                </div>
+                                                {(() => {
+                                                    try {
+                                                        const p = JSON.parse(my_submission.content);
+                                                        if (p.type !== 'assignment') return null;
+                                                        return (
+                                                            <div className="space-y-4">
+                                                                {p.report_text && (
+                                                                    <div className="p-5 rounded-[8px] bg-slate-50 dark:bg-[#101014] border border-slate-200 dark:border-[#2C2C3A]">
+                                                                        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-2">Laporan / Analisis:</p>
+                                                                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium whitespace-pre-wrap">{p.report_text}</p>
+                                                                    </div>
+                                                                )}
+                                                                {p.analysis_notes && (
+                                                                    <div className="p-5 rounded-[8px] bg-slate-50 dark:bg-[#101014] border border-slate-200 dark:border-[#2C2C3A]">
+                                                                        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-2">Catatan Proses Analisis:</p>
+                                                                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium whitespace-pre-wrap">{p.analysis_notes}</p>
+                                                                    </div>
+                                                                )}
+                                                                {my_submission.file_path && (
+                                                                    <a href={`/storage/${my_submission.file_path}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#5E6AD2]/10 text-[#5E6AD2] text-xs font-bold hover:bg-[#5E6AD2]/20 transition">
+                                                                        <Download className="h-3.5 w-3.5" /> Lihat File Jawaban
+                                                                    </a>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    } catch { return null; }
+                                                })()}
+                                            </div>
+                                        )}
+
                                         {assignment.instrument_type === 'concept_map' && (
                                             <div className="pt-6 border-t border-slate-50 dark:border-slate-800 animate-in slide-in-from-top-4">
                                                 <div className="flex items-center gap-2 mb-6">
@@ -3937,13 +4229,36 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                         Buka / Download File
                                                     </a>
                                                 </div>
-                                                <div className="p-6 rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/30">
+                                                <div className="p-6 rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/30 space-y-4">
                                                     <h5 className="text-[9px] font-black text-primary uppercase tracking-widest mb-2 flex items-center gap-2">
-                                                        <MessageSquare className="h-3 w-3" /> Komentar Siswa
+                                                        <MessageSquare className="h-3 w-3" /> Detail Proyek Siswa
                                                     </h5>
-                                                    <p className="text-xs font-medium text-slate-600 dark:text-muted-foreground italic">
-                                                        "{submissionMap[selectedStudent.id].content || 'Tidak ada komentar dari siswa.'}"
-                                                    </p>
+                                                    {(() => {
+                                                        try {
+                                                            const parsed = JSON.parse(submissionMap[selectedStudent.id].content || '{}');
+                                                            return (
+                                                                <>
+                                                                    {parsed.description && (
+                                                                        <div>
+                                                                            <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mb-1">Deskripsi Proyek:</p>
+                                                                            <p className="text-xs font-medium text-slate-600 dark:text-muted-foreground italic leading-relaxed whitespace-pre-wrap">{parsed.description}</p>
+                                                                        </div>
+                                                                    )}
+                                                                    {parsed.process_notes && (
+                                                                        <div>
+                                                                            <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mb-1">Catatan Proses:</p>
+                                                                            <p className="text-xs font-medium text-slate-600 dark:text-muted-foreground italic leading-relaxed whitespace-pre-wrap">{parsed.process_notes}</p>
+                                                                        </div>
+                                                                    )}
+                                                                    {!parsed.description && !parsed.process_notes && (
+                                                                        <p className="text-xs font-medium text-slate-600 dark:text-muted-foreground italic">"{submissionMap[selectedStudent.id].content || 'Tidak ada detail proyek.'}"</p>
+                                                                    )}
+                                                                </>
+                                                            );
+                                                        } catch {
+                                                            return <p className="text-xs font-medium text-slate-600 dark:text-muted-foreground italic">"{submissionMap[selectedStudent.id].content || 'Tidak ada detail proyek.'}"</p>;
+                                                        }
+                                                    })()}
                                                 </div>
                                             </div>
                                         ) : (
@@ -3986,18 +4301,18 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                             key={level.id}
                                                             type="button"
                                                             onClick={() => {
-                                                                const newScores = { ...projectData.scores, [criterion.id]: level.id };
-                                                                setProjectData({ ...projectData, scores: newScores });
+                                                                const newScores = { ...projectGradingData.scores, [criterion.id]: level.id };
+                                                                setProjectGradingData({ ...projectGradingData, scores: newScores });
                                                                 const final = calculatePerformanceScore(newScores);
                                                                 teacherForm.setData('score', final);
                                                             }}
-                                                            className={`p-4 rounded-2xl border-2 transition-all text-left group ${projectData.scores[criterion.id] === level.id ? 'border-indigo-500 bg-indigo-50/50 dark:bg-indigo-950/20' : 'border-slate-50 dark:border-slate-800 bg-slate-50/20 hover:border-indigo-200'}`}
+                                                            className={`p-4 rounded-2xl border-2 transition-all text-left group ${projectGradingData.scores[criterion.id] === level.id ? 'border-indigo-500 bg-indigo-50/50 dark:bg-indigo-950/20' : 'border-slate-50 dark:border-slate-800 bg-slate-50/20 hover:border-indigo-200'}`}
                                                         >
                                                             <div className="flex items-center justify-between mb-2">
-                                                                <span className={`text-[9px] font-black uppercase tracking-tighter ${projectData.scores[criterion.id] === level.id ? 'text-indigo-600' : 'text-muted-foreground'}`}>{level.name}</span>
-                                                                {projectData.scores[criterion.id] === level.id && <CheckCircle2 className="h-3 w-3 text-indigo-500" />}
+                                                                <span className={`text-[9px] font-black uppercase tracking-tighter ${projectGradingData.scores[criterion.id] === level.id ? 'text-indigo-600' : 'text-muted-foreground'}`}>{level.name}</span>
+                                                                {projectGradingData.scores[criterion.id] === level.id && <CheckCircle2 className="h-3 w-3 text-indigo-500" />}
                                                             </div>
-                                                            <p className={`text-[9px] leading-snug font-medium line-clamp-3 ${projectData.scores[criterion.id] === level.id ? 'text-slate-700 dark:text-slate-200' : 'text-muted-foreground dark:text-muted-foreground'}`}>
+                                                            <p className={`text-[9px] leading-snug font-medium line-clamp-3 ${projectGradingData.scores[criterion.id] === level.id ? 'text-slate-700 dark:text-slate-200' : 'text-muted-foreground dark:text-muted-foreground'}`}>
                                                                 {criterion.descriptions[level.id] || 'N/A'}
                                                             </p>
                                                         </button>
@@ -4010,8 +4325,8 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                             <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-4">Umpan Balik Proyek</label>
                                             <textarea 
                                                 rows={4}
-                                                value={projectData.notes}
-                                                onChange={(e) => setProjectData({ ...projectData, notes: e.target.value })}
+                                                value={projectGradingData.notes}
+                                                onChange={(e) => setProjectGradingData({ ...projectGradingData, notes: e.target.value })}
                                                 placeholder="Berikan apresiasi atau arahan perbaikan untuk proyek ini..."
                                                 className="w-full rounded-[2rem] border border-border bg-slate-50/30 px-6 py-5 text-xs font-medium focus:border-indigo-400 outline-none transition-all resize-none"
                                             />

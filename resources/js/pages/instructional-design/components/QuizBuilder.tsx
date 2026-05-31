@@ -1,15 +1,36 @@
 import React from 'react';
-import { Trash2, Plus, X } from 'lucide-react';
-import { assessmentColors } from './types';
+import { Trash2, ListChecks, PenTool, Layers } from 'lucide-react';
 
 interface QuizBuilderProps {
     assessmentKey: 'initial' | 'formative' | 'summative';
-    instIdx: number | null; // null for initial assessment
+    instIdx: number | null;
     data: any;
     updateInitialConfig: (field: string, value: any) => void;
     updateFormativeConfig: (idx: number, field: string, value: any) => void;
     updateSummativeConfig: (idx: number, field: string, value: any) => void;
 }
+
+const generateMCQ = (idx: number) => ({
+    id: `q${idx}`,
+    type: 'multiple_choice',
+    text: '',
+    points: 1,
+    options: [
+        { id: 'a', text: '' },
+        { id: 'b', text: '' },
+        { id: 'c', text: '' },
+        { id: 'd', text: '' }
+    ]
+});
+
+const generateEssay = (idx: number) => ({
+    id: `q${idx}`,
+    type: 'essay',
+    text: '',
+    points: 5,
+    answer: '',
+    correct_answer: ''
+});
 
 export default function QuizBuilder({
     assessmentKey,
@@ -25,7 +46,7 @@ export default function QuizBuilder({
 
     const config = inst.instrument_config || {};
     const questions = config.questions || [];
-    const colors = assessmentColors[assessmentKey];
+    const quizMode = config.quiz_mode || '';
 
     const updateConfig = (field: string, value: any) => {
         if (assessmentKey === 'initial') {
@@ -35,6 +56,22 @@ export default function QuizBuilder({
         } else {
             updateSummativeConfig(instIdx as number, field, value);
         }
+    };
+
+    const handleModeChange = (mode: string) => {
+        updateConfig('quiz_mode', mode);
+        let newQuestions: any[] = [];
+        if (mode === 'mcq') {
+            newQuestions = Array.from({ length: 10 }, (_, i) => generateMCQ(i + 1));
+        } else if (mode === 'essay') {
+            newQuestions = Array.from({ length: 5 }, (_, i) => generateEssay(i + 1));
+        } else if (mode === 'mixed') {
+            newQuestions = [
+                ...Array.from({ length: 5 }, (_, i) => generateMCQ(i + 1)),
+                ...Array.from({ length: 3 }, (_, i) => generateEssay(i + 6))
+            ];
+        }
+        updateConfig('questions', newQuestions);
     };
 
     // Auto-initialize 3 tiered questions for Initial Assessment
@@ -94,6 +131,47 @@ export default function QuizBuilder({
 
     return (
         <div className="space-y-4">
+            {assessmentKey === 'summative' && (
+                <div className="space-y-2">
+                    <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.05em] ml-1">Mode Soal</label>
+                    <div className="flex gap-2 p-1 bg-card rounded-lg border border-border">
+                        <button
+                            type="button"
+                            onClick={() => handleModeChange('mcq')}
+                            className={`flex-1 flex items-center justify-center gap-2 h-9 rounded-md text-[11px] font-bold uppercase tracking-wider transition-all ${
+                                quizMode === 'mcq'
+                                    ? 'bg-primary text-white shadow-sm'
+                                    : 'text-muted-foreground hover:text-foreground'
+                            }`}
+                        >
+                            <ListChecks className="h-3.5 w-3.5" /> Pilihan Ganda (10 Soal)
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => handleModeChange('essay')}
+                            className={`flex-1 flex items-center justify-center gap-2 h-9 rounded-md text-[11px] font-bold uppercase tracking-wider transition-all ${
+                                quizMode === 'essay'
+                                    ? 'bg-primary text-white shadow-sm'
+                                    : 'text-muted-foreground hover:text-foreground'
+                            }`}
+                        >
+                            <PenTool className="h-3.5 w-3.5" /> Esai (5 Soal)
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => handleModeChange('mixed')}
+                            className={`flex-1 flex items-center justify-center gap-2 h-9 rounded-md text-[11px] font-bold uppercase tracking-wider transition-all ${
+                                quizMode === 'mixed'
+                                    ? 'bg-primary text-white shadow-sm'
+                                    : 'text-muted-foreground hover:text-foreground'
+                            }`}
+                        >
+                            <Layers className="h-3.5 w-3.5" /> Campuran (5 PG + 3 Esai)
+                        </button>
+                    </div>
+                </div>
+            )}
+
             <div className="flex items-center justify-between">
                 <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.05em] ml-1">
                     {assessmentKey === 'initial' ? 'Pertanyaan Kuis Diagnostik (Gradasi 3 Level Soal)' : 'Daftar Pertanyaan'}

@@ -171,7 +171,54 @@ Untuk jenis kuis asesmen awal ("quiz_survey" ketika digunakan sebagai kuis grada
   ]
 }
 
-Untuk jenis kuis formatif ("formative_quiz" atau "written_test" lainnya):
+Untuk jenis tes tertulis ("written_test"):
+Jika Mode Soal adalah "mcq" (Pilihan Ganda):
+{
+  "quiz_mode": "mcq",
+  "questions": [
+    {"id": "q1", "type": "multiple_choice", "text": "Pertanyaan pilihan ganda 1...", "options": [{"id": "a", "text": "..."}, {"id": "b", "text": "..."}, {"id": "c", "text": "..."}, {"id": "d", "text": "..."}], "answer": "a", "points": 1},
+    {"id": "q2", "type": "multiple_choice", "text": "Pertanyaan pilihan ganda 2...", "options": [{"id": "a", "text": "..."}, {"id": "b", "text": "..."}, {"id": "c", "text": "..."}, {"id": "d", "text": "..."}], "answer": "b", "points": 1}
+  ],
+  "levels": [
+    {"name": "Perlu Bimbingan", "desc": "Skor < 60: Pemahaman dasar belum tercapai"},
+    {"name": "Cukup", "desc": "Skor 60-75: Pemahaman cukup namun belum tuntas"},
+    {"name": "Baik", "desc": "Skor 76-90: Pemahaman baik (Tuntas)"},
+    {"name": "Sangat Baik", "desc": "Skor > 90: Pemahaman sangat baik (Pengayaan)"}
+  ],
+  "kktp": {"approach": "score_interval", "intervals": [{"min": 0, "max": 59, "label": "Perlu Bimbingan", "desc": "Remedial"}, {"min": 60, "max": 75, "label": "Cukup", "desc": "Perlu penguatan"}, {"min": 76, "max": 90, "label": "Baik", "desc": "Tuntas"}, {"min": 91, "max": 100, "label": "Sangat Baik", "desc": "Pengayaan"}]}
+}
+Buat tepat 10 pertanyaan pilihan ganda.
+
+Jika Mode Soal adalah "essay" (Esai):
+{
+  "quiz_mode": "essay",
+  "questions": [
+    {"id": "q1", "type": "essay", "text": "Pertanyaan uraian/esai 1...", "answer": "Pedoman penskoran atau jawaban ideal...", "points": 5},
+    {"id": "q2", "type": "essay", "text": "Pertanyaan uraian/esai 2...", "answer": "Pedoman penskoran atau jawaban ideal...", "points": 5}
+  ],
+  "levels": [
+    {"name": "Perlu Bimbingan", "desc": "Jawaban tidak relevan atau sangat dangkal"},
+    {"name": "Cukup", "desc": "Jawaban relevan namun belum lengkap"},
+    {"name": "Baik", "desc": "Jawaban lengkap dan menunjukkan pemahaman baik"},
+    {"name": "Sangat Baik", "desc": "Jawaban sangat analitis, kreatif, dan mendalam"}
+  ],
+  "kktp": {"approach": "score_interval", "intervals": [{"min": 0, "max": 59, "label": "Perlu Bimbingan", "desc": "Remedial"}, {"min": 60, "max": 75, "label": "Cukup", "desc": "Perlu penguatan"}, {"min": 76, "max": 90, "label": "Baik", "desc": "Tuntas"}, {"min": 91, "max": 100, "label": "Sangat Baik", "desc": "Pengayaan"}]}
+}
+Buat tepat 5 pertanyaan esai/uraian.
+
+Jika Mode Soal adalah "mixed" (Campuran):
+{
+  "quiz_mode": "mixed",
+  "questions": [
+    {"id": "q1", "type": "multiple_choice", "text": "...", "options": [...], "answer": "a", "points": 1},
+    {"id": "q6", "type": "essay", "text": "...", "answer": "Pedoman penskoran...", "points": 5}
+  ],
+  "levels": [...],
+  "kktp": {"approach": "score_interval", "intervals": [...]}
+}
+Buat 5 pertanyaan pilihan ganda + 3 pertanyaan esai.
+
+Untuk jenis kuis formatif ("formative_quiz"):
 {
   "questions": [
     {"id": "q1", "type": "multiple_choice", "text": "Pertanyaan yang dikemas dengan kalimat ringkas dan bersahabat bagi anak SMP...", "options": [{"id": "a", "text": "..."}, {"id": "b", "text": "..."}, {"id": "c", "text": "..."}, {"id": "d", "text": "..."}], "answer": "a"},
@@ -182,6 +229,41 @@ Untuk jenis kuis formatif ("formative_quiz" atau "written_test" lainnya):
     {"name": "Cukup", "desc": "Penjelasan tindak lanjut skor sedang"},
     {"name": "Baik", "desc": "Penjelasan tindak lanjut skor baik (Tuntas)"},
     {"name": "Sangat Baik", "desc": "Penjelasan tindak lanjut skor sangat baik (Pengayaan)"}
+  ],
+  "kktp": {"approach": "percentage", "threshold": 75}
+}
+
+Untuk jenis tes lisan ("oral_test"):
+{
+  "stimulus": "Topik atau konteks pertanyaan lisan terkait materi yang diuji",
+  "questions": [
+    {"text": "Pertanyaan lisan 1: Jelaskan konsep dasar dengan bahasamu sendiri...", "answer_guide": "Kunci jawaban atau pedoman penskoran untuk pertanyaan 1"},
+    {"text": "Pertanyaan lisan 2: Bandingkan dengan konsep lain yang sudah dipelajari...", "answer_guide": "Kunci jawaban atau pedoman penskoran untuk pertanyaan 2"},
+    {"text": "Pertanyaan lisan 3: Berikan contoh penerapan dalam kehidupan nyata...", "answer_guide": "Kunci jawaban atau pedoman penskoran untuk pertanyaan 3"}
+  ],
+  "levels": [
+    {"name": "Perlu Bimbingan", "desc": "Jawaban sangat dangkal atau tidak relevan"},
+    {"name": "Cukup", "desc": "Jawaban cukup relevan namun belum mendalam"},
+    {"name": "Baik", "desc": "Jawaban menunjukkan pemahaman yang baik"},
+    {"name": "Sangat Baik", "desc": "Jawaban sangat mendalam dan analitis"}
+  ],
+  "kktp": {"approach": "rubric", "passing_level": "Baik"}
+}
+
+Untuk jenis penugasan ("assignment"):
+{
+  "stimulus": "Deskripsi studi kasus atau topik laporan yang harus dianalisis siswa",
+  "indicators": [
+    {"name": "Ketepatan identifikasi masalah dan akar permasalahan"},
+    {"name": "Kualitas analisis dan penggunaan konsep teori yang relevan"},
+    {"name": "Kelengkapan solusi, rekomendasi, dan rencana tindak lanjut"},
+    {"name": "Keteraturan penyajian laporan dan kualitas visualisasi data"}
+  ],
+  "levels": [
+    {"name": "Perlu Bimbingan", "desc": "Laporan belum memenuhi standar minimal, analisis sangat dangkal"},
+    {"name": "Cukup", "desc": "Laporan cukup memenuhi instruksi namun analisis belum mendalam"},
+    {"name": "Baik", "desc": "Laporan lengkap, analisis baik, solusi relevan (Tuntas)"},
+    {"name": "Sangat Baik", "desc": "Laporan sangat komprehensif, analisis kritis, solusi inovatif"}
   ],
   "kktp": {"approach": "rubric", "passing_level": "Baik"}
 }

@@ -265,10 +265,6 @@ class InstructionalSmartService
         $tp = LmsLearningObjective::find($tpId);
         if (!$tp) return [];
 
-        if ($type === 'formative_quiz') {
-            $type = 'quiz_survey';
-        }
-
         $description = $tp->description ?? '';
 
         // Chaining Context: Gunakan judul & uraian materi riil hasil ketikan guru jika dikirim, fallback ke TP content jika kosong
@@ -294,6 +290,56 @@ class InstructionalSmartService
             }
         }
         
+        if ($type === 'oral_test') {
+            return [
+                'stimulus' => "Tes lisan mengenai pemahaman materi {$content}. Guru mengajukan pertanyaan secara langsung dan menilai jawaban siswa.",
+                'questions' => [
+                    ['text' => "Jelaskan konsep dasar {$content} dengan bahasamu sendiri!", 'answer_guide' => "Cari pemaparan yang mencakup definisi, fungsi, dan contoh penerapan {$content}."],
+                    ['text' => "Apa tantangan terbesar dalam penerapan {$content} dan bagaimana cara mengatasinya?", 'answer_guide' => "Jawaban harus mencakup identifikasi minimal 1 tantangan konkret dan solusi yang logis."],
+                    ['text' => "Bandingkan {$content} dengan konsep lain yang sudah dipelajari. Apa persamaan dan perbedaannya?", 'answer_guide' => "Siswa harus mampu menyebutkan minimal 2 persamaan dan 1 perbedaan dengan konsep terkait."],
+                ],
+                'levels' => [
+                    ['name' => 'Perlu Bimbingan', 'desc' => "Jawaban sangat dangkal, tidak relevan, atau tidak mampu menjelaskan konsep dasar {$content}."],
+                    ['name' => 'Cukup', 'desc' => "Jawaban cukup relevan namun belum mendalam, masih memerlukan bimbingan guru saat ditanya lanjutan."],
+                    ['name' => 'Baik', 'desc' => "Jawaban menunjukkan pemahaman yang baik, mampu menjelaskan konsep dengan jelas dan memberikan contoh."],
+                    ['name' => 'Sangat Baik', 'desc' => "Jawaban sangat mendalam, analitis, kreatif, dan mampu mengaitkan dengan konteks nyata secara otomatis."],
+                ],
+                'kktp' => [
+                    'approach' => 'rubric',
+                    'passing_level' => 'Baik',
+                ]
+            ];
+        }
+
+        if ($type === 'formative_quiz') {
+            return [
+                'quiz_mode' => 'mcq',
+                'questions' => array_map(fn($i) => [
+                    'id' => 'q' . $i,
+                    'type' => 'multiple_choice',
+                    'text' => "Soal {$i}: Pilih pernyataan yang paling tepat mengenai konsep {$content} (soal ke-{$i}).",
+                    'options' => [
+                        ['id' => 'a', 'text' => "Jawaban A tentang {$content} - definisi dasar."],
+                        ['id' => 'b', 'text' => "Jawaban B tentang {$content} - penerapan praktis."],
+                        ['id' => 'c', 'text' => "Jawaban C tentang {$content} - analisis kritis."],
+                        ['id' => 'd', 'text' => "Semua jawaban di atas benar."]
+                    ],
+                    'answer' => ['a', 'b', 'c', 'd', 'a', 'b', 'c', 'd', 'a', 'b'][$i - 1] ?? 'a',
+                    'points' => 1
+                ], range(1, 10)),
+                'levels' => [
+                    ['name' => 'Perlu Bimbingan', 'desc' => "Skor < 60: Pemahaman dasar belum tercapai."],
+                    ['name' => 'Cukup', 'desc' => "Skor 60-75: Pemahaman cukup namun belum tuntas."],
+                    ['name' => 'Baik', 'desc' => "Skor 76-90: Pemahaman baik (Tuntas)."],
+                    ['name' => 'Sangat Baik', 'desc' => "Skor > 90: Pemahaman sangat baik (Pengayaan)."],
+                ],
+                'kktp' => [
+                    'approach' => 'percentage',
+                    'threshold' => 75
+                ]
+            ];
+        }
+
         if ($type === 'rubric' || $type === 'oral_qa') {
             return [
                 'stimulus' => "Guru menyajikan dua contoh kontras terkait {$content} (misalnya: benar vs salah, fakta vs hoaks, atau efektif vs tidak efektif). Guru mengajukan pertanyaan pemantik: \"Menurut kalian mana yang lebih tepat? Mengapa? Bagaimana kalian membuktikannya?\"",
@@ -632,39 +678,45 @@ class InstructionalSmartService
             ];
         }
 
+        if ($type === 'assignment') {
+            return [
+                'stimulus' => "Analisis studi kasus berikut dan susun laporan pemecahan masalah secara sistematis. Gunakan format laporan yang terstruktur: Identifikasi Masalah, Analisis, Solusi, dan Kesimpulan.",
+                'indicators' => [
+                    ['name' => "Ketepatan identifikasi masalah dan akar permasalahan dari studi kasus {$content}."],
+                    ['name' => "Kualitas analisis dan penggunaan konsep teori yang relevan dalam pemecahan masalah."],
+                    ['name' => "Kelengkapan solusi, rekomendasi, dan rencana tindak lanjut yang diusulkan."],
+                    ['name' => "Keteraturan penyajian laporan, kualitas visualisasi data, dan kerapian dokumen."],
+                ],
+                'levels' => [
+                    ['name' => 'Perlu Bimbingan', 'desc' => "Laporan belum memenuhi standar minimal, identifikasi masalah tidak tepat, dan analisis sangat dangkal."],
+                    ['name' => 'Cukup', 'desc' => "Laporan cukup memenuhi instruksi namun analisis belum mendalam dan solusi kurang relevan."],
+                    ['name' => 'Baik', 'desc' => "Laporan lengkap, analisis baik dengan konsep teori yang relevan, solusi relevan dan dapat diterapkan."],
+                    ['name' => 'Sangat Baik', 'desc' => "Laporan sangat komprehensif, analisis kritis mendalam, solusi inovatif, dan penyajian sangat rapi."],
+                ],
+                'teacher_notes' => "Evaluasi berdasarkan 4 aspek: ketepatan identifikasi masalah, kualitas analisis, kelengkapan solusi, dan keteraturan penyajian laporan.",
+                'kktp' => [
+                    'approach' => 'rubric',
+                    'passing_level' => 'Baik'
+                ]
+            ];
+        }
+
         if ($type === 'written_test') {
             return [
-                'questions' => [
-                    [
-                        'id' => 'q1',
-                        'type' => 'multiple_choice',
-                        'text' => "Manakah pernyataan yang paling tepat mengenai konsep {$content}?",
-                        'options' => [
-                            ['id' => 'a', 'text' => "Definisi A yang menjelaskan {$content} secara mendalam."],
-                            ['id' => 'b', 'text' => "Definisi B yang merujuk pada aspek teknis {$content}."],
-                            ['id' => 'c', 'text' => "Definisi C yang merupakan implementasi praktis {$content}."],
-                            ['id' => 'd', 'text' => "Semua jawaban di atas benar."]
-                        ],
-                        'answer' => 'a'
+                'quiz_mode' => 'mcq',
+                'questions' => array_map(fn($i) => [
+                    'id' => 'q' . $i,
+                    'type' => 'multiple_choice',
+                    'text' => "Soal {$i}: Pilih pernyataan yang paling tepat mengenai konsep {$content} (soal ke-{$i}).",
+                    'options' => [
+                        ['id' => 'a', 'text' => "Jawaban A tentang {$content} - definisi dasar."],
+                        ['id' => 'b', 'text' => "Jawaban B tentang {$content} - penerapan praktis."],
+                        ['id' => 'c', 'text' => "Jawaban C tentang {$content} - analisis kritis."],
+                        ['id' => 'd', 'text' => "Semua jawaban di atas benar."]
                     ],
-                    [
-                        'id' => 'q2',
-                        'type' => 'multiple_choice',
-                        'text' => "Apa fungsi utama dari {$content} dalam konteks pembelajaran saat ini?",
-                        'options' => [
-                            ['id' => 'a', 'text' => "Meningkatkan efisiensi kerja."],
-                            ['id' => 'b', 'text' => "Sebagai dasar teori untuk materi selanjutnya."],
-                            ['id' => 'c', 'text' => "Mengidentifikasi kesalahan umum dalam praktik."],
-                            ['id' => 'd', 'text' => "Mempermudah proses dokumentasi."]
-                        ],
-                        'answer' => 'b'
-                    ],
-                    [
-                        'id' => 'q3',
-                        'type' => 'short_answer',
-                        'text' => "Berikan satu contoh penerapan {$content} yang pernah kamu temui atau bayangkan dalam kehidupan nyata!",
-                    ]
-                ],
+                    'answer' => ['a', 'b', 'c', 'd', 'a', 'b', 'c', 'd', 'a', 'b'][$i - 1] ?? 'a',
+                    'points' => 1
+                ], range(1, 10)),
                 'levels' => [
                     ['name' => 'Perlu Bimbingan', 'desc' => "Skor < 60: Murid belum mencapai kriteria ketuntasan minimal. Disarankan remedial materi {$content}."],
                     ['name' => 'Cukup', 'desc' => "Skor 60-75: Murid telah mencapai kriteria ketuntasan minimal namun masih perlu penguatan pemahaman konsep."],
@@ -674,10 +726,10 @@ class InstructionalSmartService
                 'kktp' => [
                     'approach' => 'score_interval',
                     'intervals' => [
-                        ['min' => 0, 'max' => 59, 'label' => 'Belum Mencapai', 'desc' => 'Perlu remedial'],
-                        ['min' => 60, 'max' => 75, 'label' => 'Hampir Mencapai', 'desc' => 'Perlu penguatan'],
-                        ['min' => 76, 'max' => 90, 'label' => 'Sudah Mencapai', 'desc' => 'Tuntas'],
-                        ['min' => 91, 'max' => 100, 'label' => 'Sangat Baik', 'desc' => 'Perlu pengayaan'],
+                        ['min' => 0, 'max' => 59, 'label' => 'Perlu Bimbingan', 'desc' => 'Perlu remedial'],
+                        ['min' => 60, 'max' => 75, 'label' => 'Cukup', 'desc' => 'Perlu penguatan'],
+                        ['min' => 76, 'max' => 90, 'label' => 'Baik', 'desc' => 'Tuntas'],
+                        ['min' => 91, 'max' => 100, 'label' => 'Sangat Baik', 'desc' => 'Pengayaan'],
                     ],
                     'passing_min' => 60
                 ]

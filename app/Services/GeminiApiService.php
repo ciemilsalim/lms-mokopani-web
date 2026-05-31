@@ -350,6 +350,7 @@ class GeminiApiService implements AiProviderInterface
             'formative_quiz'          => 'Tes/Penugasan Singkat',
             'guided_discussion'       => 'Diskusi Terpandu',
             'structured_assignment'   => 'Penugasan Terstruktur (LKPD)',
+            'assignment'              => 'Penugasan (Laporan/Studi Kasus)',
             default                   => $type,
         };
     }

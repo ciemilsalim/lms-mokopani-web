@@ -31,6 +31,7 @@ class AssignmentController extends Controller
             $query->where('school_class_id', $user->student->school_class_id)
                 ->where('instrument_type', '!=', 'performance_observation')
                 ->where('instrument_type', '!=', 'performance')
+                ->where('instrument_type', '!=', 'oral_test')
                 ->where('instrument_type', '!=', 'guided_discussion')
                 ->where(function($q) {
                     $q->where('assessment_type', '!=', 'initial')
@@ -231,6 +232,7 @@ class AssignmentController extends Controller
                     ['id' => 'performance',            'name' => 'Penilaian Kinerja / Unjuk Kerja','icon' => 'presentation',   'desc' => 'Praktik, presentasi, atau demonstrasi'],
                     ['id' => 'project',                'name' => 'Penilaian Proyek & Produk',     'icon' => 'folder-kanban',   'desc' => 'Evaluasi hasil karya dari perencanaan hingga pelaporan'],
                     ['id' => 'portfolio',              'name' => 'Portofolio',                    'icon' => 'briefcase',       'desc' => 'Kumpulan rekam jejak capaian siswa'],
+                    ['id' => 'assignment',             'name' => 'Penugasan (Laporan/Studi Kasus)','icon' => 'file-text',     'desc' => 'Evaluasi kemampuan analisis dan penyajian hasil pemecahan masalah'],
                 ],
             ],
             'holidays'         => $holidays,
@@ -305,7 +307,7 @@ class AssignmentController extends Controller
         $readinessStatus = null;
         if ($user->student) {
             // Check access: observasi is teacher-only!
-            if ($assignment->instrument_type === 'observation_checklist' || $assignment->instrument_type === 'performance_observation' || $assignment->instrument_type === 'performance' || $assignment->instrument_type === 'guided_discussion') {
+            if ($assignment->instrument_type === 'observation_checklist' || $assignment->instrument_type === 'performance_observation' || $assignment->instrument_type === 'performance' || $assignment->instrument_type === 'oral_test' || $assignment->instrument_type === 'guided_discussion') {
                 abort(403, 'Akses ditolak. Asesmen ini hanya diisi oleh Guru.');
             }
 
@@ -691,6 +693,7 @@ class AssignmentController extends Controller
                     ['id' => 'performance',            'name' => 'Penilaian Kinerja / Unjuk Kerja','icon' => 'presentation',   'desc' => 'Praktik, presentasi, atau demonstrasi'],
                     ['id' => 'project',                'name' => 'Penilaian Proyek & Produk',     'icon' => 'folder-kanban',   'desc' => 'Evaluasi hasil karya dari perencanaan hingga pelaporan'],
                     ['id' => 'portfolio',              'name' => 'Portofolio',                    'icon' => 'briefcase',       'desc' => 'Kumpulan rekam jejak capaian siswa'],
+                    ['id' => 'assignment',             'name' => 'Penugasan (Laporan/Studi Kasus)','icon' => 'file-text',     'desc' => 'Evaluasi kemampuan analisis dan penyajian hasil pemecahan masalah'],
                 ],
             ],
             'scoring_tools' => [

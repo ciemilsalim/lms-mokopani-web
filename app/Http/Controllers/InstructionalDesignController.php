@@ -63,6 +63,7 @@ class InstructionalDesignController extends Controller
                 ['id' => 'performance',            'name' => 'Penilaian Kinerja / Unjuk Kerja','icon' => 'presentation',   'desc' => 'Praktik, presentasi, atau demonstrasi'],
                 ['id' => 'project',                'name' => 'Penilaian Proyek & Produk',     'icon' => 'folder-kanban',   'desc' => 'Evaluasi hasil karya dari perencanaan hingga pelaporan'],
                 ['id' => 'portfolio',              'name' => 'Portofolio',                    'icon' => 'briefcase',       'desc' => 'Kumpulan rekam jejak capaian siswa'],
+                ['id' => 'assignment',             'name' => 'Penugasan (Laporan/Studi Kasus)','icon' => 'file-text',     'desc' => 'Evaluasi kemampuan analisis dan penyajian hasil pemecahan masalah'],
             ],
         ];
 

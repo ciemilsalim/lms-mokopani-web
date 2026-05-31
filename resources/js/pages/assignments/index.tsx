@@ -70,7 +70,7 @@ const instrumentLabels: Record<string, string> = {
     reflective_journal: 'Jurnal Reflektif', self_assessment: 'Penilaian Diri', peer_assessment: 'Peer Assessment',
     rubric: 'Rubrik', exit_ticket: 'Exit Ticket', concept_map: 'Peta Konsep',     performance_observation: 'Observasi',
     written_test: 'Tes Tertulis', oral_test: 'Tes Lisan', performance: 'Kinerja',
-    project: 'Proyek', portfolio: 'Portofolio',
+    project: 'Proyek', portfolio: 'Portofolio', assignment: 'Penugasan',
     formative_quiz: 'Tes/Penugasan Singkat', guided_discussion: 'Diskusi Terpandu', structured_assignment: 'Penugasan Terstruktur',
 };
 

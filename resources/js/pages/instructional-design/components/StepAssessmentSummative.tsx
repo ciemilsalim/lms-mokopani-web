@@ -273,7 +273,7 @@ export default function StepAssessmentSummative({
                             </div>
 
                             {/* Dynamically render configuration inputs depending on instrument type */}
-                            {(activeInst.instrument_type === 'rubric' || activeInst.instrument_type === 'oral_test') && (
+                            {activeInst.instrument_type === 'rubric' && (
                                 <div className="space-y-4">
                                     <div className="space-y-1.5">
                                         <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.05em] ml-1">Stimulus / Konteks Kasus</label>
@@ -293,6 +293,77 @@ export default function StepAssessmentSummative({
                                             placeholder="Contoh: Kemampuan menulis kode program"
                                             className="w-full h-8 bg-card text-card-foreground rounded border border-border px-3 text-[12px] focus:border-primary outline-none"
                                         />
+                                    </div>
+                                </div>
+                            )}
+
+                            {activeInst.instrument_type === 'oral_test' && (
+                                <div className="space-y-4">
+                                    <div className="space-y-1.5">
+                                        <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.05em] ml-1">Topik / Konteks Tes Lisan</label>
+                                        <textarea
+                                            value={activeConfig.stimulus || ''}
+                                            onChange={e => updateSummativeConfig(activeTab, 'stimulus', e.target.value)}
+                                            rows={3}
+                                            placeholder="Tuliskan topik atau konteks pertanyaan lisan..."
+                                            className="w-full bg-card text-card-foreground rounded border border-border p-3 text-[12px] focus:border-primary outline-none resize-none leading-relaxed"
+                                        />
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <div className="flex justify-between items-center">
+                                            <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.05em]">Daftar Pertanyaan Lisan</label>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    const qs = [...(activeConfig.questions || [])];
+                                                    qs.push({ text: '', answer_guide: '' });
+                                                    updateSummativeConfig(activeTab, 'questions', qs);
+                                                }}
+                                                className="h-6 px-2 text-[10px] font-bold text-primary hover:bg-primary/10 rounded transition"
+                                            >
+                                                + Tambah Pertanyaan
+                                            </button>
+                                        </div>
+                                        <div className="grid gap-3">
+                                            {(activeConfig.questions || []).map((q: any, qIdx: number) => (
+                                                <div key={qIdx} className="p-3 bg-card rounded border border-border space-y-2 group">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-[10px] font-mono text-muted-foreground">{qIdx + 1}.</span>
+                                                        <input
+                                                            value={q.text || ''}
+                                                            onChange={e => {
+                                                                const qs = [...(activeConfig.questions || [])];
+                                                                qs[qIdx] = { ...qs[qIdx], text: e.target.value };
+                                                                updateSummativeConfig(activeTab, 'questions', qs);
+                                                            }}
+                                                            placeholder="Tuliskan pertanyaan lisan..."
+                                                            className="flex-1 bg-transparent text-[12px] font-semibold border-none outline-none focus:ring-0 p-0"
+                                                        />
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                const qs = (activeConfig.questions || []).filter((_: any, idx: number) => idx !== qIdx);
+                                                                updateSummativeConfig(activeTab, 'questions', qs);
+                                                            }}
+                                                            className="text-muted-foreground/30 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                        >
+                                                            <Trash2 className="h-3.5 w-3.5" />
+                                                        </button>
+                                                    </div>
+                                                    <input
+                                                        value={q.answer_guide || ''}
+                                                        onChange={e => {
+                                                            const qs = [...(activeConfig.questions || [])];
+                                                            qs[qIdx] = { ...qs[qIdx], answer_guide: e.target.value };
+                                                            updateSummativeConfig(activeTab, 'questions', qs);
+                                                        }}
+                                                        placeholder="Kunci Jawaban / Pedoman Penskoran..."
+                                                        className="w-full bg-popover/50 text-[11px] text-muted-foreground rounded border border-border px-3 py-2 focus:border-primary outline-none"
+                                                    />
+                                                </div>
+                                            ))}
+                                        </div>
                                     </div>
                                 </div>
                             )}
@@ -403,7 +474,7 @@ export default function StepAssessmentSummative({
                                 </div>
                             )}
 
-                            {(activeInst.instrument_type === 'concept_map' || activeInst.instrument_type === 'portfolio') && (
+                            {activeInst.instrument_type === 'concept_map' && (
                                 <div className="space-y-4">
                                     <div className="space-y-1.5">
                                         <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.05em] ml-1">Instruksi Penilaian</label>
@@ -415,6 +486,119 @@ export default function StepAssessmentSummative({
                                             className="w-full bg-card text-card-foreground rounded border border-border p-3 text-[12px] focus:border-primary outline-none resize-none leading-relaxed"
                                         />
                                     </div>
+                                    {activeConfig.teacher_notes !== undefined && (
+                                        <div className="space-y-1.5">
+                                            <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.05em] ml-1">Catatan Evaluasi / Rubrik Guru</label>
+                                            <textarea
+                                                value={activeConfig.teacher_notes || ''}
+                                                onChange={e => updateSummativeConfig(activeTab, 'teacher_notes', e.target.value)}
+                                                rows={2}
+                                                placeholder="Langkah evaluasi dan pembobotan..."
+                                                className="w-full bg-card text-card-foreground rounded border border-border p-3 text-[12px] focus:border-primary outline-none resize-none italic"
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {activeInst.instrument_type === 'portfolio' && (
+                                <div className="space-y-4">
+                                    <div className="space-y-1.5">
+                                        <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.05em] ml-1">Instruksi Pengumpulan Portofolio</label>
+                                        <textarea
+                                            value={activeConfig.stimulus || ''}
+                                            onChange={e => updateSummativeConfig(activeTab, 'stimulus', e.target.value)}
+                                            rows={4}
+                                            placeholder="Tuliskan instruksi pengumpulan portofolio: apa yang harus dikumpulkan, format, dan kriteria..."
+                                            className="w-full bg-card text-card-foreground rounded border border-border p-3 text-[12px] focus:border-primary outline-none resize-none leading-relaxed"
+                                        />
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <div className="flex justify-between items-center">
+                                            <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.05em]">Pertanyaan Refleksi</label>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    const prompts = [...(activeConfig.reflection_prompts || [])];
+                                                    prompts.push('');
+                                                    updateSummativeConfig(activeTab, 'reflection_prompts', prompts);
+                                                }}
+                                                className="h-6 px-2 text-[10px] font-bold text-primary hover:bg-primary/10 rounded transition"
+                                            >
+                                                + Tambah Pertanyaan
+                                            </button>
+                                        </div>
+                                        <div className="grid gap-2">
+                                            {(activeConfig.reflection_prompts || []).map((prompt: string, pIdx: number) => (
+                                                <div key={pIdx} className="flex gap-2 items-center p-2 bg-card rounded border border-border group">
+                                                    <span className="text-[10px] font-mono text-muted-foreground">{pIdx + 1}.</span>
+                                                    <input
+                                                        value={prompt || ''}
+                                                        onChange={e => {
+                                                            const prompts = [...(activeConfig.reflection_prompts || [])];
+                                                            prompts[pIdx] = e.target.value;
+                                                            updateSummativeConfig(activeTab, 'reflection_prompts', prompts);
+                                                        }}
+                                                        placeholder="Pertanyaan refleksi (misal: Karya mana yang paling kamu banggakan dan mengapa?)"
+                                                        className="flex-1 bg-transparent text-[12px] border-none outline-none focus:ring-0 p-0"
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            const prompts = (activeConfig.reflection_prompts || []).filter((_: string, idx: number) => idx !== pIdx);
+                                                            updateSummativeConfig(activeTab, 'reflection_prompts', prompts);
+                                                        }}
+                                                        className="text-muted-foreground/30 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    >
+                                                        <Trash2 className="h-3.5 w-3.5" />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {activeConfig.teacher_notes !== undefined && (
+                                        <div className="space-y-1.5">
+                                            <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.05em] ml-1">Catatan Evaluasi / Rubrik Guru</label>
+                                            <textarea
+                                                value={activeConfig.teacher_notes || ''}
+                                                onChange={e => updateSummativeConfig(activeTab, 'teacher_notes', e.target.value)}
+                                                rows={2}
+                                                placeholder="Langkah evaluasi dan pembobotan..."
+                                                className="w-full bg-card text-card-foreground rounded border border-border p-3 text-[12px] focus:border-primary outline-none resize-none italic"
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {activeInst.instrument_type === 'assignment' && (
+                                <div className="space-y-4">
+                                    <div className="space-y-1.5">
+                                        <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.05em] ml-1">Deskripsi Studi Kasus / Topik Laporan</label>
+                                        <textarea
+                                            value={activeConfig.stimulus || ''}
+                                            onChange={e => updateSummativeConfig(activeTab, 'stimulus', e.target.value)}
+                                            rows={4}
+                                            placeholder="Tuliskan deskripsi studi kasus atau topik laporan yang harus dianalisis siswa..."
+                                            className="w-full bg-card text-card-foreground rounded border border-border p-3 text-[12px] focus:border-primary outline-none resize-none leading-relaxed"
+                                        />
+                                    </div>
+
+                                    <div className="space-y-1.5">
+                                        <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.05em] ml-1">Indikator Penilaian</label>
+                                    </div>
+                                    <ObservationBuilder
+                                        assessmentKey="summative"
+                                        instIdx={activeTab}
+                                        data={data}
+                                        updateInitialConfig={() => {}}
+                                        updateFormativeConfig={() => {}}
+                                        updateSummativeConfig={updateSummativeConfig}
+                                        observationMode="checklist"
+                                    />
+
                                     {activeConfig.teacher_notes !== undefined && (
                                         <div className="space-y-1.5">
                                             <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.05em] ml-1">Catatan Evaluasi / Rubrik Guru</label>
