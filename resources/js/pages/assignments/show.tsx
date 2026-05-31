@@ -31,6 +31,8 @@ import {
     MessageCircle,
     PenTool,
     Layers,
+    CheckSquare,
+    Square,
     Mic,
     FolderKanban,
     Briefcase,
@@ -498,6 +500,10 @@ export default function ShowAssignment({ assignment, students, my_submission, my
         reflection_notes: ''
     });
 
+    // Self-Assessment Checklist/Rubric State
+    const [selfChecklistData, setSelfChecklistData] = useState<{name: string; checked: boolean}[]>([]);
+    const [selfRubricData, setSelfRubricData] = useState<{name: string; selected_level: string}[]>([]);
+
     // Peer-Assessment State (Student)
     const [peerAssessmentData, setPeerAssessmentData] = useState({
         peer_student_id: '',
@@ -508,6 +514,23 @@ export default function ShowAssignment({ assignment, students, my_submission, my
         obstacles: '',
         future_expectations: ''
     });
+
+    // Peer-Assessment Checklist/Rubric State
+    const [peerChecklistData, setPeerChecklistData] = useState<{name: string; checked: boolean}[]>([]);
+    const [peerRubricData, setPeerRubricData] = useState<{name: string; selected_level: string}[]>([]);
+
+    // Exit Ticket Checklist/Short Note State
+    const [exitChecklistData, setExitChecklistData] = useState<{name: string; checked: boolean}[]>([]);
+    const [exitShortNoteData, setExitShortNoteData] = useState<{text: string; answer: string}[]>([]);
+
+    // Formative Quiz Checklist State
+    const [quizChecklistData, setQuizChecklistData] = useState<{name: string; checked: boolean}[]>([]);
+
+    // Structured Assignment State
+    const [structuredAssignmentData, setStructuredAssignmentData] = useState({ answer_text: '', file: null as File | null });
+
+    // Reflective Journal State
+    const [journalAnswers, setJournalAnswers] = useState<{question: string; answer: string}[]>([]);
 
     // Concept Map State (Student)
     const [conceptMapData, setConceptMapData] = useState({
@@ -574,24 +597,42 @@ export default function ShowAssignment({ assignment, students, my_submission, my
             try {
                 const parsed = JSON.parse(my_submission.content);
                 if (parsed.type === 'self_assessment') {
-                    setSelfAssessmentData({
-                        feeling: parsed.feeling || '',
-                        feeling_reason: parsed.feeling_reason || '',
-                        effort_scale: parsed.effort_scale || 0,
-                        reflection_notes: parsed.reflection_notes || ''
-                    });
+                    if (parsed.assessment_mode === 'checklist') {
+                        setSelfChecklistData(parsed.indicators || []);
+                    } else if (parsed.assessment_mode === 'simple_rubric') {
+                        setSelfRubricData(parsed.indicators || []);
+                    } else {
+                        setSelfAssessmentData({
+                            feeling: parsed.feeling || '',
+                            feeling_reason: parsed.feeling_reason || '',
+                            effort_scale: parsed.effort_scale || 0,
+                            reflection_notes: parsed.reflection_notes || ''
+                        });
+                    }
                 } else if (parsed.type === 'peer_assessment') {
-                    setPeerAssessmentData({
-                        peer_student_id: parsed.peer_student_id || '',
-                        peer_name: parsed.peer_name || '',
-                        rating: parsed.rating || 0,
-                        best_performer: parsed.best_performer || '',
-                        worst_performer: parsed.worst_performer || '',
-                        obstacles: parsed.obstacles || '',
-                        future_expectations: parsed.future_expectations || ''
-                    });
+                    if (parsed.assessment_mode === 'checklist') {
+                        setPeerChecklistData(parsed.indicators || []);
+                    } else if (parsed.assessment_mode === 'simple_rubric') {
+                        setPeerRubricData(parsed.indicators || []);
+                    } else {
+                        setPeerAssessmentData({
+                            peer_student_id: parsed.peer_student_id || '',
+                            peer_name: parsed.peer_name || '',
+                            rating: parsed.rating || 0,
+                            best_performer: parsed.best_performer || '',
+                            worst_performer: parsed.worst_performer || '',
+                            obstacles: parsed.obstacles || '',
+                            future_expectations: parsed.future_expectations || ''
+                        });
+                    }
                 } else if (parsed.type === 'exit_ticket') {
-                    studentForm.setData('answers', parsed.answers || {});
+                    if (parsed.assessment_mode === 'checklist') {
+                        setExitChecklistData(parsed.indicators || []);
+                    } else if (parsed.assessment_mode === 'short_note') {
+                        setExitShortNoteData(parsed.answers || []);
+                    } else {
+                        studentForm.setData('answers', parsed.answers || {});
+                    }
                 } else if (parsed.type === 'concept_map') {
                     setConceptMapData({
                         nodes: parsed.nodes || [],
@@ -601,7 +642,18 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                         setConceptMapSubMode(parsed.submission_type);
                     }
                 } else if (parsed.type === 'written_test' || parsed.type === 'formative_quiz') {
-                    studentForm.setData('answers', parsed.answers || {});
+                    if (parsed.type === 'formative_quiz' && parsed.assessment_mode === 'checklist') {
+                        setQuizChecklistData(parsed.indicators || []);
+                    } else {
+                        studentForm.setData('answers', parsed.answers || {});
+                    }
+                } else if (parsed.type === 'structured_assignment') {
+                    setStructuredAssignmentData({
+                        answer_text: parsed.answer_text || '',
+                        file: null
+                    });
+                } else if (parsed.type === 'reflective_journal') {
+                    setJournalAnswers(parsed.answers || []);
                 } else if (parsed.type === 'quiz_response') {
                     studentForm.setData('answers', parsed.answers || {});
                     studentForm.setData('content', parsed.note || '');
@@ -1138,40 +1190,72 @@ export default function ShowAssignment({ assignment, students, my_submission, my
 
             if (canAutoGrade) finalScore = totalScore;
         } else if (assignment.instrument_type === 'written_test' || assignment.instrument_type === 'formative_quiz') {
-            const questions = assignment.instrument_config?.questions || [];
-            let totalScore = 0;
-            let hasEssay = false;
+            if (assignment.instrument_type === 'formative_quiz' && (assignment.instrument_config?.assessment_mode || 'rubrik') === 'checklist') {
+                finalContent = JSON.stringify({ type: 'formative_quiz', assessment_mode: 'checklist', indicators: quizChecklistData });
+            } else {
+                const questions = assignment.instrument_config?.questions || [];
+                let totalScore = 0;
+                let hasEssay = false;
 
-            questions.forEach((q: any) => {
-                const studentAns = studentForm.data.answers[q.id];
-                const points = Number(q.points || 0);
-                if (q.type === 'multiple_choice') {
-                    const correctOptId = q.answer || q.options?.find((o: any) => o.is_correct)?.id;
-                    if (correctOptId && studentAns == correctOptId) totalScore += points;
-                } else if (q.type === 'short_answer') {
-                    const correctAns = q.correct_answer || q.answer;
-                    if (correctAns && studentAns?.trim().toLowerCase() == correctAns?.trim().toLowerCase()) {
-                        totalScore += points;
+                questions.forEach((q: any) => {
+                    const studentAns = studentForm.data.answers[q.id];
+                    const points = Number(q.points || 0);
+                    if (q.type === 'multiple_choice') {
+                        const correctOptId = q.answer || q.options?.find((o: any) => o.is_correct)?.id;
+                        if (correctOptId && studentAns == correctOptId) totalScore += points;
+                    } else if (q.type === 'short_answer') {
+                        const correctAns = q.correct_answer || q.answer;
+                        if (correctAns && studentAns?.trim().toLowerCase() == correctAns?.trim().toLowerCase()) {
+                            totalScore += points;
+                        }
+                    } else if (q.type === 'essay') {
+                        hasEssay = true;
                     }
-                } else if (q.type === 'essay') {
-                    hasEssay = true;
-                }
-            });
+                });
 
-            finalContent = JSON.stringify({
-                type: assignment.instrument_type === 'formative_quiz' ? 'formative_quiz' : 'written_test',
-                answers: studentForm.data.answers,
-                auto_score: totalScore,
-                has_essay: hasEssay
-            });
+                finalContent = JSON.stringify({
+                    type: assignment.instrument_type === 'formative_quiz' ? 'formative_quiz' : 'written_test',
+                    answers: studentForm.data.answers,
+                    auto_score: totalScore,
+                    has_essay: hasEssay
+                });
 
-            if (!hasEssay) finalScore = totalScore;
+                if (!hasEssay) finalScore = totalScore;
+            }
         } else if (assignment.instrument_type === 'self_assessment') {
-            finalContent = JSON.stringify({ type: 'self_assessment', ...selfAssessmentData });
+            const assessmentMode = assignment.instrument_config?.assessment_mode || 'default';
+            if (assessmentMode === 'checklist') {
+                finalContent = JSON.stringify({ type: 'self_assessment', assessment_mode: 'checklist', indicators: selfChecklistData });
+            } else if (assessmentMode === 'simple_rubric') {
+                finalContent = JSON.stringify({ type: 'self_assessment', assessment_mode: 'simple_rubric', indicators: selfRubricData });
+            } else {
+                finalContent = JSON.stringify({ type: 'self_assessment', ...selfAssessmentData });
+            }
         } else if (assignment.instrument_type === 'peer_assessment') {
-            finalContent = JSON.stringify({ type: 'peer_assessment', ...peerAssessmentData });
+            const assessmentMode = assignment.instrument_config?.assessment_mode || 'default';
+            if (assessmentMode === 'checklist') {
+                finalContent = JSON.stringify({ type: 'peer_assessment', assessment_mode: 'checklist', indicators: peerChecklistData, peer_student_id: peerAssessmentData.peer_student_id, peer_name: peerAssessmentData.peer_name });
+            } else if (assessmentMode === 'simple_rubric') {
+                finalContent = JSON.stringify({ type: 'peer_assessment', assessment_mode: 'simple_rubric', indicators: peerRubricData, peer_student_id: peerAssessmentData.peer_student_id, peer_name: peerAssessmentData.peer_name });
+            } else {
+                finalContent = JSON.stringify({ type: 'peer_assessment', ...peerAssessmentData });
+            }
         } else if (assignment.instrument_type === 'exit_ticket') {
-            finalContent = JSON.stringify({ type: 'exit_ticket', answers: studentForm.data.answers });
+            const assessmentMode = assignment.instrument_config?.assessment_mode || 'default';
+            if (assessmentMode === 'checklist') {
+                finalContent = JSON.stringify({ type: 'exit_ticket', assessment_mode: 'checklist', indicators: exitChecklistData });
+            } else if (assessmentMode === 'short_note') {
+                finalContent = JSON.stringify({ type: 'exit_ticket', assessment_mode: 'short_note', answers: exitShortNoteData });
+            } else {
+                finalContent = JSON.stringify({ type: 'exit_ticket', answers: studentForm.data.answers });
+            }
+        } else if (assignment.instrument_type === 'structured_assignment') {
+            finalContent = JSON.stringify({ type: 'structured_assignment', answer_text: structuredAssignmentData.answer_text });
+            if (structuredAssignmentData.file) {
+                studentForm.setData('file', structuredAssignmentData.file);
+            }
+        } else if (assignment.instrument_type === 'reflective_journal') {
+            finalContent = JSON.stringify({ type: 'reflective_journal', answers: journalAnswers });
         } else if (assignment.instrument_type === 'concept_map') {
             finalContent = JSON.stringify({ 
                 type: 'concept_map', 
@@ -1292,13 +1376,16 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                 {/* Content based on Role */}
                 {user_role === 'teacher' ? (
                     <div className="space-y-6">
-                        {['observation_checklist', 'anecdotal_notes', 'rubric', 'oral_test'].includes(assignment.instrument_type) ? (
+                        {['observation_checklist', 'anecdotal_notes', 'rubric', 'oral_test', 'performance_observation', 'performance', 'guided_discussion'].includes(assignment.instrument_type) ? (
                             <div className="space-y-6 animate-in fade-in duration-500">
                                 <div className="flex items-center justify-between px-4">
                                     <div>
                                         <h2 className="text-xl font-black text-foreground tracking-tight">
                                             {assignment.instrument_type === 'observation_checklist' ? 'Lembar Observasi & Ceklis' : 
                                              assignment.instrument_type === 'anecdotal_notes' ? 'Daftar Catatan Anekdotal' :
+                                             assignment.instrument_type === 'performance_observation' ? 'Lembar Observasi Keterlibatan' :
+                                             assignment.instrument_type === 'performance' ? 'Lembar Penilaian Kinerja' :
+                                             assignment.instrument_type === 'guided_discussion' ? 'Lembar Observasi Diskusi' :
                                              'Rubrik Capaian Kinerja'}
                                         </h2>
                                         <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">
@@ -1316,6 +1403,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                 {assignment.instrument_type === 'observation_checklist' ? 'Telah Diobservasi' : 
                                                  assignment.instrument_type === 'rubric' ? 'Telah Dinilai' :
                                                  assignment.instrument_type === 'oral_test' ? 'Selesai Diuji' :
+                                                 assignment.instrument_type === 'performance' ? 'Telah Dinilai' :
                                                  'Ada Catatan'}
                                             </p>
                                             <p className="text-lg font-black text-emerald-600">{assignment.submissions.length}</p>
@@ -1332,7 +1420,8 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                     {assignment.instrument_type === 'observation_checklist' ? 'Indikator Terpenuhi' : 
                                                      assignment.instrument_type === 'rubric' ? 'Progres Penilaian' :
                                                      assignment.instrument_type === 'oral_test' ? 'Hasil Tes' :
-                                                     'Waktu Catatan'}
+                                                     assignment.instrument_type === 'performance' ? 'Progres Penilaian' :
+                                                     'Indikator Terpenuhi'}
                                                 </th>
                                                 <th className="px-8 py-5">Status</th>
                                                 <th className="px-8 py-5 text-right">Aksi</th>
@@ -1402,6 +1491,10 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                         openRubricModal(student, sub);
                                                                     } else if (assignment.instrument_type === 'performance') {
                                                                         openPerformanceGrading(student);
+                                                                    } else if (assignment.instrument_type === 'performance_observation') {
+                                                                        openObservationModal(student, sub);
+                                                                    } else if (assignment.instrument_type === 'guided_discussion') {
+                                                                        openObservationModal(student, sub);
                                                                     } else if (assignment.instrument_type === 'project') {
                                                                         openProjectGrading(student);
                                                                     } else if (assignment.instrument_type === 'portfolio') {
@@ -1419,11 +1512,13 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                     assignment.instrument_type === 'anecdotal_notes' ? 'Edit Catatan' : 
                                                                     assignment.instrument_type === 'rubric' ? 'Edit Rubrik' :
                                                                     assignment.instrument_type === 'oral_test' ? 'Edit Tes' :
+                                                                    assignment.instrument_type === 'performance' ? 'Edit Penilaian' :
                                                                     'Edit Observasi'
                                                                 ) : (
                                                                     assignment.instrument_type === 'anecdotal_notes' ? 'Catatan' : 
                                                                     assignment.instrument_type === 'rubric' ? 'Isi Rubrik' :
                                                                     assignment.instrument_type === 'oral_test' ? 'Mulai Tes' :
+                                                                    assignment.instrument_type === 'performance' ? 'Isi Penilaian' :
                                                                     'Observasi'
                                                                 )}
                                                             </button>
@@ -1437,7 +1532,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                             </div>
                         ) : (
                             <div className="space-y-4 animate-in fade-in duration-500">
-                                {assignment.instrument_type === 'exit_ticket' && exitTicketStats && (
+                                {assignment.instrument_type === 'exit_ticket' && (assignment.instrument_config?.assessment_mode || 'default') === 'default' && exitTicketStats && (
                                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in slide-in-from-top-4 duration-500 mb-8">
                                         {/* SVG Donut Chart Card */}
                                         <div className="rounded-[8px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#1B1B25] p-6 shadow-none flex flex-col justify-between">
@@ -1613,6 +1708,58 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                     </div>
                                 )}
 
+                                {assignment.instrument_type === 'exit_ticket' && (assignment.instrument_config?.assessment_mode) === 'checklist' && (
+                                    <div className="rounded-[8px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#1B1B25] p-6 shadow-none animate-in slide-in-from-top-4 duration-500 mb-8">
+                                        <h3 className="text-sm font-semibold tracking-[-0.03em] text-slate-800 dark:text-[#F1F1F4] mb-4">Hasil Exit Ticket - Ceklis</h3>
+                                        <div className="space-y-3">
+                                            {(assignment.submissions || []).map((sub: any) => {
+                                                try {
+                                                    const parsed = JSON.parse(sub.content || '{}');
+                                                    if (parsed.type !== 'exit_ticket' || parsed.assessment_mode !== 'checklist') return null;
+                                                    return (
+                                                        <div key={sub.id} className="p-3 rounded-xl bg-muted/30 border border-border">
+                                                            <p className="text-xs font-bold text-foreground mb-2">{sub.student?.name || 'Siswa'}</p>
+                                                            <div className="flex flex-wrap gap-2">
+                                                                {(parsed.indicators || []).map((ind: any, idx: number) => (
+                                                                    <span key={idx} className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold ${ind.checked ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-500'}`}>
+                                                                        {ind.checked ? <CheckSquare className="h-3 w-3" /> : <Square className="h-3 w-3" />}
+                                                                        {ind.name}
+                                                                    </span>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                } catch { return null; }
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {assignment.instrument_type === 'exit_ticket' && (assignment.instrument_config?.assessment_mode) === 'short_note' && (
+                                    <div className="rounded-[8px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#1B1B25] p-6 shadow-none animate-in slide-in-from-top-4 duration-500 mb-8">
+                                        <h3 className="text-sm font-semibold tracking-[-0.03em] text-slate-800 dark:text-[#F1F1F4] mb-4">Hasil Exit Ticket - Catatan Singkat</h3>
+                                        <div className="space-y-4">
+                                            {(assignment.submissions || []).map((sub: any) => {
+                                                try {
+                                                    const parsed = JSON.parse(sub.content || '{}');
+                                                    if (parsed.type !== 'exit_ticket' || parsed.assessment_mode !== 'short_note') return null;
+                                                    return (
+                                                        <div key={sub.id} className="p-4 rounded-xl bg-muted/30 border border-border space-y-2">
+                                                            <p className="text-xs font-bold text-foreground">{sub.student?.name || 'Siswa'}</p>
+                                                            {(parsed.answers || []).map((a: any, idx: number) => (
+                                                                <div key={idx} className="text-xs">
+                                                                    <span className="font-semibold text-muted-foreground">{a.text}: </span>
+                                                                    <span className="text-foreground">{a.answer || '-'}</span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    );
+                                                } catch { return null; }
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
+
                                 {/* Concept Difficulty Alert for Formative Quiz */}
                                 {assignment.instrument_type === 'formative_quiz' && formativeDifficultyStats && formativeDifficultyStats.hardQuestions.length > 0 && (
                                     <div className="rounded-[8px] border border-rose-500/30 bg-rose-500/5 dark:bg-rose-950/15 p-6 animate-in slide-in-from-top-4 duration-500 mb-6 flex items-start gap-4">
@@ -1780,6 +1927,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
 
                                 <form onSubmit={handleSubmitAssignment} className="space-y-10">
                                     {assignment.instrument_type === 'peer_assessment' ? (
+                                        (assignment.instrument_config?.assessment_mode || 'default') === 'default' ? (
                                         <div className="space-y-10 animate-in fade-in duration-500">
                                             {/* Identity Section */}
                                             <div className="space-y-6">
@@ -1881,7 +2029,73 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                 </div>
                                             </div>
                                         </div>
+                                        ) : (assignment.instrument_config?.assessment_mode) === 'checklist' ? (
+                                        <div className="space-y-6 animate-in fade-in duration-500">
+                                            <div className="flex items-center gap-3 mb-6">
+                                                <div className="h-8 w-8 rounded-xl bg-primary/10 text-primary text-xs font-black flex items-center justify-center">
+                                                    <CheckSquare className="h-4 w-4" />
+                                                </div>
+                                                <p className="text-sm font-black text-slate-700 dark:text-slate-200 uppercase tracking-widest">Penilaian Antarteman - Mode Ceklis</p>
+                                            </div>
+                                            <p className="text-xs text-muted-foreground">Tandai indikator yang menurutmu sudah dicapai oleh rekanmu:</p>
+                                            {(assignment.instrument_config?.indicators || []).map((ind: any, idx: number) => (
+                                                <label key={idx} className="flex items-center gap-4 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20 hover:bg-white dark:hover:bg-slate-800 transition-all cursor-pointer group">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={peerChecklistData[idx]?.checked || false}
+                                                        onChange={() => {
+                                                            const newData = [...peerChecklistData];
+                                                            if (!newData[idx]) newData[idx] = { name: ind.name, checked: false };
+                                                            newData[idx].checked = !newData[idx].checked;
+                                                            setPeerChecklistData(newData);
+                                                        }}
+                                                        className="h-5 w-5 rounded border-slate-300 text-primary focus:ring-primary"
+                                                    />
+                                                    <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{ind.name}</span>
+                                                </label>
+                                            ))}
+                                        </div>
+                                        ) : (
+                                        <div className="space-y-6 animate-in fade-in duration-500">
+                                            <div className="flex items-center gap-3 mb-6">
+                                                <div className="h-8 w-8 rounded-xl bg-primary/10 text-primary text-xs font-black flex items-center justify-center">
+                                                    <Layers className="h-4 w-4" />
+                                                </div>
+                                                <p className="text-sm font-black text-slate-700 dark:text-slate-200 uppercase tracking-widest">Penilaian Antarteman - Rubrik Sederhana</p>
+                                            </div>
+                                            {(assignment.instrument_config?.indicators || []).map((ind: any, idx: number) => (
+                                                <div key={idx} className="p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20 space-y-3">
+                                                    <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{ind.name}</p>
+                                                    <div className="flex gap-2">
+                                                        {['Perlu Bimbingan', 'Cukup', 'Baik', 'Sangat Baik'].map((level, lvlIdx) => (
+                                                            <button
+                                                                key={level}
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    const newData = [...peerRubricData];
+                                                                    if (!newData[idx]) newData[idx] = { name: ind.name, selected_level: '' };
+                                                                    newData[idx].selected_level = level;
+                                                                    setPeerRubricData(newData);
+                                                                }}
+                                                                className={`flex-1 py-2 px-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all border-2 ${
+                                                                    peerRubricData[idx]?.selected_level === level
+                                                                        ? lvlIdx === 0 ? 'bg-red-50 border-red-400 text-red-600'
+                                                                          : lvlIdx === 1 ? 'bg-amber-50 border-amber-400 text-amber-600'
+                                                                          : lvlIdx === 2 ? 'bg-blue-50 border-blue-400 text-blue-600'
+                                                                          : 'bg-emerald-50 border-emerald-400 text-emerald-600'
+                                                                        : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 text-muted-foreground hover:border-primary/30'
+                                                                }`}
+                                                            >
+                                                                {level}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        )
                                     ) : assignment.instrument_type === 'self_assessment' ? (
+                                        (assignment.instrument_config?.assessment_mode || 'default') === 'default' ? (
                                         <div className="space-y-10 animate-in fade-in duration-500">
                                             {/* Feelings Section */}
                                             <div className="space-y-6">
@@ -1966,7 +2180,72 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                 </div>
                                             </div>
                                         </div>
-                                    ) : (assignment.instrument_type === 'written_test' || assignment.instrument_type === 'formative_quiz') ? (
+                                        ) : (assignment.instrument_config?.assessment_mode) === 'checklist' ? (
+                                        <div className="space-y-6 animate-in fade-in duration-500">
+                                            <div className="flex items-center gap-3 mb-6">
+                                                <div className="h-8 w-8 rounded-xl bg-primary/10 text-primary text-xs font-black flex items-center justify-center">
+                                                    <CheckSquare className="h-4 w-4" />
+                                                </div>
+                                                <p className="text-sm font-black text-slate-700 dark:text-slate-200 uppercase tracking-widest">Penilaian Diri - Mode Ceklis</p>
+                                            </div>
+                                            <p className="text-xs text-muted-foreground">Tandai indikator yang menurutmu sudah kamu capai:</p>
+                                            {(assignment.instrument_config?.indicators || []).map((ind: any, idx: number) => (
+                                                <label key={idx} className="flex items-center gap-4 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20 hover:bg-white dark:hover:bg-slate-800 transition-all cursor-pointer group">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={selfChecklistData[idx]?.checked || false}
+                                                        onChange={() => {
+                                                            const newData = [...selfChecklistData];
+                                                            if (!newData[idx]) newData[idx] = { name: ind.name, checked: false };
+                                                            newData[idx].checked = !newData[idx].checked;
+                                                            setSelfChecklistData(newData);
+                                                        }}
+                                                        className="h-5 w-5 rounded border-slate-300 text-primary focus:ring-primary"
+                                                    />
+                                                    <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{ind.name}</span>
+                                                </label>
+                                            ))}
+                                        </div>
+                                        ) : (
+                                        <div className="space-y-6 animate-in fade-in duration-500">
+                                            <div className="flex items-center gap-3 mb-6">
+                                                <div className="h-8 w-8 rounded-xl bg-primary/10 text-primary text-xs font-black flex items-center justify-center">
+                                                    <Layers className="h-4 w-4" />
+                                                </div>
+                                                <p className="text-sm font-black text-slate-700 dark:text-slate-200 uppercase tracking-widest">Penilaian Diri - Rubrik Sederhana</p>
+                                            </div>
+                                            {(assignment.instrument_config?.indicators || []).map((ind: any, idx: number) => (
+                                                <div key={idx} className="p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20 space-y-3">
+                                                    <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{ind.name}</p>
+                                                    <div className="flex gap-2">
+                                                        {['Perlu Bimbingan', 'Cukup', 'Baik', 'Sangat Baik'].map((level, lvlIdx) => (
+                                                            <button
+                                                                key={level}
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    const newData = [...selfRubricData];
+                                                                    if (!newData[idx]) newData[idx] = { name: ind.name, selected_level: '' };
+                                                                    newData[idx].selected_level = level;
+                                                                    setSelfRubricData(newData);
+                                                                }}
+                                                                className={`flex-1 py-2 px-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all border-2 ${
+                                                                    selfRubricData[idx]?.selected_level === level
+                                                                        ? lvlIdx === 0 ? 'bg-red-50 border-red-400 text-red-600'
+                                                                          : lvlIdx === 1 ? 'bg-amber-50 border-amber-400 text-amber-600'
+                                                                          : lvlIdx === 2 ? 'bg-blue-50 border-blue-400 text-blue-600'
+                                                                          : 'bg-emerald-50 border-emerald-400 text-emerald-600'
+                                                                        : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 text-muted-foreground hover:border-primary/30'
+                                                                }`}
+                                                            >
+                                                                {level}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        )
+                                    ) : (assignment.instrument_type === 'written_test' || (assignment.instrument_type === 'formative_quiz' && (assignment.instrument_config?.assessment_mode || 'rubrik') === 'rubrik')) ? (
                                         <div className="space-y-12 animate-in fade-in duration-700">
                                             {/* Test Header & Progress */}
                                             <div className="relative overflow-hidden rounded-[8px] bg-slate-50 border border-slate-200 dark:bg-[#1B1B25] dark:border-[#2C2C3A] p-6 shadow-none text-slate-800 dark:text-[#F1F1F4]">
@@ -1978,7 +2257,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                         </div>
                                                         <div>
                                                             <h3 className="font-semibold tracking-[-0.03em] text-lg text-slate-800 dark:text-[#F1F1F4]">
-                                                                {assignment.instrument_type === 'formative_quiz' ? 'Kuis Formatif Interaktif (Umpan Balik Instan)' : 'Lembar Tes Tertulis'}
+                                                                 {assignment.instrument_type === 'formative_quiz' ? 'Tes/Penugasan Singkat (Umpan Balik Instan)' : 'Lembar Tes Tertulis'}
                                                             </h3>
                                                             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider mt-1">
                                                                 {assignment.instrument_type === 'formative_quiz' ? 'Jawab & Pelajari Langsung Pembahasannya!' : 'Fokus & Teliti'} • {assignment.instrument_config?.questions?.length || 0} Pertanyaan
@@ -2243,7 +2522,42 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                 ></textarea>
                                             </div>
                                         </div>
+                                    ) : (assignment.instrument_type === 'formative_quiz' && (assignment.instrument_config?.assessment_mode) === 'checklist') ? (
+                                        <div className="space-y-6 animate-in fade-in duration-500">
+                                            <div className="relative overflow-hidden rounded-[8px] bg-slate-50 border border-slate-200 dark:bg-[#1B1B25] dark:border-[#2C2C3A] p-6 shadow-none text-slate-800 dark:text-[#F1F1F4]">
+                                                <div className="absolute top-0 right-0 -mt-10 -mr-10 h-64 w-64 rounded-full bg-[#5E6AD2]/5 blur-3xl" />
+                                                <div className="relative flex items-center gap-5">
+                                                    <div className="h-11 w-11 rounded-[6px] bg-[#5E6AD2]/10 dark:bg-[#5E6AD2] text-[#5E6AD2] dark:text-white shadow-none flex items-center justify-center">
+                                                        <CheckSquare className="h-5 w-5" />
+                                                    </div>
+                                                    <div>
+                                                        <h3 className="font-semibold tracking-[-0.03em] text-lg text-slate-800 dark:text-[#F1F1F4]">Ceklis Jawaban</h3>
+                                                        <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider mt-1">Tandai pertanyaan yang bisa kamu jawab</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            {(assignment.instrument_config?.indicators || []).map((ind: any, idx: number) => (
+                                                <label key={idx} className="flex items-center gap-4 p-4 rounded-[8px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#1B1B25] hover:border-[#5E6AD2]/50 transition-all cursor-pointer group shadow-none">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={quizChecklistData[idx]?.checked || false}
+                                                        onChange={() => {
+                                                            const newData = [...quizChecklistData];
+                                                            if (!newData[idx]) newData[idx] = { name: ind.name, checked: false };
+                                                            newData[idx].checked = !newData[idx].checked;
+                                                            setQuizChecklistData(newData);
+                                                        }}
+                                                        className="h-5 w-5 rounded border-slate-300 text-[#5E6AD2] focus:ring-[#5E6AD2]"
+                                                    />
+                                                    <div className="flex-1">
+                                                        <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{ind.name}</span>
+                                                        {ind.note && <p className="text-[10px] text-muted-foreground mt-0.5">Kunci: {ind.note}</p>}
+                                                    </div>
+                                                </label>
+                                            ))}
+                                        </div>
                                     ) : assignment.instrument_type === 'exit_ticket' ? (
+                                        (assignment.instrument_config?.assessment_mode || 'default') === 'default' ? (
                                         <div className="space-y-12 animate-in fade-in duration-700">
                                             {/* Exit Ticket Header & Progress */}
                                             <div className="relative overflow-hidden rounded-[8px] bg-slate-50 border border-slate-200 dark:bg-[#1B1B25] dark:border-[#2C2C3A] p-6 shadow-none text-slate-800 dark:text-[#F1F1F4]">
@@ -2347,6 +2661,120 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                 </div>
                                             </div>
                                         </div>
+                                        ) : (assignment.instrument_config?.assessment_mode) === 'checklist' ? (
+                                        <div className="space-y-6 animate-in fade-in duration-500">
+                                            <div className="flex items-center gap-3 mb-6">
+                                                <div className="h-8 w-8 rounded-xl bg-primary/10 text-primary text-xs font-black flex items-center justify-center">
+                                                    <CheckSquare className="h-4 w-4" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-black text-slate-700 dark:text-slate-200 uppercase tracking-widest">Exit Ticket - Mode Ceklis</p>
+                                                    <p className="text-[10px] text-muted-foreground font-medium">Tandai indikator pemahaman yang sudah kamu capai</p>
+                                                </div>
+                                            </div>
+                                            {(assignment.instrument_config?.indicators || []).map((ind: any, idx: number) => (
+                                                <label key={idx} className="flex items-center gap-4 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20 hover:bg-white dark:hover:bg-slate-800 transition-all cursor-pointer group">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={exitChecklistData[idx]?.checked || false}
+                                                        onChange={() => {
+                                                            const newData = [...exitChecklistData];
+                                                            if (!newData[idx]) newData[idx] = { name: ind.name, checked: false };
+                                                            newData[idx].checked = !newData[idx].checked;
+                                                            setExitChecklistData(newData);
+                                                        }}
+                                                        className="h-5 w-5 rounded border-slate-300 text-primary focus:ring-primary"
+                                                    />
+                                                    <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{ind.name}</span>
+                                                </label>
+                                            ))}
+                                        </div>
+                                        ) : (
+                                        <div className="space-y-6 animate-in fade-in duration-500">
+                                            <div className="flex items-center gap-3 mb-6">
+                                                <div className="h-8 w-8 rounded-xl bg-primary/10 text-primary text-xs font-black flex items-center justify-center">
+                                                    <FileText className="h-4 w-4" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-black text-slate-700 dark:text-slate-200 uppercase tracking-widest">Exit Ticket - Catatan Singkat</p>
+                                                    <p className="text-[10px] text-muted-foreground font-medium">Jawab pertanyaan singkat berikut secara singkat dan jelas</p>
+                                                </div>
+                                            </div>
+                                            {(assignment.instrument_config?.questions || []).map((q: any, idx: number) => (
+                                                <div key={idx} className="p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20 space-y-3">
+                                                    <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{q.text}</p>
+                                                    <input
+                                                        type="text"
+                                                        value={exitShortNoteData[idx]?.answer || ''}
+                                                        onChange={(e) => {
+                                                            const newData = [...exitShortNoteData];
+                                                            if (!newData[idx]) newData[idx] = { text: q.text, answer: '' };
+                                                            newData[idx].answer = e.target.value;
+                                                            setExitShortNoteData(newData);
+                                                        }}
+                                                        maxLength={280}
+                                                        placeholder="Jawaban singkat..."
+                                                        className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3 text-xs font-medium focus:border-primary focus:ring-1 focus:ring-primary/15 transition-all text-slate-800 dark:text-slate-200 placeholder-slate-400"
+                                                    />
+                                                    <div className="flex justify-end">
+                                                        <span className="text-[10px] font-mono text-muted-foreground">
+                                                            {280 - (exitShortNoteData[idx]?.answer?.length || 0)} karakter tersisa
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        )
+                                    ) : assignment.instrument_type === 'structured_assignment' ? (
+                                        <div className="space-y-8 animate-in fade-in duration-500">
+                                            <div className="relative overflow-hidden rounded-[8px] bg-slate-50 border border-slate-200 dark:bg-[#1B1B25] dark:border-[#2C2C3A] p-6 shadow-none text-slate-800 dark:text-[#F1F1F4]">
+                                                <div className="absolute top-0 right-0 -mt-10 -mr-10 h-64 w-64 rounded-full bg-[#5E6AD2]/5 blur-3xl" />
+                                                <div className="relative flex items-center gap-5">
+                                                    <div className="h-11 w-11 rounded-[6px] bg-[#5E6AD2]/10 dark:bg-[#5E6AD2] text-[#5E6AD2] dark:text-white shadow-none flex items-center justify-center">
+                                                        <FileText className="h-5 w-5" />
+                                                    </div>
+                                                    <div>
+                                                        <h3 className="font-semibold tracking-[-0.03em] text-lg text-slate-800 dark:text-[#F1F1F4]">Penugasan Terstruktur (LKPD)</h3>
+                                                        <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider mt-1">Kerjakan tugas dan kumpulkan jawabanmu</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {assignment.instrument_config?.stimulus && (
+                                                <div className="p-5 rounded-[8px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#1B1B25] shadow-none">
+                                                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-2">Deskripsi Tugas:</p>
+                                                    <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium">{assignment.instrument_config.stimulus}</p>
+                                                </div>
+                                            )}
+
+                                            <div className="space-y-3">
+                                                <label className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">Jawaban Teks</label>
+                                                <textarea
+                                                    rows={8}
+                                                    value={structuredAssignmentData.answer_text}
+                                                    onChange={(e) => setStructuredAssignmentData({ ...structuredAssignmentData, answer_text: e.target.value })}
+                                                    placeholder="Tuliskan jawaban atau hasil kerja Anda di sini..."
+                                                    className="w-full rounded-[8px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#101014] px-4 py-3 text-xs font-medium focus:border-[#5E6AD2] focus:ring-1 focus:ring-[#5E6AD2]/15 transition-all text-slate-800 dark:text-[#F1F1F4] placeholder-slate-400 resize-none leading-relaxed"
+                                                />
+                                            </div>
+
+                                            <div className="space-y-3">
+                                                <label className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">Lampiran File (Opsional)</label>
+                                                <p className="text-[10px] text-muted-foreground">Format: PDF, DOC, DOCX, PNG, JPG (Maks 10MB)</p>
+                                                <input
+                                                    type="file"
+                                                    accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
+                                                    onChange={(e) => {
+                                                        const file = e.target.files?.[0] || null;
+                                                        setStructuredAssignmentData({ ...structuredAssignmentData, file });
+                                                    }}
+                                                    className="w-full text-xs text-slate-600 dark:text-slate-300 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-[#5E6AD2]/10 file:text-[#5E6AD2] hover:file:bg-[#5E6AD2]/20 file:cursor-pointer"
+                                                />
+                                                {structuredAssignmentData.file && (
+                                                    <p className="text-[10px] text-emerald-600 font-medium">File dipilih: {structuredAssignmentData.file.name}</p>
+                                                )}
+                                            </div>
+                                        </div>
                                     ) : assignment.instrument_type === 'concept_map' ? (
                                         <div className="space-y-8 animate-in fade-in duration-500">
                                             <div className="p-6 rounded-[2.5rem] bg-indigo-50/30 dark:bg-indigo-950/10 border border-indigo-100 dark:border-indigo-900/30">
@@ -2414,6 +2842,50 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                     </p>
                                                 </div>
                                             )}
+                                        </div>
+                                    ) : assignment.instrument_type === 'reflective_journal' ? (
+                                        <div className="space-y-8 animate-in fade-in duration-500">
+                                            <div className="relative overflow-hidden rounded-[8px] bg-slate-50 border border-slate-200 dark:bg-[#1B1B25] dark:border-[#2C2C3A] p-6 shadow-none text-slate-800 dark:text-[#F1F1F4]">
+                                                <div className="absolute top-0 right-0 -mt-10 -mr-10 h-64 w-64 rounded-full bg-[#5E6AD2]/5 blur-3xl" />
+                                                <div className="relative flex items-center gap-5">
+                                                    <div className="h-11 w-11 rounded-[6px] bg-[#5E6AD2]/10 dark:bg-[#5E6AD2] text-[#5E6AD2] dark:text-white shadow-none flex items-center justify-center">
+                                                        <BookOpen className="h-5 w-5" />
+                                                    </div>
+                                                    <div>
+                                                        <h3 className="font-semibold tracking-[-0.03em] text-lg text-slate-800 dark:text-[#F1F1F4]">Jurnal Reflektif</h3>
+                                                        <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider mt-1">Tuliskan refleksi pribadimu tentang proses belajar hari ini</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {assignment.instrument_config?.stimulus && (
+                                                <div className="p-5 rounded-[8px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#1B1B25] shadow-none">
+                                                    <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium italic">"{assignment.instrument_config.stimulus}"</p>
+                                                </div>
+                                            )}
+
+                                            <div className="space-y-6">
+                                                {(assignment.instrument_config?.questions || []).map((q: any, idx: number) => (
+                                                    <div key={idx} className="p-5 rounded-[8px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#1B1B25] shadow-none space-y-3">
+                                                        <div className="flex items-start gap-3">
+                                                            <span className="h-6 w-6 rounded-full bg-[#5E6AD2]/10 text-[#5E6AD2] text-[10px] font-black flex items-center justify-center shrink-0 mt-0.5">{idx + 1}</span>
+                                                            <p className="text-sm font-bold text-slate-700 dark:text-slate-200 leading-relaxed">{q.text}</p>
+                                                        </div>
+                                                        <textarea
+                                                            rows={4}
+                                                            value={journalAnswers[idx]?.answer || ''}
+                                                            onChange={(e) => {
+                                                                const newAnswers = [...journalAnswers];
+                                                                if (!newAnswers[idx]) newAnswers[idx] = { question: q.text, answer: '' };
+                                                                newAnswers[idx].answer = e.target.value;
+                                                                setJournalAnswers(newAnswers);
+                                                            }}
+                                                            placeholder="Tuliskan refleksimu di sini..."
+                                                            className="w-full rounded-[8px] border border-slate-200 dark:border-[#2C2C3A] bg-slate-50/30 dark:bg-[#101014] px-4 py-3 text-xs font-medium focus:border-[#5E6AD2] focus:ring-1 focus:ring-[#5E6AD2]/15 transition-all text-slate-800 dark:text-[#F1F1F4] placeholder-slate-400 resize-none leading-relaxed"
+                                                        />
+                                                    </div>
+                                                ))}
+                                            </div>
                                         </div>
                                     ) : (
                                         <div className="space-y-4 animate-in fade-in duration-500">
@@ -2864,6 +3336,65 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                             </div>
                                         )}
 
+                                        {assignment.instrument_type === 'structured_assignment' && (
+                                            <div className="pt-6 border-t border-slate-50 dark:border-slate-800 animate-in slide-in-from-top-4">
+                                                <div className="flex items-center gap-2 mb-6">
+                                                    <FileText className="h-4 w-4 text-[#5E6AD2]" />
+                                                    <h3 className="text-xs font-black text-foreground uppercase tracking-widest">Hasil Penugasan Terstruktur</h3>
+                                                </div>
+                                                {(() => {
+                                                    try {
+                                                        const p = JSON.parse(my_submission.content);
+                                                        if (p.type !== 'structured_assignment') return null;
+                                                        return (
+                                                            <div className="space-y-4">
+                                                                {p.answer_text && (
+                                                                    <div className="p-5 rounded-[8px] bg-slate-50 dark:bg-[#101014] border border-slate-200 dark:border-[#2C2C3A]">
+                                                                        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-2">Jawaban Teks:</p>
+                                                                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium whitespace-pre-wrap">{p.answer_text}</p>
+                                                                    </div>
+                                                                )}
+                                                                {my_submission.file_path && (
+                                                                    <a href={`/storage/${my_submission.file_path}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#5E6AD2]/10 text-[#5E6AD2] text-xs font-bold hover:bg-[#5E6AD2]/20 transition">
+                                                                        <Download className="h-3.5 w-3.5" /> Lihat Lampiran
+                                                                    </a>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    } catch { return null; }
+                                                })()}
+                                            </div>
+                                        )}
+
+                                        {assignment.instrument_type === 'reflective_journal' && (
+                                            <div className="pt-6 border-t border-slate-50 dark:border-slate-800 animate-in slide-in-from-top-4">
+                                                <div className="flex items-center gap-2 mb-6">
+                                                    <BookOpen className="h-4 w-4 text-[#5E6AD2]" />
+                                                    <h3 className="text-xs font-black text-foreground uppercase tracking-widest">Jurnal Reflektif Siswa</h3>
+                                                </div>
+                                                {(() => {
+                                                    try {
+                                                        const p = JSON.parse(my_submission.content);
+                                                        if (p.type !== 'reflective_journal') return null;
+                                                        return (
+                                                            <div className="space-y-4">
+                                                                {(p.answers || []).map((a: any, idx: number) => (
+                                                                    <div key={idx} className="p-5 rounded-[8px] bg-slate-50 dark:bg-[#101014] border border-slate-200 dark:border-[#2C2C3A] space-y-2">
+                                                                        <p className="text-[10px] font-black text-[#5E6AD2] uppercase tracking-widest">Pertanyaan {idx + 1}:</p>
+                                                                        <p className="text-xs font-bold text-slate-700 dark:text-slate-200">{a.question}</p>
+                                                                        <div className="pt-2 border-t border-slate-200 dark:border-[#2C2C3A]">
+                                                                            <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">Jawaban:</p>
+                                                                            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium italic whitespace-pre-wrap">{a.answer || '-'}</p>
+                                                                        </div>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        );
+                                                    } catch { return null; }
+                                                })()}
+                                            </div>
+                                        )}
+
                                         {assignment.instrument_type === 'concept_map' && (
                                             <div className="pt-6 border-t border-slate-50 dark:border-slate-800 animate-in slide-in-from-top-4">
                                                 <div className="flex items-center gap-2 mb-6">
@@ -2917,7 +3448,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                         <Layers className="h-4 w-4 text-rose-500" />
                                                     )}
                                                     <h3 className="text-xs font-black text-foreground uppercase tracking-widest">
-                                                        {assignment.instrument_type === 'formative_quiz' ? 'Hasil Kuis Formatif' : 'Hasil Tes Tertulis'}
+                                                        {assignment.instrument_type === 'formative_quiz' ? 'Hasil Tes/Penugasan Singkat' : 'Hasil Tes Tertulis'}
                                                     </h3>
                                                 </div>
                                                 <div className={
@@ -2933,6 +3464,30 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                         Anda telah menyelesaikan {assignment.instrument_type === 'formative_quiz' ? 'kuis' : 'tes'} ini. {displayScore !== null ? `Skor Anda adalah ${displayScore} dari ${assignment.max_points} poin.` : 'Menunggu hasil penilaian otomatis/guru.'}
                                                     </p>
                                                 </div>
+                                            </div>
+                                        )}
+                                        {assignment.instrument_type === 'formative_quiz' && (assignment.instrument_config?.assessment_mode) === 'checklist' && (
+                                            <div className="pt-6 border-t border-slate-50 dark:border-slate-800 animate-in slide-in-from-top-4">
+                                                <div className="flex items-center gap-2 mb-6">
+                                                    <CheckSquare className="h-4 w-4 text-[#5E6AD2]" />
+                                                    <h3 className="text-xs font-black text-foreground uppercase tracking-widest">Hasil Ceklis Jawaban</h3>
+                                                </div>
+                                                {(() => {
+                                                    try {
+                                                        const p = JSON.parse(my_submission.content);
+                                                        if (p.type !== 'formative_quiz' || p.assessment_mode !== 'checklist') return null;
+                                                        return (
+                                                            <div className="space-y-2">
+                                                                {(p.indicators || []).map((ind: any, idx: number) => (
+                                                                    <div key={idx} className={`flex items-center gap-3 p-3 rounded-xl border ${ind.checked ? 'bg-emerald-50 border-emerald-200 dark:bg-emerald-950/20 dark:border-emerald-800' : 'bg-red-50 border-red-200 dark:bg-red-950/20 dark:border-red-800'}`}>
+                                                                        {ind.checked ? <CheckSquare className="h-4 w-4 text-emerald-500 shrink-0" /> : <Square className="h-4 w-4 text-red-400 shrink-0" />}
+                                                                        <span className={`text-xs font-medium ${ind.checked ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-600 dark:text-red-400'}`}>{ind.name}</span>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        );
+                                                    } catch { return null; }
+                                                })()}
                                             </div>
                                         )}
                                         {assignment.instrument_type === 'performance_observation' && (
@@ -3889,6 +4444,33 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                         );
                                     }
                                     if (parsed.type === 'self_assessment') {
+                                        if (parsed.assessment_mode === 'checklist') {
+                                            return (
+                                                <div className="space-y-4">
+                                                    <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">Penilaian Diri - Ceklis</p>
+                                                    {(parsed.indicators || []).map((ind: any, idx: number) => (
+                                                        <div key={idx} className="flex items-center gap-3 p-3 rounded-xl bg-muted/30 border border-border">
+                                                            {ind.checked ? <CheckSquare className="h-4 w-4 text-emerald-500 shrink-0" /> : <Square className="h-4 w-4 text-muted-foreground/30 shrink-0" />}
+                                                            <span className={`text-xs font-medium ${ind.checked ? 'text-foreground' : 'text-muted-foreground'}`}>{ind.name}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            );
+                                        }
+                                        if (parsed.assessment_mode === 'simple_rubric') {
+                                            const levelColors: Record<string, string> = { 'Perlu Bimbingan': 'text-red-600 bg-red-50', 'Cukup': 'text-amber-600 bg-amber-50', 'Baik': 'text-blue-600 bg-blue-50', 'Sangat Baik': 'text-emerald-600 bg-emerald-50' };
+                                            return (
+                                                <div className="space-y-4">
+                                                    <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">Penilaian Diri - Rubrik Sederhana</p>
+                                                    {(parsed.indicators || []).map((ind: any, idx: number) => (
+                                                        <div key={idx} className="p-3 rounded-xl bg-muted/30 border border-border space-y-2">
+                                                            <p className="text-xs font-bold text-foreground">{ind.name}</p>
+                                                            <span className={`inline-block px-3 py-1 rounded-full text-[10px] font-bold uppercase ${levelColors[ind.selected_level] || 'bg-muted text-muted-foreground'}`}>{ind.selected_level || '-'}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            );
+                                        }
                                         const feelingMap: any = {
                                             very_happy: { label: 'Sangat Senang', icon: '🤩' },
                                             happy: { label: 'Senang', icon: '😊' },
@@ -3922,6 +4504,39 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                         );
                                     }
                                     if (parsed.type === 'peer_assessment') {
+                                        if (parsed.assessment_mode === 'checklist') {
+                                            return (
+                                                <div className="space-y-4">
+                                                    <div className="flex items-center gap-3 mb-2">
+                                                        <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">Penilaian Antarteman - Ceklis</p>
+                                                        {parsed.peer_name && <span className="text-xs font-bold text-foreground">→ {parsed.peer_name}</span>}
+                                                    </div>
+                                                    {(parsed.indicators || []).map((ind: any, idx: number) => (
+                                                        <div key={idx} className="flex items-center gap-3 p-3 rounded-xl bg-muted/30 border border-border">
+                                                            {ind.checked ? <CheckSquare className="h-4 w-4 text-emerald-500 shrink-0" /> : <Square className="h-4 w-4 text-muted-foreground/30 shrink-0" />}
+                                                            <span className={`text-xs font-medium ${ind.checked ? 'text-foreground' : 'text-muted-foreground'}`}>{ind.name}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            );
+                                        }
+                                        if (parsed.assessment_mode === 'simple_rubric') {
+                                            const levelColors: Record<string, string> = { 'Perlu Bimbingan': 'text-red-600 bg-red-50', 'Cukup': 'text-amber-600 bg-amber-50', 'Baik': 'text-blue-600 bg-blue-50', 'Sangat Baik': 'text-emerald-600 bg-emerald-50' };
+                                            return (
+                                                <div className="space-y-4">
+                                                    <div className="flex items-center gap-3 mb-2">
+                                                        <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">Penilaian Antarteman - Rubrik Sederhana</p>
+                                                        {parsed.peer_name && <span className="text-xs font-bold text-foreground">→ {parsed.peer_name}</span>}
+                                                    </div>
+                                                    {(parsed.indicators || []).map((ind: any, idx: number) => (
+                                                        <div key={idx} className="p-3 rounded-xl bg-muted/30 border border-border space-y-2">
+                                                            <p className="text-xs font-bold text-foreground">{ind.name}</p>
+                                                            <span className={`inline-block px-3 py-1 rounded-full text-[10px] font-bold uppercase ${levelColors[ind.selected_level] || 'bg-muted text-muted-foreground'}`}>{ind.selected_level || '-'}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            );
+                                        }
                                         return (
                                             <div className="space-y-6">
                                                 <div className="flex flex-wrap gap-3">

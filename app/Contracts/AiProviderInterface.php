@@ -43,6 +43,7 @@ interface AiProviderInterface
         string $tpDescription, 
         string $tpContent, 
         string $instrumentType, 
-        bool $regenerate = false
+        bool $regenerate = false,
+        ?string $observationMode = null
     ): array;
 }

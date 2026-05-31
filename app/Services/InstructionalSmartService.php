@@ -258,7 +258,8 @@ class InstructionalSmartService
         string $type, 
         bool $regenerate = false,
         ?string $materialTitle = null,
-        ?string $materialContent = null
+        ?string $materialContent = null,
+        ?string $observationMode = null
     ): array {
         $this->isLastRequestOnline = false;
         $tp = LmsLearningObjective::find($tpId);
@@ -266,10 +267,6 @@ class InstructionalSmartService
 
         if ($type === 'formative_quiz') {
             $type = 'quiz_survey';
-        } elseif ($type === 'guided_discussion') {
-            $type = 'performance_observation';
-        } elseif ($type === 'structured_assignment') {
-            $type = 'concept_map';
         }
 
         $description = $tp->description ?? '';
@@ -287,7 +284,7 @@ class InstructionalSmartService
 
         if ($ai->isConfigured()) {
             try {
-                $suggested = $ai->suggestAssessment($description, $content, $type, $regenerate);
+                $suggested = $ai->suggestAssessment($description, $content, $type, $regenerate, $observationMode);
                 if (!empty($suggested)) {
                     $this->isLastRequestOnline = true;
                     return $suggested;
@@ -382,29 +379,55 @@ class InstructionalSmartService
 
         if ($type === 'performance_observation') {
             return [
-                'stimulus' => "Guru berkeliling mengamati proses kerja murid (individu/kelompok) saat melakukan aktivitas terkait {$content}.",
+                'observation_mode' => $observationMode ?? 'checklist',
+                'stimulus' => "Guru berkeliling mengamati keterlibatan dan perilaku murid (individu/kelompok) saat melakukan aktivitas terkait {$content}.",
                 'indicators' => [
                     ['name' => "Murid berkontribusi aktif dalam diskusi/pengerjaan tugas kelompok."],
-                    ['name' => "Murid menunjukkan logika struktur yang tepat dalam menyusun solusi {$content}."],
-                    ['name' => "Murid mampu merespons umpan balik lisan yang diberikan guru saat proses berlangsung."],
+                    ['name' => "Murid menunjukkan keterlibatan yang konsisten selama kegiatan pembelajaran berlangsung."],
+                    ['name' => "Murid mampu merespons umpan balik dan petunjuk guru saat proses belajar berlangsung."],
                     ['name' => "Murid membantu teman sejawat (peer-support) dalam memahami konsep."],
                 ],
                 'levels' => [
-                    ['name' => 'Perlu Bimbingan', 'desc' => "Murid pasif dan sering kesulitan dengan logika dasar meskipun sudah dibimbing lisan."],
-                    ['name' => 'Cukup', 'desc' => "Murid mencoba berkontribusi namun masih memerlukan umpan balik berulang untuk memperbaiki logika."],
-                    ['name' => 'Baik', 'desc' => "Murid aktif dan mampu memperbaiki kesalahan logika segera setelah menerima umpan balik lisan."],
-                    ['name' => 'Sangat Baik', 'desc' => "Murid sangat dominan dalam memberikan solusi logis dan mampu menjelaskan proses kerjanya dengan sangat jernih."],
+                    ['name' => 'Perlu Bimbingan', 'desc' => "Murid pasif dan jarang menunjukkan keterlibatan selama kegiatan."],
+                    ['name' => 'Cukup', 'desc' => "Murid mulai berkontribusi namun masih memerlukan pengingat berkala dari guru."],
+                    ['name' => 'Baik', 'desc' => "Murid aktif dan menunjukkan keterlibatan yang konsisten selama kegiatan."],
+                    ['name' => 'Sangat Baik', 'desc' => "Murid sangat aktif, inisiatif tinggi, dan mampu membantu teman selama pembelajaran."],
                 ],
-                'teacher_notes' => "Berikan umpan balik lisan secara langsung jika melihat kesalahan logika atau hambatan proses. Fokus pada pengamatan berkesinambungan.",
+                'teacher_notes' => "Catatan anekdotal: Amati dan catat perilaku spesifik murid selama kegiatan berlangsung. Fokus pada keterlibatan, interaksi, dan respons terhadap pembelajaran.",
                 'kktp' => [
-                    'approach' => 'rubric',
-                    'passing_level' => 'Baik',
+                    'approach' => 'criteria_description',
+                    'min_criteria' => 2,
+                ]
+            ];
+        }
+
+        if ($type === 'guided_discussion') {
+            return [
+                'observation_mode' => $observationMode ?? 'checklist',
+                'stimulus' => "Amati dan catat keterlibatan siswa selama diskusi terpandu berlangsung mengenai {$content}.",
+                'indicators' => [
+                    ['name' => "Keaktifan: Siswa aktif bertanya, menjawab, atau memberikan tanggapan selama diskusi."],
+                    ['name' => "Keberanian Berpendapat: Siswa berani menyampaikan gagasan atau pandangan pribadi di depan kelas."],
+                    ['name' => "Kualitas Argumen: Siswa mampu menyampaikan argumen yang logis, relevan, dan didukung bukti/contoh."],
+                    ['name' => "Keterlibatan Sosial: Siswa mendengarkan pendapat teman dan memberikan apresiasi atau tanggapan yang membangun."],
+                ],
+                'levels' => [
+                    ['name' => 'Perlu Bimbingan', 'desc' => "Siswa sangat pasif, jarang memberikan tanggapan, dan sulit diajak berdiskusi."],
+                    ['name' => 'Cukup', 'desc' => "Siswa mulai memberikan tanggapan namun masih perlu dorongan aktif dari guru."],
+                    ['name' => 'Baik', 'desc' => "Siswa aktif berdiskusi, menyampaikan argumen, dan merespons teman dengan baik."],
+                    ['name' => 'Sangat Baik', 'desc' => "Siswa sangat aktif, mampu memandu diskusi, menyampaikan argumen berkualitas tinggi, dan menghargai perbedaan pendapat."],
+                ],
+                'teacher_notes' => "Amati keaktifan, keberanian berpendapat, dan kualitas argumen siswa selama diskusi. Gunakan catatan anekdotal atau ceklis untuk dokumentasi.",
+                'kktp' => [
+                    'approach' => 'criteria_description',
+                    'min_criteria' => 2,
                 ]
             ];
         }
 
         if ($type === 'exit_ticket') {
             return [
+                'assessment_mode' => 'default',
                 'stimulus' => "Sebelum mengakhiri sesi, silakan jawab beberapa pertanyaan refleksi singkat (Exit Ticket) berikut:",
                 'questions' => [
                     ['text' => "Tuliskan 1 hal paling penting yang kamu pahami hari ini tentang {$content}."],
@@ -427,6 +450,7 @@ class InstructionalSmartService
 
         if ($type === 'self_assessment') {
             return [
+                'assessment_mode' => 'default',
                 'stimulus' => "Refleksikan pemahamanmu mengenai {$content}. Tandai setiap pernyataan yang paling menggambarkan kondisimu saat ini.",
                 'indicators' => [
                     ['name' => "Saya sudah memahami konsep dasar {$content} dengan baik."],
@@ -473,6 +497,7 @@ class InstructionalSmartService
 
         if ($type === 'peer_assessment') {
             return [
+                'assessment_mode' => 'default',
                 'stimulus' => "Berikan penilaian objektif dan apresiasi kepada rekan kelompokmu atas kolaborasi dalam materi {$content}.",
                 'indicators' => [
                     ['name' => "Rekan berkontribusi aktif dalam pembagian tugas kelompok."],
@@ -490,6 +515,29 @@ class InstructionalSmartService
                 'kktp' => [
                     'approach' => 'criteria_description',
                     'min_criteria' => 3
+                ]
+            ];
+        }
+
+        if ($type === 'structured_assignment') {
+            return [
+                'stimulus' => "Deskripsikan tugas LKPD (Lembar Kerja Peserta Didik) yang harus dikerjakan siswa terkait {$content}. Sertakan petunjuk pengerjaan, ketentuan, dan kriteria penilaian.",
+                'indicators' => [
+                    ['name' => "Kelengkapan isi LKPD sesuai instruksi yang diberikan."],
+                    ['name' => "Ketepatan konsep dan penerapan materi {$content}."],
+                    ['name' => "Keteraturan dan kerapihan penyajian jawaban."],
+                    ['name' => "Kemampuan menjelaskan proses berpikir dalam mengerjakan tugas."],
+                ],
+                'levels' => [
+                    ['name' => 'Perlu Bimbingan', 'desc' => "LKPD belum memenuhi standar minimal, banyak bagian yang kosong atau tidak sesuai instruksi."],
+                    ['name' => 'Cukup', 'desc' => "LKPD cukup memenuhi instruksi namun belum lengkap dan masih ada kesalahan konsep."],
+                    ['name' => 'Baik', 'desc' => "LKPD lengkap, menunjukkan pemahaman yang baik terhadap materi."],
+                    ['name' => 'Sangat Baik', 'desc' => "LKPD sangat lengkap, analitis, kreatif, dan mampu menjelaskan proses berpikir dengan jelas."],
+                ],
+                'teacher_notes' => "Evaluasi berdasarkan kelengkapan, ketepatan konsep, keteraturan, dan kemampuan menjelaskan proses berpikir siswa.",
+                'kktp' => [
+                    'approach' => 'rubric',
+                    'passing_level' => 'Baik'
                 ]
             ];
         }
@@ -556,18 +604,25 @@ class InstructionalSmartService
 
         if ($type === 'performance') {
             return [
-                'stimulus' => "Demonstrasikan kemampuanmu dalam {$content} melalui unjuk kerja nyata atau presentasi di depan kelas/kelompok.",
+                'performance_mode' => 'rubric',
+                'stimulus' => "Demonstrasikan kemampuanmu dalam {$content} melalui praktik, proyek, atau produk nyata yang dapat dievaluasi.",
                 'indicators' => [
                     ['name' => "Kesesuaian hasil dengan instruksi/tujuan {$content}."],
                     ['name' => "Kualitas teknis dan kerapihan pengerjaan."],
                     ['name' => "Kemampuan menjelaskan alur proses pengerjaan."],
-                    ['name' => "Kreativitas dan orisinalitas karya."],
+                    ['name' => "Kreativitas dan orisinalitas karya/produk."],
                 ],
                 'levels' => [
                     ['name' => 'Perlu Bimbingan', 'desc' => "Karya/unjuk kerja belum memenuhi standar minimal dan memerlukan pendampingan intensif."],
                     ['name' => 'Cukup', 'desc' => "Karya/unjuk kerja memenuhi standar minimal namun masih ada beberapa bagian yang belum tuntas."],
                     ['name' => 'Baik', 'desc' => "Karya/unjuk kerja memenuhi seluruh standar dengan kualitas yang baik."],
                     ['name' => 'Sangat Baik', 'desc' => "Karya/unjuk kerja melampaui standar dengan inovasi atau kualitas yang luar biasa."],
+                ],
+                'development_levels' => [
+                    ['name' => 'Belum Mulai', 'desc' => "Murid belum menunjukkan pemahaman atau keterampilan dasar terkait konsep."],
+                    ['name' => 'Sedang Berkembang', 'desc' => "Murid mulai memahami konsep namun masih memerlukan bimbingan dalam penerapannya."],
+                    ['name' => 'Berkembang Baik', 'desc' => "Murid mampu menerapkan konsep secara mandiri dengan hasil yang memadai."],
+                    ['name' => 'Mandiri', 'desc' => "Murid mampu menerapkan konsep secara kreatif dan menjelaskan proses penerapannya."],
                 ],
                 'teacher_notes' => "Fokus pada proses dan hasil akhir. Gunakan rubrik ini secara objektif selama pengamatan unjuk kerja.",
                 'kktp' => [

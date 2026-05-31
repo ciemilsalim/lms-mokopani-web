@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { 
     Activity, Trash2, Plus, Sparkles, Loader2, Compass, Info,
-    MessageSquare, ClipboardCheck, Eye, Star, Clock 
+    MessageSquare, ClipboardCheck, Eye, Star, Clock, FileText, Layers, TrendingUp
 } from 'lucide-react';
 import { Instrument, ScoringTool } from './types';
 import QuizBuilder from './QuizBuilder';
 import ObservationBuilder from './ObservationBuilder';
+import ContinuumBuilder from './ContinuumBuilder';
 import KKTPSection from './KKTPSection';
 
 interface StepAssessmentFormativeProps {
@@ -332,7 +333,7 @@ export default function StepAssessmentFormative({
                                 </div>
                             )}
 
-                            {(activeInst.instrument_type === 'quiz_survey' || activeInst.instrument_type === 'written_test' || activeInst.instrument_type === 'formative_quiz') && (
+                            {(activeInst.instrument_type === 'quiz_survey' || activeInst.instrument_type === 'written_test') && (
                                 <QuizBuilder
                                     assessmentKey="formative"
                                     instIdx={activeTab}
@@ -343,7 +344,65 @@ export default function StepAssessmentFormative({
                                 />
                             )}
 
-                            {(activeInst.instrument_type === 'observation_checklist' || activeInst.instrument_type === 'performance_observation' || activeInst.instrument_type === 'self_assessment' || activeInst.instrument_type === 'peer_assessment' || activeInst.instrument_type === 'guided_discussion') && (
+                            {activeInst.instrument_type === 'formative_quiz' && (
+                                <div className="space-y-4">
+                                    <div className="flex gap-1 p-1 bg-card rounded-lg border border-border">
+                                        <button
+                                            type="button"
+                                            onClick={() => updateFormativeConfig(activeTab, 'assessment_mode', 'rubrik')}
+                                            className={`flex-1 flex items-center justify-center gap-2 h-9 rounded-md text-[11px] font-bold uppercase tracking-wider transition-all ${
+                                                (activeConfig.assessment_mode || 'rubrik') === 'rubrik'
+                                                    ? 'bg-primary text-white shadow-sm'
+                                                    : 'text-muted-foreground hover:text-foreground'
+                                            }`}
+                                        >
+                                            <Layers className="h-3.5 w-3.5" /> Rubrik
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => updateFormativeConfig(activeTab, 'assessment_mode', 'checklist')}
+                                            className={`flex-1 flex items-center justify-center gap-2 h-9 rounded-md text-[11px] font-bold uppercase tracking-wider transition-all ${
+                                                activeConfig.assessment_mode === 'checklist'
+                                                    ? 'bg-primary text-white shadow-sm'
+                                                    : 'text-muted-foreground hover:text-foreground'
+                                            }`}
+                                        >
+                                            <ClipboardCheck className="h-3.5 w-3.5" /> Ceklis Jawaban
+                                        </button>
+                                    </div>
+
+                                    {(activeConfig.assessment_mode || 'rubrik') === 'rubrik' ? (
+                                        <QuizBuilder
+                                            assessmentKey="formative"
+                                            instIdx={activeTab}
+                                            data={data}
+                                            updateInitialConfig={() => {}}
+                                            updateFormativeConfig={updateFormativeConfig}
+                                            updateSummativeConfig={() => {}}
+                                        />
+                                    ) : (
+                                        <div className="space-y-4">
+                                            <div className="bg-popover rounded-md p-4 border border-border flex items-start gap-3">
+                                                <ClipboardCheck className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                                                <p className="text-[12px] text-muted-foreground leading-relaxed">
+                                                    <span className="font-semibold text-foreground">Ceklis Jawaban:</span> Buat daftar pertanyaan singkat. Siswa menandai apakah mereka bisa menjawab setiap pertanyaan.
+                                                </p>
+                                            </div>
+                                            <ObservationBuilder
+                                                assessmentKey="formative"
+                                                instIdx={activeTab}
+                                                data={data}
+                                                updateInitialConfig={() => {}}
+                                                updateFormativeConfig={updateFormativeConfig}
+                                                updateSummativeConfig={() => {}}
+                                                observationMode="checklist"
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {(activeInst.instrument_type === 'observation_checklist') && (
                                 <div className="space-y-4">
                                     {activeConfig.stimulus !== undefined && (
                                         <div className="space-y-1.5">
@@ -380,7 +439,366 @@ export default function StepAssessmentFormative({
                                 </div>
                             )}
 
-                            {(activeInst.instrument_type === 'exit_ticket' || activeInst.instrument_type === 'reflective_journal') && (
+                            {activeInst.instrument_type === 'guided_discussion' && (
+                                <div className="space-y-4">
+                                    <div className="space-y-1.5">
+                                        <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.05em] ml-1">Konteks Diskusi</label>
+                                        <textarea
+                                            value={activeConfig.stimulus || ''}
+                                            onChange={e => updateFormativeConfig(activeTab, 'stimulus', e.target.value)}
+                                            rows={3}
+                                            placeholder="Deskripsikan topik dan panduan diskusi yang akan berlangsung..."
+                                            className="w-full bg-card text-card-foreground rounded border border-border p-3 text-[12px] focus:border-primary outline-none resize-none leading-relaxed"
+                                        />
+                                    </div>
+
+                                    <div className="flex gap-2 p-1 bg-card rounded-lg border border-border">
+                                        <button
+                                            type="button"
+                                            onClick={() => updateFormativeConfig(activeTab, 'observation_mode', 'checklist')}
+                                            className={`flex-1 flex items-center justify-center gap-2 h-9 rounded-md text-[11px] font-bold uppercase tracking-wider transition-all ${
+                                                (activeConfig.observation_mode || 'checklist') === 'checklist'
+                                                    ? 'bg-primary text-white shadow-sm'
+                                                    : 'text-muted-foreground hover:text-foreground'
+                                            }`}
+                                        >
+                                            <ClipboardCheck className="h-3.5 w-3.5" /> Ceklis
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => updateFormativeConfig(activeTab, 'observation_mode', 'anecdotal')}
+                                            className={`flex-1 flex items-center justify-center gap-2 h-9 rounded-md text-[11px] font-bold uppercase tracking-wider transition-all ${
+                                                activeConfig.observation_mode === 'anecdotal'
+                                                    ? 'bg-primary text-white shadow-sm'
+                                                    : 'text-muted-foreground hover:text-foreground'
+                                            }`}
+                                        >
+                                            <FileText className="h-3.5 w-3.5" /> Catatan Anekdotal
+                                        </button>
+                                    </div>
+
+                                    {(activeConfig.observation_mode || 'checklist') === 'checklist' ? (
+                                        <ObservationBuilder
+                                            assessmentKey="formative"
+                                            instIdx={activeTab}
+                                            data={data}
+                                            updateInitialConfig={() => {}}
+                                            updateFormativeConfig={updateFormativeConfig}
+                                            updateSummativeConfig={() => {}}
+                                            observationMode="checklist"
+                                        />
+                                    ) : (
+                                        <div className="space-y-4">
+                                            <div className="bg-popover rounded-md p-4 border border-border flex items-start gap-3">
+                                                <FileText className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                                                <p className="text-[12px] text-muted-foreground leading-relaxed">
+                                                    <span className="font-semibold text-foreground">Catatan Anekdotal:</span> Tuliskan observasi naratif selama diskusi berlangsung: sebutkan nama siswa, keaktifan, keberanian berpendapat, dan kualitas argumen.
+                                                </p>
+                                            </div>
+                                            <ObservationBuilder
+                                                assessmentKey="formative"
+                                                instIdx={activeTab}
+                                                data={data}
+                                                updateInitialConfig={() => {}}
+                                                updateFormativeConfig={updateFormativeConfig}
+                                                updateSummativeConfig={() => {}}
+                                                observationMode="anecdotal"
+                                            />
+                                        </div>
+                                    )}
+
+                                    {activeConfig.teacher_notes !== undefined && (
+                                        <div className="space-y-1.5">
+                                            <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.05em] ml-1">Catatan Tindak Lanjut Guru</label>
+                                            <textarea
+                                                value={activeConfig.teacher_notes || ''}
+                                                onChange={e => updateFormativeConfig(activeTab, 'teacher_notes', e.target.value)}
+                                                rows={2}
+                                                placeholder="Evaluasi dan tindak lanjut berdasarkan hasil observasi diskusi..."
+                                                className="w-full bg-card text-card-foreground rounded border border-border p-3 text-[12px] focus:border-primary outline-none resize-none italic"
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {(activeInst.instrument_type === 'self_assessment' || activeInst.instrument_type === 'peer_assessment') && (
+                                <div className="space-y-4">
+                                    <div className="space-y-1.5">
+                                        <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.05em] ml-1">Stimulus / Instruksi</label>
+                                        <textarea
+                                            value={activeConfig.stimulus || ''}
+                                            onChange={e => updateFormativeConfig(activeTab, 'stimulus', e.target.value)}
+                                            rows={3}
+                                            placeholder={activeInst.instrument_type === 'self_assessment' ? "Instruksi untuk refleksi penilaian diri..." : "Instruksi untuk penilaian terhadap rekan..."}
+                                            className="w-full bg-card text-card-foreground rounded border border-border p-3 text-[12px] focus:border-primary outline-none resize-none leading-relaxed"
+                                        />
+                                    </div>
+
+                                    <div className="flex gap-1 p-1 bg-card rounded-lg border border-border">
+                                        <button
+                                            type="button"
+                                            onClick={() => updateFormativeConfig(activeTab, 'assessment_mode', 'default')}
+                                            className={`flex-1 flex items-center justify-center gap-2 h-9 rounded-md text-[11px] font-bold uppercase tracking-wider transition-all ${
+                                                (activeConfig.assessment_mode || 'default') === 'default'
+                                                    ? 'bg-primary text-white shadow-sm'
+                                                    : 'text-muted-foreground hover:text-foreground'
+                                            }`}
+                                        >
+                                            Form Standar
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => updateFormativeConfig(activeTab, 'assessment_mode', 'checklist')}
+                                            className={`flex-1 flex items-center justify-center gap-2 h-9 rounded-md text-[11px] font-bold uppercase tracking-wider transition-all ${
+                                                activeConfig.assessment_mode === 'checklist'
+                                                    ? 'bg-primary text-white shadow-sm'
+                                                    : 'text-muted-foreground hover:text-foreground'
+                                            }`}
+                                        >
+                                            <ClipboardCheck className="h-3.5 w-3.5" /> Ceklis
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => updateFormativeConfig(activeTab, 'assessment_mode', 'simple_rubric')}
+                                            className={`flex-1 flex items-center justify-center gap-2 h-9 rounded-md text-[11px] font-bold uppercase tracking-wider transition-all ${
+                                                activeConfig.assessment_mode === 'simple_rubric'
+                                                    ? 'bg-primary text-white shadow-sm'
+                                                    : 'text-muted-foreground hover:text-foreground'
+                                            }`}
+                                        >
+                                            <Layers className="h-3.5 w-3.5" /> Rubrik Sederhana
+                                        </button>
+                                    </div>
+
+                                    {(activeConfig.assessment_mode || 'default') === 'default' ? (
+                                        <ObservationBuilder
+                                            assessmentKey="formative"
+                                            instIdx={activeTab}
+                                            data={data}
+                                            updateInitialConfig={() => {}}
+                                            updateFormativeConfig={updateFormativeConfig}
+                                            updateSummativeConfig={() => {}}
+                                        />
+                                    ) : (activeConfig.assessment_mode) === 'checklist' ? (
+                                        <div className="space-y-4">
+                                            <div className="bg-popover rounded-md p-4 border border-border flex items-start gap-3">
+                                                <ClipboardCheck className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                                                <p className="text-[12px] text-muted-foreground leading-relaxed">
+                                                    <span className="font-semibold text-foreground">Mode Ceklis:</span> Murid akan melihat daftar indikator dengan checkbox untuk menandai apakah indikator terpenuhi.
+                                                </p>
+                                            </div>
+                                            <ObservationBuilder
+                                                assessmentKey="formative"
+                                                instIdx={activeTab}
+                                                data={data}
+                                                updateInitialConfig={() => {}}
+                                                updateFormativeConfig={updateFormativeConfig}
+                                                updateSummativeConfig={() => {}}
+                                                observationMode="checklist"
+                                            />
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-4">
+                                            <div className="bg-popover rounded-md p-4 border border-border flex items-start gap-3">
+                                                <Layers className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                                                <p className="text-[12px] text-muted-foreground leading-relaxed">
+                                                    <span className="font-semibold text-foreground">Rubrik Sederhana:</span> Murid akan menilai setiap indikator dengan 4 level: Perlu Bimbingan, Cukup, Baik, Sangat Baik.
+                                                </p>
+                                            </div>
+                                            <ObservationBuilder
+                                                assessmentKey="formative"
+                                                instIdx={activeTab}
+                                                data={data}
+                                                updateInitialConfig={() => {}}
+                                                updateFormativeConfig={updateFormativeConfig}
+                                                updateSummativeConfig={() => {}}
+                                                observationMode="simple_rubric"
+                                            />
+                                        </div>
+                                    )}
+
+                                    {activeConfig.teacher_notes !== undefined && (
+                                        <div className="space-y-1.5">
+                                            <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.05em] ml-1">Catatan Tindak Lanjut Guru</label>
+                                            <textarea
+                                                value={activeConfig.teacher_notes || ''}
+                                                onChange={e => updateFormativeConfig(activeTab, 'teacher_notes', e.target.value)}
+                                                rows={2}
+                                                placeholder="Evaluasi dan tindak lanjut berdasarkan hasil penilaian..."
+                                                className="w-full bg-card text-card-foreground rounded border border-border p-3 text-[12px] focus:border-primary outline-none resize-none italic"
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {activeInst.instrument_type === 'performance_observation' && (
+                                <div className="space-y-4">
+                                    <div className="space-y-1.5">
+                                        <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.05em] ml-1">Stimulus / Konteks Observasi</label>
+                                        <textarea
+                                            value={activeConfig.stimulus || ''}
+                                            onChange={e => updateFormativeConfig(activeTab, 'stimulus', e.target.value)}
+                                            rows={3}
+                                            placeholder="Tuliskan konteks pengamatan keterlibatan dan perilaku murid..."
+                                            className="w-full bg-card text-card-foreground rounded border border-border p-3 text-[12px] focus:border-primary outline-none resize-none leading-relaxed"
+                                        />
+                                    </div>
+
+                                    <div className="flex gap-2 p-1 bg-card rounded-lg border border-border">
+                                        <button
+                                            type="button"
+                                            onClick={() => updateFormativeConfig(activeTab, 'observation_mode', 'checklist')}
+                                            className={`flex-1 flex items-center justify-center gap-2 h-9 rounded-md text-[11px] font-bold uppercase tracking-wider transition-all ${
+                                                (activeConfig.observation_mode || 'checklist') === 'checklist'
+                                                    ? 'bg-primary text-white shadow-sm'
+                                                    : 'text-muted-foreground hover:text-foreground'
+                                            }`}
+                                        >
+                                            <ClipboardCheck className="h-3.5 w-3.5" /> Ceklis
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => updateFormativeConfig(activeTab, 'observation_mode', 'anecdotal')}
+                                            className={`flex-1 flex items-center justify-center gap-2 h-9 rounded-md text-[11px] font-bold uppercase tracking-wider transition-all ${
+                                                activeConfig.observation_mode === 'anecdotal'
+                                                    ? 'bg-primary text-white shadow-sm'
+                                                    : 'text-muted-foreground hover:text-foreground'
+                                            }`}
+                                        >
+                                            <FileText className="h-3.5 w-3.5" /> Catatan Anekdotal
+                                        </button>
+                                    </div>
+
+                                    {(activeConfig.observation_mode || 'checklist') === 'checklist' ? (
+                                        <ObservationBuilder
+                                            assessmentKey="formative"
+                                            instIdx={activeTab}
+                                            data={data}
+                                            updateInitialConfig={() => {}}
+                                            updateFormativeConfig={updateFormativeConfig}
+                                            updateSummativeConfig={() => {}}
+                                            observationMode="checklist"
+                                        />
+                                    ) : (
+                                        <div className="space-y-4">
+                                            <div className="bg-popover rounded-md p-4 border border-border flex items-start gap-3">
+                                                <Info className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                                                <p className="text-[12px] text-muted-foreground leading-relaxed">
+                                                    <span className="font-semibold text-foreground">Catatan Anekdotal:</span> Tuliskan observasi naratif secara spesifik: sebutkan nama murid, perilaku yang diamati, konteks waktu, dan dampak terhadap pembelajaran.
+                                                </p>
+                                            </div>
+                                            <ObservationBuilder
+                                                assessmentKey="formative"
+                                                instIdx={activeTab}
+                                                data={data}
+                                                updateInitialConfig={() => {}}
+                                                updateFormativeConfig={updateFormativeConfig}
+                                                updateSummativeConfig={() => {}}
+                                                observationMode="anecdotal"
+                                            />
+                                        </div>
+                                    )}
+
+                                    {activeConfig.teacher_notes !== undefined && (
+                                        <div className="space-y-1.5">
+                                            <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.05em] ml-1">Catatan Tindak Lanjut Guru</label>
+                                            <textarea
+                                                value={activeConfig.teacher_notes || ''}
+                                                onChange={e => updateFormativeConfig(activeTab, 'teacher_notes', e.target.value)}
+                                                rows={2}
+                                                placeholder="Evaluasi dan tindak lanjut berdasarkan hasil observasi..."
+                                                className="w-full bg-card text-card-foreground rounded border border-border p-3 text-[12px] focus:border-primary outline-none resize-none italic"
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {activeInst.instrument_type === 'performance' && (
+                                <div className="space-y-4">
+                                    <div className="space-y-1.5">
+                                        <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.05em] ml-1">Konteks Kinerja</label>
+                                        <textarea
+                                            value={activeConfig.stimulus || ''}
+                                            onChange={e => updateFormativeConfig(activeTab, 'stimulus', e.target.value)}
+                                            rows={3}
+                                            placeholder="Deskripsikan praktik, proyek, atau produk yang harus didemonstrasikan murid..."
+                                            className="w-full bg-card text-card-foreground rounded border border-border p-3 text-[12px] focus:border-primary outline-none resize-none leading-relaxed"
+                                        />
+                                    </div>
+
+                                    <div className="flex gap-2 p-1 bg-card rounded-lg border border-border">
+                                        <button
+                                            type="button"
+                                            onClick={() => updateFormativeConfig(activeTab, 'performance_mode', 'rubric')}
+                                            className={`flex-1 flex items-center justify-center gap-2 h-9 rounded-md text-[11px] font-bold uppercase tracking-wider transition-all ${
+                                                (activeConfig.performance_mode || 'rubric') === 'rubric'
+                                                    ? 'bg-primary text-white shadow-sm'
+                                                    : 'text-muted-foreground hover:text-foreground'
+                                            }`}
+                                        >
+                                            <Layers className="h-3.5 w-3.5" /> Rubrik
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => updateFormativeConfig(activeTab, 'performance_mode', 'continuum')}
+                                            className={`flex-1 flex items-center justify-center gap-2 h-9 rounded-md text-[11px] font-bold uppercase tracking-wider transition-all ${
+                                                activeConfig.performance_mode === 'continuum'
+                                                    ? 'bg-primary text-white shadow-sm'
+                                                    : 'text-muted-foreground hover:text-foreground'
+                                            }`}
+                                        >
+                                            <TrendingUp className="h-3.5 w-3.5" /> Grafik Perkembangan
+                                        </button>
+                                    </div>
+
+                                    {(activeConfig.performance_mode || 'rubric') === 'rubric' ? (
+                                        <ObservationBuilder
+                                            assessmentKey="formative"
+                                            instIdx={activeTab}
+                                            data={data}
+                                            updateInitialConfig={() => {}}
+                                            updateFormativeConfig={updateFormativeConfig}
+                                            updateSummativeConfig={() => {}}
+                                            observationMode="checklist"
+                                        />
+                                    ) : (
+                                        <div className="space-y-4">
+                                            <div className="bg-popover rounded-md p-4 border border-border flex items-start gap-3">
+                                                <TrendingUp className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                                                <p className="text-[12px] text-muted-foreground leading-relaxed">
+                                                    <span className="font-semibold text-foreground">Grafik Perkembangan:</span> Pantau progres keterampilan murid dari waktu ke waktu. Pilih level pencapaian saat ini untuk setiap indikator.
+                                                </p>
+                                            </div>
+                                            <ContinuumBuilder
+                                                assessmentKey="formative"
+                                                instIdx={activeTab}
+                                                data={data}
+                                                updateInitialConfig={() => {}}
+                                                updateFormativeConfig={updateFormativeConfig}
+                                                updateSummativeConfig={() => {}}
+                                            />
+                                        </div>
+                                    )}
+
+                                    {activeConfig.teacher_notes !== undefined && (
+                                        <div className="space-y-1.5">
+                                            <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.05em] ml-1">Catatan Tindak Lanjut Guru</label>
+                                            <textarea
+                                                value={activeConfig.teacher_notes || ''}
+                                                onChange={e => updateFormativeConfig(activeTab, 'teacher_notes', e.target.value)}
+                                                rows={2}
+                                                placeholder="Evaluasi dan tindak lanjut berdasarkan hasil penilaian kinerja..."
+                                                className="w-full bg-card text-card-foreground rounded border border-border p-3 text-[12px] focus:border-primary outline-none resize-none italic"
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {activeInst.instrument_type === 'reflective_journal' && (
                                 <div className="space-y-4">
                                     <div className="space-y-1.5">
                                         <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.05em] ml-1">Stimulus / Instruksi Murid</label>
@@ -438,7 +856,189 @@ export default function StepAssessmentFormative({
                                 </div>
                             )}
 
-                            {(activeInst.instrument_type === 'concept_map' || activeInst.instrument_type === 'project' || activeInst.instrument_type === 'portfolio' || activeInst.instrument_type === 'structured_assignment') && (
+                            {activeInst.instrument_type === 'exit_ticket' && (
+                                <div className="space-y-4">
+                                    <div className="space-y-1.5">
+                                        <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.05em] ml-1">Stimulus / Instruksi Cepat</label>
+                                        <textarea
+                                            value={activeConfig.stimulus || ''}
+                                            onChange={e => updateFormativeConfig(activeTab, 'stimulus', e.target.value)}
+                                            rows={3}
+                                            placeholder="Tuliskan instruksi singkat untuk asesmen cepat..."
+                                            className="w-full bg-card text-card-foreground rounded border border-border p-3 text-[12px] focus:border-primary outline-none resize-none leading-relaxed"
+                                        />
+                                    </div>
+
+                                    <div className="flex gap-1 p-1 bg-card rounded-lg border border-border">
+                                        <button
+                                            type="button"
+                                            onClick={() => updateFormativeConfig(activeTab, 'assessment_mode', 'default')}
+                                            className={`flex-1 flex items-center justify-center gap-2 h-9 rounded-md text-[11px] font-bold uppercase tracking-wider transition-all ${
+                                                (activeConfig.assessment_mode || 'default') === 'default'
+                                                    ? 'bg-primary text-white shadow-sm'
+                                                    : 'text-muted-foreground hover:text-foreground'
+                                            }`}
+                                        >
+                                            Form Standar
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => updateFormativeConfig(activeTab, 'assessment_mode', 'checklist')}
+                                            className={`flex-1 flex items-center justify-center gap-2 h-9 rounded-md text-[11px] font-bold uppercase tracking-wider transition-all ${
+                                                activeConfig.assessment_mode === 'checklist'
+                                                    ? 'bg-primary text-white shadow-sm'
+                                                    : 'text-muted-foreground hover:text-foreground'
+                                            }`}
+                                        >
+                                            <ClipboardCheck className="h-3.5 w-3.5" /> Ceklis
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => updateFormativeConfig(activeTab, 'assessment_mode', 'short_note')}
+                                            className={`flex-1 flex items-center justify-center gap-2 h-9 rounded-md text-[11px] font-bold uppercase tracking-wider transition-all ${
+                                                activeConfig.assessment_mode === 'short_note'
+                                                    ? 'bg-primary text-white shadow-sm'
+                                                    : 'text-muted-foreground hover:text-foreground'
+                                            }`}
+                                        >
+                                            <FileText className="h-3.5 w-3.5" /> Catatan Singkat
+                                        </button>
+                                    </div>
+
+                                    {(activeConfig.assessment_mode || 'default') === 'default' ? (
+                                        <div className="space-y-4">
+                                            <div className="space-y-2">
+                                                <div className="flex justify-between items-center">
+                                                    <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.05em]">Pertanyaan Refleksi</label>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            const qs = [...(activeConfig.questions || [])];
+                                                            qs.push({ text: '' });
+                                                            updateFormativeConfig(activeTab, 'questions', qs);
+                                                        }}
+                                                        className="h-6 px-2 text-[10px] font-bold text-primary hover:bg-primary/10 rounded transition"
+                                                    >
+                                                        + Tambah Pertanyaan
+                                                    </button>
+                                                </div>
+                                                <div className="grid gap-2">
+                                                    {(activeConfig.questions || []).map((q: any, qIdx: number) => (
+                                                        <div key={qIdx} className="flex gap-2 items-center p-2 bg-card rounded border border-border group">
+                                                            <span className="text-[10px] font-mono text-muted-foreground">{qIdx + 1}.</span>
+                                                            <input
+                                                                value={q.text || ''}
+                                                                onChange={e => {
+                                                                    const qs = [...(activeConfig.questions || [])];
+                                                                    qs[qIdx] = { ...qs[qIdx], text: e.target.value };
+                                                                    updateFormativeConfig(activeTab, 'questions', qs);
+                                                                }}
+                                                                placeholder="Pertanyaan singkat..."
+                                                                className="flex-1 bg-transparent text-[12px] border-none outline-none focus:ring-0 p-0"
+                                                            />
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    const qs = (activeConfig.questions || []).filter((_: any, idx: number) => idx !== qIdx);
+                                                                    updateFormativeConfig(activeTab, 'questions', qs);
+                                                                }}
+                                                                className="text-muted-foreground/30 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                            >
+                                                                <Trash2 className="h-3.5 w-3.5" />
+                                                            </button>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ) : (activeConfig.assessment_mode) === 'checklist' ? (
+                                        <div className="space-y-4">
+                                            <div className="bg-popover rounded-md p-4 border border-border flex items-start gap-3">
+                                                <ClipboardCheck className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                                                <p className="text-[12px] text-muted-foreground leading-relaxed">
+                                                    <span className="font-semibold text-foreground">Mode Ceklis:</span> Murid menandai indikator pemahaman yang sudah dicapai. Cocok untuk cek pemahaman cepat di sela kelas.
+                                                </p>
+                                            </div>
+                                            <ObservationBuilder
+                                                assessmentKey="formative"
+                                                instIdx={activeTab}
+                                                data={data}
+                                                updateInitialConfig={() => {}}
+                                                updateFormativeConfig={updateFormativeConfig}
+                                                updateSummativeConfig={() => {}}
+                                                observationMode="checklist"
+                                            />
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-4">
+                                            <div className="bg-popover rounded-md p-4 border border-border flex items-start gap-3">
+                                                <FileText className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                                                <p className="text-[12px] text-muted-foreground leading-relaxed">
+                                                    <span className="font-semibold text-foreground">Catatan Singkat:</span> Murid menjawab pertanyaan singkat secara langsung. Jawaban terbatas pendek.
+                                                </p>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <div className="flex justify-between items-center">
+                                                    <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.05em]">Pertanyaan Singkat</label>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            const qs = [...(activeConfig.questions || [])];
+                                                            qs.push({ text: '' });
+                                                            updateFormativeConfig(activeTab, 'questions', qs);
+                                                        }}
+                                                        className="h-6 px-2 text-[10px] font-bold text-primary hover:bg-primary/10 rounded transition"
+                                                    >
+                                                        + Tambah Pertanyaan
+                                                    </button>
+                                                </div>
+                                                <div className="grid gap-2">
+                                                    {(activeConfig.questions || []).map((q: any, qIdx: number) => (
+                                                        <div key={qIdx} className="flex gap-2 items-center p-2 bg-card rounded border border-border group">
+                                                            <span className="text-[10px] font-mono text-muted-foreground">{qIdx + 1}.</span>
+                                                            <input
+                                                                value={q.text || ''}
+                                                                onChange={e => {
+                                                                    const qs = [...(activeConfig.questions || [])];
+                                                                    qs[qIdx] = { ...qs[qIdx], text: e.target.value };
+                                                                    updateFormativeConfig(activeTab, 'questions', qs);
+                                                                }}
+                                                                placeholder="Pertanyaan singkat (misal: Apa yang kamu pahami hari ini?)"
+                                                                className="flex-1 bg-transparent text-[12px] border-none outline-none focus:ring-0 p-0"
+                                                            />
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    const qs = (activeConfig.questions || []).filter((_: any, idx: number) => idx !== qIdx);
+                                                                    updateFormativeConfig(activeTab, 'questions', qs);
+                                                                }}
+                                                                className="text-muted-foreground/30 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                            >
+                                                                <Trash2 className="h-3.5 w-3.5" />
+                                                            </button>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {activeConfig.teacher_notes !== undefined && (
+                                        <div className="space-y-1.5">
+                                            <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.05em] ml-1">Catatan Tindak Lanjut Guru</label>
+                                            <textarea
+                                                value={activeConfig.teacher_notes || ''}
+                                                onChange={e => updateFormativeConfig(activeTab, 'teacher_notes', e.target.value)}
+                                                rows={2}
+                                                placeholder="Tindak lanjut berdasarkan hasil asesmen cepat..."
+                                                className="w-full bg-card text-card-foreground rounded border border-border p-3 text-[12px] focus:border-primary outline-none resize-none italic"
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {(activeInst.instrument_type === 'concept_map' || activeInst.instrument_type === 'project' || activeInst.instrument_type === 'portfolio') && (
                                 <div className="space-y-4">
                                     <div className="space-y-1.5">
                                         <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.05em] ml-1">Instruksi Penilaian</label>
@@ -465,6 +1065,56 @@ export default function StepAssessmentFormative({
                                 </div>
                             )}
 
+                            {activeInst.instrument_type === 'structured_assignment' && (
+                                <div className="space-y-4">
+                                    <div className="space-y-1.5">
+                                        <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.05em] ml-1">Deskripsi / Instruksi LKPD</label>
+                                        <textarea
+                                            value={activeConfig.stimulus || ''}
+                                            onChange={e => updateFormativeConfig(activeTab, 'stimulus', e.target.value)}
+                                            rows={4}
+                                            placeholder="Tuliskan deskripsi tugas, petunjuk pengerjaan, dan ketentuan LKPD..."
+                                            className="w-full bg-card text-card-foreground rounded border border-border p-3 text-[12px] focus:border-primary outline-none resize-none leading-relaxed"
+                                        />
+                                    </div>
+
+                                    <div className="space-y-1.5">
+                                        <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.05em] ml-1">Indikator Penilaian</label>
+                                        <p className="text-[10px] text-muted-foreground ml-1">Tentukan indikator untuk mengevaluasi kelengkapan, proses berpikir, atau ketepatan jawaban siswa.</p>
+                                    </div>
+                                    <ObservationBuilder
+                                        assessmentKey="formative"
+                                        instIdx={activeTab}
+                                        data={data}
+                                        updateInitialConfig={() => {}}
+                                        updateFormativeConfig={updateFormativeConfig}
+                                        updateSummativeConfig={() => {}}
+                                        observationMode="checklist"
+                                    />
+
+                                    {activeConfig.teacher_notes !== undefined && (
+                                        <div className="space-y-1.5">
+                                            <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.05em] ml-1">Catatan Evaluasi / Rubrik Guru</label>
+                                            <textarea
+                                                value={activeConfig.teacher_notes || ''}
+                                                onChange={e => updateFormativeConfig(activeTab, 'teacher_notes', e.target.value)}
+                                                rows={2}
+                                                placeholder="Langkah evaluasi dan pembobotan..."
+                                                className="w-full bg-card text-card-foreground rounded border border-border p-3 text-[12px] focus:border-primary outline-none resize-none italic"
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            <KKTPSection
+                                assessmentKey="formative"
+                                instIdx={activeTab}
+                                data={data}
+                                updateInitialConfig={() => {}}
+                                updateFormativeConfig={updateFormativeConfig}
+                                updateSummativeConfig={() => {}}
+                            />
 
                         </div>
                     </div>

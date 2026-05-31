@@ -747,7 +747,8 @@ export default function CreateAssignment({ teachings, objectives, assessment_typ
                                   data.instrument_type === 'performance_observation' ||
                                   data.instrument_type === 'performance' || 
                                   data.instrument_type === 'self_assessment' || 
-                                  data.instrument_type === 'peer_assessment') && (
+                                  data.instrument_type === 'peer_assessment' ||
+                                  data.instrument_type === 'guided_discussion') && (
                                     <div className="space-y-4">
                                         {data.instrument_config?.stimulus !== undefined && (
                                             <div className="space-y-1.5">
@@ -880,6 +881,32 @@ export default function CreateAssignment({ teachings, objectives, assessment_typ
                                                     </div>
                                                 ))}
                                             </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* 3b. PENUGASAN TERSTRUKTUR (LKPD) */}
+                                {data.instrument_type === 'structured_assignment' && (
+                                    <div className="space-y-4">
+                                        <div className="space-y-1.5">
+                                            <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.05em] ml-1">Deskripsi / Instruksi LKPD</label>
+                                            <textarea
+                                                value={data.instrument_config?.stimulus || ''}
+                                                onChange={e => updateConfig('stimulus', e.target.value)}
+                                                rows={4}
+                                                placeholder="Tuliskan deskripsi tugas LKPD, petunjuk pengerjaan, dan ketentuan..."
+                                                className="w-full bg-card text-card-foreground rounded border border-border p-3 text-[12px] focus:border-primary outline-none resize-none leading-relaxed"
+                                            />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.05em] ml-1">Catatan Evaluasi / Rubrik Guru</label>
+                                            <textarea
+                                                value={data.instrument_config?.teacher_notes || ''}
+                                                onChange={e => updateConfig('teacher_notes', e.target.value)}
+                                                rows={2}
+                                                placeholder="Langkah evaluasi dan pembobotan..."
+                                                className="w-full bg-card text-card-foreground rounded border border-border p-3 text-[12px] focus:border-primary outline-none resize-none italic"
+                                            />
                                         </div>
                                     </div>
                                 )}

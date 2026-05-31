@@ -496,13 +496,19 @@ export default function InstructionalDesignCreate({
         const currentCount = assessmentClickCounts[cacheKey] || 0;
 
         try {
+            const currentInstrument = idx !== null
+                ? (data as any)[assessmentKey]?.instruments?.[idx]
+                : null;
+            const observationMode = currentInstrument?.instrument_config?.observation_mode || 'checklist';
+
             const response = await axios.post(route('instructional-design.auto-suggest'), {
                 learning_objective_id: data.learning_objective_id,
                 instrument_type: type,
                 suggest_type: 'assessment',
                 regenerate: currentCount > 0,
                 material_title: data.material_title,
-                material_content: data.material_content
+                material_content: data.material_content,
+                observation_mode: observationMode
             });
 
             const suggestion = response.data;
@@ -530,10 +536,17 @@ export default function InstructionalDesignCreate({
                         instrument_config: {
                             ...instrumentsArray[idx].instrument_config,
                             stimulus: cleanPlainText(suggestion.stimulus || instrumentsArray[idx].instrument_config.stimulus),
+                            observation_mode: suggestion.observation_mode || instrumentsArray[idx].instrument_config.observation_mode || 'checklist',
+                            performance_mode: suggestion.performance_mode || instrumentsArray[idx].instrument_config.performance_mode || 'rubric',
                             levels: (suggestion.levels || instrumentsArray[idx].instrument_config.levels || []).map((lvl: any) => ({
                                 ...lvl,
                                 name: cleanPlainText(lvl.name),
                                 desc: cleanPlainText(lvl.desc)
+                            })),
+                            development_levels: (suggestion.development_levels || instrumentsArray[idx].instrument_config.development_levels || []).map((dl: any) => ({
+                                ...dl,
+                                name: cleanPlainText(dl.name),
+                                desc: cleanPlainText(dl.desc)
                             })),
                             questions: (suggestion.questions || instrumentsArray[idx].instrument_config.questions || []).map((q: any) => ({
                                 ...q,
@@ -545,7 +558,10 @@ export default function InstructionalDesignCreate({
                             })),
                             indicators: (suggestion.indicators || instrumentsArray[idx].instrument_config.indicators || []).map((ind: any) => ({
                                 ...ind,
-                                name: cleanPlainText(ind.name)
+                                name: cleanPlainText(ind.name),
+                                note: cleanPlainText(ind.note || ''),
+                                checked: ind.checked ?? false,
+                                current_level: ind.current_level ?? 0
                             })),
                             criteria: cleanPlainText(suggestion.criteria || instrumentsArray[idx].instrument_config.criteria),
                             teacher_notes: cleanPlainText(suggestion.teacher_notes || instrumentsArray[idx].instrument_config.teacher_notes),
@@ -675,9 +691,10 @@ export default function InstructionalDesignCreate({
     const getDefaultKKTPApproach = (assessmentKey: 'initial' | 'formative' | 'summative', instrumentType: string) => {
         if (assessmentKey === 'initial') return 'rubric';
         if (assessmentKey === 'formative') {
-            if (['self_assessment', 'peer_assessment', 'reflective_journal', 'exit_ticket'].includes(instrumentType)) {
+            if (['self_assessment', 'peer_assessment', 'reflective_journal', 'exit_ticket', 'performance_observation', 'guided_discussion'].includes(instrumentType)) {
                 return 'criteria_description';
             }
+            if (instrumentType === 'formative_quiz') return 'percentage';
             return 'rubric';
         }
         if (assessmentKey === 'summative') {

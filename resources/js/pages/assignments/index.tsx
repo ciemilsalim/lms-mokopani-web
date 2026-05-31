@@ -68,10 +68,10 @@ const isOverdue = (due: string | null): boolean => {
 const instrumentLabels: Record<string, string> = {
     quiz_survey: 'Kuis/Survei', observation_checklist: 'Observasi', anecdotal_notes: 'Anekdotal',
     reflective_journal: 'Jurnal Reflektif', self_assessment: 'Penilaian Diri', peer_assessment: 'Peer Assessment',
-    rubric: 'Rubrik', exit_ticket: 'Exit Ticket', concept_map: 'Peta Konsep', performance_observation: 'Observasi Kinerja',
-    written_test: 'Tes Tertulis', oral_test: 'Tes Lisan', performance: 'Unjuk Kerja',
+    rubric: 'Rubrik', exit_ticket: 'Exit Ticket', concept_map: 'Peta Konsep',     performance_observation: 'Observasi',
+    written_test: 'Tes Tertulis', oral_test: 'Tes Lisan', performance: 'Kinerja',
     project: 'Proyek', portfolio: 'Portofolio',
-    formative_quiz: 'Kuis Formatif', guided_discussion: 'Diskusi Terpandu', structured_assignment: 'Penugasan Terstruktur',
+    formative_quiz: 'Tes/Penugasan Singkat', guided_discussion: 'Diskusi Terpandu', structured_assignment: 'Penugasan Terstruktur',
 };
 
 const scoringToolLabels: Record<string, string> = {

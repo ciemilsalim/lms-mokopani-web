@@ -49,12 +49,13 @@ class InstructionalDesignController extends Controller
                 ['id' => 'reflective_journal',     'name' => 'Jurnal Reflektif',              'icon' => 'book-open',       'desc' => 'Siswa menulis refleksi pemahaman sendiri'],
                 ['id' => 'self_assessment',        'name' => 'Penilaian Diri',                'icon' => 'user-check',      'desc' => 'Siswa menilai capaian belajar mandiri'],
                 ['id' => 'peer_assessment',        'name' => 'Penilaian Antarteman',          'icon' => 'users',           'desc' => 'Siswa mengevaluasi hasil kerja teman'],
-                ['id' => 'formative_quiz',         'name' => 'Kuis Formatif',                 'icon' => 'clipboard-check', 'desc' => 'Tes singkat untuk mengecek pemahaman selama proses belajar'],
+                ['id' => 'formative_quiz',         'name' => 'Tes/Penugasan Singkat',         'icon' => 'clipboard-check', 'desc' => 'Ujian singkat atau tugas sederhana untuk memantau penguasaan materi'],
                 ['id' => 'guided_discussion',      'name' => 'Diskusi Terpandu',              'icon' => 'message-square',  'desc' => 'Dialog terstruktur untuk menilai penalaran siswa'],
                 ['id' => 'structured_assignment',   'name' => 'Penugasan Terstruktur (LKPD)',  'icon' => 'file-text',       'desc' => 'Lembar kerja untuk menilai proses berpikir'],
                 ['id' => 'exit_ticket',            'name' => 'Exit Ticket / CATs',            'icon' => 'ticket',          'desc' => 'Evaluasi cepat sebelum kelas berakhir'],
                 ['id' => 'concept_map',            'name' => 'Peta Konsep',                   'icon' => 'git-branch',      'desc' => 'Pemetaan hubungan antar konsep'],
-                ['id' => 'performance_observation','name' => 'Observasi Kinerja',             'icon' => 'activity',        'desc' => 'Pengamatan partisipasi dan diskusi siswa'],
+                ['id' => 'performance_observation','name' => 'Observasi',                     'icon' => 'activity',        'desc' => 'Mengamati keterlibatan dan perilaku murid secara berkala selama kegiatan pembelajaran'],
+                ['id' => 'performance',           'name' => 'Kinerja',                       'icon' => 'presentation',    'desc' => 'Praktik, proyek, atau produk - murid mendemonstrasikan pemahaman melalui aplikasi pada konteks nyata'],
             ],
             'summative' => [
                 ['id' => 'written_test',           'name' => 'Tes Tertulis',                  'icon' => 'pen-tool',        'desc' => 'Pilihan ganda, esai, atau uraian'],
@@ -301,7 +302,8 @@ class InstructionalDesignController extends Controller
                 $request->input('instrument_type', 'rubric'),
                 $regenerate,
                 $materialTitle,
-                $materialContent
+                $materialContent,
+                $request->input('observation_mode')
             );
         } else {
             $suggestions = $service->suggestExperiences(

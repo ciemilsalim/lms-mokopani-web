@@ -29,6 +29,9 @@ class AssignmentController extends Controller
             $query->where('teacher_id', $user->teacher->id);
         } elseif ($user->student) {
             $query->where('school_class_id', $user->student->school_class_id)
+                ->where('instrument_type', '!=', 'performance_observation')
+                ->where('instrument_type', '!=', 'performance')
+                ->where('instrument_type', '!=', 'guided_discussion')
                 ->where(function($q) {
                     $q->where('assessment_type', '!=', 'initial')
                       ->orWhere(function($subQ) {
@@ -214,12 +217,13 @@ class AssignmentController extends Controller
                     ['id' => 'reflective_journal',     'name' => 'Jurnal Reflektif',              'icon' => 'book-open',       'desc' => 'Siswa menulis refleksi pemahaman sendiri'],
                     ['id' => 'self_assessment',        'name' => 'Penilaian Diri',                'icon' => 'user-check',      'desc' => 'Siswa menilai capaian belajar mandiri'],
                     ['id' => 'peer_assessment',        'name' => 'Penilaian Antarteman',          'icon' => 'users',           'desc' => 'Siswa mengevaluasi hasil kerja teman'],
-                    ['id' => 'formative_quiz',         'name' => 'Kuis Formatif',                 'icon' => 'clipboard-check', 'desc' => 'Tes singkat untuk mengecek pemahaman selama proses belajar'],
+                    ['id' => 'formative_quiz',         'name' => 'Tes/Penugasan Singkat',         'icon' => 'clipboard-check', 'desc' => 'Ujian singkat atau tugas sederhana untuk memantau penguasaan materi'],
                     ['id' => 'guided_discussion',      'name' => 'Diskusi Terpandu',              'icon' => 'message-square',  'desc' => 'Dialog terstruktur untuk menilai penalaran siswa'],
                     ['id' => 'structured_assignment',   'name' => 'Penugasan Terstruktur (LKPD)',  'icon' => 'file-text',       'desc' => 'Lembar kerja untuk menilai proses berpikir'],
                     ['id' => 'exit_ticket',            'name' => 'Exit Ticket / CATs',            'icon' => 'ticket',          'desc' => 'Evaluasi cepat sebelum kelas berakhir'],
                     ['id' => 'concept_map',            'name' => 'Peta Konsep',                   'icon' => 'git-branch',      'desc' => 'Pemetaan hubungan antar konsep'],
-                    ['id' => 'performance_observation','name' => 'Observasi Kinerja',             'icon' => 'activity',        'desc' => 'Pengamatan partisipasi dan diskusi siswa'],
+                    ['id' => 'performance_observation','name' => 'Observasi',                     'icon' => 'activity',        'desc' => 'Mengamati keterlibatan dan perilaku murid secara berkala selama kegiatan pembelajaran'],
+                    ['id' => 'performance',           'name' => 'Kinerja',                       'icon' => 'presentation',    'desc' => 'Praktik, proyek, atau produk - murid mendemonstrasikan pemahaman melalui aplikasi pada konteks nyata'],
                 ],
                 'summative' => [
                     ['id' => 'written_test',           'name' => 'Tes Tertulis',                  'icon' => 'pen-tool',        'desc' => 'Pilihan ganda, esai, atau uraian'],
@@ -299,10 +303,10 @@ class AssignmentController extends Controller
         $assignment->load(['subject', 'submissions.student']);
 
         $readinessStatus = null;
-        if ($user->student && $assignment->assessment_type === 'initial') {
+        if ($user->student) {
             // Check access: observasi is teacher-only!
-            if ($assignment->instrument_type === 'observation_checklist') {
-                abort(403, 'Akses ditolak. Asesmen observasi ceklis hanya diisi oleh Guru.');
+            if ($assignment->instrument_type === 'observation_checklist' || $assignment->instrument_type === 'performance_observation' || $assignment->instrument_type === 'performance' || $assignment->instrument_type === 'guided_discussion') {
+                abort(403, 'Akses ditolak. Asesmen ini hanya diisi oleh Guru.');
             }
 
             // Get readiness status
@@ -673,12 +677,13 @@ class AssignmentController extends Controller
                     ['id' => 'reflective_journal',     'name' => 'Jurnal Reflektif',              'icon' => 'book-open',       'desc' => 'Siswa menulis refleksi pemahaman sendiri'],
                     ['id' => 'self_assessment',        'name' => 'Penilaian Diri',                'icon' => 'user-check',      'desc' => 'Siswa menilai capaian belajar mandiri'],
                     ['id' => 'peer_assessment',        'name' => 'Penilaian Antarteman',          'icon' => 'users',           'desc' => 'Siswa mengevaluasi hasil kerja teman'],
-                    ['id' => 'formative_quiz',         'name' => 'Kuis Formatif',                 'icon' => 'clipboard-check', 'desc' => 'Tes singkat untuk mengecek pemahaman selama proses belajar'],
+                    ['id' => 'formative_quiz',         'name' => 'Tes/Penugasan Singkat',         'icon' => 'clipboard-check', 'desc' => 'Ujian singkat atau tugas sederhana untuk memantau penguasaan materi'],
                     ['id' => 'guided_discussion',      'name' => 'Diskusi Terpandu',              'icon' => 'message-square',  'desc' => 'Dialog terstruktur untuk menilai penalaran siswa'],
                     ['id' => 'structured_assignment',   'name' => 'Penugasan Terstruktur (LKPD)',  'icon' => 'file-text',       'desc' => 'Lembar kerja untuk menilai proses berpikir'],
                     ['id' => 'exit_ticket',            'name' => 'Exit Ticket / CATs',            'icon' => 'ticket',          'desc' => 'Evaluasi cepat sebelum kelas berakhir'],
                     ['id' => 'concept_map',            'name' => 'Peta Konsep',                   'icon' => 'git-branch',      'desc' => 'Pemetaan hubungan antar konsep'],
-                    ['id' => 'performance_observation','name' => 'Observasi Kinerja',             'icon' => 'activity',        'desc' => 'Pengamatan partisipasi dan diskusi siswa'],
+                    ['id' => 'performance_observation','name' => 'Observasi',                     'icon' => 'activity',        'desc' => 'Mengamati keterlibatan dan perilaku murid secara berkala selama kegiatan pembelajaran'],
+                    ['id' => 'performance',           'name' => 'Kinerja',                       'icon' => 'presentation',    'desc' => 'Praktik, proyek, atau produk - murid mendemonstrasikan pemahaman melalui aplikasi pada konteks nyata'],
                 ],
                 'summative' => [
                     ['id' => 'written_test',           'name' => 'Tes Tertulis',                  'icon' => 'pen-tool',        'desc' => 'Pilihan ganda, esai, atau uraian'],

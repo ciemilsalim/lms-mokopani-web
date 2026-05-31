@@ -76,9 +76,10 @@ class GroqApiService implements AiProviderInterface
         string $tpDescription,
         string $content,
         string $instrumentType,
-        bool $regenerate = false
+        bool $regenerate = false,
+        ?string $observationMode = null
     ): array {
-        $hash = md5('groq_assessment_' . $tpDescription . $content . $instrumentType);
+        $hash = md5('groq_assessment_' . $tpDescription . $content . $instrumentType . ($observationMode ?? ''));
 
         if (!$regenerate) {
             $cached = \App\Models\LmsAiCache::getCache($hash);
@@ -92,9 +93,10 @@ class GroqApiService implements AiProviderInterface
         $template = LmsAiPrompt::getPromptFor('assessment', $teacherId);
 
         $prompt = str_replace([
-            '{tp}', '{content}', '{instrument_label}'
+            '{tp}', '{content}', '{instrument_label}', '{observation_mode}'
         ], [
-            $tpDescription, $content, $instrumentLabel
+            $tpDescription, $content, $instrumentLabel,
+            $observationMode === 'anecdotal' ? 'anecdotal' : 'checklist'
         ], $template);
 
         $response = $this->generateContent($prompt);
@@ -241,7 +243,7 @@ class GroqApiService implements AiProviderInterface
             'oral_qa'                 => 'Tanya Jawab Lisan',
             'quiz_survey'             => 'Kuis / Survei Diagnostik',
             'observation_checklist'   => 'Lembar Observasi (Checklist)',
-            'performance_observation' => 'Pengamatan Kinerja',
+            'performance_observation' => 'Observasi',
             'exit_ticket'             => 'Exit Ticket (Tiket Keluar)',
             'self_assessment'         => 'Penilaian Diri (Self Assessment)',
             'reflective_journal'      => 'Jurnal Reflektif',
@@ -249,9 +251,9 @@ class GroqApiService implements AiProviderInterface
             'concept_map'             => 'Peta Konsep',
             'project'                 => 'Penilaian Proyek',
             'portfolio'               => 'Penilaian Portofolio',
-            'performance'             => 'Penilaian Unjuk Kerja',
+            'performance'             => 'Kinerja (Praktik, Projek, Produk)',
             'written_test'            => 'Tes Tertulis',
-            'formative_quiz'          => 'Kuis Formatif',
+            'formative_quiz'          => 'Tes/Penugasan Singkat',
             'guided_discussion'       => 'Diskusi Terpandu',
             'structured_assignment'   => 'Penugasan Terstruktur (LKPD)',
             default                   => $type,

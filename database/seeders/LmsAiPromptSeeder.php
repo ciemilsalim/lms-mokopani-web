@@ -140,7 +140,7 @@ PROMPT
                 'key' => 'assessment',
                 'name' => 'Rancang Instrumen Asesmen',
                 'description' => 'Prompt yang digunakan saat meregenerasi atau mendesain satu instrumen asesmen tertentu (Awal, Formatif, Sumatif) berdasarkan jenis instrumen yang dipilih guru.',
-                'placeholders' => ['{tp}', '{content}', '{instrument_label}'],
+                'placeholders' => ['{tp}', '{content}', '{instrument_label}', '{observation_mode}'],
                 'prompt_text' => <<<PROMPT
 Kamu adalah asisten cerdas perancang instrumen asesmen Kurikulum Merdeka Indonesia yang terintegrasi, kontekstual, dan mudah dipahami oleh siswa SMP (usia 12-15 tahun).
 
@@ -148,6 +148,7 @@ Konteks:
 - Tujuan Pembelajaran: {tp}
 - Konten/Materi Utama: {content}
 - Jenis Asesmen: {instrument_label}
+- Mode Observasi: {observation_mode}
 
 Jika Jenis Asesmen adalah 'Kuis / Survei Diagnostik' (Asesmen Awal), maka buatlah tepat 3 pertanyaan dengan format gradasi tingkat kesulitan (tanpa bobot nilai/points, tanpa Pilihan Ganda):
 - Soal 1 (Level 1): Kemampuan Dasar/Prasyarat (Tipe Isian Singkat atau Uraian/Essay). Pertanyaan konsep dasar sekali sebelum memulai materi inti.
@@ -185,7 +186,94 @@ Untuk jenis kuis formatif ("formative_quiz" atau "written_test" lainnya):
   "kktp": {"approach": "rubric", "passing_level": "Baik"}
 }
 
-Untuk jenis lembar observasi ("observation_checklist", "self_assessment", "peer_assessment", atau "performance"):
+Untuk jenis observasi ("performance_observation"):
+Jika Mode Observasi adalah "checklist":
+{
+  "observation_mode": "checklist",
+  "stimulus": "Deskripsi konteks pengamatan keterlibatan dan perilaku murid selama kegiatan pembelajaran dengan bahasa yang sederhana",
+  "indicators": [
+    {"name": "Indikator keterlibatan/perilaku 1", "note": "Contoh perilaku spesifik yang perlu diamati untuk indikator ini"},
+    {"name": "Indikator keterlibatan/perilaku 2", "note": "Contoh perilaku spesifik yang perlu diamati untuk indikator ini"},
+    {"name": "Indikator keterlibatan/perilaku 3", "note": "Contoh perilaku spesifik yang perlu diamati untuk indikator ini"},
+    {"name": "Indikator keterlibatan/perilaku 4", "note": "Contoh perilaku spesifik yang perlu diamati untuk indikator ini"}
+  ],
+  "levels": [
+    {"name": "Perlu Bimbingan", "desc": "Jika hanya 1 indikator terpenuhi"},
+    {"name": "Cukup", "desc": "Jika 2 indikator terpenuhi"},
+    {"name": "Baik", "desc": "Jika 3 indikator terpenuhi (Tuntas)"},
+    {"name": "Sangat Baik", "desc": "Jika semua (4) indikator terpenuhi"}
+  ],
+  "teacher_notes": "Catatan tindak lanjut untuk guru",
+  "kktp": {"approach": "criteria_description", "min_criteria": 2}
+}
+
+Jika Mode Observasi adalah "anecdotal":
+{
+  "observation_mode": "anecdotal",
+  "stimulus": "Panduan pengamatan naratif keterlibatan dan perilaku murid selama kegiatan pembelajaran",
+  "indicators": [
+    {"name": "Indikator keterlibatan/perilaku 1", "note": "Contoh catatan anekdotal: 'Pada menit ke-15, Budi terlihat aktif bertanya kepada teman sebangkunya tentang langkah penyelesaian soal. Ia menunjukkan antusiasme tinggi dengan memberikan ide pertama saat diskusi kelompok dimulai.'"},
+    {"name": "Indikator keterlibatan/perilaku 2", "note": "Contoh catatan anekdotal: 'Saat aktivitas praktikum, Siti secara konsisten membantu anggota kelompoknya yang belum memahami instruksi. Ia menjelaskan dengan sabar dan memberikan contoh konkret.'"},
+    {"name": "Indikator keterlibatan/perilaku 3", "note": "Contoh catatan anekdotal: 'Di akhir sesi, Andi menunjukkan kemampuan refleksi dengan mengakui kesalahan pada langkah pertama dan menjelaskan strategi perbaikan yang akan dilakukan.'"},
+    {"name": "Indikator keterlibatan/perilaku 4", "note": "Contoh catatan anekdotal: 'Selama presentasi kelompok, Maya memberikan respons yang membangun terhadap presentasi kelompok lain dengan pertanyaan analitis.'"}
+  ],
+  "levels": [
+    {"name": "Perlu Bimbingan", "desc": "Catatan menunjukkan keterlibatan minimal, perlu bimbingan intensif"},
+    {"name": "Cukup", "desc": "Catatan menunjukkan keterlibatan sporadis, mulai menunjukkan progres"},
+    {"name": "Baik", "desc": "Catatan menunjukkan keterlibatan konsisten dan positif (Tuntas)"},
+    {"name": "Sangat Baik", "desc": "Catatan menunjukkan keterlibatan luar biasa, inisiatif tinggi, dan membantu teman"}
+  ],
+  "teacher_notes": "Tulis catatan anekdotal secara naratif: sebutkan nama murid, perilaku spesifik yang diamati, konteks waktu/kegiatan, dan dampak terhadap pembelajaran.",
+  "kktp": {"approach": "criteria_description", "min_criteria": 2}
+}
+
+Untuk jenis kinerja ("performance"):
+Jika Mode Kinerja adalah "rubric":
+{
+  "performance_mode": "rubric",
+  "stimulus": "Deskripsi konteks praktik, proyek, atau produk yang harus didemonstrasikan murid dengan bahasa yang sederhana",
+  "indicators": [
+    {"name": "Indikator kinerja 1: Kesesuaian hasil dengan tujuan"},
+    {"name": "Indikator kinerja 2: Kualitas teknis pengerjaan"},
+    {"name": "Indikator kinerja 3: Kemampuan menjelaskan alur proses"},
+    {"name": "Indikator kinerja 4: Kreativitas dan orisinalitas"}
+  ],
+  "levels": [
+    {"name": "Perlu Bimbingan", "desc": "Karya/unjuk kerja belum memenuhi standar minimal"},
+    {"name": "Cukup", "desc": "Karya/unjuk kerja memenuhi standar minimal namun belum tuntas"},
+    {"name": "Baik", "desc": "Karya/unjuk kerja memenuhi seluruh standar dengan baik (Tuntas)"},
+    {"name": "Sangat Baik", "desc": "Karya/unjuk kerja melampaui standar dengan inovasi"}
+  ],
+  "teacher_notes": "Fokus pada proses dan hasil akhir. Gunakan rubrik ini secara objektif selama pengamatan.",
+  "kktp": {"approach": "rubric", "passing_level": "Baik"}
+}
+
+Jika Mode Kinerja adalah "continuum":
+{
+  "performance_mode": "continuum",
+  "stimulus": "Deskripsi konteks praktik, proyek, atau produk yang didemonstrasikan murid secara berkala",
+  "indicators": [
+    {"name": "Indikator keterampilan 1", "current_level": 0},
+    {"name": "Indikator keterampilan 2", "current_level": 0},
+    {"name": "Indikator keterampilan 3", "current_level": 0},
+    {"name": "Indikator keterampilan 4", "current_level": 0}
+  ],
+  "development_levels": [
+    {"name": "Belum Mulai", "desc": "Murid belum menunjukkan pemahaman atau keterampilan dasar"},
+    {"name": "Sedang Berkembang", "desc": "Murid mulai memahami namun masih memerlukan bimbingan"},
+    {"name": "Berkembang Baik", "desc": "Murid mampu menerapkan secara mandiri dengan hasil memadai"},
+    {"name": "Mandiri", "desc": "Murid mampu menerapkan secara kreatif dan menjelaskan prosesnya"}
+  ],
+  "teacher_notes": "Amati perkembangan keterampilan murid dari waktu ke waktu. Catat level pencapaian saat ini untuk setiap indikator.",
+  "kktp": {"approach": "score_interval", "intervals": [
+    {"min": 0, "max": 25, "label": "Belum Mencapai", "desc": "Sebagian besar indikator di level Belum Mulai"},
+    {"min": 26, "max": 50, "label": "Hampir Mencapai", "desc": "Sebagian indikator di level Sedang Berkembang"},
+    {"min": 51, "max": 75, "label": "Sudah Mencapai", "desc": "Sebagian besar indikator di level Berkembang Baik"},
+    {"min": 76, "max": 100, "label": "Sudah Mencapai", "desc": "Sebagian besar indikator di level Mandiri"}
+  ]}
+}
+
+Untuk jenis lembar observasi lainnya ("observation_checklist", "self_assessment", "peer_assessment"):
 {
   "stimulus": "Deskripsi konteks observasi/pengamatan langsung dengan bahasa yang sederhana",
   "indicators": [
