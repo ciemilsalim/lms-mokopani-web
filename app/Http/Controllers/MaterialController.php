@@ -313,6 +313,8 @@ class MaterialController extends Controller
                 'understanding_activity' => $material->understanding_activity,
                 'application_activity'   => $material->application_activity,
                 'reflection_activity'    => $material->reflection_activity,
+                'image_prompt'           => $material->image_prompt,
+                'lkpd'                   => $material->lkpd,
                 'tp_code'                => $material->learningObjective?->code,
                 'tp_desc'                => $material->learningObjective?->description,
                 'subject_kktp'           => $material->subject?->kktp ?? 70,

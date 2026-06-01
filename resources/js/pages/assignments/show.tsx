@@ -3897,6 +3897,17 @@ export default function ShowAssignment({ assignment, students, my_submission, my
 
                         {assignment.instrument_type === 'anecdotal_notes' ? (
                             <div className="space-y-6 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
+                                {assignment.instrument_config?.stimulus && (
+                                    <div className="p-6 rounded-[2rem] bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100/50 dark:border-indigo-900/30 shadow-sm space-y-3 mb-4">
+                                        <div className="flex items-center gap-2 text-indigo-500">
+                                            <Info className="h-4 w-4" />
+                                            <h4 className="text-[10px] font-black uppercase tracking-widest">Stimulus / Konteks Observasi</h4>
+                                        </div>
+                                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium whitespace-pre-wrap">
+                                            {assignment.instrument_config.stimulus}
+                                        </p>
+                                    </div>
+                                )}
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Tanggal Kejadian</label>
@@ -3982,6 +3993,17 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                         ) : assignment.instrument_type === 'oral_test' ? (
                             <div className="space-y-8 animate-in fade-in duration-300">
                                 <div className="max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar space-y-8">
+                                    {assignment.instrument_config?.stimulus && (
+                                        <div className="p-6 rounded-[2rem] bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100/50 dark:border-indigo-900/30 shadow-sm space-y-3">
+                                            <div className="flex items-center gap-2 text-indigo-500">
+                                                <Info className="h-4 w-4" />
+                                                <h4 className="text-[10px] font-black uppercase tracking-widest">Stimulus / Konteks Tes Lisan</h4>
+                                            </div>
+                                            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium whitespace-pre-wrap">
+                                                {assignment.instrument_config.stimulus}
+                                            </p>
+                                        </div>
+                                    )}
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <div className="space-y-3">
                                             <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-4">Skor Akhir (0 - {assignment.max_points})</label>
@@ -4072,6 +4094,17 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                         ) : assignment.instrument_type === 'performance' ? (
                             <div className="space-y-8 animate-in fade-in duration-300">
                                 <div className="max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar space-y-10">
+                                    {assignment.instrument_config?.stimulus && (
+                                        <div className="p-6 rounded-[2rem] bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100/50 dark:border-indigo-900/30 shadow-sm space-y-3">
+                                            <div className="flex items-center gap-2 text-indigo-500">
+                                                <Info className="h-4 w-4" />
+                                                <h4 className="text-[10px] font-black uppercase tracking-widest">Stimulus / Konteks Kinerja</h4>
+                                            </div>
+                                            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium whitespace-pre-wrap">
+                                                {assignment.instrument_config.stimulus}
+                                            </p>
+                                        </div>
+                                    )}
                                     {/* Score Header */}
                                     <div className="flex items-center justify-between bg-emerald-50 dark:bg-emerald-950/20 p-6 rounded-[2rem] border border-emerald-100 dark:border-emerald-900/30">
                                         <div className="flex items-center gap-3">
@@ -4353,6 +4386,17 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                             </div>
                         ) : assignment.instrument_type === 'portfolio' ? (
                             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                {assignment.instrument_config?.stimulus && (
+                                    <div className="p-6 rounded-[2rem] bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100/50 dark:border-indigo-900/30 shadow-sm space-y-3">
+                                        <div className="flex items-center gap-2 text-indigo-500">
+                                            <Info className="h-4 w-4" />
+                                            <h4 className="text-[10px] font-black uppercase tracking-widest">Stimulus / Konteks Portofolio</h4>
+                                        </div>
+                                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium whitespace-pre-wrap">
+                                            {assignment.instrument_config.stimulus}
+                                        </p>
+                                    </div>
+                                )}
                                 {/* Portfolio Header */}
                                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-amber-50 dark:bg-amber-950/20 p-8 rounded-[2.5rem] border border-amber-100 dark:border-amber-900/30">
                                     <div className="flex items-center gap-4">
@@ -4470,6 +4514,17 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                         ) : assignment.instrument_type === 'rubric' ? (
                             <div className="space-y-8 animate-in fade-in duration-300">
                                 <div className="max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar space-y-10">
+                                    {assignment.instrument_config?.stimulus && (
+                                        <div className="p-6 rounded-[2rem] bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100/50 dark:border-indigo-900/30 shadow-sm space-y-3">
+                                            <div className="flex items-center gap-2 text-indigo-500">
+                                                <Info className="h-4 w-4" />
+                                                <h4 className="text-[10px] font-black uppercase tracking-widest">Stimulus / Konteks Penilaian Rubrik</h4>
+                                            </div>
+                                            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium whitespace-pre-wrap">
+                                                {assignment.instrument_config.stimulus}
+                                            </p>
+                                        </div>
+                                    )}
                                     {(assignment.instrument_config?.criteria || []).map((criterion: any) => (
                                         <div key={criterion.id} className="space-y-4">
                                             <div className="flex items-center gap-3">
@@ -4531,8 +4586,19 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                     </button>
                                 </div>
                             </div>
-                        ) : assignment.instrument_type === 'observation_checklist' ? (
+                        ) : ['observation_checklist', 'guided_discussion'].includes(assignment.instrument_type) ? (
                             <div className="space-y-8 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
+                                {assignment.instrument_config?.stimulus && (
+                                    <div className="p-6 rounded-[2rem] bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100/50 dark:border-indigo-900/30 shadow-sm space-y-3 mb-4">
+                                        <div className="flex items-center gap-2 text-indigo-500">
+                                            <Info className="h-4 w-4" />
+                                            <h4 className="text-[10px] font-black uppercase tracking-widest">Stimulus / Konteks Observasi</h4>
+                                        </div>
+                                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium whitespace-pre-wrap">
+                                            {assignment.instrument_config.stimulus}
+                                        </p>
+                                    </div>
+                                )}
                                 {/* Checklist Indicators */}
                                 <div className="space-y-4">
                                     <h4 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2">
@@ -4543,7 +4609,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                             <div key={indicator.id} className="flex items-center justify-between p-4 rounded-2xl border border-slate-50 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20 hover:bg-white transition-all">
                                                 <div className="flex items-center gap-3">
                                                     <span className="text-[10px] font-black text-slate-300">0{idx + 1}</span>
-                                                    <span className="text-xs font-bold text-slate-700 dark:text-slate-200">{indicator.text}</span>
+                                                    <span className="text-xs font-bold text-slate-700 dark:text-slate-200">{indicator.text || indicator.name}</span>
                                                 </div>
                                                 <div className="flex items-center gap-2">
                                                     <button 
@@ -4610,6 +4676,17 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                             </div>
                         ) : assignment.instrument_type === 'performance_observation' ? (
                             <div className="space-y-8 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar animate-in fade-in duration-300">
+                                {assignment.instrument_config?.stimulus && (
+                                    <div className="p-6 rounded-[2rem] bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100/50 dark:border-indigo-900/30 shadow-sm space-y-3 mb-4">
+                                        <div className="flex items-center gap-2 text-indigo-500">
+                                            <Info className="h-4 w-4" />
+                                            <h4 className="text-[10px] font-black uppercase tracking-widest">Stimulus / Konteks Observasi</h4>
+                                        </div>
+                                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium whitespace-pre-wrap">
+                                            {assignment.instrument_config.stimulus}
+                                        </p>
+                                    </div>
+                                )}
                                 <div className="space-y-4">
                                     <h4 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2">
                                         <Activity className="h-4 w-4 text-emerald-500" /> Indikator Kinerja yang Diamati
@@ -4619,7 +4696,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                             <div key={indicator.id} className="p-5 rounded-3xl border border-slate-50 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20 hover:bg-white transition-all space-y-4 group">
                                                 <div className="flex items-start gap-3">
                                                     <span className="text-[10px] font-black text-slate-300 mt-0.5">0{idx + 1}</span>
-                                                    <span className="text-xs font-bold text-slate-700 dark:text-slate-200 group-hover:text-slate-900 transition-colors">{indicator.text}</span>
+                                                    <span className="text-xs font-bold text-slate-700 dark:text-slate-200 group-hover:text-slate-900 transition-colors">{indicator.text || indicator.name}</span>
                                                 </div>
                                                 <div className="flex items-center gap-2">
                                                     {[
@@ -4689,6 +4766,17 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                             <div className="flex items-center justify-between mb-4">
                                 <h3 className="text-lg font-black text-foreground tracking-tight">Evaluasi Jawaban: {selectedSubmission.student_name}</h3>
                             </div>
+                            {assignment.instrument_config?.stimulus && (
+                                <div className="p-6 rounded-[2rem] bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100/50 dark:border-indigo-900/30 shadow-sm space-y-3">
+                                    <div className="flex items-center gap-2 text-indigo-500">
+                                        <Info className="h-4 w-4" />
+                                        <h4 className="text-[10px] font-black uppercase tracking-widest">Stimulus / Konteks Asesmen</h4>
+                                    </div>
+                                    <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium whitespace-pre-wrap">
+                                        {assignment.instrument_config.stimulus}
+                                    </p>
+                                </div>
+                            )}
                             
                             {(() => {
                                 try {

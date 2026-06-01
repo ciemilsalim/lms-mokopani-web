@@ -49,6 +49,8 @@ interface Material {
     understanding_activity: string | null;
     application_activity: string | null;
     reflection_activity: string | null;
+    image_prompt: string | null;
+    lkpd: string | null;
     tp_code: string | null;
     tp_desc: string | null;
     subject_kktp?: number;
@@ -172,15 +174,24 @@ const ASSESSMENT_TYPE_MAP: Record<string, string> = {
 const INSTRUMENT_MAP: Record<string, string> = {
     written_test: 'Tes Tertulis',
     quiz_survey: 'Kuis Singkat / Survei',
-    formative_quiz: 'Kuis Formatif',
-    observation_checklist: 'Lembar Observasi & Ceklis',
-    performance: 'Penilaian Kinerja / Unjuk Kerja',
-    project: 'Penilaian Projek',
+    formative_quiz: 'Tes/Penugasan Singkat',
+    observation_checklist: 'Lembar Observasi & Ceklis (Ceklis)',
+    performance: 'Kinerja (Praktik/Projek/Produk)',
+    project: 'Penilaian Proyek',
     exit_ticket: 'Exit Ticket',
     reflective_journal: 'Jurnal Reflektif',
     anecdotal_notes: 'Catatan Anekdotal',
-    rubric: 'Rubrik Penilaian Kustom',
-    oral_qa: 'Tanya Jawab Lisan'
+    rubric: 'Rubrik Penilaian',
+    oral_qa: 'Tanya Jawab Lisan',
+    self_assessment: 'Penilaian Diri',
+    peer_assessment: 'Penilaian Antarteman',
+    guided_discussion: 'Diskusi Terpandu',
+    structured_assignment: 'Penugasan Terstruktur (LKPD)',
+    concept_map: 'Peta Konsep',
+    performance_observation: 'Lembar Observasi',
+    oral_test: 'Tes Lisan',
+    portfolio: 'Penilaian Portofolio',
+    assignment: 'Penugasan (Laporan/Studi Kasus)'
 };
 
 const renderAssessmentDetails = (assignments: Assignment[]) => {
@@ -266,7 +277,7 @@ const renderAssessmentDetails = (assignments: Assignment[]) => {
                                             {/* Render short answer key */}
                                             {q.type === 'short_answer' && (
                                                 <p className="pl-4 text-[9pt] text-gray-700 italic">
-                                                    Kunci Jawaban Singkat: <strong className="font-bold text-emerald-700">{q.answer || '-'}</strong>
+                                                    Kunci Jawaban Singkat: <strong className="font-bold text-emerald-700">{q.answer || q.correct_answer || '-'}</strong>
                                                 </p>
                                             )}
 
@@ -286,7 +297,7 @@ const renderAssessmentDetails = (assignments: Assignment[]) => {
                         )}
 
                         {/* Observation Checklist & Performance Indicators */}
-                        {(asm.instrument_type === 'observation_checklist' || asm.instrument_type === 'performance_observation' || asm.instrument_type === 'performance' || asm.instrument_type === 'self_assessment' || asm.instrument_type === 'peer_assessment') && indicators.length > 0 && (
+                        {(asm.instrument_type === 'observation_checklist' || asm.instrument_type === 'performance_observation' || asm.instrument_type === 'performance' || asm.instrument_type === 'self_assessment' || asm.instrument_type === 'peer_assessment' || asm.instrument_type === 'guided_discussion' || asm.instrument_type === 'structured_assignment' || asm.instrument_type === 'assignment' || asm.instrument_type === 'concept_map') && indicators.length > 0 && (
                             <div className="space-y-2">
                                 <strong className="text-[9.5pt] font-bold text-black block font-sans">Indikator Yang Diamati:</strong>
                                 <table className="w-full border-collapse" style={{ borderCollapse: 'collapse', width: '100%' }}>
@@ -308,13 +319,21 @@ const renderAssessmentDetails = (assignments: Assignment[]) => {
                             </div>
                         )}
 
-                        {/* Exit Ticket / Reflective Journal questions */}
-                        {(asm.instrument_type === 'exit_ticket' || asm.instrument_type === 'reflective_journal') && questions.length > 0 && (
+                        {/* Exit Ticket / Reflective Journal / Oral QA questions */}
+                        {(asm.instrument_type === 'exit_ticket' || asm.instrument_type === 'reflective_journal' || asm.instrument_type === 'oral_test' || asm.instrument_type === 'oral_qa') && questions.length > 0 && (
                             <div className="space-y-2">
-                                <strong className="text-[9.5pt] font-bold text-black block">Pertanyaan Refleksi Siswa:</strong>
+                                <strong className="text-[9.5pt] font-bold text-black block">Pertanyaan Refleksi / Tanya Jawab Siswa:</strong>
                                 <ul className="list-decimal pl-5 text-[9pt] text-gray-800 space-y-1">
                                     {questions.map((q: any, qIdx: number) => (
-                                        <li key={qIdx} className="leading-relaxed">{q.text}</li>
+                                        <li key={qIdx} className="leading-relaxed">
+                                            <strong>{q.text}</strong>
+                                            {q.answer_guide && (
+                                                <span className="block text-[8.5pt] text-gray-600 italic mt-0.5">Panduan Jawaban: {q.answer_guide}</span>
+                                            )}
+                                            {q.correct_answer && (
+                                                <span className="block text-[8.5pt] text-gray-600 italic mt-0.5">Panduan Jawaban: {q.correct_answer}</span>
+                                            )}
+                                        </li>
                                     ))}
                                 </ul>
                             </div>
@@ -1065,6 +1084,29 @@ export default function ShowMaterial({
                                                 <td className="font-semibold" style={{ border: '1px solid black', padding: '8px 12px' }}>Pemanfaatan Digital</td>
                                                 <td style={{ border: '1px solid black', padding: '8px 12px' }}>{rppDigital}</td>
                                             </tr>
+                                            <tr>
+                                                <td className="font-semibold" style={{ border: '1px solid black', padding: '8px 12px' }}>Media & Ilustrasi Ajar (AI)</td>
+                                                <td style={{ border: '1px solid black', padding: '8px 12px' }}>
+                                                    {material.thumbnail ? (
+                                                        <div className="my-2 max-w-sm rounded border border-black p-1 bg-white">
+                                                            <img src={material.thumbnail} alt={material.title} className="w-full h-auto object-cover max-h-48" />
+                                                        </div>
+                                                    ) : material.image_prompt ? (
+                                                        <div className="my-2 max-w-md rounded border border-gray-400 p-3 bg-gray-50 text-[9.5pt]">
+                                                            <div className="flex items-center gap-1 text-violet-700 font-bold mb-1">
+                                                                <span className="text-[8pt] uppercase tracking-wider font-mono">✦ PROMPT VISUAL AI:</span>
+                                                            </div>
+                                                            <p className="italic text-gray-800 leading-relaxed font-serif">"{material.image_prompt}"</p>
+                                                            <div className="mt-2.5 h-32 w-full rounded border border-dashed border-gray-400 bg-white flex flex-col items-center justify-center text-center p-2">
+                                                                <span className="text-[7.5pt] font-mono tracking-wider text-gray-500 uppercase">✦ REPRESENTASI VISUAL / BAHAN AJAR ✦</span>
+                                                                <span className="text-[6.5pt] text-gray-400 mt-1 max-w-xs leading-normal">Gambar grafis konsep ajar dicetak terlampir atau dirender dinamis pada media digital</span>
+                                                            </div>
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-gray-500 italic">Tidak dikonfigurasi</span>
+                                                    )}
+                                                </td>
+                                            </tr>
                                         </tbody>
                                     </table>
                                 </div>
@@ -1334,7 +1376,7 @@ export default function ShowMaterial({
                                     </div>
                                     <div className="space-y-20">
                                         <div className="space-y-1">
-                                            <p>Mokopani, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                                            <p>Buol, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
                                             <p className="font-semibold">Guru Mata Pelajaran</p>
                                         </div>
                                         <div className="space-y-0.5">
@@ -1483,6 +1525,29 @@ export default function ShowMaterial({
                                         alt={material.title}
                                         className="w-full h-auto max-h-[500px] object-cover"
                                     />
+                                </div>
+                            )}
+
+                            {!material.thumbnail && material.image_prompt && (
+                                <div className="mt-8 rounded-3xl border border-[#2C2C3A]/20 dark:border-[#2C2C3A] bg-gradient-to-br from-indigo-500/5 via-violet-500/5 to-pink-500/5 p-6 shadow-sm space-y-4">
+                                    <div className="flex items-center gap-2 text-violet-600 dark:text-violet-400">
+                                        <Star className="h-4 w-4 animate-pulse" />
+                                        <span className="text-xs font-bold uppercase tracking-widest">Gambar Ilustrasi AI</span>
+                                    </div>
+                                    <div className="h-56 w-full rounded-2xl bg-gradient-to-br from-indigo-500/20 via-[#5E6AD2]/10 to-pink-500/20 border border-[#2C2C3A]/10 flex flex-col items-center justify-center text-center p-6 relative overflow-hidden">
+                                        {/* Abstract background graphics */}
+                                        <div className="absolute -right-10 -bottom-10 h-40 w-40 rounded-full bg-indigo-500/10 blur-xl"></div>
+                                        <div className="absolute -left-10 -top-10 h-40 w-40 rounded-full bg-pink-500/10 blur-xl"></div>
+                                        
+                                        <div className="z-10 bg-white/80 dark:bg-[#1B1B25]/80 backdrop-blur-md p-4 rounded-2xl shadow-sm border border-[#2C2C3A]/10 max-w-lg">
+                                            <p className="text-xs font-semibold text-[#1B1B25] dark:text-[#F1F1F4] italic leading-relaxed">
+                                                "{material.image_prompt}"
+                                            </p>
+                                        </div>
+                                        <span className="text-[9px] font-mono tracking-widest text-[#8A8F98]/80 uppercase mt-4 z-10 flex items-center gap-1">
+                                            <Star className="h-3 w-3" /> Ilustrasi Visual Guru Rancang Cerdas
+                                        </span>
+                                    </div>
                                 </div>
                             )}
 

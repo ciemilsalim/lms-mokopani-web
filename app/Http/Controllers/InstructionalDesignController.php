@@ -287,10 +287,14 @@ class InstructionalDesignController extends Controller
             $materialTitle = $request->input('material_title');
             $materialContent = $request->input('material_content');
 
+            // Clean editor tags to check if it's truly empty (e.g. avoiding <p><br></p> bypass)
+            $trimmedContent = trim(strip_tags($materialContent));
+
             // If empty, auto-fetch the actual material associated with this TP & Subject
-            if (empty($materialContent)) {
+            if (empty($trimmedContent)) {
+                $tp = \App\Models\LmsLearningObjective::find($request->learning_objective_id);
                 $material = \App\Models\LmsMaterial::where('learning_objective_id', $request->learning_objective_id)
-                    ->where('subject_id', $request->input('subject_id'))
+                    ->where('subject_id', $tp?->subject_id)
                     ->first();
                 if ($material) {
                     $materialTitle = $material->title;

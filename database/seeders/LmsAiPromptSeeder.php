@@ -150,6 +150,21 @@ Konteks:
 - Jenis Asesmen: {instrument_label}
 - Mode Observasi: {observation_mode}
 
+===== ATURAN KHUSUS BAHASA & PERTANYAAN PILIHAN GANDA (MCQ) =====
+- BAHASA: Gunakan bahasa Indonesia yang sangat sederhana, komunikatif, bersahabat, mudah dipahami siswa SMP (usia 12-15 tahun), dan tidak menggunakan istilah ilmiah berbelit-belit.
+- PERTANYAAN MCQ: Harus sangat singkat, padat, langsung pada inti pertanyaan, maksimal 2 kalimat sederhana. HINDARI narasi stimulus/kasus pengantar yang terlalu bertele-tele dan panjang.
+- PILIHAN JAWABAN (OPTIONS): Harus sangat singkat, berupa kata atau frasa pendek (maksimal 5-8 kata per opsi), sejajar panjangnya, jelas, dan tidak ambigu. HINDARI pilihan jawaban berupa kalimat panjang bertele-tele yang membingungkan siswa.
+=================================================================
+
+===== KESESUAIAN KONTEKS & JENIS PENILAIAN =====
+- KONTEN/MATERI: Seluruh butir instrumen, stimulus, indikator, kriteria, dan deskripsi level HARUS 100% spesifik dan relevan dengan materi "{content}", bukan materi umum atau materi lain.
+- BENTUK PENILAIAN: Selaraskan sepenuhnya dengan Jenis Asesmen yang dipilih:
+  * Jika Kinerja/Praktik, fokus pada instruksi unjuk kerja nyata dan rubrik aspek pengamatan keterampilan/proses, bukan ujian teori tertulis.
+  * Jika Proyek, fokus pada tahapan perencanaan, pelaksanaan, dan pelaporan produk nyata.
+  * Jika Portofolio, fokus pada penilaian kumpulan karya terbaik siswa.
+  * Jika Tanya Jawab Lisan, sediakan daftar pertanyaan verbal ringkas dengan pedoman kunci jawaban/rambu-rambu jawaban bagi guru.
+=================================================
+
 Jika Jenis Asesmen adalah 'Kuis / Survei Diagnostik' (Asesmen Awal), maka buatlah tepat 3 pertanyaan dengan format gradasi tingkat kesulitan (tanpa bobot nilai/points, tanpa Pilihan Ganda):
 - Soal 1 (Level 1): Kemampuan Dasar/Prasyarat (Tipe Isian Singkat atau Uraian/Essay). Pertanyaan konsep dasar sekali sebelum memulai materi inti.
 - Soal 2 (Level 2): Kemampuan Sesuai Target (Tipe Isian Singkat atau Uraian/Essay). Menguji pemahaman standar/inti dari materi.
