@@ -1486,6 +1486,8 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                             munculCount = Object.keys(p.scores || {}).length;
                                                         } else if (assignment.instrument_type === 'oral_test') {
                                                             munculCount = sub.score || 0;
+                                                        } else if (assignment.instrument_type === 'performance_observation') {
+                                                            munculCount = Object.values(p.observations || {}).filter(v => v === 'mulai' || v === 'konsisten').length;
                                                         } else {
                                                             munculCount = Object.values(p.checklist || {}).filter(v => v === true).length;
                                                         }
@@ -3369,16 +3371,19 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                             return (
                                                                 <div className="space-y-6">
                                                                     <div className="grid gap-3">
-                                                                        {(assignment.instrument_config?.indicators || []).map((ind: any) => (
-                                                                            <div key={ind.id} className="flex items-center justify-between p-4 rounded-2xl bg-muted/50 border border-border">
-                                                                                <span className="text-xs font-bold text-slate-700 dark:text-slate-200">{ind.text}</span>
-                                                                                {p.checklist[ind.id] === true ? (
-                                                                                    <span className="px-3 py-1 rounded-full bg-emerald-500 text-white text-[8px] font-black uppercase tracking-widest shadow-sm">Muncul</span>
-                                                                                ) : (
-                                                                                    <span className="px-3 py-1 rounded-full bg-slate-200 text-muted-foreground text-[8px] font-black uppercase tracking-widest">Belum</span>
-                                                                                )}
-                                                                            </div>
-                                                                        ))}
+                                                                        {(assignment.instrument_config?.indicators || []).map((ind: any, idx: number) => {
+                                                                            const indKey = ind.id || ind.name || ind.text || idx.toString();
+                                                                            return (
+                                                                                <div key={indKey} className="flex items-center justify-between p-4 rounded-2xl bg-muted/50 border border-border">
+                                                                                    <span className="text-xs font-bold text-slate-700 dark:text-slate-200">{ind.text || ind.name}</span>
+                                                                                    {p.checklist[indKey] === true ? (
+                                                                                        <span className="px-3 py-1 rounded-full bg-emerald-500 text-white text-[8px] font-black uppercase tracking-widest shadow-sm">Muncul</span>
+                                                                                    ) : (
+                                                                                        <span className="px-3 py-1 rounded-full bg-slate-200 text-muted-foreground text-[8px] font-black uppercase tracking-widest">Belum</span>
+                                                                                    )}
+                                                                                </div>
+                                                                            );
+                                                                        })}
                                                                     </div>
                                                                     {p.note && (
                                                                         <div className="p-5 rounded-3xl bg-indigo-50/30 dark:bg-indigo-950/10 border border-indigo-100 dark:border-indigo-900/30">
@@ -3795,16 +3800,17 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                             return (
                                                                 <div className="space-y-6">
                                                                     <div className="grid gap-3">
-                                                                        {(assignment.instrument_config?.indicators || []).map((indicator: any) => {
-                                                                            const val = p.observations?.[indicator.id];
+                                                                        {(assignment.instrument_config?.indicators || []).map((indicator: any, idx: number) => {
+                                                                            const indKey = indicator.id || indicator.name || indicator.text || idx.toString();
+                                                                            const val = p.observations?.[indKey];
                                                                             const lvl = [
                                                                                 { id: 'belum', label: 'Belum Terlihat', color: 'rose' },
                                                                                 { id: 'mulai', label: 'Mulai Terlihat', color: 'amber' },
                                                                                 { id: 'konsisten', label: 'Konsisten', color: 'emerald' }
                                                                             ].find(l => l.id === val);
                                                                             return (
-                                                                                <div key={indicator.id} className="flex items-center justify-between p-4 rounded-2xl bg-white dark:bg-slate-900 border border-border shadow-sm">
-                                                                                    <span className="text-xs font-bold text-slate-700 dark:text-slate-200">{indicator.text}</span>
+                                                                                <div key={indKey} className="flex items-center justify-between p-4 rounded-2xl bg-white dark:bg-slate-900 border border-border shadow-sm">
+                                                                                    <span className="text-xs font-bold text-slate-700 dark:text-slate-200">{indicator.text || indicator.name}</span>
                                                                                     {lvl ? (
                                                                                         <span className={`px-3 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest bg-${lvl.color}-50 dark:bg-${lvl.color}-950/20 text-${lvl.color}-600 border border-${lvl.color}-100 dark:border-${lvl.color}-900/30`}>
                                                                                             {lvl.label}
@@ -3897,15 +3903,13 @@ export default function ShowAssignment({ assignment, students, my_submission, my
 
                         {assignment.instrument_type === 'anecdotal_notes' ? (
                             <div className="space-y-6 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
-                                {assignment.instrument_config?.stimulus && (
+                                {(assignment.instrument_config?.stimulus || assignment.description) && (
                                     <div className="p-6 rounded-[2rem] bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100/50 dark:border-indigo-900/30 shadow-sm space-y-3 mb-4">
                                         <div className="flex items-center gap-2 text-indigo-500">
                                             <Info className="h-4 w-4" />
                                             <h4 className="text-[10px] font-black uppercase tracking-widest">Stimulus / Konteks Observasi</h4>
                                         </div>
-                                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium whitespace-pre-wrap">
-                                            {assignment.instrument_config.stimulus}
-                                        </p>
+                                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: assignment.instrument_config?.stimulus || assignment.description || '' }} />
                                     </div>
                                 )}
                                 <div className="grid grid-cols-2 gap-4">
@@ -3993,15 +3997,13 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                         ) : assignment.instrument_type === 'oral_test' ? (
                             <div className="space-y-8 animate-in fade-in duration-300">
                                 <div className="max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar space-y-8">
-                                    {assignment.instrument_config?.stimulus && (
+                                    {(assignment.instrument_config?.stimulus || assignment.description) && (
                                         <div className="p-6 rounded-[2rem] bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100/50 dark:border-indigo-900/30 shadow-sm space-y-3">
                                             <div className="flex items-center gap-2 text-indigo-500">
                                                 <Info className="h-4 w-4" />
                                                 <h4 className="text-[10px] font-black uppercase tracking-widest">Stimulus / Konteks Tes Lisan</h4>
                                             </div>
-                                            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium whitespace-pre-wrap">
-                                                {assignment.instrument_config.stimulus}
-                                            </p>
+                                            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: assignment.instrument_config?.stimulus || assignment.description || '' }} />
                                         </div>
                                     )}
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -4094,15 +4096,13 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                         ) : assignment.instrument_type === 'performance' ? (
                             <div className="space-y-8 animate-in fade-in duration-300">
                                 <div className="max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar space-y-10">
-                                    {assignment.instrument_config?.stimulus && (
+                                    {(assignment.instrument_config?.stimulus || assignment.description) && (
                                         <div className="p-6 rounded-[2rem] bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100/50 dark:border-indigo-900/30 shadow-sm space-y-3">
                                             <div className="flex items-center gap-2 text-indigo-500">
                                                 <Info className="h-4 w-4" />
                                                 <h4 className="text-[10px] font-black uppercase tracking-widest">Stimulus / Konteks Kinerja</h4>
                                             </div>
-                                            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium whitespace-pre-wrap">
-                                                {assignment.instrument_config.stimulus}
-                                            </p>
+                                            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: assignment.instrument_config?.stimulus || assignment.description || '' }} />
                                         </div>
                                     )}
                                     {/* Score Header */}
@@ -4386,15 +4386,13 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                             </div>
                         ) : assignment.instrument_type === 'portfolio' ? (
                             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                                {assignment.instrument_config?.stimulus && (
+                                {(assignment.instrument_config?.stimulus || assignment.description) && (
                                     <div className="p-6 rounded-[2rem] bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100/50 dark:border-indigo-900/30 shadow-sm space-y-3">
                                         <div className="flex items-center gap-2 text-indigo-500">
                                             <Info className="h-4 w-4" />
                                             <h4 className="text-[10px] font-black uppercase tracking-widest">Stimulus / Konteks Portofolio</h4>
                                         </div>
-                                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium whitespace-pre-wrap">
-                                            {assignment.instrument_config.stimulus}
-                                        </p>
+                                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: assignment.instrument_config?.stimulus || assignment.description || '' }} />
                                     </div>
                                 )}
                                 {/* Portfolio Header */}
@@ -4514,15 +4512,13 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                         ) : assignment.instrument_type === 'rubric' ? (
                             <div className="space-y-8 animate-in fade-in duration-300">
                                 <div className="max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar space-y-10">
-                                    {assignment.instrument_config?.stimulus && (
+                                    {(assignment.instrument_config?.stimulus || assignment.description) && (
                                         <div className="p-6 rounded-[2rem] bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100/50 dark:border-indigo-900/30 shadow-sm space-y-3">
                                             <div className="flex items-center gap-2 text-indigo-500">
                                                 <Info className="h-4 w-4" />
                                                 <h4 className="text-[10px] font-black uppercase tracking-widest">Stimulus / Konteks Penilaian Rubrik</h4>
                                             </div>
-                                            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium whitespace-pre-wrap">
-                                                {assignment.instrument_config.stimulus}
-                                            </p>
+                                            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: assignment.instrument_config?.stimulus || assignment.description || '' }} />
                                         </div>
                                     )}
                                     {(assignment.instrument_config?.criteria || []).map((criterion: any) => (
@@ -4588,15 +4584,13 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                             </div>
                         ) : ['observation_checklist', 'guided_discussion'].includes(assignment.instrument_type) ? (
                             <div className="space-y-8 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
-                                {assignment.instrument_config?.stimulus && (
+                                {(assignment.instrument_config?.stimulus || assignment.description) && (
                                     <div className="p-6 rounded-[2rem] bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100/50 dark:border-indigo-900/30 shadow-sm space-y-3 mb-4">
                                         <div className="flex items-center gap-2 text-indigo-500">
                                             <Info className="h-4 w-4" />
                                             <h4 className="text-[10px] font-black uppercase tracking-widest">Stimulus / Konteks Observasi</h4>
                                         </div>
-                                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium whitespace-pre-wrap">
-                                            {assignment.instrument_config.stimulus}
-                                        </p>
+                                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: assignment.instrument_config?.stimulus || assignment.description || '' }} />
                                     </div>
                                 )}
                                 {/* Checklist Indicators */}
@@ -4605,30 +4599,33 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                         <ListChecks className="h-4 w-4" /> Daftar Indikator Perilaku
                                     </h4>
                                     <div className="grid gap-3">
-                                        {(assignment.instrument_config?.indicators || []).map((indicator: any, idx: number) => (
-                                            <div key={indicator.id} className="flex items-center justify-between p-4 rounded-2xl border border-slate-50 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20 hover:bg-white transition-all">
-                                                <div className="flex items-center gap-3">
-                                                    <span className="text-[10px] font-black text-slate-300">0{idx + 1}</span>
-                                                    <span className="text-xs font-bold text-slate-700 dark:text-slate-200">{indicator.text || indicator.name}</span>
+                                        {(assignment.instrument_config?.indicators || []).map((indicator: any, idx: number) => {
+                                            const indicatorKey = indicator.id || indicator.name || indicator.text || idx.toString();
+                                            return (
+                                                <div key={indicatorKey} className="flex items-center justify-between p-4 rounded-2xl border border-slate-50 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20 hover:bg-white transition-all">
+                                                    <div className="flex items-center gap-3">
+                                                        <span className="text-[10px] font-black text-slate-300">0{idx + 1}</span>
+                                                        <span className="text-xs font-bold text-slate-700 dark:text-slate-200">{indicator.text || indicator.name}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <button 
+                                                            type="button"
+                                                            onClick={() => setObsData({ ...obsData, checklist: { ...obsData.checklist, [indicatorKey]: true } })}
+                                                            className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${obsData.checklist[indicatorKey] === true ? 'bg-emerald-500 text-white shadow-sm' : 'bg-slate-100 text-muted-foreground hover:bg-emerald-50 hover:text-emerald-500'}`}
+                                                        >
+                                                            Muncul
+                                                        </button>
+                                                        <button 
+                                                            type="button"
+                                                            onClick={() => setObsData({ ...obsData, checklist: { ...obsData.checklist, [indicatorKey]: false } })}
+                                                            className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${obsData.checklist[indicatorKey] === false ? 'bg-rose-500 text-white shadow-sm' : 'bg-slate-100 text-muted-foreground hover:bg-rose-50 hover:text-rose-500'}`}
+                                                        >
+                                                            Belum
+                                                        </button>
+                                                    </div>
                                                 </div>
-                                                <div className="flex items-center gap-2">
-                                                    <button 
-                                                        type="button"
-                                                        onClick={() => setObsData({ ...obsData, checklist: { ...obsData.checklist, [indicator.id]: true } })}
-                                                        className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${obsData.checklist[indicator.id] === true ? 'bg-emerald-500 text-white shadow-sm' : 'bg-slate-100 text-muted-foreground hover:bg-emerald-50 hover:text-emerald-500'}`}
-                                                    >
-                                                        Muncul
-                                                    </button>
-                                                    <button 
-                                                        type="button"
-                                                        onClick={() => setObsData({ ...obsData, checklist: { ...obsData.checklist, [indicator.id]: false } })}
-                                                        className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${obsData.checklist[indicator.id] === false ? 'bg-rose-500 text-white shadow-sm' : 'bg-slate-100 text-muted-foreground hover:bg-rose-50 hover:text-rose-500'}`}
-                                                    >
-                                                        Belum
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 </div>
 
@@ -4676,15 +4673,13 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                             </div>
                         ) : assignment.instrument_type === 'performance_observation' ? (
                             <div className="space-y-8 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar animate-in fade-in duration-300">
-                                {assignment.instrument_config?.stimulus && (
+                                {(assignment.instrument_config?.stimulus || assignment.description) && (
                                     <div className="p-6 rounded-[2rem] bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100/50 dark:border-indigo-900/30 shadow-sm space-y-3 mb-4">
                                         <div className="flex items-center gap-2 text-indigo-500">
                                             <Info className="h-4 w-4" />
                                             <h4 className="text-[10px] font-black uppercase tracking-widest">Stimulus / Konteks Observasi</h4>
                                         </div>
-                                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium whitespace-pre-wrap">
-                                            {assignment.instrument_config.stimulus}
-                                        </p>
+                                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: assignment.instrument_config?.stimulus || assignment.description || '' }} />
                                     </div>
                                 )}
                                 <div className="space-y-4">
@@ -4692,30 +4687,33 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                         <Activity className="h-4 w-4 text-emerald-500" /> Indikator Kinerja yang Diamati
                                     </h4>
                                     <div className="grid gap-3">
-                                        {(assignment.instrument_config?.indicators || []).map((indicator: any, idx: number) => (
-                                            <div key={indicator.id} className="p-5 rounded-3xl border border-slate-50 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20 hover:bg-white transition-all space-y-4 group">
-                                                <div className="flex items-start gap-3">
-                                                    <span className="text-[10px] font-black text-slate-300 mt-0.5">0{idx + 1}</span>
-                                                    <span className="text-xs font-bold text-slate-700 dark:text-slate-200 group-hover:text-slate-900 transition-colors">{indicator.text || indicator.name}</span>
+                                        {(assignment.instrument_config?.indicators || []).map((indicator: any, idx: number) => {
+                                            const indicatorKey = indicator.id || indicator.name || indicator.text || idx.toString();
+                                            return (
+                                                <div key={indicatorKey} className="p-5 rounded-3xl border border-slate-50 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20 hover:bg-white transition-all space-y-4 group">
+                                                    <div className="flex items-start gap-3">
+                                                        <span className="text-[10px] font-black text-slate-300 mt-0.5">0{idx + 1}</span>
+                                                        <span className="text-xs font-bold text-slate-700 dark:text-slate-200 group-hover:text-slate-900 transition-colors">{indicator.text || indicator.name}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        {[
+                                                            { id: 'belum', label: 'Belum Terlihat', color: 'rose' },
+                                                            { id: 'mulai', label: 'Mulai Terlihat', color: 'amber' },
+                                                            { id: 'konsisten', label: 'Konsisten', color: 'emerald' }
+                                                        ].map((lvl) => (
+                                                            <button 
+                                                                key={lvl.id}
+                                                                type="button"
+                                                                onClick={() => setPerformanceObsData({ ...performanceObsData, observations: { ...performanceObsData.observations, [indicatorKey]: lvl.id } })}
+                                                                className={`flex-1 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all border-2 ${performanceObsData.observations[indicatorKey] === lvl.id ? `bg-${lvl.color}-500 border-${lvl.color}-500 text-white shadow-lg shadow-${lvl.color}-100` : 'bg-white border-slate-100 text-muted-foreground hover:border-slate-200'}`}
+                                                            >
+                                                                {lvl.label}
+                                                            </button>
+                                                        ))}
+                                                    </div>
                                                 </div>
-                                                <div className="flex items-center gap-2">
-                                                    {[
-                                                        { id: 'belum', label: 'Belum Terlihat', color: 'rose' },
-                                                        { id: 'mulai', label: 'Mulai Terlihat', color: 'amber' },
-                                                        { id: 'konsisten', label: 'Konsisten', color: 'emerald' }
-                                                    ].map((lvl) => (
-                                                        <button 
-                                                            key={lvl.id}
-                                                            type="button"
-                                                            onClick={() => setPerformanceObsData({ ...performanceObsData, observations: { ...performanceObsData.observations, [indicator.id]: lvl.id } })}
-                                                            className={`flex-1 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all border-2 ${performanceObsData.observations[indicator.id] === lvl.id ? `bg-${lvl.color}-500 border-${lvl.color}-500 text-white shadow-lg shadow-${lvl.color}-100` : 'bg-white border-slate-100 text-muted-foreground hover:border-slate-200'}`}
-                                                        >
-                                                            {lvl.label}
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 </div>
 
@@ -4766,15 +4764,13 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                             <div className="flex items-center justify-between mb-4">
                                 <h3 className="text-lg font-black text-foreground tracking-tight">Evaluasi Jawaban: {selectedSubmission.student_name}</h3>
                             </div>
-                            {assignment.instrument_config?.stimulus && (
+                            {(assignment.instrument_config?.stimulus || assignment.description) && (
                                 <div className="p-6 rounded-[2rem] bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100/50 dark:border-indigo-900/30 shadow-sm space-y-3">
                                     <div className="flex items-center gap-2 text-indigo-500">
                                         <Info className="h-4 w-4" />
                                         <h4 className="text-[10px] font-black uppercase tracking-widest">Stimulus / Konteks Asesmen</h4>
                                     </div>
-                                    <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium whitespace-pre-wrap">
-                                        {assignment.instrument_config.stimulus}
-                                    </p>
+                                    <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: assignment.instrument_config?.stimulus || assignment.description || '' }} />
                                 </div>
                             )}
                             

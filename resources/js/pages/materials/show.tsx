@@ -1362,6 +1362,70 @@ export default function ShowMaterial({
                                     </div>
                                 </div>
 
+                                {/* 8. Sumber Belajar */}
+                                <div className="space-y-4 mb-12 print-page-break">
+                                    <h4 className="text-md font-bold uppercase border-b border-black pb-1 mb-3 text-black">
+                                        {hasSummativeAssignments ? "VII. SUMBER BELAJAR" : "VIII. SUMBER BELAJAR"}
+                                    </h4>
+                                    
+                                    <div className="border border-black p-6 rounded-lg bg-gray-50/50">
+                                        <div className="space-y-3.5 text-[11pt]">
+                                            {((material.resources && material.resources.length > 0) || material.external_link || material.file_path) ? (
+                                                <div className="space-y-4">
+                                                    {material.resources && material.resources.map((res: any, idx: number) => (
+                                                        <div key={idx} className="flex items-start gap-3.5 text-[10pt] leading-relaxed text-black">
+                                                            <span className="flex h-5.5 w-5.5 items-center justify-center rounded-full border border-black text-[9pt] font-black shrink-0 bg-black text-white">
+                                                                {idx + 1}
+                                                            </span>
+                                                            <div className="flex-1">
+                                                                <strong className="font-bold">{res.title || 'Sumber Belajar'}</strong>
+                                                                <span className="text-gray-500 mx-2">|</span>
+                                                                <a href={res.type === 'link' ? res.path : `/storage/${res.path}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline font-mono break-all text-[9.5pt]">
+                                                                    {res.path}
+                                                                </a>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                    
+                                                    {/* Legacy External Link fallback */}
+                                                    {!material.resources?.length && material.external_link && (
+                                                        <div className="flex items-start gap-3.5 text-[10pt] leading-relaxed text-black">
+                                                            <span className="flex h-5.5 w-5.5 items-center justify-center rounded-full border border-black text-[9pt] font-black shrink-0 bg-black text-white">
+                                                                1
+                                                            </span>
+                                                            <div className="flex-1">
+                                                                <strong className="font-bold">Referensi / Link Eksternal</strong>
+                                                                <span className="text-gray-500 mx-2">|</span>
+                                                                <a href={material.external_link} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline font-mono break-all text-[9.5pt]">
+                                                                    {material.external_link}
+                                                                </a>
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Legacy File Path fallback */}
+                                                    {!material.resources?.length && material.file_path && (
+                                                        <div className="flex items-start gap-3.5 text-[10pt] leading-relaxed text-black">
+                                                            <span className="flex h-5.5 w-5.5 items-center justify-center rounded-full border border-black text-[9pt] font-black shrink-0 bg-black text-white">
+                                                                {material.external_link ? '2' : '1'}
+                                                            </span>
+                                                            <div className="flex-1">
+                                                                <strong className="font-bold">Dokumen Lampiran</strong>
+                                                                <span className="text-gray-500 mx-2">|</span>
+                                                                <a href={`/storage/${material.file_path}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline font-mono break-all text-[9.5pt]">
+                                                                    /storage/{material.file_path}
+                                                                </a>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <p className="text-xs text-gray-500 italic">Tidak ada sumber belajar tambahan yang disematkan.</p>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+
                                 {/* 7. Tanda Tangan (Signature block) */}
                                 <div className="print-avoid-break mt-12 grid grid-cols-2 gap-12 text-center text-[11pt] text-black">
                                     <div className="space-y-20">

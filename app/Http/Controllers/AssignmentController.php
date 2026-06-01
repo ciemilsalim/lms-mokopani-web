@@ -594,9 +594,10 @@ class AssignmentController extends Controller
                 'student_id'    => $validated['student_id'],
             ],
             [
-                'score'    => $validated['score'],
-                'feedback' => $validated['feedback'],
-                'content'  => $validated['content'] ?? null,
+                'score'        => $validated['score'],
+                'feedback'     => $validated['feedback'],
+                'content'      => $validated['content'] ?? null,
+                'submitted_at' => now(),
             ]
         );
 
