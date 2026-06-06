@@ -49,35 +49,48 @@ class AssignmentController extends Controller
 
         if ($user->teacher) {
             $teacherGrouped = $models->groupBy('school_class_id')->map(function ($classItems, $classId) {
-                $first = $classItems->first();
-                $tpGroups = $classItems->groupBy(function ($item) {
-                    return $item->learning_objective_id ?? 'null';
-                });
-                $objectives = $tpGroups->map(function ($tpItems, $tpId) {
-                    $firstTp = $tpItems->first();
+                $firstClassItem = $classItems->first();
+                
+                $subjectGroups = $classItems->groupBy('subject_id')->map(function ($subjectItems, $subjectId) {
+                    $firstSubjectItem = $subjectItems->first();
+                    
+                    $tpGroups = $subjectItems->groupBy(function ($item) {
+                        return $item->learning_objective_id ?? 'null';
+                    });
+                    
+                    $objectives = $tpGroups->map(function ($tpItems, $tpId) {
+                        $firstTp = $tpItems->first();
+                        return [
+                            'objective_id'          => $firstTp->learning_objective_id,
+                            'objective_code'        => $firstTp->learningObjective?->code ?: ('TP ' . ($firstTp->learningObjective?->order ?? '?')),
+                            'objective_description' => $firstTp->learningObjective?->description ?? 'Tanpa TP',
+                            'assignments'           => $tpItems->map(fn ($a) => [
+                                'id'                => $a->id,
+                                'title'             => $a->title,
+                                'description'       => $a->description,
+                                'subject_name'      => $a->subject?->name ?? '-',
+                                'subject_id'        => $a->subject_id,
+                                'due_date'          => $a->due_date?->format('d M Y'),
+                                'max_points'        => $a->max_points,
+                                'assessment_type'   => $a->assessment_type,
+                                'instrument_type'   => $a->instrument_type,
+                                'scoring_tool'      => $a->scoring_tool,
+                                'submissions_count' => $a->submissions_count,
+                            ])->values(),
+                        ];
+                    })->values();
+                    
                     return [
-                        'objective_id'          => $firstTp->learning_objective_id,
-                        'objective_code'        => $firstTp->learningObjective?->code ?: ('TP ' . ($firstTp->learningObjective?->order ?? '?')),
-                        'objective_description' => $firstTp->learningObjective?->description ?? 'Tanpa TP',
-                        'assignments'           => $tpItems->map(fn ($a) => [
-                            'id'                => $a->id,
-                            'title'             => $a->title,
-                            'description'       => $a->description,
-                            'subject_name'      => $a->subject?->name ?? '-',
-                            'subject_id'        => $a->subject_id,
-                            'due_date'          => $a->due_date?->format('d M Y'),
-                            'max_points'        => $a->max_points,
-                            'assessment_type'   => $a->assessment_type,
-                            'instrument_type'   => $a->instrument_type,
-                            'scoring_tool'      => $a->scoring_tool,
-                            'submissions_count' => $a->submissions_count,
-                        ])->values(),
+                        'subject_id'   => (int) $subjectId,
+                        'subject_name' => $firstSubjectItem->subject?->name ?? 'Mata Pelajaran',
+                        'objectives'   => $objectives,
                     ];
                 })->values();
+
                 return [
                     'class_id'   => (int) $classId,
-                    'class_name' => $first->schoolClass?->name ?? 'Kelas',
-                    'objectives' => $objectives,
+                    'class_name' => $firstClassItem->schoolClass?->name ?? 'Kelas',
+                    'subjects'   => $subjectGroups,
                 ];
             })->values();
 
@@ -403,6 +416,59 @@ class AssignmentController extends Controller
                 ]);
         }
 
+        $getIsPassed = function ($s) use ($assignment) {
+            if ($s && $s->content) {
+                $parsed = json_decode($s->content, true);
+                if (isset($parsed['grading']['is_passed'])) {
+                    return (bool) $parsed['grading']['is_passed'];
+                }
+
+                // Fallback calculation from student submission before teacher grades
+                $type = $parsed['type'] ?? $assignment->instrument_type;
+                if (in_array($type, ['self_assessment', 'peer_assessment', 'reflective_journal'])) {
+                    $mode = $parsed['assessment_mode'] ?? null;
+                    if (!$mode) {
+                        if ($assignment->scoring_tool === 'checklist') {
+                            $mode = 'checklist';
+                        } elseif (in_array($assignment->scoring_tool, ['rubric', 'rating_scale'])) {
+                            $mode = 'simple_rubric';
+                        }
+                    }
+
+                    if ($mode === 'checklist' && isset($parsed['indicators']) && is_array($parsed['indicators'])) {
+                        $total = count($parsed['indicators']);
+                        $checkedCount = 0;
+                        foreach ($parsed['indicators'] as $ind) {
+                            if (!empty($ind['checked'])) {
+                                $checkedCount++;
+                            }
+                        }
+                        $minCriteria = $assignment->instrument_config['kktp']['min_criteria'] ?? max(1, round($total / 2));
+                        return $checkedCount >= $minCriteria;
+                    } elseif ($mode === 'simple_rubric' && isset($parsed['indicators']) && is_array($parsed['indicators'])) {
+                        $levels = ['Perlu Bimbingan', 'Cukup', 'Baik', 'Sangat Baik'];
+                        $passingLvl = $assignment->instrument_config['kktp']['passing_level'] ?? 'Baik';
+                        $passingIdx = array_search($passingLvl, $levels);
+                        if ($passingIdx === false) { $passingIdx = 2; }
+
+                        $total = count($parsed['indicators']);
+                        $passedCount = 0;
+                        foreach ($parsed['indicators'] as $ind) {
+                            $lvl = $ind['selected_level'] ?? '';
+                            $lvlIdx = array_search($lvl, $levels);
+                            if ($lvlIdx !== false && $lvlIdx >= $passingIdx) {
+                                $passedCount++;
+                            }
+                        }
+                        $minCriteria = $assignment->instrument_config['kktp']['min_criteria'] ?? max(1, round($total / 2));
+                        return $passedCount >= $minCriteria;
+                    }
+                }
+            }
+            return $assignment->assessment_type === 'formative' ? true : ($s->score !== null && $s->score >= ($assignment->passing_grade ?? 70));
+        };
+
+
         return Inertia::render('assignments/show', [
             'assignment' => [
                 'id'                => $assignment->id,
@@ -426,7 +492,7 @@ class AssignmentController extends Controller
                     'file_path'    => $s->file_path,
                     'score'        => $s->score,
                     'attempts'     => $s->attempts,
-                    'is_passed'    => $assignment->assessment_type === 'formative' ? true : ($s->score !== null && $s->score >= ($assignment->passing_grade ?? 70)),
+                    'is_passed'    => $getIsPassed($s),
                     'feedback'     => $s->feedback,
                     'submitted_at' => $s->created_at->format('d M Y, H:i'),
                 ]),
@@ -439,7 +505,7 @@ class AssignmentController extends Controller
                 'file_path'    => $mySubmission->file_path,
                 'score'        => $mySubmission->score,
                 'attempts'     => $mySubmission->attempts,
-                'is_passed'    => $assignment->assessment_type === 'formative' ? true : ($mySubmission->score !== null && $mySubmission->score >= ($assignment->passing_grade ?? 70)),
+                'is_passed'    => $getIsPassed($mySubmission),
                 'feedback'     => $mySubmission->feedback,
                 'submitted_at' => $mySubmission->created_at->format('d M Y, H:i'),
             ] : null,

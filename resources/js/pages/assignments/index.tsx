@@ -45,10 +45,16 @@ interface TeacherObjectiveGroup {
     assignments: Assignment[];
 }
 
+interface TeacherSubjectGroup {
+    subject_id: number;
+    subject_name: string;
+    objectives: TeacherObjectiveGroup[];
+}
+
 interface TeacherClassGroup {
     class_id: number;
     class_name: string;
-    objectives: TeacherObjectiveGroup[];
+    subjects: TeacherSubjectGroup[];
 }
 
 interface AssignmentsProps {
@@ -147,7 +153,6 @@ function AssignmentCard({ asgn, isTeacher = false }: { asgn: Assignment; isTeach
             <h3 className="mt-4 text-sm font-black text-foreground group-hover:text-primary transition-colors line-clamp-2">
                 {asgn.title}
             </h3>
-            <p className="mt-1 text-[10px] text-muted-foreground line-clamp-2 leading-relaxed">{asgn.description}</p>
 
             <div className="mt-4 flex flex-wrap gap-1.5">
                 {asgn.assessment_type && (
@@ -167,12 +172,11 @@ function AssignmentCard({ asgn, isTeacher = false }: { asgn: Assignment; isTeach
                 )}
             </div>
 
-            <div className="mt-4 flex items-center justify-between border-t border-border/50 pt-3">
-                <span className="text-[10px] font-medium text-muted-foreground truncate max-w-[40%]">{asgn.subject_name}</span>
+            <div className="mt-4 flex items-center justify-end border-t border-border/50 pt-3">
                 <div className="flex items-center gap-2">
                     <span className="text-[10px] text-muted-foreground whitespace-nowrap">{asgn.submissions_count} dikumpulkan</span>
                     <span className="rounded-full bg-success/10 border border-success/20 px-2 py-0.5 text-[10px] font-bold text-success">
-                        {asgn.max_points} pts
+                        {asgn.instrument_type === 'reflective_journal' ? 'Deskriptif (KKTP)' : `${asgn.max_points} pts`}
                     </span>
                 </div>
             </div>
@@ -289,23 +293,29 @@ function GroupedView({ groups, search, filterType }: { groups: SubjectGroup[]; s
 
 function TeacherGroupedView({ groups, search, filterType }: { groups: TeacherClassGroup[]; search: string; filterType: string }) {
     const [expandedClasses, setExpandedClasses] = useState<Record<number, boolean>>({});
+    const [expandedSubjects, setExpandedSubjects] = useState<Record<string, boolean>>({});
     const [expandedTPs, setExpandedTPs] = useState<Record<string, boolean>>({});
 
     const visible = groups
         .map(cls => ({
             ...cls,
-            objectives: cls.objectives
-                .map(obj => ({
-                    ...obj,
-                    assignments: sortAssignments(obj.assignments.filter(a => {
-                        const matchSearch = a.title.toLowerCase().includes(search.toLowerCase()) || a.subject_name.toLowerCase().includes(search.toLowerCase());
-                        const matchType = filterType === 'all' || a.assessment_type === filterType;
-                        return matchSearch && matchType;
-                    })),
+            subjects: (cls.subjects || [])
+                .map(sub => ({
+                    ...sub,
+                    objectives: (sub.objectives || [])
+                        .map(obj => ({
+                            ...obj,
+                            assignments: sortAssignments(obj.assignments.filter(a => {
+                                const matchSearch = a.title.toLowerCase().includes(search.toLowerCase()) || a.subject_name.toLowerCase().includes(search.toLowerCase());
+                                const matchType = filterType === 'all' || a.assessment_type === filterType;
+                                return matchSearch && matchType;
+                            })),
+                        }))
+                        .filter(obj => obj.assignments.length > 0),
                 }))
-                .filter(obj => obj.assignments.length > 0),
+                .filter(sub => sub.objectives.length > 0),
         }))
-        .filter(cls => cls.objectives.length > 0);
+        .filter(cls => cls.subjects.length > 0);
 
     if (visible.length === 0) {
         return (
@@ -320,6 +330,8 @@ function TeacherGroupedView({ groups, search, filterType }: { groups: TeacherCla
         <div className="grid gap-6">
             {visible.map((cls) => {
                 const isClassOpen = expandedClasses[cls.class_id] !== false;
+                const totalAssignments = cls.subjects.reduce((sum, s) => sum + s.objectives.reduce((tpSum, o) => tpSum + o.assignments.length, 0), 0);
+                
                 return (
                     <div key={cls.class_id} className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
                         <button
@@ -333,50 +345,81 @@ function TeacherGroupedView({ groups, search, filterType }: { groups: TeacherCla
                                 <div>
                                     <h3 className="text-lg font-bold text-foreground">{cls.class_name}</h3>
                                     <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight">
-                                        {cls.objectives.length} TP • {cls.objectives.reduce((sum, o) => sum + o.assignments.length, 0)} asesmen
+                                        {cls.subjects.length} Mapel • {totalAssignments} asesmen
                                     </p>
                                 </div>
                             </div>
                             {isClassOpen ? <ChevronDown className="h-5 w-5 text-muted-foreground" /> : <ChevronRight className="h-5 w-5 text-muted-foreground" />}
                         </button>
+                        
                         {isClassOpen && (
-                            <div className="p-6 space-y-4">
-                                {cls.objectives.map((obj) => {
-                                    const tpKey = `${cls.class_id}-${obj.objective_id}`;
-                                    const isTPOpen = expandedTPs[tpKey] !== false;
+                            <div className="p-6 space-y-6">
+                                {cls.subjects.map((sub) => {
+                                    const subKey = `${cls.class_id}-${sub.subject_id}`;
+                                    const isSubOpen = expandedSubjects[subKey] !== false;
+                                    const totalSubAssignments = sub.objectives.reduce((sum, o) => sum + o.assignments.length, 0);
+                                    
                                     return (
-                                        <div key={tpKey} className="rounded-xl border border-border/50 bg-muted/20 overflow-hidden">
+                                        <div key={subKey} className="overflow-hidden rounded-xl border border-border bg-card">
                                             <button
-                                                onClick={() => setExpandedTPs(prev => ({ ...prev, [tpKey]: !isTPOpen }))}
-                                                className="flex w-full items-center justify-between px-5 py-3 text-left hover:bg-muted/30 transition cursor-pointer"
+                                                onClick={() => setExpandedSubjects(prev => ({ ...prev, [subKey]: !isSubOpen }))}
+                                                className="flex w-full items-center justify-between bg-muted/20 px-5 py-3 text-left cursor-pointer font-bold text-slate-800 dark:text-slate-100"
                                             >
-                                                <div className="flex items-center gap-2 min-w-0">
-                                                    <span className="rounded-full bg-primary/10 border border-primary/20 px-2.5 py-0.5 text-[10px] font-bold text-primary shrink-0">
-                                                        {obj.objective_code}
-                                                    </span>
-                                                    <p className="text-xs font-bold text-foreground truncate">{obj.objective_description}</p>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+                                                    <h4 className="text-sm font-bold text-foreground">{sub.subject_name}</h4>
                                                 </div>
                                                 <div className="flex items-center gap-3 shrink-0 ml-3">
-                                                    <span className="text-[10px] font-medium text-muted-foreground whitespace-nowrap">{obj.assignments.length} asesmen</span>
-                                                    {isTPOpen ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+                                                    <span className="text-[10px] font-medium text-muted-foreground whitespace-nowrap">{totalSubAssignments} asesmen</span>
+                                                    {isSubOpen ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
                                                 </div>
                                             </button>
-                                            {isTPOpen && (
-                                                <div className="px-5 pb-5 pt-3">
-                                                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                                                        {obj.assignments.map(asgn => (
-                                                            <AssignmentCard key={asgn.id} asgn={asgn} isTeacher={true} />
-                                                        ))}
-                                                    </div>
-                                                    <div className="mt-4 flex justify-center">
-                                                        <button
-                                                            onClick={(e) => { e.stopPropagation(); router.visit('/assignments/create'); }}
-                                                            className="flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border bg-transparent px-6 py-3 text-sm font-bold text-muted-foreground hover:border-primary hover:text-primary hover:bg-primary/5 transition-all cursor-pointer"
-                                                        >
-                                                            <Plus className="h-4 w-4" />
-                                                            Tambah Asesmen Formatif
-                                                        </button>
-                                                    </div>
+                                            
+                                            {isSubOpen && (
+                                                <div className="p-4 space-y-4">
+                                                    {sub.objectives.map((obj) => {
+                                                        const tpKey = `${cls.class_id}-${sub.subject_id}-${obj.objective_id}`;
+                                                        const isTPOpen = expandedTPs[tpKey] !== false;
+                                                        
+                                                        return (
+                                                            <div key={tpKey} className="rounded-xl border border-border/50 bg-muted/10 overflow-hidden">
+                                                                <button
+                                                                    onClick={() => setExpandedTPs(prev => ({ ...prev, [tpKey]: !isTPOpen }))}
+                                                                    className="flex w-full items-center justify-between px-5 py-3 text-left hover:bg-muted/20 transition cursor-pointer"
+                                                                >
+                                                                    <div className="flex items-center gap-2 min-w-0">
+                                                                        <span className="rounded-full bg-primary/10 border border-primary/20 px-2.5 py-0.5 text-[10px] font-bold text-primary shrink-0">
+                                                                            {obj.objective_code}
+                                                                        </span>
+                                                                        <p className="text-xs font-bold text-foreground truncate">{obj.objective_description}</p>
+                                                                    </div>
+                                                                    <div className="flex items-center gap-3 shrink-0 ml-3">
+                                                                        <span className="text-[10px] font-medium text-muted-foreground whitespace-nowrap">{obj.assignments.length} asesmen</span>
+                                                                        {isTPOpen ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+                                                                    </div>
+                                                                </button>
+                                                                
+                                                                {isTPOpen && (
+                                                                    <div className="px-5 pb-5 pt-3">
+                                                                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                                                                            {obj.assignments.map(asgn => (
+                                                                                <AssignmentCard key={asgn.id} asgn={asgn} isTeacher={true} />
+                                                                            ))}
+                                                                        </div>
+                                                                        <div className="mt-4 flex justify-center">
+                                                                            <button
+                                                                                onClick={(e) => { e.stopPropagation(); router.visit('/assignments/create'); }}
+                                                                                className="flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border bg-transparent px-6 py-3 text-sm font-bold text-muted-foreground hover:border-primary hover:text-primary hover:bg-primary/5 transition-all cursor-pointer"
+                                                                            >
+                                                                                <Plus className="h-4 w-4" />
+                                                                                Tambah Asesmen Formatif
+                                                                            </button>
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })}
                                                 </div>
                                             )}
                                         </div>

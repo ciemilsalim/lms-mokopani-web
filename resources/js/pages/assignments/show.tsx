@@ -358,6 +358,80 @@ export default function ShowAssignment({ assignment, students, my_submission, my
         teacherForm.setData('feedback', feedbackString);
     };
 
+    const [journalCheckedIndicators, setJournalCheckedIndicators] = useState<Record<number, boolean>>({});
+    const [journalSelectedLevel, setJournalSelectedLevel] = useState<string>('');
+
+    const handleJournalCheckboxChange = (idx: number, isChecked: boolean) => {
+        const updatedIndicators = { ...journalCheckedIndicators, [idx]: isChecked };
+        setJournalCheckedIndicators(updatedIndicators);
+
+        try {
+            const parsed = JSON.parse(teacherForm.data.content || '{}');
+            const grading = parsed.grading || {};
+            
+            const checkedArray = Object.keys(updatedIndicators)
+                .filter(k => updatedIndicators[Number(k)])
+                .map(Number);
+
+            grading.checked_indicators = checkedArray;
+            grading.approach = getGradingApproach();
+
+            const items = (assignment.instrument_type === 'self_assessment' || assignment.instrument_type === 'peer_assessment')
+                ? (assignment.instrument_config?.indicators || [])
+                : (assignment.instrument_config?.questions || []);
+            const total = items.length;
+            const minCriteria = assignment.instrument_config?.kktp?.min_criteria ?? Math.max(1, Math.round(total / 2));
+            const checkedCount = checkedArray.length;
+            const isPassed = checkedCount >= minCriteria;
+            grading.is_passed = isPassed;
+
+            const calculatedScore = total > 0 ? Math.round((checkedCount / total) * 100) : 0;
+            
+            parsed.grading = grading;
+            
+            teacherForm.setData({
+                ...teacherForm.data,
+                score: calculatedScore,
+                content: JSON.stringify(parsed)
+            });
+        } catch(e) {}
+    };
+
+    const handleJournalLevelChange = (levelName: string) => {
+        setJournalSelectedLevel(levelName);
+
+        try {
+            const parsed = JSON.parse(teacherForm.data.content || '{}');
+            const grading = parsed.grading || {};
+            
+            grading.selected_level = levelName;
+            grading.approach = getGradingApproach();
+
+            const levels = assignment.instrument_config?.levels || [];
+            const selectedLvlObj = levels.find((l: any) => l.name === levelName);
+            const passingLvlObj = levels.find((l: any) => l.name === assignment.instrument_config?.kktp?.passing_level);
+            
+            let isPassed = true;
+            if (passingLvlObj) {
+                const selectedIdx = levels.findIndex((l: any) => l.name === levelName);
+                const passingIdx = levels.findIndex((l: any) => l.name === assignment.instrument_config?.kktp?.passing_level);
+                isPassed = selectedIdx >= passingIdx;
+            }
+            grading.is_passed = isPassed;
+
+            const index = levels.findIndex((l: any) => l.name === levelName);
+            const calculatedScore = levels.length > 0 ? Math.round(((index + 1) / levels.length) * 100) : 100;
+
+            parsed.grading = grading;
+
+            teacherForm.setData({
+                ...teacherForm.data,
+                score: calculatedScore,
+                content: JSON.stringify(parsed)
+            });
+        } catch(e) {}
+    };
+
     const exitTicketStats = useMemo(() => {
         if (assignment.instrument_type !== 'exit_ticket') return null;
         let paham = 0, ragu = 0, bingung = 0;
@@ -463,6 +537,33 @@ export default function ShowAssignment({ assignment, students, my_submission, my
             return 0;
         }
     };
+
+    const getAssessmentMode = (assignment: any) => {
+        if (assignment.instrument_config?.assessment_mode) {
+            return assignment.instrument_config.assessment_mode;
+        }
+        if (assignment.scoring_tool === 'checklist') {
+            return 'checklist';
+        }
+        if (assignment.scoring_tool === 'rubric' || assignment.scoring_tool === 'rating_scale') {
+            return 'simple_rubric';
+        }
+        return 'default';
+    };
+
+    const getGradingApproach = () => {
+        if (assignment.instrument_type === 'reflective_journal') {
+            return assignment.instrument_config?.kktp?.approach || 'criteria_description';
+        }
+        if (assignment.scoring_tool === 'checklist') {
+            return 'criteria_description';
+        }
+        if (assignment.scoring_tool === 'rubric' || assignment.scoring_tool === 'rating_scale') {
+            return 'rubric';
+        }
+        return assignment.instrument_config?.kktp?.approach || 'criteria_description';
+    };
+
 
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -683,8 +784,41 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                     studentForm.setData('content', parsed.note || '');
                 }
             } catch (e) {}
-        }
     }, [my_submission, assignment.instrument_type]);
+
+    // Pre-initialize checklist and rubric data for self/peer assessment if no submission yet
+    useEffect(() => {
+        if (!my_submission?.content) {
+            const indicators = assignment.instrument_config?.indicators || [];
+            if (indicators.length > 0) {
+                if (selfChecklistData.length === 0) {
+                    setSelfChecklistData(indicators.map((ind: any) => ({
+                        name: ind.name || ind.text || '',
+                        checked: false
+                    })));
+                }
+                if (selfRubricData.length === 0) {
+                    setSelfRubricData(indicators.map((ind: any) => ({
+                        name: ind.name || ind.text || '',
+                        selected_level: ''
+                    })));
+                }
+                if (peerChecklistData.length === 0) {
+                    setPeerChecklistData(indicators.map((ind: any) => ({
+                        name: ind.name || ind.text || '',
+                        checked: false
+                    })));
+                }
+                if (peerRubricData.length === 0) {
+                    setPeerRubricData(indicators.map((ind: any) => ({
+                        name: ind.name || ind.text || '',
+                        selected_level: ''
+                    })));
+                }
+            }
+        }
+    }, [assignment.instrument_config, my_submission]);
+
 
     // Initialize Concept Map nodes with teacher's keywords if not already loaded or submitted
     useEffect(() => {
@@ -728,6 +862,52 @@ export default function ShowAssignment({ assignment, students, my_submission, my
             kataHubung: false,
             kelengkapan: false
         });
+        
+        if (assignment.instrument_type === 'reflective_journal' || assignment.instrument_type === 'self_assessment' || assignment.instrument_type === 'peer_assessment') {
+            let checked: Record<number, boolean> = {};
+            let selectedLvl = '';
+            if (s.content) {
+                try {
+                    const parsed = JSON.parse(s.content);
+                    if (parsed.grading) {
+                        const grading = parsed.grading;
+                        if (Array.isArray(grading.checked_indicators)) {
+                            grading.checked_indicators.forEach((idx: number) => {
+                                checked[idx] = true;
+                            });
+                        }
+                        selectedLvl = grading.selected_level || '';
+                    } else {
+                        // Pre-fill from student submission content if teacher has not graded yet
+                        if (parsed.assessment_mode === 'checklist' && Array.isArray(parsed.indicators)) {
+                            parsed.indicators.forEach((ind: any, idx: number) => {
+                                if (ind.checked) {
+                                    checked[idx] = true;
+                                }
+                            });
+                        } else if (parsed.assessment_mode === 'simple_rubric' && Array.isArray(parsed.indicators)) {
+                            const counts: Record<string, number> = {};
+                            parsed.indicators.forEach((ind: any) => {
+                                if (ind.selected_level) {
+                                    counts[ind.selected_level] = (counts[ind.selected_level] || 0) + 1;
+                                }
+                            });
+                            let maxCount = 0;
+                            let mostFrequentLevel = '';
+                            Object.entries(counts).forEach(([lvl, count]) => {
+                                if (count > maxCount) {
+                                    maxCount = count;
+                                    mostFrequentLevel = lvl;
+                                }
+                            });
+                            selectedLvl = mostFrequentLevel;
+                        }
+                    }
+                } catch(e) {}
+            }
+            setJournalCheckedIndicators(checked);
+            setJournalSelectedLevel(selectedLvl);
+        }
         
         const calculatedSystemScore = calculateSystemScore(s.content || '');
         const finalScoreToSet = (s.score !== null && s.score !== undefined) ? s.score : calculatedSystemScore;
@@ -1255,7 +1435,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                 if (!hasEssay) finalScore = totalScore;
             }
         } else if (assignment.instrument_type === 'self_assessment') {
-            const assessmentMode = assignment.instrument_config?.assessment_mode || 'default';
+            const assessmentMode = getAssessmentMode(assignment);
             if (assessmentMode === 'checklist') {
                 finalContent = JSON.stringify({ type: 'self_assessment', assessment_mode: 'checklist', indicators: selfChecklistData });
             } else if (assessmentMode === 'simple_rubric') {
@@ -1264,7 +1444,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                 finalContent = JSON.stringify({ type: 'self_assessment', ...selfAssessmentData });
             }
         } else if (assignment.instrument_type === 'peer_assessment') {
-            const assessmentMode = assignment.instrument_config?.assessment_mode || 'default';
+            const assessmentMode = getAssessmentMode(assignment);
             if (assessmentMode === 'checklist') {
                 finalContent = JSON.stringify({ type: 'peer_assessment', assessment_mode: 'checklist', indicators: peerChecklistData, peer_student_id: peerAssessmentData.peer_student_id, peer_name: peerAssessmentData.peer_name });
             } else if (assessmentMode === 'simple_rubric') {
@@ -1402,10 +1582,17 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                     <Calendar className="h-4 w-4 text-amber-500" />
                                     Tenggat: <span className="text-slate-600 dark:text-slate-300">{assignment.due_date}</span>
                                 </span>
-                                <span className="flex items-center gap-2">
-                                    <Star className="h-4 w-4 text-emerald-500" />
-                                    Poin Maks: <span className="text-slate-600 dark:text-slate-300">{assignment.max_points} pts</span>
-                                </span>
+                                {assignment.instrument_type !== 'reflective_journal' && assignment.instrument_type !== 'self_assessment' && assignment.instrument_type !== 'peer_assessment' ? (
+                                    <span className="flex items-center gap-2">
+                                        <Star className="h-4 w-4 text-emerald-500" />
+                                        Poin Maks: <span className="text-slate-600 dark:text-slate-300">{assignment.max_points} pts</span>
+                                    </span>
+                                ) : (
+                                    <span className="flex items-center gap-2">
+                                        <Star className="h-4 w-4 text-emerald-500" />
+                                        Penilaian: <span className="text-slate-600 dark:text-slate-300">Deskriptif (KKTP)</span>
+                                    </span>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -1902,10 +2089,32 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                 )}
                                                             </td>
                                                             <td className="px-8 py-6 text-right">
-                                                                <span className={`text-sm font-black ${(s.score !== null) ? (effectivePassed ? 'text-foreground' : 'text-destructive') : 'text-muted-foreground'}`}>
-                                                                    {displayScore}
-                                                                </span>
-                                                                <span className="text-[10px] font-black text-muted-foreground"> / {assignment.max_points}</span>
+                                                                {assignment.instrument_type === 'reflective_journal' || assignment.instrument_type === 'self_assessment' || assignment.instrument_type === 'peer_assessment' ? (
+                                                                    (() => {
+                                                                        if (s.score === null) return <span className="text-xs text-muted-foreground italic font-medium">-</span>;
+                                                                        let label = '-';
+                                                                        try {
+                                                                            const parsed = JSON.parse(s.content || '{}');
+                                                                            if (parsed.grading?.selected_level) {
+                                                                                label = parsed.grading.selected_level;
+                                                                            } else if (parsed.grading?.is_passed !== undefined) {
+                                                                                label = parsed.grading.is_passed ? 'Tuntas' : 'Belum Tuntas';
+                                                                            } else {
+                                                                                label = s.score >= (assignment.passing_grade || 70) ? 'Tuntas' : 'Belum Tuntas';
+                                                                            }
+                                                                        } catch(e) {
+                                                                            label = s.score >= (assignment.passing_grade || 70) ? 'Tuntas' : 'Belum Tuntas';
+                                                                        }
+                                                                        return <span className="text-xs font-bold text-foreground">{label}</span>;
+                                                                    })()
+                                                                ) : (
+                                                                    <>
+                                                                        <span className={`text-sm font-black ${(s.score !== null) ? (effectivePassed ? 'text-foreground' : 'text-destructive') : 'text-muted-foreground'}`}>
+                                                                            {displayScore}
+                                                                        </span>
+                                                                        <span className="text-[10px] font-black text-muted-foreground"> / {assignment.max_points}</span>
+                                                                    </>
+                                                                )}
                                                             </td>
                                                             <td className="px-8 py-6 text-right">
                                                                 <button 
@@ -1913,7 +2122,9 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                     className="inline-flex items-center gap-2 rounded-xl bg-sky-500 text-white px-5 py-2.5 text-xs font-black shadow-lg shadow-sky-100 transition-all hover:scale-105 active:scale-95 uppercase tracking-widest"
                                                                 >
                                                                     <Activity className="h-3.5 w-3.5" />
-                                                                    {s.score !== null ? 'Edit Nilai' : 'Beri Nilai'}
+                                                                    {assignment.instrument_type === 'reflective_journal' || assignment.instrument_type === 'self_assessment' || assignment.instrument_type === 'peer_assessment'
+                                                                        ? (s.score !== null ? 'Edit Penilaian' : 'Beri Penilaian')
+                                                                        : (s.score !== null ? 'Edit Nilai' : 'Beri Nilai')}
                                                                 </button>
                                                             </td>
                                                         </tr>
@@ -1976,9 +2187,8 @@ export default function ShowAssignment({ assignment, students, my_submission, my
 
                                 <form onSubmit={handleSubmitAssignment} className="space-y-10">
                                     {assignment.instrument_type === 'peer_assessment' ? (
-                                        (assignment.instrument_config?.assessment_mode || 'default') === 'default' ? (
-                                        <div className="space-y-10 animate-in fade-in duration-500">
-                                            {/* Identity Section */}
+                                        <div className="space-y-10">
+                                            {/* Identity Section (Selalu Tampil) */}
                                             <div className="space-y-6">
                                                 <div className="flex items-center gap-3">
                                                     <div className="h-8 w-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 text-xs font-black flex items-center justify-center shadow-sm border border-indigo-100 dark:border-indigo-900/30">
@@ -2006,294 +2216,316 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                 </select>
                                             </div>
 
-                                            {/* Rating Section */}
-                                            <div className="space-y-6 pt-10 border-t border-slate-50 dark:border-slate-800">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="h-8 w-8 rounded-xl bg-amber-50 dark:bg-amber-950/30 text-amber-600 text-xs font-black flex items-center justify-center shadow-sm border border-amber-100 dark:border-amber-900/30">
-                                                        <Star className="h-4 w-4" />
-                                                    </div>
-                                                    <p className="text-sm font-black text-slate-700 dark:text-slate-200 uppercase tracking-widest">Rating Performa Teman (1-5)</p>
-                                                </div>
-                                                <div className="flex items-center justify-between gap-2">
-                                                    {[1, 2, 3, 4, 5].map((star) => (
-                                                        <button
-                                                            key={star}
-                                                            type="button"
-                                                            onClick={() => setPeerAssessmentData({ ...peerAssessmentData, rating: star })}
-                                                            className={`flex-1 h-14 rounded-2xl border-2 flex items-center justify-center text-lg font-black transition-all ${peerAssessmentData.rating >= star ? 'bg-amber-500 border-amber-500 text-white shadow-lg shadow-amber-100/50' : 'bg-slate-50/50 border-slate-50 text-slate-300 dark:bg-slate-800 dark:border-slate-800 hover:border-amber-200'}`}
-                                                        >
-                                                            {star}
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            </div>
+                                            {/* Form Content Berdasarkan Mode */}
+                                            {(() => {
+                                                const assessmentMode = getAssessmentMode(assignment);
+                                                if (assessmentMode === 'checklist') {
+                                                    return (
+                                                        <div className="space-y-6 animate-in fade-in duration-500 pt-6 border-t border-slate-100 dark:border-slate-800">
+                                                            <div className="flex items-center gap-3 mb-6">
+                                                                <div className="h-8 w-8 rounded-xl bg-primary/10 text-primary text-xs font-black flex items-center justify-center">
+                                                                    <CheckSquare className="h-4 w-4" />
+                                                                </div>
+                                                                <p className="text-sm font-black text-slate-700 dark:text-slate-200 uppercase tracking-widest">Penilaian Antarteman - Mode Ceklis</p>
+                                                            </div>
+                                                            <p className="text-xs text-muted-foreground">Tandai indikator yang menurutmu sudah dicapai oleh rekanmu:</p>
+                                                            {(assignment.instrument_config?.indicators || []).map((ind: any, idx: number) => (
+                                                                <label key={idx} className="flex items-center gap-4 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20 hover:bg-white dark:hover:bg-slate-800 transition-all cursor-pointer group">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={peerChecklistData[idx]?.checked || false}
+                                                                        onChange={() => {
+                                                                            const newData = [...peerChecklistData];
+                                                                            if (!newData[idx]) newData[idx] = { name: ind.name, checked: false };
+                                                                            newData[idx].checked = !newData[idx].checked;
+                                                                            setPeerChecklistData(newData);
+                                                                        }}
+                                                                        className="h-5 w-5 rounded border-slate-300 text-primary focus:ring-primary"
+                                                                    />
+                                                                    <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{ind.name}</span>
+                                                                </label>
+                                                            ))}
+                                                        </div>
+                                                    );
+                                                } else if (assessmentMode === 'simple_rubric') {
+                                                    return (
+                                                        <div className="space-y-6 animate-in fade-in duration-500 pt-6 border-t border-slate-100 dark:border-slate-800">
+                                                            <div className="flex items-center gap-3 mb-6">
+                                                                <div className="h-8 w-8 rounded-xl bg-primary/10 text-primary text-xs font-black flex items-center justify-center">
+                                                                    <Layers className="h-4 w-4" />
+                                                                </div>
+                                                                <p className="text-sm font-black text-slate-700 dark:text-slate-200 uppercase tracking-widest">Penilaian Antarteman - Rubrik Sederhana</p>
+                                                            </div>
+                                                            {(assignment.instrument_config?.indicators || []).map((ind: any, idx: number) => (
+                                                                <div key={idx} className="p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20 space-y-3">
+                                                                    <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{ind.name}</p>
+                                                                    <div className="flex gap-2">
+                                                                        {['Perlu Bimbingan', 'Cukup', 'Baik', 'Sangat Baik'].map((level, lvlIdx) => (
+                                                                            <button
+                                                                                key={level}
+                                                                                type="button"
+                                                                                onClick={() => {
+                                                                                    const newData = [...peerRubricData];
+                                                                                    if (!newData[idx]) newData[idx] = { name: ind.name, selected_level: '' };
+                                                                                    newData[idx].selected_level = level;
+                                                                                    setPeerRubricData(newData);
+                                                                                }}
+                                                                                className={`flex-1 py-2 px-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all border-2 ${
+                                                                                    peerRubricData[idx]?.selected_level === level
+                                                                                        ? lvlIdx === 0 ? 'bg-red-50 border-red-400 text-red-600'
+                                                                                          : lvlIdx === 1 ? 'bg-amber-50 border-amber-400 text-amber-600'
+                                                                                          : lvlIdx === 2 ? 'bg-blue-50 border-blue-400 text-blue-600'
+                                                                                          : 'bg-emerald-50 border-emerald-400 text-emerald-600'
+                                                                                        : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 text-muted-foreground hover:border-primary/30'
+                                                                                }`}
+                                                                            >
+                                                                                {level}
+                                                                            </button>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    );
+                                                } else {
+                                                    return (
+                                                        <div className="space-y-10 animate-in fade-in duration-500 pt-6 border-t border-slate-100 dark:border-slate-800">
+                                                            {/* Rating Section */}
+                                                            <div className="space-y-6">
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className="h-8 w-8 rounded-xl bg-amber-50 dark:bg-amber-950/30 text-amber-600 text-xs font-black flex items-center justify-center shadow-sm border border-amber-100 dark:border-amber-900/30">
+                                                                        <Star className="h-4 w-4" />
+                                                                    </div>
+                                                                    <p className="text-sm font-black text-slate-700 dark:text-slate-200 uppercase tracking-widest">Rating Performa Teman (1-5)</p>
+                                                                </div>
+                                                                <div className="flex items-center justify-between gap-2">
+                                                                    {[1, 2, 3, 4, 5].map((star) => (
+                                                                        <button
+                                                                            key={star}
+                                                                            type="button"
+                                                                            onClick={() => setPeerAssessmentData({ ...peerAssessmentData, rating: star })}
+                                                                            className={`flex-1 h-14 rounded-2xl border-2 flex items-center justify-center text-lg font-black transition-all ${peerAssessmentData.rating >= star ? 'bg-amber-500 border-amber-500 text-white shadow-lg shadow-amber-100/50' : 'bg-slate-50/50 border-slate-50 text-slate-300 dark:bg-slate-800 dark:border-slate-800 hover:border-amber-200'}`}
+                                                                        >
+                                                                            {star}
+                                                                        </button>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
 
-                                            {/* Questions Section */}
-                                            <div className="space-y-8 pt-10 border-t border-slate-50 dark:border-slate-800">
-                                                <div className="space-y-4">
-                                                    <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-4">Siapa teman dengan performa terbaik di kelompokmu?</label>
-                                                    <input 
-                                                        type="text"
-                                                        placeholder="Sebutkan nama teman terbaik..."
-                                                        value={peerAssessmentData.best_performer}
-                                                        onChange={(e) => setPeerAssessmentData({ ...peerAssessmentData, best_performer: e.target.value })}
-                                                        className="w-full rounded-2xl border border-slate-100 bg-slate-50/30 px-6 py-4 text-sm font-medium outline-none focus:border-indigo-400 focus:bg-white transition-all dark:bg-slate-800/50 dark:border-slate-800 dark:text-slate-200"
-                                                    />
-                                                </div>
-                                                <div className="space-y-4">
-                                                    <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-4">Siapa yang kinerjanya paling perlu ditingkatkan?</label>
-                                                    <input 
-                                                        type="text"
-                                                        placeholder="Sebutkan nama teman tersebut..."
-                                                        value={peerAssessmentData.worst_performer}
-                                                        onChange={(e) => setPeerAssessmentData({ ...peerAssessmentData, worst_performer: e.target.value })}
-                                                        className="w-full rounded-2xl border border-slate-100 bg-slate-50/30 px-6 py-4 text-sm font-medium outline-none focus:border-indigo-400 focus:bg-white transition-all dark:bg-slate-800/50 dark:border-slate-800 dark:text-slate-200"
-                                                    />
-                                                </div>
-                                                <div className="space-y-4">
-                                                    <div className="flex items-center gap-2 mb-2">
-                                                        <AlertCircle className="h-4 w-4 text-rose-500" />
-                                                        <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Apa kendala yang dihadapi kelompok?</label>
-                                                    </div>
-                                                    <textarea 
-                                                        rows={3}
-                                                        placeholder="Cth: Pembagian tugas kurang merata atau komunikasi sulit..."
-                                                        value={peerAssessmentData.obstacles}
-                                                        onChange={(e) => setPeerAssessmentData({ ...peerAssessmentData, obstacles: e.target.value })}
-                                                        className="w-full rounded-3xl border border-slate-100 bg-slate-50/30 px-6 py-4 text-sm font-medium outline-none focus:border-indigo-400 focus:bg-white transition-all dark:bg-slate-800/50 dark:border-slate-800 dark:text-slate-200"
-                                                    ></textarea>
-                                                </div>
-                                                <div className="space-y-4">
-                                                    <div className="flex items-center gap-2 mb-2">
-                                                        <MessageCircle className="h-4 w-4 text-primary" />
-                                                        <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Apa yang kamu harapkan di pertemuan berikutnya?</label>
-                                                    </div>
-                                                    <textarea 
-                                                        rows={3}
-                                                        placeholder="Cth: Lebih banyak diskusi tatap muka atau pembagian peran yang lebih jelas..."
-                                                        value={peerAssessmentData.future_expectations}
-                                                        onChange={(e) => setPeerAssessmentData({ ...peerAssessmentData, future_expectations: e.target.value })}
-                                                        className="w-full rounded-3xl border border-slate-100 bg-slate-50/30 px-6 py-4 text-sm font-medium outline-none focus:border-indigo-400 focus:bg-white transition-all dark:bg-slate-800/50 dark:border-slate-800 dark:text-slate-200"
-                                                    ></textarea>
-                                                </div>
-                                            </div>
+                                                            {/* Questions Section */}
+                                                            <div className="space-y-8 pt-10 border-t border-slate-50 dark:border-slate-800">
+                                                                <div className="space-y-4">
+                                                                    <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-4">Siapa teman dengan performa terbaik di kelompokmu?</label>
+                                                                    <input 
+                                                                        type="text"
+                                                                        placeholder="Sebutkan nama teman terbaik..."
+                                                                        value={peerAssessmentData.best_performer}
+                                                                        onChange={(e) => setPeerAssessmentData({ ...peerAssessmentData, best_performer: e.target.value })}
+                                                                        className="w-full rounded-2xl border border-slate-100 bg-slate-50/30 px-6 py-4 text-sm font-medium outline-none focus:border-indigo-400 focus:bg-white transition-all dark:bg-slate-800/50 dark:border-slate-800 dark:text-slate-200"
+                                                                    />
+                                                                </div>
+                                                                <div className="space-y-4">
+                                                                    <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-4">Siapa yang kinerjanya paling perlu ditingkatkan?</label>
+                                                                    <input 
+                                                                        type="text"
+                                                                        placeholder="Sebutkan nama teman tersebut..."
+                                                                        value={peerAssessmentData.worst_performer}
+                                                                        onChange={(e) => setPeerAssessmentData({ ...peerAssessmentData, worst_performer: e.target.value })}
+                                                                        className="w-full rounded-2xl border border-slate-100 bg-slate-50/30 px-6 py-4 text-sm font-medium outline-none focus:border-indigo-400 focus:bg-white transition-all dark:bg-slate-800/50 dark:border-slate-800 dark:text-slate-200"
+                                                                    />
+                                                                </div>
+                                                                <div className="space-y-4">
+                                                                    <div className="flex items-center gap-2 mb-2">
+                                                                        <AlertCircle className="h-4 w-4 text-rose-500" />
+                                                                        <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Apa kendala yang dihadapi kelompok?</label>
+                                                                    </div>
+                                                                    <textarea 
+                                                                        rows={3}
+                                                                        placeholder="Cth: Pembagian tugas kurang merata atau komunikasi sulit..."
+                                                                        value={peerAssessmentData.obstacles}
+                                                                        onChange={(e) => setPeerAssessmentData({ ...peerAssessmentData, obstacles: e.target.value })}
+                                                                        className="w-full rounded-3xl border border-slate-100 bg-slate-50/30 px-6 py-4 text-sm font-medium outline-none focus:border-indigo-400 focus:bg-white transition-all dark:bg-slate-800/50 dark:border-slate-800 dark:text-slate-200"
+                                                                    ></textarea>
+                                                                </div>
+                                                                <div className="space-y-4">
+                                                                    <div className="flex items-center gap-2 mb-2">
+                                                                        <MessageCircle className="h-4 w-4 text-primary" />
+                                                                        <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Apa yang kamu harapkan di pertemuan berikutnya?</label>
+                                                                    </div>
+                                                                    <textarea 
+                                                                        rows={3}
+                                                                        placeholder="Cth: Lebih banyak diskusi tatap muka atau pembagian peran yang lebih jelas..."
+                                                                        value={peerAssessmentData.future_expectations}
+                                                                        onChange={(e) => setPeerAssessmentData({ ...peerAssessmentData, future_expectations: e.target.value })}
+                                                                        className="w-full rounded-3xl border border-slate-100 bg-slate-50/30 px-6 py-4 text-sm font-medium outline-none focus:border-indigo-400 focus:bg-white transition-all dark:bg-slate-800/50 dark:border-slate-800 dark:text-slate-200"
+                                                                    ></textarea>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                }
+                                            })()}
                                         </div>
-                                        ) : (assignment.instrument_config?.assessment_mode) === 'checklist' ? (
-                                        <div className="space-y-6 animate-in fade-in duration-500">
-                                            <div className="flex items-center gap-3 mb-6">
-                                                <div className="h-8 w-8 rounded-xl bg-primary/10 text-primary text-xs font-black flex items-center justify-center">
-                                                    <CheckSquare className="h-4 w-4" />
-                                                </div>
-                                                <p className="text-sm font-black text-slate-700 dark:text-slate-200 uppercase tracking-widest">Penilaian Antarteman - Mode Ceklis</p>
-                                            </div>
-                                            <p className="text-xs text-muted-foreground">Tandai indikator yang menurutmu sudah dicapai oleh rekanmu:</p>
-                                            {(assignment.instrument_config?.indicators || []).map((ind: any, idx: number) => (
-                                                <label key={idx} className="flex items-center gap-4 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20 hover:bg-white dark:hover:bg-slate-800 transition-all cursor-pointer group">
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={peerChecklistData[idx]?.checked || false}
-                                                        onChange={() => {
-                                                            const newData = [...peerChecklistData];
-                                                            if (!newData[idx]) newData[idx] = { name: ind.name, checked: false };
-                                                            newData[idx].checked = !newData[idx].checked;
-                                                            setPeerChecklistData(newData);
-                                                        }}
-                                                        className="h-5 w-5 rounded border-slate-300 text-primary focus:ring-primary"
-                                                    />
-                                                    <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{ind.name}</span>
-                                                </label>
-                                            ))}
-                                        </div>
-                                        ) : (
-                                        <div className="space-y-6 animate-in fade-in duration-500">
-                                            <div className="flex items-center gap-3 mb-6">
-                                                <div className="h-8 w-8 rounded-xl bg-primary/10 text-primary text-xs font-black flex items-center justify-center">
-                                                    <Layers className="h-4 w-4" />
-                                                </div>
-                                                <p className="text-sm font-black text-slate-700 dark:text-slate-200 uppercase tracking-widest">Penilaian Antarteman - Rubrik Sederhana</p>
-                                            </div>
-                                            {(assignment.instrument_config?.indicators || []).map((ind: any, idx: number) => (
-                                                <div key={idx} className="p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20 space-y-3">
-                                                    <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{ind.name}</p>
-                                                    <div className="flex gap-2">
-                                                        {['Perlu Bimbingan', 'Cukup', 'Baik', 'Sangat Baik'].map((level, lvlIdx) => (
-                                                            <button
-                                                                key={level}
-                                                                type="button"
-                                                                onClick={() => {
-                                                                    const newData = [...peerRubricData];
-                                                                    if (!newData[idx]) newData[idx] = { name: ind.name, selected_level: '' };
-                                                                    newData[idx].selected_level = level;
-                                                                    setPeerRubricData(newData);
-                                                                }}
-                                                                className={`flex-1 py-2 px-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all border-2 ${
-                                                                    peerRubricData[idx]?.selected_level === level
-                                                                        ? lvlIdx === 0 ? 'bg-red-50 border-red-400 text-red-600'
-                                                                          : lvlIdx === 1 ? 'bg-amber-50 border-amber-400 text-amber-600'
-                                                                          : lvlIdx === 2 ? 'bg-blue-50 border-blue-400 text-blue-600'
-                                                                          : 'bg-emerald-50 border-emerald-400 text-emerald-600'
-                                                                        : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 text-muted-foreground hover:border-primary/30'
-                                                                }`}
-                                                            >
-                                                                {level}
-                                                            </button>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                        )
                                     ) : assignment.instrument_type === 'self_assessment' ? (
-                                        (assignment.instrument_config?.assessment_mode || 'default') === 'default' ? (
-                                        <div className="space-y-10 animate-in fade-in duration-500">
-                                            {/* Feelings Section */}
-                                            <div className="space-y-6">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="h-8 w-8 rounded-xl bg-amber-50 dark:bg-amber-950/30 text-amber-600 text-xs font-black flex items-center justify-center shadow-sm border border-amber-100 dark:border-amber-900/30">
-                                                        <Heart className="h-4 w-4" />
-                                                    </div>
-                                                    <p className="text-sm font-black text-slate-700 dark:text-slate-200 uppercase tracking-widest">Bagaimana Perasaan Belajarmu?</p>
-                                                </div>
-                                                <div className="grid grid-cols-3 gap-4">
-                                                    {[
-                                                        { id: 'very_happy', label: 'Sangat Senang', icon: '🤩' },
-                                                        { id: 'happy', label: 'Senang', icon: '😊' },
-                                                        { id: 'neutral', label: 'Kurang Senang', icon: '😐' },
-                                                    ].map((item) => (
-                                                        <button
-                                                            key={item.id}
-                                                            type="button"
-                                                            onClick={() => setSelfAssessmentData({ ...selfAssessmentData, feeling: item.id })}
-                                                            className={`flex flex-col items-center gap-3 p-6 rounded-[2rem] border-2 transition-all ${selfAssessmentData.feeling === item.id ? 'border-amber-500 bg-amber-50/50 dark:bg-amber-950/20 shadow-xl shadow-amber-100/50' : 'border-slate-50 bg-slate-50/30 dark:border-slate-800'}`}
-                                                        >
-                                                            <span className="text-4xl">{item.icon}</span>
-                                                            <span className={`text-[10px] font-black uppercase tracking-widest ${selfAssessmentData.feeling === item.id ? 'text-amber-700 dark:text-amber-400' : 'text-muted-foreground'}`}>{item.label}</span>
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                                <div className="space-y-3">
-                                                    <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-4">Berikan alasan singkat tentang perasaanmu:</label>
-                                                    <textarea 
-                                                        rows={3}
-                                                        placeholder="Cth: Saya senang karena materi hari ini sangat seru dan mudah dipahami..."
-                                                        value={selfAssessmentData.feeling_reason}
-                                                        onChange={(e) => setSelfAssessmentData({ ...selfAssessmentData, feeling_reason: e.target.value })}
-                                                        className="w-full rounded-3xl border border-slate-100 bg-slate-50/30 px-6 py-4 text-sm font-medium outline-none focus:border-amber-400 focus:bg-white transition-all shadow-sm dark:bg-slate-800/50 dark:border-slate-800 dark:text-slate-200"
-                                                    ></textarea>
-                                                </div>
-                                            </div>
-
-                                            {/* Effort Scale Section */}
-                                            <div className="space-y-6 pt-10 border-t border-slate-50 dark:border-slate-800">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="h-8 w-8 rounded-xl bg-sky-50 dark:bg-sky-950/30 text-primary text-xs font-black flex items-center justify-center shadow-sm border border-sky-100 dark:border-sky-900/30">
-                                                        <Zap className="h-4 w-4" />
-                                                    </div>
-                                                    <p className="text-sm font-black text-slate-700 dark:text-slate-200 uppercase tracking-widest">Seberapa Baik Usaha & Pemahamanmu?</p>
-                                                </div>
-                                                <div className="flex items-center justify-between gap-4">
-                                                    {[1, 2, 3, 4].map((scale) => (
-                                                        <button
-                                                            key={scale}
-                                                            type="button"
-                                                            onClick={() => setSelfAssessmentData({ ...selfAssessmentData, effort_scale: scale })}
-                                                            className={`flex-1 h-16 rounded-2xl border-2 flex items-center justify-center text-xl font-black transition-all ${selfAssessmentData.effort_scale === scale ? 'bg-sky-500 border-sky-500 text-white shadow-xl shadow-sky-200/50' : 'bg-slate-50/50 border-slate-50 text-slate-300 dark:bg-slate-800 dark:border-slate-800 hover:border-sky-200'}`}
-                                                        >
-                                                            {scale}
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                                <div className="flex justify-between text-[10px] font-black text-muted-foreground uppercase tracking-widest px-2">
-                                                    <span>Perlu Bimbingan</span>
-                                                    <span>Sangat Baik</span>
-                                                </div>
-                                            </div>
-
-                                            {/* Reflection Section */}
-                                            <div className="space-y-6 pt-10 border-t border-slate-50 dark:border-slate-800">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="h-8 w-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 text-xs font-black flex items-center justify-center shadow-sm border border-indigo-100 dark:border-indigo-900/30">
-                                                        <BookOpen className="h-4 w-4" />
-                                                    </div>
-                                                    <p className="text-sm font-black text-slate-700 dark:text-slate-200 uppercase tracking-widest">Catatan Refleksi</p>
-                                                </div>
-                                                <div className="space-y-3">
-                                                    <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-4">Tantangan yang dihadapi & strategi perbaikan:</label>
-                                                    <textarea 
-                                                        rows={6}
-                                                        placeholder="Cth: Saya masih kesulitan di bagian perkalian, strateginya saya akan berlatih lebih banyak di rumah..."
-                                                        value={selfAssessmentData.reflection_notes}
-                                                        onChange={(e) => setSelfAssessmentData({ ...selfAssessmentData, reflection_notes: e.target.value })}
-                                                        className="w-full rounded-[2.5rem] border border-slate-100 bg-slate-50/30 px-8 py-6 text-sm font-medium outline-none focus:border-indigo-400 focus:bg-white transition-all shadow-sm dark:bg-slate-800/50 dark:border-slate-800 dark:text-slate-200"
-                                                    ></textarea>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        ) : (assignment.instrument_config?.assessment_mode) === 'checklist' ? (
-                                        <div className="space-y-6 animate-in fade-in duration-500">
-                                            <div className="flex items-center gap-3 mb-6">
-                                                <div className="h-8 w-8 rounded-xl bg-primary/10 text-primary text-xs font-black flex items-center justify-center">
-                                                    <CheckSquare className="h-4 w-4" />
-                                                </div>
-                                                <p className="text-sm font-black text-slate-700 dark:text-slate-200 uppercase tracking-widest">Penilaian Diri - Mode Ceklis</p>
-                                            </div>
-                                            <p className="text-xs text-muted-foreground">Tandai indikator yang menurutmu sudah kamu capai:</p>
-                                            {(assignment.instrument_config?.indicators || []).map((ind: any, idx: number) => (
-                                                <label key={idx} className="flex items-center gap-4 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20 hover:bg-white dark:hover:bg-slate-800 transition-all cursor-pointer group">
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={selfChecklistData[idx]?.checked || false}
-                                                        onChange={() => {
-                                                            const newData = [...selfChecklistData];
-                                                            if (!newData[idx]) newData[idx] = { name: ind.name, checked: false };
-                                                            newData[idx].checked = !newData[idx].checked;
-                                                            setSelfChecklistData(newData);
-                                                        }}
-                                                        className="h-5 w-5 rounded border-slate-300 text-primary focus:ring-primary"
-                                                    />
-                                                    <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{ind.name}</span>
-                                                </label>
-                                            ))}
-                                        </div>
-                                        ) : (
-                                        <div className="space-y-6 animate-in fade-in duration-500">
-                                            <div className="flex items-center gap-3 mb-6">
-                                                <div className="h-8 w-8 rounded-xl bg-primary/10 text-primary text-xs font-black flex items-center justify-center">
-                                                    <Layers className="h-4 w-4" />
-                                                </div>
-                                                <p className="text-sm font-black text-slate-700 dark:text-slate-200 uppercase tracking-widest">Penilaian Diri - Rubrik Sederhana</p>
-                                            </div>
-                                            {(assignment.instrument_config?.indicators || []).map((ind: any, idx: number) => (
-                                                <div key={idx} className="p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20 space-y-3">
-                                                    <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{ind.name}</p>
-                                                    <div className="flex gap-2">
-                                                        {['Perlu Bimbingan', 'Cukup', 'Baik', 'Sangat Baik'].map((level, lvlIdx) => (
-                                                            <button
-                                                                key={level}
-                                                                type="button"
-                                                                onClick={() => {
-                                                                    const newData = [...selfRubricData];
-                                                                    if (!newData[idx]) newData[idx] = { name: ind.name, selected_level: '' };
-                                                                    newData[idx].selected_level = level;
-                                                                    setSelfRubricData(newData);
-                                                                }}
-                                                                className={`flex-1 py-2 px-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all border-2 ${
-                                                                    selfRubricData[idx]?.selected_level === level
-                                                                        ? lvlIdx === 0 ? 'bg-red-50 border-red-400 text-red-600'
-                                                                          : lvlIdx === 1 ? 'bg-amber-50 border-amber-400 text-amber-600'
-                                                                          : lvlIdx === 2 ? 'bg-blue-50 border-blue-400 text-blue-600'
-                                                                          : 'bg-emerald-50 border-emerald-400 text-emerald-600'
-                                                                        : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 text-muted-foreground hover:border-primary/30'
-                                                                }`}
-                                                            >
-                                                                {level}
-                                                            </button>
+                                        (() => {
+                                            const assessmentMode = getAssessmentMode(assignment);
+                                            if (assessmentMode === 'checklist') {
+                                                return (
+                                                    <div className="space-y-6 animate-in fade-in duration-500">
+                                                        <div className="flex items-center gap-3 mb-6">
+                                                            <div className="h-8 w-8 rounded-xl bg-primary/10 text-primary text-xs font-black flex items-center justify-center">
+                                                                <CheckSquare className="h-4 w-4" />
+                                                            </div>
+                                                            <p className="text-sm font-black text-slate-700 dark:text-slate-200 uppercase tracking-widest">Penilaian Diri - Mode Ceklis</p>
+                                                        </div>
+                                                        <p className="text-xs text-muted-foreground">Tandai indikator yang menurutmu sudah kamu capai:</p>
+                                                        {(assignment.instrument_config?.indicators || []).map((ind: any, idx: number) => (
+                                                            <label key={idx} className="flex items-center gap-4 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20 hover:bg-white dark:hover:bg-slate-800 transition-all cursor-pointer group">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={selfChecklistData[idx]?.checked || false}
+                                                                    onChange={() => {
+                                                                        const newData = [...selfChecklistData];
+                                                                        if (!newData[idx]) newData[idx] = { name: ind.name, checked: false };
+                                                                        newData[idx].checked = !newData[idx].checked;
+                                                                        setSelfChecklistData(newData);
+                                                                    }}
+                                                                    className="h-5 w-5 rounded border-slate-300 text-primary focus:ring-primary"
+                                                                />
+                                                                <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{ind.name}</span>
+                                                            </label>
                                                         ))}
                                                     </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                        )
+                                                );
+                                            } else if (assessmentMode === 'simple_rubric') {
+                                                return (
+                                                    <div className="space-y-6 animate-in fade-in duration-500">
+                                                        <div className="flex items-center gap-3 mb-6">
+                                                            <div className="h-8 w-8 rounded-xl bg-primary/10 text-primary text-xs font-black flex items-center justify-center">
+                                                                <Layers className="h-4 w-4" />
+                                                            </div>
+                                                            <p className="text-sm font-black text-slate-700 dark:text-slate-200 uppercase tracking-widest">Penilaian Diri - Rubrik Sederhana</p>
+                                                        </div>
+                                                        {(assignment.instrument_config?.indicators || []).map((ind: any, idx: number) => (
+                                                            <div key={idx} className="p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20 space-y-3">
+                                                                <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{ind.name}</p>
+                                                                <div className="flex gap-2">
+                                                                    {['Perlu Bimbingan', 'Cukup', 'Baik', 'Sangat Baik'].map((level, lvlIdx) => (
+                                                                        <button
+                                                                            key={level}
+                                                                            type="button"
+                                                                            onClick={() => {
+                                                                                const newData = [...selfRubricData];
+                                                                                if (!newData[idx]) newData[idx] = { name: ind.name, selected_level: '' };
+                                                                                newData[idx].selected_level = level;
+                                                                                setSelfRubricData(newData);
+                                                                            }}
+                                                                            className={`flex-1 py-2 px-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all border-2 ${
+                                                                                selfRubricData[idx]?.selected_level === level
+                                                                                    ? lvlIdx === 0 ? 'bg-red-50 border-red-400 text-red-600'
+                                                                                      : lvlIdx === 1 ? 'bg-amber-50 border-amber-400 text-amber-600'
+                                                                                      : lvlIdx === 2 ? 'bg-blue-50 border-blue-400 text-blue-600'
+                                                                                      : 'bg-emerald-50 border-emerald-400 text-emerald-600'
+                                                                                    : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 text-muted-foreground hover:border-primary/30'
+                                                                            }`}
+                                                                        >
+                                                                            {level}
+                                                                        </button>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                );
+                                            } else {
+                                                return (
+                                                    <div className="space-y-10 animate-in fade-in duration-500">
+                                                        {/* Feelings Section */}
+                                                        <div className="space-y-6">
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="h-8 w-8 rounded-xl bg-amber-50 dark:bg-amber-950/30 text-amber-600 text-xs font-black flex items-center justify-center shadow-sm border border-amber-100 dark:border-amber-900/30">
+                                                                    <Heart className="h-4 w-4" />
+                                                                </div>
+                                                                <p className="text-sm font-black text-slate-700 dark:text-slate-200 uppercase tracking-widest">Bagaimana Perasaan Belajarmu?</p>
+                                                            </div>
+                                                            <div className="grid grid-cols-3 gap-4">
+                                                                {[
+                                                                    { id: 'very_happy', label: 'Sangat Senang', icon: '🤩' },
+                                                                    { id: 'happy', label: 'Senang', icon: '😊' },
+                                                                    { id: 'neutral', label: 'Kurang Senang', icon: '😐' },
+                                                                ].map((item) => (
+                                                                    <button
+                                                                        key={item.id}
+                                                                        type="button"
+                                                                        onClick={() => setSelfAssessmentData({ ...selfAssessmentData, feeling: item.id })}
+                                                                        className={`flex flex-col items-center gap-3 p-6 rounded-[2rem] border-2 transition-all ${selfAssessmentData.feeling === item.id ? 'border-amber-500 bg-amber-50/50 dark:bg-amber-950/20 shadow-xl shadow-amber-100/50' : 'border-slate-50 bg-slate-50/30 dark:border-slate-800'}`}
+                                                                    >
+                                                                        <span className="text-4xl">{item.icon}</span>
+                                                                        <span className={`text-[10px] font-black uppercase tracking-widest ${selfAssessmentData.feeling === item.id ? 'text-amber-700 dark:text-amber-400' : 'text-muted-foreground'}`}>{item.label}</span>
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                            <div className="space-y-3">
+                                                                <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-4">Berikan alasan singkat tentang perasaanmu:</label>
+                                                                <textarea 
+                                                                    rows={3}
+                                                                    placeholder="Cth: Saya senang karena materi hari ini sangat seru dan mudah dipahami..."
+                                                                    value={selfAssessmentData.feeling_reason}
+                                                                    onChange={(e) => setSelfAssessmentData({ ...selfAssessmentData, feeling_reason: e.target.value })}
+                                                                    className="w-full rounded-3xl border border-slate-100 bg-slate-50/30 px-6 py-4 text-sm font-medium outline-none focus:border-amber-400 focus:bg-white transition-all shadow-sm dark:bg-slate-800/50 dark:border-slate-800 dark:text-slate-200"
+                                                                ></textarea>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Effort Scale Section */}
+                                                        <div className="space-y-6 pt-10 border-t border-slate-50 dark:border-slate-800">
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="h-8 w-8 rounded-xl bg-sky-50 dark:bg-sky-950/30 text-primary text-xs font-black flex items-center justify-center shadow-sm border border-sky-100 dark:border-sky-900/30">
+                                                                    <Zap className="h-4 w-4" />
+                                                                </div>
+                                                                <p className="text-sm font-black text-slate-700 dark:text-slate-200 uppercase tracking-widest">Seberapa Baik Usaha & Pemahamanmu?</p>
+                                                            </div>
+                                                            <div className="flex items-center justify-between gap-4">
+                                                                {[1, 2, 3, 4].map((scale) => (
+                                                                    <button
+                                                                        key={scale}
+                                                                        type="button"
+                                                                        onClick={() => setSelfAssessmentData({ ...selfAssessmentData, effort_scale: scale })}
+                                                                        className={`flex-1 h-16 rounded-2xl border-2 flex items-center justify-center text-xl font-black transition-all ${selfAssessmentData.effort_scale === scale ? 'bg-sky-500 border-sky-500 text-white shadow-xl shadow-sky-200/50' : 'bg-slate-50/50 border-slate-50 text-slate-300 dark:bg-slate-800 dark:border-slate-800 hover:border-sky-200'}`}
+                                                                    >
+                                                                        {scale}
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                            <div className="flex justify-between text-[10px] font-black text-muted-foreground uppercase tracking-widest px-2">
+                                                                <span>Perlu Bimbingan</span>
+                                                                <span>Sangat Baik</span>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Reflection Section */}
+                                                        <div className="space-y-6 pt-10 border-t border-slate-50 dark:border-slate-800">
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="h-8 w-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 text-xs font-black flex items-center justify-center shadow-sm border border-indigo-100 dark:border-indigo-900/30">
+                                                                    <BookOpen className="h-4 w-4" />
+                                                                </div>
+                                                                <p className="text-sm font-black text-slate-700 dark:text-slate-200 uppercase tracking-widest">Catatan Refleksi</p>
+                                                            </div>
+                                                            <div className="space-y-3">
+                                                                <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-4">Tantangan yang dihadapi & strategi perbaikan:</label>
+                                                                <textarea 
+                                                                    rows={6}
+                                                                    placeholder="Cth: Saya masih kesulitan di bagian perkalian, strateginya saya akan berlatih lebih banyak di rumah..."
+                                                                    value={selfAssessmentData.reflection_notes}
+                                                                    onChange={(e) => setSelfAssessmentData({ ...selfAssessmentData, reflection_notes: e.target.value })}
+                                                                    className="w-full rounded-[2.5rem] border border-slate-100 bg-slate-50/30 px-8 py-6 text-sm font-medium outline-none focus:border-indigo-400 focus:bg-white transition-all shadow-sm dark:bg-slate-800/50 dark:border-slate-800 dark:text-slate-200"
+                                                                ></textarea>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            }
+                                        })()
                                     ) : (assignment.instrument_type === 'written_test' || (assignment.instrument_type === 'formative_quiz' && (assignment.instrument_config?.assessment_mode || 'rubrik') === 'rubrik')) ? (
                                         <div className="space-y-12 animate-in fade-in duration-700">
                                             {/* Test Header & Progress */}
@@ -3116,12 +3348,6 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                 </div>
                                             </div>
 
-                                            {assignment.instrument_config?.stimulus && (
-                                                <div className="p-5 rounded-[8px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#1B1B25] shadow-none">
-                                                    <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium italic">"{assignment.instrument_config.stimulus}"</p>
-                                                </div>
-                                            )}
-
                                             <div className="space-y-6">
                                                 {(assignment.instrument_config?.questions || []).map((q: any, idx: number) => (
                                                     <div key={idx} className="p-5 rounded-[8px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#1B1B25] shadow-none space-y-3">
@@ -3253,47 +3479,91 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                 </div>
                                             </div>
                                             
-                                            <div className="space-y-3">
-                                                <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Pencapaian:</p>
-                                                <div className="flex items-end gap-2">
-                                                    <span className={`text-5xl font-black tracking-tighter ${displayScore !== null ? 'text-foreground' : 'text-slate-300'}`}>
-                                                        {displayScore ?? '-'}
-                                                    </span>
-                                                    <span className="text-sm font-black text-muted-foreground mb-2 uppercase">/ {assignment.max_points} pts</span>
-                                                </div>
-                                                {displayScore !== null && (
-                                                    <div className="pt-2">
-                                                        {(() => {
-                                                            const systemScore = calculateSystemScore(my_submission?.content || '');
-                                                            const isObjectiveOnly = assignment.instrument_config?.questions?.every((q: any) => q.type === 'multiple_choice' || q.type === 'short_answer');
-                                                            const effectivePassed = (systemScore === 0 || isObjectiveOnly)
-                                                                ? (Number(displayScore) >= (assignment.passing_grade || assignment.instrument_config?.pass_threshold || 70))
-                                                                : (my_submission.score !== null ? my_submission.is_passed : (Number(displayScore) >= (assignment.passing_grade || assignment.instrument_config?.pass_threshold || 70)));
-                                                            
-                                                            return effectivePassed ? (
-                                                                <span className={`inline-flex items-center gap-1.5 px-3 py-1 text-white text-[9px] font-black uppercase tracking-widest ${
-                                                                    (assignment.instrument_type === 'formative_quiz' || assignment.instrument_type === 'exit_ticket')
-                                                                        ? 'rounded-[4px] bg-emerald-500 shadow-none'
-                                                                        : 'rounded-lg bg-emerald-500 shadow-sm'
-                                                                }`}>
-                                                                    <CheckCircle2 className="h-3 w-3" /> Tuntas
-                                                                </span>
-                                                            ) : (
-                                                                <span className={`inline-flex items-center gap-1.5 px-3 py-1 text-white text-[9px] font-black uppercase tracking-widest ${
-                                                                    (assignment.instrument_type === 'formative_quiz' || assignment.instrument_type === 'exit_ticket')
-                                                                        ? 'rounded-[4px] bg-rose-500 shadow-none'
-                                                                        : 'rounded-lg bg-rose-500 shadow-sm'
-                                                                }`}>
-                                                                    <AlertCircle className="h-3 w-3" /> Remedial
-                                                                </span>
-                                                            );
-                                                        })()}
+                                            {assignment.instrument_type === 'reflective_journal' ? (
+                                                <div className="space-y-3">
+                                                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Capaian Refleksi (KKTP):</p>
+                                                    <div className="flex items-end gap-2">
+                                                        <span className={`text-2xl font-black tracking-tight ${my_submission?.score !== null ? 'text-foreground' : 'text-slate-300'}`}>
+                                                            {(() => {
+                                                                if (my_submission?.score === null || my_submission?.score === undefined) return 'Belum Dinilai';
+                                                                try {
+                                                                    const parsed = JSON.parse(my_submission.content || '{}');
+                                                                    if (parsed.grading?.selected_level) {
+                                                                        return parsed.grading.selected_level;
+                                                                    }
+                                                                    return parsed.grading?.is_passed ? 'Tuntas' : 'Belum Tuntas';
+                                                                } catch(e) {
+                                                                    return my_submission.score >= (assignment.passing_grade || 70) ? 'Tuntas' : 'Belum Tuntas';
+                                                                }
+                                                            })()}
+                                                        </span>
                                                     </div>
-                                                )}
-                                                {displayScore === null && (
-                                                    <p className="text-[9px] font-black text-amber-500 uppercase tracking-widest animate-pulse">Menunggu Penilaian Guru</p>
-                                                )}
-                                            </div>
+                                                    {my_submission?.score !== null && my_submission?.score !== undefined && (
+                                                        <div className="pt-2">
+                                                            {(() => {
+                                                                let isPassed = false;
+                                                                try {
+                                                                    const parsed = JSON.parse(my_submission.content || '{}');
+                                                                    isPassed = parsed.grading?.is_passed ?? (my_submission.score >= (assignment.passing_grade || 70));
+                                                                } catch(e) {
+                                                                    isPassed = my_submission.score >= (assignment.passing_grade || 70);
+                                                                }
+                                                                return isPassed ? (
+                                                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 text-white text-[9px] font-black uppercase tracking-widest rounded-lg bg-emerald-500 shadow-sm">
+                                                                        <CheckCircle2 className="h-3 w-3" /> Tuntas
+                                                                    </span>
+                                                                ) : (
+                                                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 text-white text-[9px] font-black uppercase tracking-widest rounded-lg bg-rose-500 shadow-sm">
+                                                                        <AlertCircle className="h-3 w-3" /> Belum Tuntas
+                                                                    </span>
+                                                                );
+                                                            })()}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <div className="space-y-3">
+                                                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Pencapaian:</p>
+                                                    <div className="flex items-end gap-2">
+                                                        <span className={`text-5xl font-black tracking-tighter ${displayScore !== null ? 'text-foreground' : 'text-slate-300'}`}>
+                                                            {displayScore ?? '-'}
+                                                        </span>
+                                                        <span className="text-sm font-black text-muted-foreground mb-2 uppercase">/ {assignment.max_points} pts</span>
+                                                    </div>
+                                                    {displayScore !== null && (
+                                                        <div className="pt-2">
+                                                            {(() => {
+                                                                const systemScore = calculateSystemScore(my_submission?.content || '');
+                                                                const isObjectiveOnly = assignment.instrument_config?.questions?.every((q: any) => q.type === 'multiple_choice' || q.type === 'short_answer');
+                                                                const effectivePassed = (systemScore === 0 || isObjectiveOnly)
+                                                                    ? (Number(displayScore) >= (assignment.passing_grade || assignment.instrument_config?.pass_threshold || 70))
+                                                                    : (my_submission.score !== null ? my_submission.is_passed : (Number(displayScore) >= (assignment.passing_grade || assignment.instrument_config?.pass_threshold || 70)));
+                                                                
+                                                                return effectivePassed ? (
+                                                                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 text-white text-[9px] font-black uppercase tracking-widest ${
+                                                                        (assignment.instrument_type === 'formative_quiz' || assignment.instrument_type === 'exit_ticket')
+                                                                            ? 'rounded-[4px] bg-emerald-500 shadow-none'
+                                                                            : 'rounded-lg bg-emerald-500 shadow-sm'
+                                                                    }`}>
+                                                                        <CheckCircle2 className="h-3 w-3" /> Tuntas
+                                                                    </span>
+                                                                ) : (
+                                                                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 text-white text-[9px] font-black uppercase tracking-widest ${
+                                                                        (assignment.instrument_type === 'formative_quiz' || assignment.instrument_type === 'exit_ticket')
+                                                                            ? 'rounded-[4px] bg-rose-500 shadow-none'
+                                                                            : 'rounded-lg bg-rose-500 shadow-sm'
+                                                                    }`}>
+                                                                        <AlertCircle className="h-3 w-3" /> Remedial
+                                                                    </span>
+                                                                );
+                                                            })()}
+                                                        </div>
+                                                    )}
+                                                    {displayScore === null && (
+                                                        <p className="text-[9px] font-black text-amber-500 uppercase tracking-widest animate-pulse">Menunggu Penilaian Guru</p>
+                                                    )}
+                                                </div>
+                                            )}
 
                                             {displayScore !== null && assignment.assessment_type === 'initial' && (
                                                 <div className="pt-6 border-t border-slate-50 dark:border-slate-800 animate-in slide-in-from-top-4 duration-500">
@@ -5114,12 +5384,18 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                         
                                                         return (
                                                             <div className="space-y-4">
-                                                                {Object.entries(answers).map(([key, val], idx) => (
-                                                                    <div key={key} className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-border shadow-sm">
-                                                                        <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-1">Pertanyaan {idx + 1}:</p>
-                                                                        <p className="text-sm font-bold text-foreground">{String(val)}</p>
-                                                                    </div>
-                                                                ))}
+                                                                {Object.entries(answers).map(([key, val]: [string, any], idx) => {
+                                                                    const isObjWithQAndA = val && typeof val === 'object' && ('question' in val || 'answer' in val);
+                                                                    const qText = isObjWithQAndA ? (val.question || `Pertanyaan ${idx + 1}`) : `Pertanyaan ${idx + 1}`;
+                                                                    const aText = isObjWithQAndA ? (val.answer || '-') : String(val);
+                                                                    
+                                                                    return (
+                                                                        <div key={key} className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-border shadow-sm space-y-1">
+                                                                            <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">{qText}</p>
+                                                                            <p className="text-sm font-bold text-foreground whitespace-pre-wrap">{aText}</p>
+                                                                        </div>
+                                                                    );
+                                                                })}
                                                                 {note && (
                                                                     <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/30">
                                                                         <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-1">Catatan Tambahan:</p>
@@ -5159,17 +5435,135 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                         {/* Side: Grading Form */}
                         <div className="w-full md:w-80 space-y-8 bg-muted/50 p-8 rounded-[2.5rem] border border-border">
                             <form onSubmit={handleGrade} className="space-y-6">
-                                <div className="space-y-3">
-                                    <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Skor Pencapaian (0-{assignment.max_points})</label>
-                                    <input 
-                                        type="number"
-                                        max={assignment.max_points}
-                                        min={0}
-                                        value={teacherForm.data.score}
-                                        onChange={(e) => teacherForm.setData('score', parseInt(e.target.value))}
-                                        className="w-full rounded-2xl border border-slate-100 bg-white px-5 py-4 text-xl font-black text-slate-800 outline-none focus:border-sky-400 focus:ring-4 focus:ring-sky-50 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-100 transition-all text-center"
-                                    />
-                                </div>
+                                {assignment.instrument_type === 'reflective_journal' || assignment.instrument_type === 'self_assessment' || assignment.instrument_type === 'peer_assessment' ? (
+                                    <div className="space-y-6">
+                                        {/* KKTP Approach: Criteria Description */}
+                                        {(() => {
+                                            const gradingApproach = getGradingApproach();
+                                            const items = (assignment.instrument_type === 'self_assessment' || assignment.instrument_type === 'peer_assessment')
+                                                ? (assignment.instrument_config?.indicators || [])
+                                                : (assignment.instrument_config?.questions || []);
+                                            
+                                            if (gradingApproach === 'criteria_description') {
+                                                return (
+                                                    <div className="space-y-4 p-5 rounded-[2rem] bg-indigo-50/40 dark:bg-indigo-950/15 border border-indigo-100/60 dark:border-indigo-900/35">
+                                                        <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest leading-none mb-1">Capaian Indikator (KKTP)</p>
+                                                        <p className="text-[9px] text-muted-foreground font-medium mb-3">Tandai indikator yang dicapai secara memadai oleh siswa</p>
+                                                        
+                                                        <div className="space-y-3">
+                                                            {items.map((item: any, idx: number) => {
+                                                                const checked = journalCheckedIndicators[idx] || false;
+                                                                return (
+                                                                    <label key={idx} className="flex items-start gap-2.5 text-xs font-bold text-slate-700 dark:text-slate-200 cursor-pointer select-none">
+                                                                        <input 
+                                                                            type="checkbox"
+                                                                            checked={checked}
+                                                                            onChange={(e) => handleJournalCheckboxChange(idx, e.target.checked)}
+                                                                            className="mt-0.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 h-4 w-4"
+                                                                        />
+                                                                        <div>
+                                                                            <p className="leading-snug">{assignment.instrument_type === 'reflective_journal' ? `Pertanyaan ${idx + 1}` : `Indikator ${idx + 1}`}</p>
+                                                                            <p className="text-[9px] text-muted-foreground font-medium mt-0.5 line-clamp-2 leading-relaxed">{item.text || item.name}</p>
+                                                                        </div>
+                                                                    </label>
+                                                                );
+                                                            })}
+                                                        </div>
+
+                                                        <div className="pt-4 border-t border-indigo-100/50 dark:border-indigo-900/30 flex items-center justify-between">
+                                                            <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Status KKTP:</span>
+                                                            {(() => {
+                                                                const total = items.length;
+                                                                const minCriteria = assignment.instrument_config?.kktp?.min_criteria ?? Math.max(1, Math.round(total / 2));
+                                                                const checkedCount = Object.values(journalCheckedIndicators).filter(Boolean).length;
+                                                                const isPassed = checkedCount >= minCriteria;
+                                                                return isPassed ? (
+                                                                    <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 dark:bg-emerald-950/20 px-2 py-1 rounded-md uppercase tracking-wider">Tuntas ({checkedCount}/{total})</span>
+                                                                ) : (
+                                                                    <span className="text-[9px] font-black text-rose-600 bg-rose-50 dark:bg-rose-950/20 px-2 py-1 rounded-md uppercase tracking-wider">Belum Tuntas ({checkedCount}/{total})</span>
+                                                                );
+                                                            })()}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            } else {
+                                                return (
+                                                    <div className="space-y-4 p-5 rounded-[2rem] bg-indigo-50/40 dark:bg-indigo-950/15 border border-indigo-100/60 dark:border-indigo-900/35">
+                                                        <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest leading-none mb-1">Kategori Capaian KKTP</p>
+                                                        <p className="text-[9px] text-muted-foreground font-medium mb-3">Pilih tingkat capaian siswa</p>
+                                                        
+                                                        <div className="grid grid-cols-1 gap-2">
+                                                            {(assignment.instrument_config?.levels || [
+                                                                { name: 'Perlu Bimbingan', desc: 'Siswa belum menunjukkan pemahaman konsep dasar.' },
+                                                                { name: 'Cukup', desc: 'Siswa memahami sebagian besar konsep dasar namun belum konsisten.' },
+                                                                { name: 'Baik', desc: 'Siswa menguasai seluruh indikator ketuntasan dengan baik.' },
+                                                                { name: 'Sangat Baik', desc: 'Siswa menunjukkan penguasaan luar biasa dan pemahaman mendalam.' }
+                                                            ]).map((lvl: any, idx: number) => {
+                                                                const isSelected = journalSelectedLevel === lvl.name;
+                                                                return (
+                                                                    <button
+                                                                        key={idx}
+                                                                        type="button"
+                                                                        onClick={() => handleJournalLevelChange(lvl.name)}
+                                                                        className={`p-3 rounded-xl border text-left transition-all ${
+                                                                            isSelected 
+                                                                                ? 'border-indigo-500 bg-indigo-500/10 dark:bg-indigo-500/20 shadow-sm' 
+                                                                                : 'border-border bg-white dark:bg-slate-900 hover:border-slate-300'
+                                                                        }`}
+                                                                    >
+                                                                        <p className="text-xs font-bold text-foreground leading-none">{lvl.name}</p>
+                                                                        <p className="text-[9px] text-muted-foreground mt-1.5 leading-normal">{lvl.desc}</p>
+                                                                    </button>
+                                                                );
+                                                            })}
+                                                        </div>
+
+                                                        <div className="pt-4 border-t border-indigo-100/50 dark:border-indigo-900/30 flex items-center justify-between">
+                                                            <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Status KKTP:</span>
+                                                            {(() => {
+                                                                const levelName = journalSelectedLevel;
+                                                                const levels = assignment.instrument_config?.levels || [];
+                                                                const selectedLvlObj = levels.find((l: any) => l.name === levelName);
+                                                                const passingLvlObj = levels.find((l: any) => l.name === assignment.instrument_config?.kktp?.passing_level);
+                                                                
+                                                                let isPassed = true;
+                                                                if (passingLvlObj && levelName) {
+                                                                    const selectedIdx = levels.findIndex((l: any) => l.name === levelName);
+                                                                    const passingIdx = levels.findIndex((l: any) => l.name === assignment.instrument_config?.kktp?.passing_level);
+                                                                    isPassed = selectedIdx >= passingIdx;
+                                                                }
+                                                                
+                                                                return levelName ? (
+                                                                    isPassed ? (
+                                                                        <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 dark:bg-emerald-950/20 px-2 py-1 rounded-md uppercase tracking-wider">Tuntas</span>
+                                                                    ) : (
+                                                                        <span className="text-[9px] font-black text-rose-600 bg-rose-50 dark:bg-rose-950/20 px-2 py-1 rounded-md uppercase tracking-wider">Belum Tuntas</span>
+                                                                    )
+                                                                ) : (
+                                                                    <span className="text-[9px] font-black text-amber-600 bg-amber-50 dark:bg-amber-950/20 px-2 py-1 rounded-md uppercase tracking-wider">Pilih Kategori</span>
+                                                                );
+                                                            })()}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            }
+                                        })()}
+                                    </div>
+                                ) : (
+                                    <div className="space-y-3">
+                                        <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Skor Pencapaian (0-{assignment.max_points})</label>
+                                        <input 
+                                            type="number"
+                                            max={assignment.max_points}
+                                            min={0}
+                                            value={teacherForm.data.score}
+                                            onChange={(e) => teacherForm.setData('score', parseInt(e.target.value))}
+                                            className="w-full rounded-2xl border border-slate-100 bg-white px-5 py-4 text-xl font-black text-slate-800 outline-none focus:border-sky-400 focus:ring-4 focus:ring-sky-50 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-100 transition-all text-center"
+                                        />
+                                    </div>
+                                )}                />
+                                    </div>
+                                )}
 
                                 {assignment.instrument_type === 'concept_map' && (
                                     <div className="space-y-4 p-5 rounded-[2rem] bg-indigo-50/40 dark:bg-indigo-950/15 border border-indigo-100/60 dark:border-indigo-900/35 animate-in slide-in-from-top-2 duration-200">

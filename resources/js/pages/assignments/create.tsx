@@ -408,6 +408,7 @@ export default function CreateAssignment({ teachings, objectives, assessment_typ
                                         );
                                     })}
                                 </div>
+                                {errors.instrument_type && <p className="text-xs text-destructive mt-2">{errors.instrument_type}</p>}
                             </div>
 
                             {data.instrument_type && (
@@ -426,6 +427,7 @@ export default function CreateAssignment({ teachings, objectives, assessment_typ
                                                 <option key={tool.id} value={tool.id}>{tool.name} — {tool.desc}</option>
                                             ))}
                                         </select>
+                                        {errors.scoring_tool && <p className="text-xs text-destructive mt-1">{errors.scoring_tool}</p>}
                                     </div>
                                 </div>
                             )}
@@ -1123,6 +1125,7 @@ export default function CreateAssignment({ teachings, objectives, assessment_typ
                                                     ))
                                                 }
                                             </select>
+                                            {errors.learning_objective_id && <p className="text-xs text-destructive mt-1">{errors.learning_objective_id}</p>}
                                         </div>
                                     </div>
 
@@ -1196,6 +1199,7 @@ export default function CreateAssignment({ teachings, objectives, assessment_typ
                                                 onChange={(e) => setData('max_points', parseInt(e.target.value))}
                                                 className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 dark:bg-popover transition"
                                             />
+                                            {errors.max_points && <p className="text-xs text-destructive mt-1">{errors.max_points}</p>}
                                         </div>
 
                                         <button 
