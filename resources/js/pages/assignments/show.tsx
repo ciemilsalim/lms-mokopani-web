@@ -3480,9 +3480,13 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                 </div>
                                             </div>
                                             
-                                            {assignment.instrument_type === 'reflective_journal' ? (
+                                            {['reflective_journal', 'self_assessment', 'peer_assessment'].includes(assignment.instrument_type) ? (
                                                 <div className="space-y-3">
-                                                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Capaian Refleksi (KKTP):</p>
+                                                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+                                                        {assignment.instrument_type === 'reflective_journal' ? 'Capaian Refleksi (KKTP):' :
+                                                         assignment.instrument_type === 'self_assessment' ? 'Capaian Penilaian Diri (KKTP):' :
+                                                         'Capaian Penilaian Sejawat (KKTP):'}
+                                                    </p>
                                                     <div className="flex items-end gap-2">
                                                         <span className={`text-2xl font-black tracking-tight ${my_submission?.score !== null ? 'text-foreground' : 'text-slate-300'}`}>
                                                             {(() => {
@@ -3779,12 +3783,67 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                             <div className="pt-6 border-t border-slate-50 dark:border-slate-800 animate-in slide-in-from-top-4">
                                                 <div className="flex items-center gap-2 mb-6">
                                                     <UserCheck className="h-4 w-4 text-amber-500" />
-                                                    <h3 className="text-xs font-black text-foreground uppercase tracking-widest">Refleksi Anda</h3>
+                                                    <h3 className="text-xs font-black text-foreground uppercase tracking-widest">
+                                                        {(() => {
+                                                            try {
+                                                                const p = JSON.parse(my_submission.content || '{}');
+                                                                if (p.assessment_mode === 'checklist' || p.assessment_mode === 'simple_rubric') {
+                                                                    return 'Hasil Penilaian Diri Anda';
+                                                                }
+                                                            } catch(e) {}
+                                                            return 'Refleksi Anda';
+                                                        })()}
+                                                    </h3>
                                                 </div>
                                                 {(() => {
                                                     try {
                                                         const p = JSON.parse(my_submission.content);
                                                         if (p.type === 'self_assessment') {
+                                                            if (p.assessment_mode === 'checklist') {
+                                                                return (
+                                                                    <div className="space-y-4">
+                                                                        <div className="p-5 rounded-3xl bg-indigo-50/40 dark:bg-indigo-950/15 border border-indigo-100/60 dark:border-indigo-900/35 space-y-3">
+                                                                            <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest leading-none mb-1">Daftar Indikator Penilaian Diri</p>
+                                                                            <div className="space-y-3">
+                                                                                {(p.indicators || []).map((ind: any, idx: number) => (
+                                                                                    <div key={idx} className="flex items-start gap-2.5 text-xs text-slate-700 dark:text-slate-200">
+                                                                                        {ind.checked ? (
+                                                                                            <CheckSquare className="h-4 w-4 text-indigo-600 mt-0.5 shrink-0" />
+                                                                                        ) : (
+                                                                                            <Square className="h-4 w-4 text-slate-300 dark:text-slate-600 mt-0.5 shrink-0" />
+                                                                                        )}
+                                                                                        <div>
+                                                                                            <p className="font-bold text-slate-700 dark:text-slate-200">{ind.name}</p>
+                                                                                            <p className="text-[9px] text-muted-foreground font-medium mt-0.5">{ind.checked ? 'Dicapai' : 'Belum Dicapai'}</p>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                ))}
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                );
+                                                            }
+
+                                                            if (p.assessment_mode === 'simple_rubric') {
+                                                                return (
+                                                                    <div className="space-y-4">
+                                                                        <div className="p-5 rounded-3xl bg-indigo-50/40 dark:bg-indigo-950/15 border border-indigo-100/60 dark:border-indigo-900/35 space-y-3">
+                                                                            <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest leading-none mb-1">Kriteria Capaian Penilaian Diri</p>
+                                                                            <div className="space-y-4">
+                                                                                {(p.indicators || []).map((ind: any, idx: number) => (
+                                                                                    <div key={idx} className="border-b border-indigo-100/30 dark:border-indigo-900/20 pb-3 last:border-0 last:pb-0">
+                                                                                        <p className="text-xs font-bold text-slate-700 dark:text-slate-200">{ind.name}</p>
+                                                                                        <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 text-[10px] font-black uppercase tracking-wider">
+                                                                                            <Zap className="h-3 w-3" /> {ind.selected_level || 'Belum Memilih'}
+                                                                                        </div>
+                                                                                    </div>
+                                                                                ))}
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                );
+                                                            }
+
                                                             const feelingMap: any = {
                                                                 very_happy: { label: 'Sangat Senang', icon: '🤩' },
                                                                 happy: { label: 'Senang', icon: '😊' },
@@ -3825,12 +3884,75 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                             <div className="pt-6 border-t border-slate-50 dark:border-slate-800 animate-in slide-in-from-top-4">
                                                 <div className="flex items-center gap-2 mb-6">
                                                     <Users className="h-4 w-4 text-indigo-500" />
-                                                    <h3 className="text-xs font-black text-foreground uppercase tracking-widest">Penilaian Teman Anda</h3>
+                                                    <h3 className="text-xs font-black text-foreground uppercase tracking-widest">
+                                                        {(() => {
+                                                            try {
+                                                                const p = JSON.parse(my_submission.content || '{}');
+                                                                if (p.assessment_mode === 'checklist' || p.assessment_mode === 'simple_rubric') {
+                                                                    return 'Hasil Penilaian Antarteman';
+                                                                }
+                                                            } catch(e) {}
+                                                            return 'Penilaian Teman Anda';
+                                                        })()}
+                                                    </h3>
                                                 </div>
                                                 {(() => {
                                                     try {
                                                         const p = JSON.parse(my_submission.content);
                                                         if (p.type === 'peer_assessment') {
+                                                            if (p.assessment_mode === 'checklist') {
+                                                                return (
+                                                                    <div className="space-y-4">
+                                                                        <div className="p-4 rounded-2xl bg-muted border border-slate-100 dark:border-slate-700 mb-4">
+                                                                            <p className="text-[8px] font-black text-muted-foreground uppercase tracking-widest mb-1">Teman yang Dinilai:</p>
+                                                                            <p className="text-xs font-bold text-slate-700 dark:text-slate-200">{p.peer_name}</p>
+                                                                        </div>
+                                                                        <div className="p-5 rounded-3xl bg-indigo-50/40 dark:bg-indigo-950/15 border border-indigo-100/60 dark:border-indigo-900/35 space-y-3">
+                                                                            <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest leading-none mb-1">Daftar Indikator Penilaian</p>
+                                                                            <div className="space-y-3">
+                                                                                {(p.indicators || []).map((ind: any, idx: number) => (
+                                                                                    <div key={idx} className="flex items-start gap-2.5 text-xs text-slate-700 dark:text-slate-200">
+                                                                                        {ind.checked ? (
+                                                                                            <CheckSquare className="h-4 w-4 text-indigo-600 mt-0.5 shrink-0" />
+                                                                                        ) : (
+                                                                                            <Square className="h-4 w-4 text-slate-300 dark:text-slate-600 mt-0.5 shrink-0" />
+                                                                                        )}
+                                                                                        <div>
+                                                                                            <p className="font-bold text-slate-700 dark:text-slate-200">{ind.name}</p>
+                                                                                            <p className="text-[9px] text-muted-foreground font-medium mt-0.5">{ind.checked ? 'Dicapai' : 'Belum Dicapai'}</p>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                ))}
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                );
+                                                            }
+
+                                                            if (p.assessment_mode === 'simple_rubric') {
+                                                                return (
+                                                                    <div className="space-y-4">
+                                                                        <div className="p-4 rounded-2xl bg-muted border border-slate-100 dark:border-slate-700 mb-4">
+                                                                            <p className="text-[8px] font-black text-muted-foreground uppercase tracking-widest mb-1">Teman yang Dinilai:</p>
+                                                                            <p className="text-xs font-bold text-slate-700 dark:text-slate-200">{p.peer_name}</p>
+                                                                        </div>
+                                                                        <div className="p-5 rounded-3xl bg-indigo-50/40 dark:bg-indigo-950/15 border border-indigo-100/60 dark:border-indigo-900/35 space-y-3">
+                                                                            <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest leading-none mb-1">Kriteria Capaian Penilaian</p>
+                                                                            <div className="space-y-4">
+                                                                                {(p.indicators || []).map((ind: any, idx: number) => (
+                                                                                    <div key={idx} className="border-b border-indigo-100/30 dark:border-indigo-900/20 pb-3 last:border-0 last:pb-0">
+                                                                                        <p className="text-xs font-bold text-slate-700 dark:text-slate-200">{ind.name}</p>
+                                                                                        <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 text-[10px] font-black uppercase tracking-wider">
+                                                                                            <Zap className="h-3 w-3" /> {ind.selected_level || 'Belum Memilih'}
+                                                                                        </div>
+                                                                                    </div>
+                                                                                ))}
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                );
+                                                            }
+
                                                             return (
                                                                 <div className="space-y-6">
                                                                     <div className="p-4 rounded-2xl bg-muted border border-slate-100 dark:border-slate-700">
@@ -3856,7 +3978,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                     {p.obstacles && (
                                                                         <div className="p-5 rounded-3xl bg-muted/50 border border-border">
                                                                             <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mb-2">Kendala Kelompok:</p>
-                                                                            <p className="text-xs text-slate-600 dark:text-slate-300 font-medium italic">"{p.obstacles}"</p>
+                                                                            <p className="text-xs text-slate-600 dark:text-slate-300 font-medium italic">{p.obstacles}</p>
                                                                         </div>
                                                                     )}
                                                                 </div>

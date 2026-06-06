@@ -47,6 +47,14 @@ class AssignmentController extends Controller
 
         $models = $query->withCount('submissions')->latest()->get();
 
+        $studentSubmissions = [];
+        if ($user && $user->student) {
+            $studentSubmissions = \App\Models\LmsSubmission::whereIn('assignment_id', $models->pluck('id'))
+                ->where('student_id', $user->student->id)
+                ->get()
+                ->keyBy('assignment_id');
+        }
+
         if ($user->teacher) {
             $teacherGrouped = $models->groupBy('school_class_id')->map(function ($classItems, $classId) {
                 $firstClassItem = $classItems->first();
@@ -134,6 +142,10 @@ class AssignmentController extends Controller
                             'scoring_tool'      => $a->scoring_tool,
                             'submissions_count' => $a->submissions_count,
                             'is_accessible'     => $isAccessible,
+                            'student_submission'=> isset($studentSubmissions[$a->id]) ? [
+                                'id'        => $studentSubmissions[$a->id]->id,
+                                'is_graded' => $studentSubmissions[$a->id]->score !== null,
+                            ] : null,
                         ])->values(),
                     ];
                 })->values();
@@ -171,6 +183,10 @@ class AssignmentController extends Controller
             'scoring_tool'      => $a->scoring_tool,
             'submissions_count' => $a->submissions_count,
             'is_accessible'     => $user->role === 'admin' || $user->role === 'teacher' || !$a->learning_objective_id || in_array($a->learning_objective_id, $accessibleTpIds),
+            'student_submission'=> isset($studentSubmissions[$a->id]) ? [
+                'id'        => $studentSubmissions[$a->id]->id,
+                'is_graded' => $studentSubmissions[$a->id]->score !== null,
+            ] : null,
         ]);
 
         return Inertia::render('assignments/index', [

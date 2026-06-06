@@ -1,7 +1,7 @@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router, usePage } from '@inertiajs/react';
-import { BookOpen, ClipboardList, Clock, Plus, Search, Info, Target, GraduationCap, ChevronDown, ChevronRight, Pencil, Trash2 } from 'lucide-react';
+import { BookOpen, ClipboardList, Clock, Plus, Search, Info, Target, GraduationCap, ChevronDown, ChevronRight, Pencil, Trash2, CheckCircle2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -22,6 +22,7 @@ interface Assignment {
     scoring_tool?: string | null;
     submissions_count: number;
     is_accessible?: boolean;
+    student_submission?: { id: number; is_graded: boolean } | null;
 }
 
 interface SubjectObjectiveGroup {
@@ -170,13 +171,26 @@ function AssignmentCard({ asgn, isTeacher = false }: { asgn: Assignment; isTeach
                         {scoringToolLabels[asgn.scoring_tool] || asgn.scoring_tool}
                     </span>
                 )}
+                {!isTeacher && asgn.student_submission?.is_graded && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                        <CheckCircle2 className="h-2.5 w-2.5" /> Dinilai
+                    </span>
+                )}
             </div>
 
             <div className="mt-4 flex items-center justify-end border-t border-border/50 pt-3">
                 <div className="flex items-center gap-2">
-                    <span className="text-[10px] text-muted-foreground whitespace-nowrap">{asgn.submissions_count} dikumpulkan</span>
+                    {isTeacher && asgn.submissions_count > 0 ? (
+                        <span className="rounded-full bg-indigo-500/10 border border-indigo-500/20 px-2.5 py-0.5 text-[10px] font-black text-indigo-600 dark:text-indigo-400">
+                            {asgn.submissions_count} Mengumpulkan
+                        </span>
+                    ) : (
+                        <span className="text-[10px] text-muted-foreground whitespace-nowrap">{asgn.submissions_count} dikumpulkan</span>
+                    )}
                     <span className="rounded-full bg-success/10 border border-success/20 px-2 py-0.5 text-[10px] font-bold text-success">
-                        {asgn.instrument_type === 'reflective_journal' ? 'Deskriptif (KKTP)' : `${asgn.max_points} pts`}
+                        {['reflective_journal', 'self_assessment', 'peer_assessment'].includes(asgn.instrument_type || '') 
+                            ? 'Deskriptif (KKTP)' 
+                            : `${asgn.max_points} pts`}
                     </span>
                 </div>
             </div>
