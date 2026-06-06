@@ -784,6 +784,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                     studentForm.setData('content', parsed.note || '');
                 }
             } catch (e) {}
+        }
     }, [my_submission, assignment.instrument_type]);
 
     // Pre-initialize checklist and rubric data for self/peer assessment if no submission yet
@@ -5560,8 +5561,6 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                             onChange={(e) => teacherForm.setData('score', parseInt(e.target.value))}
                                             className="w-full rounded-2xl border border-slate-100 bg-white px-5 py-4 text-xl font-black text-slate-800 outline-none focus:border-sky-400 focus:ring-4 focus:ring-sky-50 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-100 transition-all text-center"
                                         />
-                                    </div>
-                                )}                />
                                     </div>
                                 )}
 
