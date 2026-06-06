@@ -500,6 +500,7 @@ export default function InstructionalDesignCreate({
                 ? (data as any)[assessmentKey]?.instruments?.[idx]
                 : null;
             const observationMode = currentInstrument?.instrument_config?.observation_mode || 'checklist';
+            const quizMode = currentInstrument?.instrument_config?.quiz_mode || 'mcq';
 
             const response = await axios.post(route('instructional-design.auto-suggest'), {
                 learning_objective_id: data.learning_objective_id,
@@ -508,7 +509,8 @@ export default function InstructionalDesignCreate({
                 regenerate: currentCount > 0,
                 material_title: data.material_title,
                 material_content: data.material_content,
-                observation_mode: observationMode
+                observation_mode: observationMode,
+                quiz_mode: quizMode
             });
 
             const suggestion = response.data;

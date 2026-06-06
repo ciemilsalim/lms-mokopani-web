@@ -131,7 +131,7 @@ export default function QuizBuilder({
 
     return (
         <div className="space-y-4">
-            {assessmentKey === 'summative' && (
+            {(assessmentKey === 'summative' || (assessmentKey === 'formative' && ['formative_quiz', 'quiz_survey', 'written_test'].includes(inst?.instrument_type))) && (
                 <div className="space-y-2">
                     <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.05em] ml-1">Mode Soal</label>
                     <div className="flex gap-2 p-1 bg-card rounded-lg border border-border">

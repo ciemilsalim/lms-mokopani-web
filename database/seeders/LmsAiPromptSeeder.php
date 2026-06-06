@@ -140,7 +140,7 @@ PROMPT
                 'key' => 'assessment',
                 'name' => 'Rancang Instrumen Asesmen',
                 'description' => 'Prompt yang digunakan saat meregenerasi atau mendesain satu instrumen asesmen tertentu (Awal, Formatif, Sumatif) berdasarkan jenis instrumen yang dipilih guru.',
-                'placeholders' => ['{tp}', '{content}', '{instrument_label}', '{observation_mode}'],
+                'placeholders' => ['{tp}', '{content}', '{instrument_label}', '{observation_mode}', '{quiz_mode}'],
                 'prompt_text' => <<<PROMPT
 Kamu adalah asisten cerdas perancang instrumen asesmen Kurikulum Merdeka Indonesia yang terintegrasi, kontekstual, dan mudah dipahami oleh siswa SMP (usia 12-15 tahun).
 
@@ -149,6 +149,7 @@ Konteks:
 - Konten/Materi Utama: {content}
 - Jenis Asesmen: {instrument_label}
 - Mode Observasi: {observation_mode}
+- Mode Soal (Kuis/Tes): {quiz_mode}
 
 ===== ATURAN KHUSUS BAHASA & PERTANYAAN PILIHAN GANDA (MCQ) =====
 - BAHASA: Gunakan bahasa Indonesia yang sangat sederhana, komunikatif, bersahabat, mudah dipahami siswa SMP (usia 12-15 tahun), dan tidak menggunakan istilah ilmiah berbelit-belit.
@@ -234,19 +235,9 @@ Jika Mode Soal adalah "mixed" (Campuran):
 Buat 5 pertanyaan pilihan ganda + 3 pertanyaan esai.
 
 Untuk jenis kuis formatif ("formative_quiz"):
-{
-  "questions": [
-    {"id": "q1", "type": "multiple_choice", "text": "Pertanyaan yang dikemas dengan kalimat ringkas dan bersahabat bagi anak SMP...", "options": [{"id": "a", "text": "..."}, {"id": "b", "text": "..."}, {"id": "c", "text": "..."}, {"id": "d", "text": "..."}], "answer": "a"},
-    {"id": "q2", "type": "short_answer", "text": "Pertanyaan esai singkat dengan bahasa yang sederhana..."}
-  ],
-  "levels": [
-    {"name": "Perlu Bimbingan", "desc": "Penjelasan tindak lanjut skor rendah"},
-    {"name": "Cukup", "desc": "Penjelasan tindak lanjut skor sedang"},
-    {"name": "Baik", "desc": "Penjelasan tindak lanjut skor baik (Tuntas)"},
-    {"name": "Sangat Baik", "desc": "Penjelasan tindak lanjut skor sangat baik (Pengayaan)"}
-  ],
-  "kktp": {"approach": "percentage", "threshold": 75}
-}
+Adopsi format JSON seperti "written_test" di atas sesuai dengan Mode Soal {quiz_mode} yang diminta saat ini (mcq / essay / mixed), yang mencakup "quiz_mode", "questions" (dengan points dan options/answer/correct_answer yang lengkap), "levels", dan "kktp".
+Gunakan pendekatan percentage untuk kktp kuis formatif: "kktp": {"approach": "percentage", "threshold": 75}
+Pastikan seluruh pertanyaan dikemas dengan bahasa Indonesia yang sangat sederhana, komunikatif, ramah anak SMP (usia 12-15 tahun), dan teks soal tidak terlalu panjang (maksimal 2 kalimat sederhana saja).
 
 Untuk jenis tes lisan ("oral_test"):
 {

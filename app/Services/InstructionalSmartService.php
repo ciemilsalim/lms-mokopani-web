@@ -259,7 +259,8 @@ class InstructionalSmartService
         bool $regenerate = false,
         ?string $materialTitle = null,
         ?string $materialContent = null,
-        ?string $observationMode = null
+        ?string $observationMode = null,
+        ?string $quizMode = null
     ): array {
         $this->isLastRequestOnline = false;
         $tp = LmsLearningObjective::find($tpId);
@@ -280,7 +281,7 @@ class InstructionalSmartService
 
         if ($ai->isConfigured()) {
             try {
-                $suggested = $ai->suggestAssessment($description, $content, $type, $regenerate, $observationMode);
+                $suggested = $ai->suggestAssessment($description, $content, $type, $regenerate, $observationMode, $quizMode);
                 if (!empty($suggested)) {
                     $this->isLastRequestOnline = true;
                     return $suggested;
@@ -312,9 +313,41 @@ class InstructionalSmartService
         }
 
         if ($type === 'formative_quiz') {
-            return [
-                'quiz_mode' => 'mcq',
-                'questions' => array_map(fn($i) => [
+            $mode = $quizMode ?? 'mcq';
+            $questions = [];
+            if ($mode === 'essay') {
+                $questions = array_map(fn($i) => [
+                    'id' => 'q' . $i,
+                    'type' => 'essay',
+                    'text' => "Pertanyaan Esai {$i}: Deskripsikan pemahamanmu mengenai {$content}.",
+                    'answer' => "Pedoman jawaban ideal untuk pertanyaan esai {$i}.",
+                    'points' => 5
+                ], range(1, 5));
+            } elseif ($mode === 'mixed') {
+                $questions = array_merge(
+                    array_map(fn($i) => [
+                        'id' => 'q' . $i,
+                        'type' => 'multiple_choice',
+                        'text' => "Pertanyaan PG {$i}: Pilih konsep yang tepat tentang {$content}.",
+                        'options' => [
+                            ['id' => 'a', 'text' => "Opsi A tentang {$content}"],
+                            ['id' => 'b', 'text' => "Opsi B tentang {$content}"],
+                            ['id' => 'c', 'text' => "Opsi C tentang {$content}"],
+                            ['id' => 'd', 'text' => "Opsi D tentang {$content}"]
+                        ],
+                        'answer' => 'a',
+                        'points' => 1
+                    ], range(1, 5)),
+                    array_map(fn($i) => [
+                        'id' => 'q' . ($i + 5),
+                        'type' => 'essay',
+                        'text' => "Pertanyaan Esai {$i}: Jelaskan penerapan {$content}.",
+                        'answer' => "Pedoman jawaban ideal.",
+                        'points' => 5
+                    ], range(1, 3))
+                );
+            } else {
+                $questions = array_map(fn($i) => [
                     'id' => 'q' . $i,
                     'type' => 'multiple_choice',
                     'text' => "Soal {$i}: Pilih pernyataan yang paling tepat mengenai konsep {$content} (soal ke-{$i}).",
@@ -326,7 +359,12 @@ class InstructionalSmartService
                     ],
                     'answer' => ['a', 'b', 'c', 'd', 'a', 'b', 'c', 'd', 'a', 'b'][$i - 1] ?? 'a',
                     'points' => 1
-                ], range(1, 10)),
+                ], range(1, 10));
+            }
+
+            return [
+                'quiz_mode' => $mode,
+                'questions' => $questions,
                 'levels' => [
                     ['name' => 'Perlu Bimbingan', 'desc' => "Skor < 60: Pemahaman dasar belum tercapai."],
                     ['name' => 'Cukup', 'desc' => "Skor 60-75: Pemahaman cukup namun belum tuntas."],

@@ -112,18 +112,25 @@ class GeminiApiService implements AiProviderInterface
         string $content,
         string $instrumentType,
         bool $regenerate = false,
-        ?string $observationMode = null
+        ?string $observationMode = null,
+        ?string $quizMode = null
     ): array {
-        $hash = md5('assessment_' . $tpDescription . $content . $instrumentType . ($observationMode ?? ''));
+        $hash = md5('assessment_' . $tpDescription . $content . $instrumentType . ($observationMode ?? '') . ($quizMode ?? ''));
 
         if (!$regenerate) {
             $cached = \App\Models\LmsAiCache::getCache($hash);
             if ($cached) {
-                return json_decode($cached, true) ?? [];
+                $decoded = json_decode($cached, true);
+                if (is_array($decoded)) {
+                    $needsQuestions = in_array($instrumentType, ['formative_quiz', 'quiz_survey', 'written_test', 'exit_ticket', 'reflective_journal', 'oral_test']);
+                    if (!$needsQuestions || !empty($decoded['questions'])) {
+                        return $decoded;
+                    }
+                }
             }
         }
 
-        $instrumentLabel = $this->getInstrumentLabel($instrumentType);
+        $instrumentLabel = $this->getInstrumentLabel($instrumentType) . ' ("' . $instrumentType . '")';
         $teacherId = Auth::user()?->teacher?->id;
         $template = LmsAiPrompt::getPromptFor('assessment', $teacherId);
 
@@ -131,12 +138,14 @@ class GeminiApiService implements AiProviderInterface
             '{tp}',
             '{content}',
             '{instrument_label}',
-            '{observation_mode}'
+            '{observation_mode}',
+            '{quiz_mode}'
         ], [
             $tpDescription,
             $content,
             $instrumentLabel,
-            $observationMode === 'anecdotal' ? 'anecdotal' : 'checklist'
+            $observationMode === 'anecdotal' ? 'anecdotal' : 'checklist',
+            $quizMode ?? 'mcq'
         ], $template);
 
         $response = $this->generateContent($prompt);

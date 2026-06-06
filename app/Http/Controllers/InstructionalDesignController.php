@@ -272,6 +272,7 @@ class InstructionalDesignController extends Controller
             'regenerate'            => 'nullable|boolean',
             'material_title'        => 'nullable|string',
             'material_content'      => 'nullable|string',
+            'quiz_mode'             => 'nullable|string',
         ]);
 
         $suggestType = $request->input('suggest_type');
@@ -308,7 +309,8 @@ class InstructionalDesignController extends Controller
                 $regenerate,
                 $materialTitle,
                 $materialContent,
-                $request->input('observation_mode')
+                $request->input('observation_mode'),
+                $request->input('quiz_mode')
             );
         } else {
             $suggestions = $service->suggestExperiences(
