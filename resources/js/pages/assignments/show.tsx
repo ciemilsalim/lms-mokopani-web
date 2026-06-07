@@ -1359,8 +1359,19 @@ export default function ShowAssignment({ assignment, students, my_submission, my
         });
     };
 
-    const calculatePerformanceScore = (scores: Record<string, string>) => {
+    const calculatePerformanceScore = (scores: Record<string, any>) => {
         const config = assignment.instrument_config;
+        if (!config) return 0;
+
+        if (config.indicators && config.indicators.length > 0) {
+            const checkedCount = config.indicators.filter((ind: any, idx: number) => {
+                const key = ind.id || ind.name || ind.text || idx.toString();
+                return !!scores[key];
+            }).length;
+            const final = (checkedCount / config.indicators.length) * assignment.max_points;
+            return Math.round(final);
+        }
+
         if (!config?.criteria) return 0;
 
         let totalScore = 0;
@@ -1665,9 +1676,8 @@ export default function ShowAssignment({ assignment, students, my_submission, my
         });
 
         const total = (assignment.instrument_config?.indicators || []).length;
-        const scoreValues: Record<string, number> = { 'belum': 0, 'mulai': 50, 'konsisten': 100 };
-        const totalScore = Object.values(performanceObsData.observations).reduce((acc, val) => acc + (scoreValues[val] || 0), 0);
-        const averageScore = total > 0 ? Math.round(totalScore / total) : 0;
+        const checkedCount = Object.values(performanceObsData.observations).filter(Boolean).length;
+        const averageScore = total > 0 ? Math.round((checkedCount / total) * 100) : 0;
 
         router.post(route('assignments.grade'), {
             assignment_id: assignment.id,
@@ -2014,6 +2024,13 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                             munculCount = sub.score || 0;
                                                         } else if (assignment.instrument_type === 'performance_observation') {
                                                             munculCount = Object.values(p.observations || {}).filter(v => v === 'mulai' || v === 'konsisten').length;
+                                                        } else if (assignment.instrument_type === 'performance') {
+                                                            const config = assignment.instrument_config;
+                                                            if (config?.indicators && config.indicators.length > 0) {
+                                                                munculCount = Object.values(p.scores || {}).filter(v => v === true).length;
+                                                            } else {
+                                                                munculCount = Object.keys(p.scores || {}).length;
+                                                            }
                                                         } else {
                                                             munculCount = Object.values(p.checklist || {}).filter(v => v === true).length;
                                                         }
@@ -4805,20 +4822,18 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                         {(assignment.instrument_config?.indicators || []).map((indicator: any, idx: number) => {
                                                                             const indKey = indicator.id || indicator.name || indicator.text || idx.toString();
                                                                             const val = p.observations?.[indKey];
-                                                                            const lvl = [
-                                                                                { id: 'belum', label: 'Belum Terlihat', color: 'rose' },
-                                                                                { id: 'mulai', label: 'Mulai Terlihat', color: 'amber' },
-                                                                                { id: 'konsisten', label: 'Konsisten', color: 'emerald' }
-                                                                            ].find(l => l.id === val);
+                                                                            const isChecked = val === true || val === 'konsisten' || val === 'mulai';
                                                                             return (
                                                                                 <div key={indKey} className="flex items-center justify-between p-4 rounded-2xl bg-white dark:bg-slate-900 border border-border shadow-sm">
                                                                                     <span className="text-xs font-bold text-slate-700 dark:text-slate-200">{indicator.text || indicator.name}</span>
-                                                                                    {lvl ? (
-                                                                                        <span className={`px-3 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest bg-${lvl.color}-50 dark:bg-${lvl.color}-950/20 text-${lvl.color}-600 border border-${lvl.color}-100 dark:border-${lvl.color}-900/30`}>
-                                                                                            {lvl.label}
+                                                                                    {isChecked ? (
+                                                                                        <span className="px-3 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 border border-emerald-100 dark:border-emerald-900/30 flex items-center gap-1">
+                                                                                            <CheckCircle2 className="h-3 w-3" /> Terlihat
                                                                                         </span>
                                                                                     ) : (
-                                                                                        <span className="text-[8px] font-black text-slate-300 uppercase tracking-widest italic">Belum Dinilai</span>
+                                                                                        <span className="px-3 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest bg-rose-50 dark:bg-rose-950/20 text-rose-600 border border-rose-100 dark:border-rose-900/30">
+                                                                                            Belum Terlihat
+                                                                                        </span>
                                                                                     )}
                                                                                 </div>
                                                                             );
@@ -5123,45 +5138,97 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                         </div>
                                     </div>
 
-                                    {/* Criteria List */}
-                                    <div className="space-y-12">
-                                        {(assignment.instrument_config?.criteria || []).map((criterion: any) => (
-                                            <div key={criterion.id} className="space-y-5">
-                                                <div className="flex items-center justify-between">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="h-8 w-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-[10px] font-black text-muted-foreground">
-                                                            {criterion.weight}%
-                                                        </div>
-                                                        <h4 className="text-xs font-black text-foreground uppercase tracking-widest">{criterion.text}</h4>
-                                                    </div>
-                                                </div>
-                                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                                                    {(assignment.instrument_config?.levels || []).map((level: any) => (
-                                                        <button
-                                                            key={level.id}
-                                                            type="button"
-                                                            onClick={() => {
-                                                                const newScores = { ...performanceData.scores, [criterion.id]: level.id };
-                                                                setPerformanceData({ ...performanceData, scores: newScores });
-                                                                const final = calculatePerformanceScore(newScores);
-                                                                 teacherForm.setData('score', final);
-                                                             }}
-                                                             className={`p-5 rounded-3xl border-2 transition-all text-left flex flex-col justify-between h-full group ${performanceData.scores[criterion.id] === level.id ? 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/20' : 'border-slate-50 dark:border-slate-800 bg-slate-50/20 hover:border-emerald-200'}`}
-                                                        >
-                                                            <div>
-                                                                <div className="flex items-center justify-between mb-3">
-                                                                    <span className={`text-[9px] font-black uppercase tracking-tighter ${performanceData.scores[criterion.id] === level.id ? 'text-emerald-600' : 'text-muted-foreground group-hover:text-emerald-500'}`}>{level.name}</span>
-                                                                    {performanceData.scores[criterion.id] === level.id && <CheckCircle2 className="h-3 w-3 text-emerald-500" />}
+                                    {/* Criteria / Indicators Checklist */}
+                                    <div className="space-y-6">
+                                        {assignment.instrument_config?.indicators && assignment.instrument_config.indicators.length > 0 ? (
+                                            <div className="space-y-4">
+                                                <h4 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+                                                    <Activity className="h-4 w-4 text-emerald-500" /> Indikator Ketercapaian Unjuk Kerja
+                                                </h4>
+                                                <div className="grid gap-3">
+                                                    {assignment.instrument_config.indicators.map((indicator: any, idx: number) => {
+                                                        const indicatorKey = indicator.id || indicator.name || indicator.text || idx.toString();
+                                                        const isChecked = !!performanceData.scores[indicatorKey];
+                                                        return (
+                                                            <label 
+                                                                key={indicatorKey} 
+                                                                className={`flex items-center gap-3 p-4 rounded-2xl border-2 cursor-pointer select-none transition-all ${
+                                                                    isChecked
+                                                                        ? 'border-emerald-400 bg-emerald-50 dark:bg-emerald-950/20'
+                                                                        : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-indigo-300'
+                                                                }`}
+                                                            >
+                                                                <input 
+                                                                    type="checkbox"
+                                                                    checked={isChecked}
+                                                                    onChange={(e) => {
+                                                                        const newScores = { ...performanceData.scores, [indicatorKey]: e.target.checked };
+                                                                        setPerformanceData({ ...performanceData, scores: newScores });
+                                                                        const finalScore = calculatePerformanceScore(newScores);
+                                                                        teacherForm.setData('score', finalScore);
+                                                                    }}
+                                                                    className="sr-only"
+                                                                />
+                                                                <div className={`h-5 w-5 rounded-lg flex items-center justify-center shrink-0 border-2 transition-all ${
+                                                                    isChecked
+                                                                        ? 'bg-emerald-500 border-emerald-500 text-white'
+                                                                        : 'border-slate-300 dark:border-slate-600'
+                                                                }`}>
+                                                                    {isChecked && <CheckCircle2 className="h-3.5 w-3.5" />}
                                                                 </div>
-                                                                <p className={`text-[10px] leading-relaxed font-medium ${performanceData.scores[criterion.id] === level.id ? 'text-slate-700 dark:text-slate-200' : 'text-muted-foreground dark:text-muted-foreground'}`}>
-                                                                    {criterion.descriptions[level.id] || 'Belum ada deskripsi.'}
-                                                                </p>
-                                                            </div>
-                                                        </button>
-                                                    ))}
+                                                                <div className="flex-1 min-w-0">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className="text-[10px] font-black text-slate-350 dark:text-slate-650">0{idx + 1}</span>
+                                                                        <p className={`text-xs font-bold leading-none ${ isChecked ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-700 dark:text-slate-200' }`}>
+                                                                            {indicator.text || indicator.name}
+                                                                        </p>
+                                                                    </div>
+                                                                </div>
+                                                                {isChecked && <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />}
+                                                            </label>
+                                                        );
+                                                    })}
                                                 </div>
                                             </div>
-                                        ))}
+                                        ) : (
+                                            (assignment.instrument_config?.criteria || []).map((criterion: any) => (
+                                                <div key={criterion.id} className="space-y-5">
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="h-8 w-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-[10px] font-black text-muted-foreground">
+                                                                {criterion.weight}%
+                                                            </div>
+                                                            <h4 className="text-xs font-black text-foreground uppercase tracking-widest">{criterion.text}</h4>
+                                                        </div>
+                                                    </div>
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                                                        {(assignment.instrument_config?.levels || []).map((level: any) => (
+                                                            <button
+                                                                key={level.id}
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    const newScores = { ...performanceData.scores, [criterion.id]: level.id };
+                                                                    setPerformanceData({ ...performanceData, scores: newScores });
+                                                                    const final = calculatePerformanceScore(newScores);
+                                                                    teacherForm.setData('score', final);
+                                                                }}
+                                                                className={`p-5 rounded-3xl border-2 transition-all text-left flex flex-col justify-between h-full group ${performanceData.scores[criterion.id] === level.id ? 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/20' : 'border-slate-50 dark:border-slate-800 bg-slate-50/20 hover:border-emerald-200'}`}
+                                                            >
+                                                                <div>
+                                                                    <div className="flex items-center justify-between mb-3">
+                                                                        <span className={`text-[9px] font-black uppercase tracking-tighter ${performanceData.scores[criterion.id] === level.id ? 'text-emerald-600' : 'text-muted-foreground group-hover:text-emerald-500'}`}>{level.name}</span>
+                                                                        {performanceData.scores[criterion.id] === level.id && <CheckCircle2 className="h-3 w-3 text-emerald-500" />}
+                                                                    </div>
+                                                                    <p className={`text-[10px] leading-relaxed font-medium ${performanceData.scores[criterion.id] === level.id ? 'text-slate-700 dark:text-slate-200' : 'text-muted-foreground dark:text-muted-foreground'}`}>
+                                                                        {criterion.descriptions[level.id] || 'Belum ada deskripsi.'}
+                                                                    </p>
+                                                                </div>
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            ))
+                                        )}
                                     </div>
 
                                     {/* Evidence & Notes */}
@@ -5691,29 +5758,45 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                     <div className="grid gap-3">
                                         {(assignment.instrument_config?.indicators || []).map((indicator: any, idx: number) => {
                                             const indicatorKey = indicator.id || indicator.name || indicator.text || idx.toString();
+                                            const isChecked = !!performanceObsData.observations[indicatorKey];
                                             return (
-                                                <div key={indicatorKey} className="p-5 rounded-3xl border border-slate-50 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20 hover:bg-white transition-all space-y-4 group">
-                                                    <div className="flex items-start gap-3">
-                                                        <span className="text-[10px] font-black text-slate-300 mt-0.5">0{idx + 1}</span>
-                                                        <span className="text-xs font-bold text-slate-700 dark:text-slate-200 group-hover:text-slate-900 transition-colors">{indicator.text || indicator.name}</span>
+                                                <label 
+                                                    key={indicatorKey} 
+                                                    className={`flex items-center gap-3 p-4 rounded-2xl border-2 cursor-pointer select-none transition-all ${
+                                                        isChecked
+                                                            ? 'border-emerald-450 bg-emerald-50/60 dark:bg-emerald-950/20'
+                                                            : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-indigo-300'
+                                                    }`}
+                                                >
+                                                    <input 
+                                                        type="checkbox"
+                                                        checked={isChecked}
+                                                        onChange={(e) => setPerformanceObsData({ 
+                                                            ...performanceObsData, 
+                                                            observations: { 
+                                                                ...performanceObsData.observations, 
+                                                                [indicatorKey]: e.target.checked 
+                                                            } 
+                                                        })}
+                                                        className="sr-only"
+                                                    />
+                                                    <div className={`h-5 w-5 rounded-lg flex items-center justify-center shrink-0 border-2 transition-all ${
+                                                        isChecked
+                                                            ? 'bg-emerald-500 border-emerald-500 text-white'
+                                                            : 'border-slate-300 dark:border-slate-600'
+                                                    }`}>
+                                                        {isChecked && <CheckCircle2 className="h-3.5 w-3.5" />}
                                                     </div>
-                                                    <div className="flex items-center gap-2">
-                                                        {[
-                                                            { id: 'belum', label: 'Belum Terlihat', color: 'rose' },
-                                                            { id: 'mulai', label: 'Mulai Terlihat', color: 'amber' },
-                                                            { id: 'konsisten', label: 'Konsisten', color: 'emerald' }
-                                                        ].map((lvl) => (
-                                                            <button 
-                                                                key={lvl.id}
-                                                                type="button"
-                                                                onClick={() => setPerformanceObsData({ ...performanceObsData, observations: { ...performanceObsData.observations, [indicatorKey]: lvl.id } })}
-                                                                className={`flex-1 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all border-2 ${performanceObsData.observations[indicatorKey] === lvl.id ? `bg-${lvl.color}-500 border-${lvl.color}-500 text-white shadow-lg shadow-${lvl.color}-100` : 'bg-white border-slate-100 text-muted-foreground hover:border-slate-200'}`}
-                                                            >
-                                                                {lvl.label}
-                                                            </button>
-                                                        ))}
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-[10px] font-black text-slate-350 dark:text-slate-650">0{idx + 1}</span>
+                                                            <p className={`text-xs font-bold leading-none ${ isChecked ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-700 dark:text-slate-200' }`}>
+                                                                {indicator.text || indicator.name}
+                                                            </p>
+                                                        </div>
                                                     </div>
-                                                </div>
+                                                    {isChecked && <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />}
+                                                </label>
                                             );
                                         })}
                                     </div>
