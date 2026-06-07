@@ -377,7 +377,12 @@ export default function ShowAssignment({ assignment, students, my_submission, my
             grading.checked_indicators = checkedArray;
             grading.approach = getGradingApproach();
 
-            const items = (assignment.instrument_type === 'self_assessment' || assignment.instrument_type === 'peer_assessment' || assignment.instrument_type === 'structured_assignment')
+            const items = (
+                assignment.instrument_type === 'self_assessment' || 
+                assignment.instrument_type === 'peer_assessment' || 
+                assignment.instrument_type === 'structured_assignment' ||
+                (assignment.instrument_type === 'exit_ticket' && assignment.instrument_config?.assessment_mode === 'checklist')
+            )
                 ? (assignment.instrument_config?.indicators || [])
                 : (assignment.instrument_config?.questions || []);
             const total = items.length;
@@ -553,7 +558,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
     };
 
     const getGradingApproach = () => {
-        if (assignment.instrument_type === 'reflective_journal') {
+        if (assignment.instrument_type === 'reflective_journal' || assignment.instrument_type === 'exit_ticket') {
             return assignment.instrument_config?.kktp?.approach || 'criteria_description';
         }
         if (assignment.scoring_tool === 'checklist') {
@@ -624,6 +629,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
     // Exit Ticket Checklist/Short Note State
     const [exitChecklistData, setExitChecklistData] = useState<{name: string; checked: boolean}[]>([]);
     const [exitShortNoteData, setExitShortNoteData] = useState<{text: string; answer: string}[]>([]);
+    const [exitStandardAnswers, setExitStandardAnswers] = useState<{question: string; answer: string}[]>([]);
 
     // Formative Quiz Checklist State
     const [quizChecklistData, setQuizChecklistData] = useState<{name: string; checked: boolean}[]>([]);
@@ -744,6 +750,9 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                         setExitShortNoteData(parsed.answers || []);
                     } else {
                         studentForm.setData('answers', parsed.answers || {});
+                        if (parsed.answers && Array.isArray(parsed.answers.reflection_answers)) {
+                            setExitStandardAnswers(parsed.answers.reflection_answers);
+                        }
                     }
                 } else if (parsed.type === 'concept_map') {
                     setConceptMapData({
@@ -817,9 +826,31 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                         selected_level: ''
                     })));
                 }
+                if (assignment.instrument_type === 'exit_ticket' && exitChecklistData.length === 0) {
+                    setExitChecklistData(indicators.map((ind: any) => ({
+                        name: ind.name || ind.text || '',
+                        checked: false
+                    })));
+                }
+            }
+
+            const questions = assignment.instrument_config?.questions || [];
+            if (questions.length > 0 && assignment.instrument_type === 'exit_ticket') {
+                if (exitShortNoteData.length === 0) {
+                    setExitShortNoteData(questions.map((q: any) => ({
+                        text: q.text || '',
+                        answer: ''
+                    })));
+                }
+                if (exitStandardAnswers.length === 0) {
+                    setExitStandardAnswers(questions.map((q: any) => ({
+                        question: q.text || '',
+                        answer: ''
+                    })));
+                }
             }
         }
-    }, [assignment.instrument_config, my_submission]);
+    }, [assignment.instrument_config, my_submission, exitChecklistData.length, exitShortNoteData.length, exitStandardAnswers.length]);
 
 
     // Initialize Concept Map nodes with teacher's keywords if not already loaded or submitted
@@ -865,7 +896,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
             kelengkapan: false
         });
         
-        if (['reflective_journal', 'self_assessment', 'peer_assessment', 'structured_assignment'].includes(assignment.instrument_type)) {
+        if (['reflective_journal', 'self_assessment', 'peer_assessment', 'structured_assignment', 'exit_ticket'].includes(assignment.instrument_type)) {
             let checked: Record<number, boolean> = {};
             let selectedLvl = '';
             if (s.content) {
@@ -1462,7 +1493,13 @@ export default function ShowAssignment({ assignment, students, my_submission, my
             } else if (assessmentMode === 'short_note') {
                 finalContent = JSON.stringify({ type: 'exit_ticket', assessment_mode: 'short_note', answers: exitShortNoteData });
             } else {
-                finalContent = JSON.stringify({ type: 'exit_ticket', answers: studentForm.data.answers });
+                finalContent = JSON.stringify({ 
+                    type: 'exit_ticket', 
+                    answers: {
+                        ...studentForm.data.answers,
+                        reflection_answers: exitStandardAnswers
+                    }
+                });
             }
         } else if (assignment.instrument_type === 'structured_assignment') {
             finalContent = JSON.stringify({ type: 'structured_assignment', answer_text: structuredAssignmentData.answer_text });
@@ -1597,7 +1634,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                     <Calendar className="h-4 w-4 text-amber-500" />
                                     Tenggat: <span className="text-slate-600 dark:text-slate-300">{assignment.due_date}</span>
                                 </span>
-                                {assignment.instrument_type !== 'reflective_journal' && assignment.instrument_type !== 'self_assessment' && assignment.instrument_type !== 'peer_assessment' ? (
+                                {assignment.instrument_type !== 'reflective_journal' && assignment.instrument_type !== 'self_assessment' && assignment.instrument_type !== 'peer_assessment' && assignment.instrument_type !== 'exit_ticket' ? (
                                     <span className="flex items-center gap-2">
                                         <Star className="h-4 w-4 text-emerald-500" />
                                         Poin Maks: <span className="text-slate-600 dark:text-slate-300">{assignment.max_points} pts</span>
@@ -2122,7 +2159,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                 {!s ? (
                                                                     <span className="text-xs text-muted-foreground italic font-medium">-</span>
                                                                 ) : (
-                                                                    assignment.instrument_type === 'reflective_journal' || assignment.instrument_type === 'self_assessment' || assignment.instrument_type === 'peer_assessment' ? (
+                                                                    assignment.instrument_type === 'reflective_journal' || assignment.instrument_type === 'self_assessment' || assignment.instrument_type === 'peer_assessment' || assignment.instrument_type === 'exit_ticket' ? (
                                                                         (() => {
                                                                             if (s.score === null) return <span className="text-xs text-muted-foreground italic font-medium">-</span>;
                                                                             let label = '-';
@@ -2183,7 +2220,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                                 className="inline-flex items-center gap-2 rounded-xl bg-sky-500 text-white px-5 py-2.5 text-xs font-black shadow-lg shadow-sky-100 transition-all hover:scale-105 active:scale-95 uppercase tracking-widest"
                                                                             >
                                                                                 <Activity className="h-3.5 w-3.5" />
-                                                                                {assignment.instrument_type === 'reflective_journal' || assignment.instrument_type === 'self_assessment' || assignment.instrument_type === 'peer_assessment'
+                                                                                {assignment.instrument_type === 'reflective_journal' || assignment.instrument_type === 'self_assessment' || assignment.instrument_type === 'peer_assessment' || assignment.instrument_type === 'exit_ticket'
                                                                                     ? (s.score !== null ? 'Edit Penilaian' : 'Beri Penilaian')
                                                                                     : (s.score !== null ? 'Edit Nilai' : 'Beri Nilai')}
                                                                             </button>
@@ -2977,35 +3014,72 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                     </div>
                                                 </div>
 
-                                                {/* Reflection Comments Area with Max Length 280 & Live Count */}
-                                                <div className="rounded-[8px] border border-slate-200 bg-white dark:border-[#2C2C3A] dark:bg-[#1B1B25] p-6 shadow-none space-y-6">
-                                                    <div>
-                                                        <h4 className="text-sm font-semibold tracking-[-0.01em] text-slate-850 dark:text-[#F1F1F4] leading-relaxed">
-                                                            Tuliskan refleksi singkat pembelajaranmu hari ini
-                                                        </h4>
-                                                        <p className="text-xs text-slate-500 dark:text-[#8A8F98] mt-1">Sebutkan bagian tersulit atau hal baru menarik yang kamu pelajari.</p>
+                                                {/* Reflection Questions */}
+                                                {(assignment.instrument_config?.questions && assignment.instrument_config.questions.length > 0) ? (
+                                                    <div className="space-y-6">
+                                                        {assignment.instrument_config.questions.map((q: any, idx: number) => (
+                                                            <div key={idx} className="rounded-[8px] border border-slate-200 bg-white dark:border-[#2C2C3A] dark:bg-[#1B1B25] p-6 shadow-none space-y-4 animate-in slide-in-from-bottom-2 duration-300">
+                                                                <div className="flex items-start gap-3">
+                                                                    <span className="h-6 w-6 rounded-full bg-[#5E6AD2]/10 text-[#5E6AD2] text-[10px] font-black flex items-center justify-center shrink-0 mt-0.5">{idx + 1}</span>
+                                                                    <h4 className="text-sm font-semibold tracking-[-0.01em] text-slate-855 dark:text-[#F1F1F4] leading-relaxed">{q.text}</h4>
+                                                                </div>
+                                                                <div className="relative">
+                                                                    <textarea 
+                                                                        rows={3}
+                                                                        maxLength={280}
+                                                                        value={exitStandardAnswers[idx]?.answer || ''}
+                                                                        onChange={(e) => {
+                                                                            const newAnswers = [...exitStandardAnswers];
+                                                                            if (!newAnswers[idx]) newAnswers[idx] = { question: q.text, answer: '' };
+                                                                            newAnswers[idx].answer = e.target.value;
+                                                                            setExitStandardAnswers(newAnswers);
+                                                                        }}
+                                                                        placeholder="Tuliskan jawaban refleksi Anda..."
+                                                                        className="w-full rounded-[6px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#101014] px-4 py-3 text-xs font-medium focus:border-[#5E6AD2] focus:ring-1 focus:ring-[#5E6AD2]/15 transition-all text-slate-800 dark:text-[#F1F1F4] placeholder-slate-450 dark:placeholder-[#8A8F98] resize-none leading-relaxed"
+                                                                    />
+                                                                    <div className="absolute right-4 bottom-4 flex items-center gap-2">
+                                                                        <span className={`text-[10px] font-mono font-bold ${
+                                                                            (280 - (exitStandardAnswers[idx]?.answer?.length || 0)) <= 20 
+                                                                                ? 'text-rose-500' 
+                                                                                : 'text-slate-400'
+                                                                        }`}>
+                                                                            {280 - (exitStandardAnswers[idx]?.answer?.length || 0)} karakter tersisa
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        ))}
                                                     </div>
+                                                ) : (
+                                                    <div className="rounded-[8px] border border-slate-200 bg-white dark:border-[#2C2C3A] dark:bg-[#1B1B25] p-6 shadow-none space-y-6">
+                                                        <div>
+                                                            <h4 className="text-sm font-semibold tracking-[-0.01em] text-slate-850 dark:text-[#F1F1F4] leading-relaxed">
+                                                                Tuliskan refleksi singkat pembelajaranmu hari ini
+                                                            </h4>
+                                                            <p className="text-xs text-slate-500 dark:text-[#8A8F98] mt-1">Sebutkan bagian tersulit atau hal baru menarik yang kamu pelajari.</p>
+                                                        </div>
 
-                                                    <div className="relative">
-                                                        <textarea 
-                                                            rows={4}
-                                                            maxLength={280}
-                                                            value={studentForm.data.answers.reflection || ''}
-                                                            onChange={(e) => studentForm.setData('answers', { ...studentForm.data.answers, reflection: e.target.value })}
-                                                            placeholder="Apa yang paling menantang dari materi hari ini? Apa yang ingin kamu tanyakan lebih lanjut? (Maksimal 280 karakter)"
-                                                            className="w-full rounded-[6px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#101014] px-4 py-3 text-xs font-medium focus:border-[#5E6AD2] focus:ring-1 focus:ring-[#5E6AD2]/15 transition-all text-slate-800 dark:text-[#F1F1F4] placeholder-slate-450 dark:placeholder-[#8A8F98] resize-none leading-relaxed"
-                                                        />
-                                                        <div className="absolute right-4 bottom-4 flex items-center gap-2">
-                                                            <span className={`text-[10px] font-mono font-bold ${
-                                                                (280 - (studentForm.data.answers.reflection?.length || 0)) <= 20 
-                                                                    ? 'text-rose-500' 
-                                                                    : 'text-slate-400'
-                                                            }`}>
-                                                                {280 - (studentForm.data.answers.reflection?.length || 0)} karakter tersisa
-                                                            </span>
+                                                        <div className="relative">
+                                                            <textarea 
+                                                                rows={4}
+                                                                maxLength={280}
+                                                                value={studentForm.data.answers.reflection || ''}
+                                                                onChange={(e) => studentForm.setData('answers', { ...studentForm.data.answers, reflection: e.target.value })}
+                                                                placeholder="Apa yang paling menantang dari materi hari ini? Apa yang ingin kamu tanyakan lebih lanjut? (Maksimal 280 karakter)"
+                                                                className="w-full rounded-[6px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#101014] px-4 py-3 text-xs font-medium focus:border-[#5E6AD2] focus:ring-1 focus:ring-[#5E6AD2]/15 transition-all text-slate-800 dark:text-[#F1F1F4] placeholder-slate-450 dark:placeholder-[#8A8F98] resize-none leading-relaxed"
+                                                            />
+                                                            <div className="absolute right-4 bottom-4 flex items-center gap-2">
+                                                                <span className={`text-[10px] font-mono font-bold ${
+                                                                    (280 - (studentForm.data.answers.reflection?.length || 0)) <= 20 
+                                                                        ? 'text-rose-500' 
+                                                                        : 'text-slate-400'
+                                                                }`}>
+                                                                    {280 - (studentForm.data.answers.reflection?.length || 0)} karakter tersisa
+                                                                </span>
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                </div>
+                                                )}
                                             </div>
                                         </div>
                                         ) : (assignment.instrument_config?.assessment_mode) === 'checklist' ? (
@@ -3638,10 +3712,11 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                 </div>
                                             </div>
                                             
-                                            {['reflective_journal', 'self_assessment', 'peer_assessment'].includes(assignment.instrument_type) ? (
+                                            {['reflective_journal', 'self_assessment', 'peer_assessment', 'exit_ticket'].includes(assignment.instrument_type) ? (
                                                 <div className="space-y-3">
                                                     <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
                                                         {assignment.instrument_type === 'reflective_journal' ? 'Capaian Refleksi (KKTP):' :
+                                                         assignment.instrument_type === 'exit_ticket' ? 'Capaian Tiket Keluar (KKTP):' :
                                                          assignment.instrument_type === 'self_assessment' ? 'Capaian Penilaian Diri (KKTP):' :
                                                          'Capaian Penilaian Sejawat (KKTP):'}
                                                     </p>
@@ -4188,10 +4263,86 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                         );
                                                     } catch { return null; }
                                                 })()}
-                                            </div>
-                                        )}
+                                             </div>
+                                         )}
 
-                                        {assignment.instrument_type === 'reflective_journal' && (
+                                         {assignment.instrument_type === 'exit_ticket' && (
+                                             <div className="pt-6 border-t border-slate-50 dark:border-slate-800 animate-in slide-in-from-top-4">
+                                                 <div className="flex items-center gap-2 mb-6">
+                                                     <Ticket className="h-4 w-4 text-emerald-500" />
+                                                     <h3 className="text-xs font-black text-foreground uppercase tracking-widest">Detail Jawaban Exit Ticket Anda</h3>
+                                                 </div>
+                                                 {(() => {
+                                                     try {
+                                                         const parsed = JSON.parse(my_submission.content);
+                                                         if (parsed.type !== 'exit_ticket') return null;
+                                                         const assessmentMode = parsed.assessment_mode || 'default';
+                                                         if (assessmentMode === 'checklist') {
+                                                             return (
+                                                                 <div className="space-y-4">
+                                                                     <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">Ceklis Pemahaman</p>
+                                                                     {(parsed.indicators || []).map((ind: any, idx: number) => (
+                                                                         <div key={idx} className="flex items-center gap-3 p-3 rounded-xl bg-muted/30 border border-border">
+                                                                             {ind.checked ? <CheckSquare className="h-4 w-4 text-emerald-500 shrink-0" /> : <Square className="h-4 w-4 text-muted-foreground/30 shrink-0" />}
+                                                                             <span className={`text-xs font-medium ${ind.checked ? 'text-foreground' : 'text-muted-foreground'}`}>{ind.name}</span>
+                                                                         </div>
+                                                                     ))}
+                                                                 </div>
+                                                             );
+                                                         }
+                                                         if (assessmentMode === 'short_note') {
+                                                             return (
+                                                                 <div className="space-y-4">
+                                                                     <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">Catatan Singkat</p>
+                                                                     {(parsed.answers || []).map((ans: any, idx: number) => (
+                                                                         <div key={idx} className="p-4 rounded-xl bg-slate-50 dark:bg-[#101014] border border-slate-200 dark:border-[#2C2C3A] space-y-1">
+                                                                             <p className="text-[10px] font-black text-[#5E6AD2] uppercase tracking-widest">{ans.text || `Pertanyaan ${idx + 1}`}</p>
+                                                                             <p className="text-sm font-semibold text-foreground whitespace-pre-wrap">{ans.answer || '-'}</p>
+                                                                         </div>
+                                                                     ))}
+                                                                 </div>
+                                                             );
+                                                         }
+                                                         
+                                                         const feelingMap: any = {
+                                                             paham: { label: 'Paham', icon: '😊', color: 'text-emerald-700 bg-emerald-50 dark:bg-emerald-950/20 border-emerald-100 dark:border-emerald-900/30' },
+                                                             ragu: { label: 'Ragu-Ragu', icon: '😐', color: 'text-amber-700 bg-amber-50 dark:bg-amber-950/20 border-amber-100 dark:border-amber-900/30' },
+                                                             bingung: { label: 'Bingung', icon: '🙁', color: 'text-rose-700 bg-rose-50 dark:bg-rose-950/20 border-rose-100 dark:border-rose-900/30' },
+                                                         };
+                                                         const emoji = parsed.answers?.emoji;
+                                                         const feeling = feelingMap[emoji];
+                                                         return (
+                                                             <div className="space-y-6">
+                                                                 <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">Form Standar</p>
+                                                                 {feeling && (
+                                                                     <div className={`px-4 py-2 rounded-xl border flex items-center gap-2 w-fit ${feeling.color}`}>
+                                                                         <span className="text-xl">{feeling.icon}</span>
+                                                                         <p className="text-xs font-bold">{feeling.label}</p>
+                                                                     </div>
+                                                                 )}
+                                                                 {Array.isArray(parsed.answers?.reflection_answers) && parsed.answers.reflection_answers.length > 0 ? (
+                                                                     <div className="space-y-4">
+                                                                         {parsed.answers.reflection_answers.map((ans: any, idx: number) => (
+                                                                             <div key={idx} className="p-4 rounded-xl bg-slate-50 dark:bg-[#101014] border border-slate-200 dark:border-[#2C2C3A] space-y-1">
+                                                                                 <p className="text-[10px] font-black text-[#5E6AD2] uppercase tracking-widest">{ans.question || `Pertanyaan ${idx + 1}`}</p>
+                                                                                 <p className="text-sm font-semibold text-foreground whitespace-pre-wrap">{ans.answer || '-'}</p>
+                                                                             </div>
+                                                                         ))}
+                                                                     </div>
+                                                                 ) : (
+                                                                     <div className="p-5 rounded-3xl bg-muted/50 border border-border">
+                                                                         <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mb-2">Catatan Refleksi:</p>
+                                                                         <p className="text-xs text-slate-600 dark:text-slate-350 font-medium leading-relaxed italic">"{parsed.answers?.reflection || 'Tidak menuliskan umpan balik teks'}"</p>
+                                                                     </div>
+                                                                 )}
+                                                             </div>
+                                                         );
+                                                     } catch { return null; }
+                                                 })()}
+                                             </div>
+                                         )}
+
+                                         {assignment.instrument_type === 'reflective_journal' && (
                                             <div className="pt-6 border-t border-slate-50 dark:border-slate-800 animate-in slide-in-from-top-4">
                                                 <div className="flex items-center gap-2 mb-6">
                                                     <BookOpen className="h-4 w-4 text-[#5E6AD2]" />
@@ -5791,6 +5942,69 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                             </div>
                                         );
                                     }
+                                    if (parsed.type === 'exit_ticket') {
+                                        const assessmentMode = parsed.assessment_mode || 'default';
+                                        if (assessmentMode === 'checklist') {
+                                            return (
+                                                <div className="space-y-4">
+                                                    <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">Exit Ticket - Ceklis Pemahaman</p>
+                                                    {(parsed.indicators || []).map((ind: any, idx: number) => (
+                                                        <div key={idx} className="flex items-center gap-3 p-3 rounded-xl bg-muted/30 border border-border animate-in fade-in duration-300">
+                                                            {ind.checked ? <CheckSquare className="h-4 w-4 text-emerald-500 shrink-0" /> : <Square className="h-4 w-4 text-muted-foreground/30 shrink-0" />}
+                                                            <span className={`text-xs font-medium ${ind.checked ? 'text-foreground' : 'text-muted-foreground'}`}>{ind.name}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            );
+                                        }
+                                        if (assessmentMode === 'short_note') {
+                                            return (
+                                                <div className="space-y-4">
+                                                    <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">Exit Ticket - Catatan Singkat</p>
+                                                    {(parsed.answers || []).map((ans: any, idx: number) => (
+                                                        <div key={idx} className="p-4 rounded-xl bg-slate-50 dark:bg-[#101014] border border-slate-200 dark:border-[#2C2C3A] space-y-1 animate-in fade-in duration-300">
+                                                            <p className="text-[10px] font-black text-[#5E6AD2] uppercase tracking-widest">{ans.text || `Pertanyaan ${idx + 1}`}</p>
+                                                            <p className="text-sm font-semibold text-foreground whitespace-pre-wrap">{ans.answer || '-'}</p>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            );
+                                        }
+                                        // Form Standar / Default
+                                        const feelingMap: any = {
+                                            paham: { label: 'Paham', icon: '😊', color: 'text-emerald-700 bg-emerald-50 dark:bg-emerald-950/20 border-emerald-100 dark:border-emerald-900/30' },
+                                            ragu: { label: 'Ragu-Ragu', icon: '😐', color: 'text-amber-700 bg-amber-50 dark:bg-amber-950/20 border-amber-100 dark:border-amber-900/30' },
+                                            bingung: { label: 'Bingung', icon: '🙁', color: 'text-rose-700 bg-rose-50 dark:bg-rose-950/20 border-rose-100 dark:border-rose-900/30' },
+                                        };
+                                        const emoji = parsed.answers?.emoji;
+                                        const feeling = feelingMap[emoji];
+                                        return (
+                                            <div className="space-y-6 animate-in fade-in duration-300">
+                                                <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">Exit Ticket - Form Standar</p>
+                                                {feeling && (
+                                                    <div className={`px-4 py-2 rounded-xl border flex items-center gap-2 w-fit ${feeling.color}`}>
+                                                        <span className="text-xl">{feeling.icon}</span>
+                                                        <p className="text-xs font-bold">{feeling.label}</p>
+                                                    </div>
+                                                )}
+                                                {Array.isArray(parsed.answers?.reflection_answers) && parsed.answers.reflection_answers.length > 0 ? (
+                                                    <div className="space-y-4">
+                                                        {parsed.answers.reflection_answers.map((ans: any, idx: number) => (
+                                                            <div key={idx} className="p-4 rounded-xl bg-slate-50 dark:bg-[#101014] border border-slate-200 dark:border-[#2C2C3A] space-y-1">
+                                                                <p className="text-[10px] font-black text-[#5E6AD2] uppercase tracking-widest">{ans.question || `Pertanyaan ${idx + 1}`}</p>
+                                                                <p className="text-sm font-semibold text-foreground whitespace-pre-wrap">{ans.answer || '-'}</p>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                ) : (
+                                                    <div className="p-5 rounded-3xl bg-muted/50 border border-border">
+                                                        <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mb-2">Catatan Refleksi:</p>
+                                                        <p className="text-xs text-slate-600 dark:text-slate-350 font-medium leading-relaxed italic">"{parsed.answers?.reflection || 'Tidak menuliskan umpan balik teks'}"</p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    }
                                 } catch (e) {}
                                 
                                 return (
@@ -5857,12 +6071,17 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                         {/* Side: Grading Form */}
                         <div className="w-full md:w-80 space-y-8 bg-muted/50 p-8 rounded-[2.5rem] border border-border overflow-y-auto max-h-[70vh] pr-2 custom-scrollbar">
                             <form onSubmit={handleGrade} className="space-y-6">
-                                {['reflective_journal', 'self_assessment', 'peer_assessment', 'structured_assignment'].includes(assignment.instrument_type) ? (
+                                {['reflective_journal', 'self_assessment', 'peer_assessment', 'structured_assignment', 'exit_ticket'].includes(assignment.instrument_type) ? (
                                     <div className="space-y-6">
                                         {/* KKTP Approach: Criteria Description */}
                                         {(() => {
                                             const gradingApproach = getGradingApproach();
-                                            const items = (assignment.instrument_type === 'self_assessment' || assignment.instrument_type === 'peer_assessment' || assignment.instrument_type === 'structured_assignment')
+                                            const items = (
+                                                assignment.instrument_type === 'self_assessment' || 
+                                                assignment.instrument_type === 'peer_assessment' || 
+                                                assignment.instrument_type === 'structured_assignment' ||
+                                                (assignment.instrument_type === 'exit_ticket' && assignment.instrument_config?.assessment_mode === 'checklist')
+                                            )
                                                 ? (assignment.instrument_config?.indicators || [])
                                                 : (assignment.instrument_config?.questions || []);
                                             
@@ -5884,7 +6103,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                             className="mt-0.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 h-4 w-4"
                                                                         />
                                                                         <div>
-                                                                            <p className="leading-snug">{assignment.instrument_type === 'reflective_journal' ? `Pertanyaan ${idx + 1}` : `Indikator ${idx + 1}`}</p>
+                                                                            <p className="leading-snug">{(assignment.instrument_type === 'reflective_journal' || (assignment.instrument_type === 'exit_ticket' && assignment.instrument_config?.assessment_mode !== 'checklist')) ? `Pertanyaan ${idx + 1}` : `Indikator ${idx + 1}`}</p>
                                                                             <p className="text-[9px] text-muted-foreground font-medium mt-0.5 line-clamp-2 leading-relaxed">{item.text || item.name}</p>
                                                                         </div>
                                                                     </label>

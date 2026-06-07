@@ -117,6 +117,7 @@ Jika Jenis Asesmen adalah 'Kuis / Survei Diagnostik' (Asesmen Awal), maka buatla
 
 Buatkan instrumen asesmen lengkap dalam format JSON sesuai jenis yang diminta. 
 PENTING: Gunakan bahasa yang sederhana, jelas, komunikatif, dan mudah dipahami oleh siswa SMP (usia 12-15 tahun). Hindari penggunaan istilah ilmiah atau akademis yang terlalu tinggi. Jika ada istilah teknis, berikan penjelasan singkat di dalam tanda kurung. Pertanyaan kuis/soal harus dikemas dengan kalimat yang ringkas dan bersahabat bagi anak SMP.
+PENTING UNTUK EXIT TICKET: Pertanyaan refleksi wajib sangat pendek (maksimal 1 kalimat tanya sederhana per butir), santai, akrab, dan mudah dipahami siswa SMP. Hindari kalimat berbelit-belit, bertele-tele, atau teoretis.
 Kembalikan HANYA JSON tanpa markdown code fence.",
 
             'lkpd' => "Kamu adalah asisten cerdas perancang LKPD (Lembar Kerja Peserta Didik) kurikulum merdeka Indonesia.

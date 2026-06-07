@@ -514,9 +514,9 @@ class InstructionalSmartService
                 'assessment_mode' => 'default',
                 'stimulus' => "Sebelum mengakhiri sesi, silakan jawab beberapa pertanyaan refleksi singkat (Exit Ticket) berikut:",
                 'questions' => [
-                    ['text' => "Tuliskan 1 hal paling penting yang kamu pahami hari ini tentang {$content}."],
-                    ['text' => "Bagian mana yang menurutmu paling menantang atau sulit dimengerti?"],
-                    ['text' => "Sebutkan 1 pertanyaan yang ingin kamu tanyakan lebih lanjut pada pertemuan berikutnya."],
+                    ['text' => "Apa 1 hal paling penting yang kamu pelajari hari ini tentang {$content}?"],
+                    ['text' => "Bagian mana yang menurutmu paling sulit atau bikin kamu bingung?"],
+                    ['text' => "Apa 1 pertanyaan yang ingin kamu tanyakan di pertemuan berikutnya?"],
                 ],
                 'levels' => [
                     ['name' => 'Perlu Bimbingan', 'desc' => "Jawaban sangat singkat, tidak relevan, atau menunjukkan miskonsepsi mendasar."],

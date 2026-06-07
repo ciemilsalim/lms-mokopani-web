@@ -151,10 +151,11 @@ Konteks:
 - Mode Observasi: {observation_mode}
 - Mode Soal (Kuis/Tes): {quiz_mode}
 
-===== ATURAN KHUSUS BAHASA & PERTANYAAN PILIHAN GANDA (MCQ) =====
+===== ATURAN KHUSUS BAHASA & INSTRUMEN =====
 - BAHASA: Gunakan bahasa Indonesia yang sangat sederhana, komunikatif, bersahabat, mudah dipahami siswa SMP (usia 12-15 tahun), dan tidak menggunakan istilah ilmiah berbelit-belit.
 - PERTANYAAN MCQ: Harus sangat singkat, padat, langsung pada inti pertanyaan, maksimal 2 kalimat sederhana. HINDARI narasi stimulus/kasus pengantar yang terlalu bertele-tele dan panjang.
 - PILIHAN JAWABAN (OPTIONS): Harus sangat singkat, berupa kata atau frasa pendek (maksimal 5-8 kata per opsi), sejajar panjangnya, jelas, dan tidak ambigu. HINDARI pilihan jawaban berupa kalimat panjang bertele-tele yang membingungkan siswa.
+- EXIT TICKET ("exit_ticket"): Pertanyaan refleksi wajib sangat pendek (maksimal 1 kalimat tanya sederhana per butir), santai, akrab, dan mudah dipahami siswa SMP. Hindari kalimat berbelit-belit, bertele-tele, atau teoretis.
 =================================================================
 
 ===== KESESUAIAN KONTEKS & JENIS PENILAIAN =====
@@ -381,12 +382,13 @@ Untuk jenis lembar observasi lainnya ("observation_checklist", "self_assessment"
 }
 
 Untuk jenis evaluasi reflektif ("exit_ticket" atau "reflective_journal"):
+- Khusus "exit_ticket": Rancang tepat 3 pertanyaan refleksi yang sangat pendek (maksimal 1 kalimat tanya per pertanyaan), menggunakan kata-kata sehari-hari yang sangat akrab bagi siswa SMP (misal: "Apa bagian yang paling membuatmu bingung hari ini?", "Hal apa yang paling seru saat kamu belajar tadi?", "Apa 1 pertanyaan yang ingin kamu tanyakan besok?"). HINDARI kalimat yang terlalu formal, akademis, atau panjang lebar.
 {
   "stimulus": "Instruksi/ stimulus pemantik refleksi bagi murid dengan kalimat sederhana",
   "questions": [
-    {"text": "Pertanyaan refleksi sederhana dan ramah anak 1"},
-    {"text": "Pertanyaan refleksi sederhana dan ramah anak 2"},
-    {"text": "Pertanyaan refleksi sederhana dan ramah anak 3"}
+    {"text": "Pertanyaan refleksi sangat singkat, sederhana, dan ramah anak 1 (maksimal 1 kalimat)"},
+    {"text": "Pertanyaan refleksi sangat singkat, sederhana, dan ramah anak 2 (maksimal 1 kalimat)"},
+    {"text": "Pertanyaan refleksi sangat singkat, sederhana, dan ramah anak 3 (maksimal 1 kalimat)"}
   ],
   "levels": [
     {"name": "Perlu Bimbingan", "desc": "Tingkat refleksi sangat dangkal"},
