@@ -377,7 +377,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
             grading.checked_indicators = checkedArray;
             grading.approach = getGradingApproach();
 
-            const items = (assignment.instrument_type === 'self_assessment' || assignment.instrument_type === 'peer_assessment')
+            const items = (assignment.instrument_type === 'self_assessment' || assignment.instrument_type === 'peer_assessment' || assignment.instrument_type === 'structured_assignment')
                 ? (assignment.instrument_config?.indicators || [])
                 : (assignment.instrument_config?.questions || []);
             const total = items.length;
@@ -865,7 +865,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
             kelengkapan: false
         });
         
-        if (assignment.instrument_type === 'reflective_journal' || assignment.instrument_type === 'self_assessment' || assignment.instrument_type === 'peer_assessment') {
+        if (['reflective_journal', 'self_assessment', 'peer_assessment', 'structured_assignment'].includes(assignment.instrument_type)) {
             let checked: Record<number, boolean> = {};
             let selectedLvl = '';
             if (s.content) {
@@ -1370,6 +1370,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
         setIsSubmitting(true);
         
         let finalContent = studentForm.data.content;
+        let fileToSubmit = studentForm.data.file;
         let finalScore = null;
 
         if (assignment.instrument_type === 'quiz_survey' && Object.keys(studentForm.data.answers).length > 0) {
@@ -1466,24 +1467,24 @@ export default function ShowAssignment({ assignment, students, my_submission, my
         } else if (assignment.instrument_type === 'structured_assignment') {
             finalContent = JSON.stringify({ type: 'structured_assignment', answer_text: structuredAssignmentData.answer_text });
             if (structuredAssignmentData.file) {
-                studentForm.setData('file', structuredAssignmentData.file);
+                fileToSubmit = structuredAssignmentData.file;
             }
         } else if (assignment.instrument_type === 'reflective_journal') {
             finalContent = JSON.stringify({ type: 'reflective_journal', answers: journalAnswers });
         } else if (assignment.instrument_type === 'project') {
             finalContent = JSON.stringify({ type: 'project', description: projectData.description, process_notes: projectData.process_notes });
             if (projectData.file) {
-                studentForm.setData('file', projectData.file);
+                fileToSubmit = projectData.file;
             }
         } else if (assignment.instrument_type === 'assignment') {
             finalContent = JSON.stringify({ type: 'assignment', report_text: assignmentData.report_text, analysis_notes: assignmentData.analysis_notes });
             if (assignmentData.file) {
-                studentForm.setData('file', assignmentData.file);
+                fileToSubmit = assignmentData.file;
             }
         } else if (assignment.instrument_type === 'portfolio') {
             finalContent = JSON.stringify({ type: 'portfolio', reflections: portfolioReflections });
             if (portfolioFile) {
-                studentForm.setData('file', portfolioFile);
+                fileToSubmit = portfolioFile;
             }
         } else if (assignment.instrument_type === 'concept_map') {
             finalContent = JSON.stringify({ 
@@ -1496,6 +1497,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
 
         router.post(route('assignments.submit', assignment.id), {
             ...studentForm.data,
+            file: fileToSubmit,
             content: finalContent,
             score: finalScore
         }, {
@@ -2039,7 +2041,9 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                 )}
                                 <div className="flex items-center justify-between px-4">
                                     <h2 className="text-xl font-black text-foreground tracking-tight uppercase tracking-widest">Pengumpulan Siswa</h2>
-                                    <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">{assignment.submissions.length} Siswa Telah Mengumpulkan</span>
+                                    <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
+                                        {assignment.submissions.length} dari {students.length} Siswa Telah Mengumpulkan
+                                    </span>
                                 </div>
 
                                 <div className="overflow-hidden rounded-[2.5rem] border border-border bg-white dark:bg-slate-900 shadow-2xl shadow-slate-100/50 dark:shadow-none">
@@ -2054,116 +2058,139 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-border">
-                                            {assignment.submissions.length === 0 ? (
+                                            {students.length === 0 ? (
                                                 <tr>
                                                     <td colSpan={5} className="px-8 py-16 text-center text-muted-foreground italic font-medium">
-                                                        Belum ada siswa yang mengumpulkan tugas.
+                                                        Belum ada siswa di kelas ini.
                                                     </td>
                                                 </tr>
                                             ) : (
-                                                assignment.submissions.map((s: Submission) => {
-                                                    const displayScore = s.score ?? calculateSystemScore(s.content ?? '');
-                                                    const effectivePassed = s.score !== null ? s.is_passed : (displayScore >= (assignment.passing_grade || assignment.instrument_config?.pass_threshold || 70));
+                                                students.map((student: Student) => {
+                                                    const s = submissionMap[student.id];
+                                                    const displayScore = s ? (s.score ?? calculateSystemScore(s.content ?? '')) : null;
+                                                    const effectivePassed = s ? (s.score !== null ? s.is_passed : (displayScore !== null && displayScore >= (assignment.passing_grade || assignment.instrument_config?.pass_threshold || 70))) : false;
 
                                                     return (
-                                                        <tr key={s.id} className="group hover:bg-slate-50/30 dark:hover:bg-slate-800/20 transition-all">
+                                                        <tr key={student.id} className="group hover:bg-slate-50/30 dark:hover:bg-slate-800/20 transition-all">
                                                             <td className="px-8 py-6">
                                                                 <div className="flex items-center gap-4">
                                                                     <div className="h-10 w-10 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-muted-foreground group-hover:bg-sky-50 dark:group-hover:bg-sky-950/30 group-hover:text-primary transition-colors">
                                                                         <User className="h-5 w-5" />
                                                                     </div>
-                                                                    <span className="font-bold text-slate-700 dark:text-slate-200">{s.student_name}</span>
+                                                                    <div>
+                                                                        <span className="font-bold text-slate-700 dark:text-slate-200">{student.name}</span>
+                                                                        <p className="text-[10px] font-bold text-muted-foreground tracking-widest">{student.nis}</p>
+                                                                    </div>
                                                                 </div>
                                                             </td>
-                                                            <td className="px-8 py-6 text-xs font-bold text-muted-foreground uppercase tracking-tighter">{s.submitted_at}</td>
+                                                            <td className="px-8 py-6 text-xs font-bold text-muted-foreground uppercase tracking-tighter">
+                                                                {s ? s.submitted_at : <span className="text-slate-400 font-normal italic">-</span>}
+                                                            </td>
                                                             <td className="px-8 py-6">
-                                                                {(s.score !== null) ? (
-                                                                    <div className="flex flex-col gap-1">
-                                                                        <span className="inline-flex items-center gap-1.5 text-emerald-600 font-black text-[10px] uppercase tracking-widest">
-                                                                            <CheckCircle2 className="h-3.5 w-3.5" />
-                                                                            Dinilai
+                                                                {s ? (
+                                                                    (s.score !== null) ? (
+                                                                        <div className="flex flex-col gap-1">
+                                                                            <span className="inline-flex items-center gap-1.5 text-emerald-600 font-black text-[10px] uppercase tracking-widest">
+                                                                                <CheckCircle2 className="h-3.5 w-3.5" />
+                                                                                Dinilai
+                                                                            </span>
+                                                                            {effectivePassed ? (
+                                                                                <span className="text-[8px] font-black text-emerald-500 bg-emerald-50 dark:bg-emerald-950/20 px-2 py-0.5 rounded-md w-fit uppercase tracking-tighter">Tuntas</span>
+                                                                            ) : (
+                                                                                <div className="flex items-center gap-2">
+                                                                                    <span className="text-[8px] font-black text-rose-500 bg-rose-50 dark:bg-rose-950/20 px-2 py-0.5 rounded-md w-fit uppercase tracking-tighter">Remedial</span>
+                                                                                    {(s.attempts ?? 0) > 1 && (
+                                                                                        <span className="text-[8px] font-bold text-muted-foreground italic">({s.attempts ?? 0}x remedial)</span>
+                                                                                    )}
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    ) : (
+                                                                        <span className="inline-flex items-center gap-1.5 text-amber-500 font-black text-[10px] uppercase tracking-widest italic animate-pulse">
+                                                                            <Clock className="h-3.5 w-3.5" />
+                                                                            Menunggu
                                                                         </span>
-                                                                        {effectivePassed ? (
-                                                                            <span className="text-[8px] font-black text-emerald-500 bg-emerald-50 dark:bg-emerald-950/20 px-2 py-0.5 rounded-md w-fit uppercase tracking-tighter">Tuntas</span>
-                                                                        ) : (
-                                                                            <div className="flex items-center gap-2">
-                                                                                <span className="text-[8px] font-black text-rose-500 bg-rose-50 dark:bg-rose-950/20 px-2 py-0.5 rounded-md w-fit uppercase tracking-tighter">Remedial</span>
-                                                                                {(s.attempts ?? 0) > 1 && (
-                                                                                    <span className="text-[8px] font-bold text-muted-foreground italic">({s.attempts ?? 0}x remedial)</span>
-                                                                                )}
-                                                                            </div>
-                                                                        )}
-                                                                    </div>
+                                                                    )
                                                                 ) : (
-                                                                    <span className="inline-flex items-center gap-1.5 text-amber-500 font-black text-[10px] uppercase tracking-widest italic">
-                                                                        <Clock className="h-3.5 w-3.5" />
-                                                                        Menunggu
+                                                                    <span className="inline-flex items-center gap-1.5 text-rose-500 font-black text-[10px] uppercase tracking-widest">
+                                                                        <AlertCircle className="h-3.5 w-3.5" />
+                                                                        Belum Mengumpulkan
                                                                     </span>
                                                                 )}
                                                             </td>
                                                             <td className="px-8 py-6 text-right">
-                                                                {assignment.instrument_type === 'reflective_journal' || assignment.instrument_type === 'self_assessment' || assignment.instrument_type === 'peer_assessment' ? (
-                                                                    (() => {
-                                                                        if (s.score === null) return <span className="text-xs text-muted-foreground italic font-medium">-</span>;
-                                                                        let label = '-';
-                                                                        try {
-                                                                            const parsed = JSON.parse(s.content || '{}');
-                                                                            if (parsed.grading?.selected_level) {
-                                                                                label = parsed.grading.selected_level;
-                                                                            } else if (parsed.grading?.is_passed !== undefined) {
-                                                                                label = parsed.grading.is_passed ? 'Tuntas' : 'Belum Tuntas';
-                                                                            } else {
+                                                                {!s ? (
+                                                                    <span className="text-xs text-muted-foreground italic font-medium">-</span>
+                                                                ) : (
+                                                                    assignment.instrument_type === 'reflective_journal' || assignment.instrument_type === 'self_assessment' || assignment.instrument_type === 'peer_assessment' ? (
+                                                                        (() => {
+                                                                            if (s.score === null) return <span className="text-xs text-muted-foreground italic font-medium">-</span>;
+                                                                            let label = '-';
+                                                                            try {
+                                                                                const parsed = JSON.parse(s.content || '{}');
+                                                                                if (parsed.grading?.selected_level) {
+                                                                                    label = parsed.grading.selected_level;
+                                                                                } else if (parsed.grading?.is_passed !== undefined) {
+                                                                                    label = parsed.grading.is_passed ? 'Tuntas' : 'Belum Tuntas';
+                                                                                } else {
+                                                                                    label = s.score >= (assignment.passing_grade || 70) ? 'Tuntas' : 'Belum Tuntas';
+                                                                                }
+                                                                            } catch(e) {
                                                                                 label = s.score >= (assignment.passing_grade || 70) ? 'Tuntas' : 'Belum Tuntas';
                                                                             }
-                                                                        } catch(e) {
-                                                                            label = s.score >= (assignment.passing_grade || 70) ? 'Tuntas' : 'Belum Tuntas';
-                                                                        }
-                                                                        return <span className="text-xs font-bold text-foreground">{label}</span>;
-                                                                    })()
-                                                                ) : (
-                                                                    <>
-                                                                        <span className={`text-sm font-black ${(s.score !== null) ? (effectivePassed ? 'text-foreground' : 'text-destructive') : 'text-muted-foreground'}`}>
-                                                                            {displayScore}
-                                                                        </span>
-                                                                        <span className="text-[10px] font-black text-muted-foreground"> / {assignment.max_points}</span>
-                                                                        {s.remedial_history && s.remedial_history.length > 0 && (
-                                                                            <div className="text-[9px] text-muted-foreground mt-1 space-y-0.5">
-                                                                                {s.remedial_history.map((hist: any, hIdx: number) => (
-                                                                                    <div key={hIdx}>
-                                                                                        Ke-{hist.attempt}: <span className="font-semibold text-foreground">{hist.score}</span>
-                                                                                    </div>
-                                                                                ))}
-                                                                            </div>
-                                                                        )}
-                                                                    </>
+                                                                            return <span className="text-xs font-bold text-foreground">{label}</span>;
+                                                                        })()
+                                                                    ) : (
+                                                                        <>
+                                                                            <span className={`text-sm font-black ${(s.score !== null) ? (effectivePassed ? 'text-foreground' : 'text-destructive') : 'text-muted-foreground'}`}>
+                                                                                {displayScore}
+                                                                            </span>
+                                                                            <span className="text-[10px] font-black text-muted-foreground"> / {assignment.max_points}</span>
+                                                                            {s.remedial_history && s.remedial_history.length > 0 && (
+                                                                                <div className="text-[9px] text-muted-foreground mt-1 space-y-0.5">
+                                                                                    {s.remedial_history.map((hist: any, hIdx: number) => (
+                                                                                        <div key={hIdx}>
+                                                                                            Ke-{hist.attempt}: <span className="font-semibold text-foreground">{hist.score}</span>
+                                                                                        </div>
+                                                                                    ))}
+                                                                                </div>
+                                                                            )}
+                                                                        </>
+                                                                    )
                                                                 )}
                                                             </td>
                                                             <td className="px-8 py-6 text-right">
                                                                 <div className="flex justify-end gap-2 items-center">
-                                                                    {assignment.instrument_type === 'formative_quiz' && (
-                                                                        s.is_remedial_open ? (
-                                                                            <span className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/20 text-[10px] font-black text-warning uppercase border border-amber-200 dark:border-amber-900/30">
-                                                                                Akses Remedial Aktif
-                                                                            </span>
-                                                                        ) : (
-                                                                            <button
-                                                                                onClick={() => handleOpenRemedial(s.student_id)}
-                                                                                className="inline-flex items-center gap-1.5 rounded-xl bg-amber-500 text-white px-4 py-2 text-xs font-black shadow-lg shadow-amber-100 transition-all hover:scale-105 active:scale-95 uppercase tracking-widest"
+                                                                    {s ? (
+                                                                        <>
+                                                                            {assignment.instrument_type === 'formative_quiz' && (
+                                                                                s.is_remedial_open ? (
+                                                                                    <span className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/20 text-[10px] font-black text-warning uppercase border border-amber-200 dark:border-amber-900/30">
+                                                                                        Akses Remedial Aktif
+                                                                                    </span>
+                                                                                ) : (
+                                                                                    <button
+                                                                                        onClick={() => handleOpenRemedial(s.student_id)}
+                                                                                        className="inline-flex items-center gap-1.5 rounded-xl bg-amber-500 text-white px-4 py-2 text-xs font-black shadow-lg shadow-amber-100 transition-all hover:scale-105 active:scale-95 uppercase tracking-widest"
+                                                                                    >
+                                                                                        <RotateCcw className="h-3.5 w-3.5" />
+                                                                                        Buka Remedial
+                                                                                    </button>
+                                                                                )
+                                                                            )}
+                                                                            <button 
+                                                                                onClick={() => openGradeModal(s)}
+                                                                                className="inline-flex items-center gap-2 rounded-xl bg-sky-500 text-white px-5 py-2.5 text-xs font-black shadow-lg shadow-sky-100 transition-all hover:scale-105 active:scale-95 uppercase tracking-widest"
                                                                             >
-                                                                                <RotateCcw className="h-3.5 w-3.5" />
-                                                                                Buka Remedial
+                                                                                <Activity className="h-3.5 w-3.5" />
+                                                                                {assignment.instrument_type === 'reflective_journal' || assignment.instrument_type === 'self_assessment' || assignment.instrument_type === 'peer_assessment'
+                                                                                    ? (s.score !== null ? 'Edit Penilaian' : 'Beri Penilaian')
+                                                                                    : (s.score !== null ? 'Edit Nilai' : 'Beri Nilai')}
                                                                             </button>
-                                                                        )
+                                                                        </>
+                                                                    ) : (
+                                                                        <span className="text-xs text-muted-foreground italic font-medium">Belum mengumpulkan</span>
                                                                     )}
-                                                                    <button 
-                                                                        onClick={() => openGradeModal(s)}
-                                                                        className="inline-flex items-center gap-2 rounded-xl bg-sky-500 text-white px-5 py-2.5 text-xs font-black shadow-lg shadow-sky-100 transition-all hover:scale-105 active:scale-95 uppercase tracking-widest"
-                                                                    >
-                                                                        <Activity className="h-3.5 w-3.5" />
-                                                                        {assignment.instrument_type === 'reflective_journal' || assignment.instrument_type === 'self_assessment' || assignment.instrument_type === 'peer_assessment'
-                                                                            ? (s.score !== null ? 'Edit Penilaian' : 'Beri Penilaian')
-                                                                            : (s.score !== null ? 'Edit Nilai' : 'Beri Nilai')}
-                                                                    </button>
                                                                 </div>
                                                             </td>
                                                         </tr>
@@ -3060,13 +3087,6 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                 </div>
                                             </div>
 
-                                            {assignment.instrument_config?.stimulus && (
-                                                <div className="p-5 rounded-[8px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#1B1B25] shadow-none">
-                                                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-2">Deskripsi Tugas:</p>
-                                                    <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium">{assignment.instrument_config.stimulus}</p>
-                                                </div>
-                                            )}
-
                                             <div className="space-y-3">
                                                 <label className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">Jawaban Teks</label>
                                                 <textarea
@@ -3080,6 +3100,26 @@ export default function ShowAssignment({ assignment, students, my_submission, my
 
                                             <div className="space-y-3">
                                                 <label className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">Lampiran File (Opsional)</label>
+                                                {my_submission?.file_path && (
+                                                    <div className="mb-4 p-4 rounded-[8px] bg-slate-50 dark:bg-[#101014] border border-slate-200 dark:border-[#2C2C3A] flex items-center justify-between">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="h-10 w-10 rounded-[6px] bg-white dark:bg-[#1B1B25] border border-slate-200 dark:border-[#2C2C3A] flex items-center justify-center text-[#5E6AD2]">
+                                                                <FileText className="h-6 w-6" />
+                                                            </div>
+                                                            <div className="text-left">
+                                                                <p className="text-[10px] font-bold text-[#5E6AD2] uppercase tracking-wider leading-none mb-1">File Terkirim</p>
+                                                                <p className="text-xs font-semibold text-slate-550 dark:text-[#8A8F98] truncate max-w-[200px]">{my_submission.file_path.split('/').pop()}</p>
+                                                            </div>
+                                                        </div>
+                                                        <a 
+                                                            href={`/storage/${my_submission.file_path}`} 
+                                                            target="_blank"
+                                                            className="h-8 px-4 rounded-lg bg-[#5E6AD2] text-white text-[10px] font-bold uppercase tracking-wider flex items-center justify-center hover:bg-[#4E5BBF] transition-all"
+                                                        >
+                                                            Lihat File
+                                                        </a>
+                                                    </div>
+                                                )}
                                                 <p className="text-[10px] text-muted-foreground">Format: PDF, DOC, DOCX, PNG, JPG (Maks 10MB)</p>
                                                 <input
                                                     type="file"
@@ -3151,6 +3191,26 @@ export default function ShowAssignment({ assignment, students, my_submission, my
 
                                             <div className="space-y-3">
                                                 <label className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">Upload Bukti Proyek</label>
+                                                {my_submission?.file_path && (
+                                                    <div className="mb-4 p-4 rounded-[8px] bg-slate-50 dark:bg-[#101014] border border-slate-200 dark:border-[#2C2C3A] flex items-center justify-between">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="h-10 w-10 rounded-[6px] bg-white dark:bg-[#1B1B25] border border-slate-200 dark:border-[#2C2C3A] flex items-center justify-center text-[#5E6AD2]">
+                                                                <FileText className="h-6 w-6" />
+                                                            </div>
+                                                            <div className="text-left">
+                                                                <p className="text-[10px] font-bold text-[#5E6AD2] uppercase tracking-wider leading-none mb-1">File Terkirim</p>
+                                                                <p className="text-xs font-semibold text-slate-550 dark:text-[#8A8F98] truncate max-w-[200px]">{my_submission.file_path.split('/').pop()}</p>
+                                                            </div>
+                                                        </div>
+                                                        <a 
+                                                            href={`/storage/${my_submission.file_path}`} 
+                                                            target="_blank"
+                                                            className="h-8 px-4 rounded-lg bg-[#5E6AD2] text-white text-[10px] font-bold uppercase tracking-wider flex items-center justify-center hover:bg-[#4E5BBF] transition-all"
+                                                        >
+                                                            Lihat File
+                                                        </a>
+                                                    </div>
+                                                )}
                                                 <p className="text-[10px] text-muted-foreground">Format: PDF, DOC, DOCX, PNG, JPG, MP4 (Maks 50MB)</p>
                                                 <input
                                                     type="file"
@@ -3202,6 +3262,26 @@ export default function ShowAssignment({ assignment, students, my_submission, my
 
                                             <div className="space-y-3">
                                                 <label className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">Upload Karya Portofolio</label>
+                                                {my_submission?.file_path && (
+                                                    <div className="mb-4 p-4 rounded-[8px] bg-slate-50 dark:bg-[#101014] border border-slate-200 dark:border-[#2C2C3A] flex items-center justify-between">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="h-10 w-10 rounded-[6px] bg-white dark:bg-[#1B1B25] border border-slate-200 dark:border-[#2C2C3A] flex items-center justify-center text-[#5E6AD2]">
+                                                                <FileText className="h-6 w-6" />
+                                                            </div>
+                                                            <div className="text-left">
+                                                                <p className="text-[10px] font-bold text-[#5E6AD2] uppercase tracking-wider leading-none mb-1">File Terkirim</p>
+                                                                <p className="text-xs font-semibold text-slate-550 dark:text-[#8A8F98] truncate max-w-[200px]">{my_submission.file_path.split('/').pop()}</p>
+                                                            </div>
+                                                        </div>
+                                                        <a 
+                                                            href={`/storage/${my_submission.file_path}`} 
+                                                            target="_blank"
+                                                            className="h-8 px-4 rounded-lg bg-[#5E6AD2] text-white text-[10px] font-bold uppercase tracking-wider flex items-center justify-center hover:bg-[#4E5BBF] transition-all"
+                                                        >
+                                                            Lihat File
+                                                        </a>
+                                                    </div>
+                                                )}
                                                 <p className="text-[10px] text-muted-foreground">Format: PDF, DOC, DOCX, PNG, JPG (Maks 10MB per file)</p>
                                                 <input
                                                     type="file"
@@ -3277,6 +3357,26 @@ export default function ShowAssignment({ assignment, students, my_submission, my
 
                                             <div className="space-y-3">
                                                 <label className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">Upload File Jawaban</label>
+                                                {my_submission?.file_path && (
+                                                    <div className="mb-4 p-4 rounded-[8px] bg-slate-50 dark:bg-[#101014] border border-slate-200 dark:border-[#2C2C3A] flex items-center justify-between">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="h-10 w-10 rounded-[6px] bg-white dark:bg-[#1B1B25] border border-slate-200 dark:border-[#2C2C3A] flex items-center justify-center text-[#5E6AD2]">
+                                                                <FileText className="h-6 w-6" />
+                                                            </div>
+                                                            <div className="text-left">
+                                                                <p className="text-[10px] font-bold text-[#5E6AD2] uppercase tracking-wider leading-none mb-1">File Terkirim</p>
+                                                                <p className="text-xs font-semibold text-slate-550 dark:text-[#8A8F98] truncate max-w-[200px]">{my_submission.file_path.split('/').pop()}</p>
+                                                            </div>
+                                                        </div>
+                                                        <a 
+                                                            href={`/storage/${my_submission.file_path}`} 
+                                                            target="_blank"
+                                                            className="h-8 px-4 rounded-lg bg-[#5E6AD2] text-white text-[10px] font-bold uppercase tracking-wider flex items-center justify-center hover:bg-[#4E5BBF] transition-all"
+                                                        >
+                                                            Lihat File
+                                                        </a>
+                                                    </div>
+                                                )}
                                                 <p className="text-[10px] text-muted-foreground">Format: PDF, DOC, DOCX (Maks 10MB)</p>
                                                 <input
                                                     type="file"
@@ -3425,47 +3525,61 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                         </div>
                                     )}
 
-                                    <div className="space-y-4">
-                                        <label className="text-xs font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-                                            <Upload className="h-4 w-4" /> Lampiran File (Opsional)
-                                        </label>
-                                        <div className="relative group">
-                                            {my_submission?.file_path && (
-                                                <div className="mb-4 p-4 rounded-2xl bg-sky-50 dark:bg-sky-950/30 border border-sky-100 dark:border-sky-900/30 flex items-center justify-between group/file">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="h-10 w-10 rounded-xl bg-white dark:bg-slate-900 flex items-center justify-center text-primary shadow-sm border border-sky-100 dark:border-sky-800">
-                                                            <FileText className="h-6 w-6" />
+                                    {(![
+                                        'structured_assignment', 
+                                        'project', 
+                                        'assignment', 
+                                        'portfolio',
+                                        'formative_quiz',
+                                        'exit_ticket',
+                                        'peer_assessment',
+                                        'self_assessment',
+                                        'reflective_journal',
+                                        'guided_discussion',
+                                        'quiz_survey'
+                                    ].includes(assignment.instrument_type) || (assignment.instrument_type === 'concept_map' && conceptMapSubMode === 'upload')) && (
+                                        <div className="space-y-4">
+                                            <label className="text-xs font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+                                                <Upload className="h-4 w-4" /> Lampiran File (Opsional)
+                                            </label>
+                                            <div className="relative group">
+                                                {my_submission?.file_path && (
+                                                    <div className="mb-4 p-4 rounded-2xl bg-sky-50 dark:bg-sky-950/30 border border-sky-100 dark:border-sky-900/30 flex items-center justify-between group/file">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="h-10 w-10 rounded-xl bg-white dark:bg-slate-900 flex items-center justify-center text-primary shadow-sm border border-sky-100 dark:border-sky-800">
+                                                                <FileText className="h-6 w-6" />
+                                                            </div>
+                                                            <div className="text-left">
+                                                                <p className="text-[10px] font-black text-primary uppercase tracking-widest leading-none mb-1">File Terkirim</p>
+                                                                <p className="text-xs font-bold text-muted-foreground truncate max-w-[200px]">{my_submission.file_path.split('/').pop()}</p>
+                                                            </div>
                                                         </div>
-                                                        <div className="text-left">
-                                                            <p className="text-[10px] font-black text-primary uppercase tracking-widest leading-none mb-1">File Terkirim</p>
-                                                            <p className="text-xs font-bold text-muted-foreground truncate max-w-[200px]">{my_submission.file_path.split('/').pop()}</p>
-                                                        </div>
+                                                        <a 
+                                                            href={`/storage/${my_submission.file_path}`} 
+                                                            target="_blank"
+                                                            className="h-8 px-4 rounded-lg bg-sky-500 text-white text-[10px] font-black uppercase tracking-widest flex items-center justify-center hover:bg-sky-600 transition-all shadow-lg shadow-sky-200 dark:shadow-none"
+                                                        >
+                                                            Lihat File
+                                                        </a>
                                                     </div>
-                                                    <a 
-                                                        href={`/storage/${my_submission.file_path}`} 
-                                                        target="_blank"
-                                                        className="h-8 px-4 rounded-lg bg-sky-500 text-white text-[10px] font-black uppercase tracking-widest flex items-center justify-center hover:bg-sky-600 transition-all shadow-lg shadow-sky-200 dark:shadow-none"
-                                                    >
-                                                        Lihat File
-                                                    </a>
+                                                )}
+                                                <div className="w-full rounded-[2.5rem] border-2 border-dashed border-border bg-slate-50/20 px-8 py-12 text-center transition-all group-hover:border-sky-400 group-hover:bg-sky-50/10 cursor-pointer">
+                                                    <div className="h-12 w-12 rounded-2xl bg-white dark:bg-slate-900 border border-border flex items-center justify-center mx-auto mb-4 text-muted-foreground group-hover:text-primary transition-colors shadow-sm">
+                                                        <Upload className="h-6 w-6" />
+                                                    </div>
+                                                    <p className="text-sm font-bold text-slate-600 dark:text-muted-foreground">
+                                                        {studentForm.data.file ? studentForm.data.file.name : 'Klik atau seret file ke sini untuk mengganti/unggah file baru'}
+                                                    </p>
+                                                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-2">Maks. 10MB (PDF, DOC, Gambar)</p>
+                                                    <input 
+                                                        type="file"
+                                                        onChange={(e) => studentForm.setData('file', e.target.files ? e.target.files[0] : null)}
+                                                        className="absolute inset-0 opacity-0 cursor-pointer"
+                                                    />
                                                 </div>
-                                            )}
-                                            <div className="w-full rounded-[2.5rem] border-2 border-dashed border-border bg-slate-50/20 px-8 py-12 text-center transition-all group-hover:border-sky-400 group-hover:bg-sky-50/10 cursor-pointer">
-                                                <div className="h-12 w-12 rounded-2xl bg-white dark:bg-slate-900 border border-border flex items-center justify-center mx-auto mb-4 text-muted-foreground group-hover:text-primary transition-colors shadow-sm">
-                                                    <Upload className="h-6 w-6" />
-                                                </div>
-                                                <p className="text-sm font-bold text-slate-600 dark:text-muted-foreground">
-                                                    {studentForm.data.file ? studentForm.data.file.name : 'Klik atau seret file ke sini untuk mengganti/unggah file baru'}
-                                                </p>
-                                                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-2">Maks. 10MB (PDF, DOC, Gambar)</p>
-                                                <input 
-                                                    type="file"
-                                                    onChange={(e) => studentForm.setData('file', e.target.files ? e.target.files[0] : null)}
-                                                    className="absolute inset-0 opacity-0 cursor-pointer"
-                                                />
                                             </div>
                                         </div>
-                                    </div>
+                                    )}
 
                                     <button 
                                         type="submit"
@@ -5208,7 +5322,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
             {/* Grading Modal (Standard Quiz/Essay) */}
             {selectedSubmission && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-md p-4 animate-in fade-in duration-300">
-                    <div className="w-full max-w-4xl rounded-[3rem] bg-white dark:bg-slate-900 p-10 shadow-2xl border border-white/20 animate-in zoom-in-95 duration-300 flex flex-col md:flex-row gap-8">
+                    <div className="w-full max-w-4xl max-h-[90vh] overflow-hidden rounded-[3rem] bg-white dark:bg-slate-900 p-10 shadow-2xl border border-white/20 animate-in zoom-in-95 duration-300 flex flex-col md:flex-row gap-8">
                         {/* Side: Student Response Preview */}
                         <div className="flex-1 space-y-6 overflow-y-auto max-h-[70vh] pr-4 custom-scrollbar">
                             <div className="flex items-center justify-between mb-4">
@@ -5458,6 +5572,134 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                             </div>
                                         );
                                     }
+                                    if (parsed.type === 'structured_assignment') {
+                                        return (
+                                            <div className="space-y-6 animate-in fade-in duration-300">
+                                                <div className="p-6 rounded-[2rem] bg-white dark:bg-slate-900 border border-border shadow-sm space-y-4">
+                                                    <p className="text-[10px] font-black text-[#5E6AD2] uppercase tracking-widest leading-none">Jawaban LKPD Murid</p>
+                                                    <p className="text-sm font-semibold text-foreground whitespace-pre-wrap leading-relaxed">
+                                                        {parsed.answer_text || '(Tidak ada jawaban teks)'}
+                                                    </p>
+                                                </div>
+                                                {selectedSubmission.file_path && (
+                                                    <a 
+                                                        href={`/storage/${selectedSubmission.file_path}`} 
+                                                        target="_blank" 
+                                                        className="flex items-center gap-3 p-4 rounded-2xl bg-sky-50 dark:bg-sky-950/30 text-primary border border-sky-100 dark:border-sky-900/30 hover:bg-sky-100 dark:hover:bg-sky-950/40 transition-all shadow-sm"
+                                                    >
+                                                        <Download className="h-5 w-5" />
+                                                        <div className="text-left">
+                                                            <p className="text-xs font-black uppercase tracking-widest">Lihat File Lampiran LKPD</p>
+                                                            <p className="text-[10px] font-bold opacity-70">Klik untuk mengunduh/melihat file yang diunggah murid</p>
+                                                        </div>
+                                                    </a>
+                                                )}
+                                            </div>
+                                        );
+                                    }
+                                    if (parsed.type === 'project') {
+                                        return (
+                                            <div className="space-y-6 animate-in fade-in duration-300">
+                                                <div className="p-6 rounded-[2rem] bg-white dark:bg-slate-900 border border-border shadow-sm space-y-4">
+                                                    <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest leading-none">Deskripsi Proyek</p>
+                                                    <p className="text-sm font-semibold text-foreground whitespace-pre-wrap leading-relaxed mb-4">
+                                                        {parsed.description || '(Tidak ada deskripsi)'}
+                                                    </p>
+                                                    
+                                                    <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest leading-none">Catatan Proses</p>
+                                                    <p className="text-sm font-semibold text-muted-foreground whitespace-pre-wrap leading-relaxed">
+                                                        {parsed.process_notes || '(Tidak ada catatan proses)'}
+                                                    </p>
+                                                </div>
+                                                {selectedSubmission.file_path && (
+                                                    <a 
+                                                        href={`/storage/${selectedSubmission.file_path}`} 
+                                                        target="_blank" 
+                                                        className="flex items-center gap-3 p-4 rounded-2xl bg-sky-50 dark:bg-sky-950/30 text-primary border border-sky-100 dark:border-sky-900/30 hover:bg-sky-100 dark:hover:bg-sky-950/40 transition-all shadow-sm"
+                                                    >
+                                                        <Download className="h-5 w-5" />
+                                                        <div className="text-left">
+                                                            <p className="text-xs font-black uppercase tracking-widest">Lihat Bukti Proyek</p>
+                                                            <p className="text-[10px] font-bold opacity-70">Klik untuk mengunduh/melihat bukti proyek</p>
+                                                        </div>
+                                                    </a>
+                                                )}
+                                            </div>
+                                        );
+                                    }
+                                    if (parsed.type === 'assignment') {
+                                        return (
+                                            <div className="space-y-6 animate-in fade-in duration-300">
+                                                <div className="p-6 rounded-[2rem] bg-white dark:bg-slate-900 border border-border shadow-sm space-y-4">
+                                                    <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest leading-none">Laporan / Teks Jawaban</p>
+                                                    <p className="text-sm font-semibold text-foreground whitespace-pre-wrap leading-relaxed mb-4">
+                                                        {parsed.report_text || '(Tidak ada laporan)'}
+                                                    </p>
+                                                    
+                                                    <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest leading-none">Catatan Proses Analisis</p>
+                                                    <p className="text-sm font-semibold text-muted-foreground whitespace-pre-wrap leading-relaxed">
+                                                        {parsed.analysis_notes || '(Tidak ada catatan analisis)'}
+                                                    </p>
+                                                </div>
+                                                {selectedSubmission.file_path && (
+                                                    <a 
+                                                        href={`/storage/${selectedSubmission.file_path}`} 
+                                                        target="_blank" 
+                                                        className="flex items-center gap-3 p-4 rounded-2xl bg-sky-50 dark:bg-sky-950/30 text-primary border border-sky-100 dark:border-sky-900/30 hover:bg-sky-100 dark:hover:bg-sky-950/40 transition-all shadow-sm"
+                                                    >
+                                                        <Download className="h-5 w-5" />
+                                                        <div className="text-left">
+                                                            <p className="text-xs font-black uppercase tracking-widest">Lihat File Jawaban</p>
+                                                            <p className="text-[10px] font-bold opacity-70">Klik untuk mengunduh/melihat file jawaban</p>
+                                                        </div>
+                                                    </a>
+                                                )}
+                                            </div>
+                                        );
+                                    }
+                                    if (parsed.type === 'portfolio') {
+                                        return (
+                                            <div className="space-y-6 animate-in fade-in duration-300">
+                                                <div className="p-6 rounded-[2rem] bg-white dark:bg-slate-900 border border-border shadow-sm space-y-4">
+                                                    <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest leading-none mb-3">Refleksi Portofolio</p>
+                                                    {(parsed.reflections || []).map((ref: any, idx: number) => (
+                                                        <div key={idx} className="p-4 rounded-xl bg-slate-50 dark:bg-[#101014] border border-slate-200 dark:border-[#2C2C3A] space-y-1">
+                                                            <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Refleksi {idx + 1}</p>
+                                                            <p className="text-sm font-semibold text-foreground whitespace-pre-wrap">{ref.answer || '-'}</p>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                                {selectedSubmission.file_path && (
+                                                    <a 
+                                                        href={`/storage/${selectedSubmission.file_path}`} 
+                                                        target="_blank" 
+                                                        className="flex items-center gap-3 p-4 rounded-2xl bg-sky-50 dark:bg-sky-950/30 text-primary border border-sky-100 dark:border-sky-900/30 hover:bg-sky-100 dark:hover:bg-sky-950/40 transition-all shadow-sm"
+                                                    >
+                                                        <Download className="h-5 w-5" />
+                                                        <div className="text-left">
+                                                            <p className="text-xs font-black uppercase tracking-widest">Lihat Karya Portofolio</p>
+                                                            <p className="text-[10px] font-bold opacity-70">Klik untuk mengunduh/melihat karya portofolio</p>
+                                                        </div>
+                                                    </a>
+                                                )}
+                                            </div>
+                                        );
+                                    }
+                                    if (parsed.type === 'reflective_journal') {
+                                        return (
+                                            <div className="space-y-6 animate-in fade-in duration-300">
+                                                <div className="p-6 rounded-[2rem] bg-white dark:bg-slate-900 border border-border shadow-sm space-y-4">
+                                                    <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest leading-none mb-3">Refleksi Jurnal Murid</p>
+                                                    {(parsed.answers || []).map((ans: any, idx: number) => (
+                                                        <div key={idx} className="p-4 rounded-xl bg-slate-50 dark:bg-[#101014] border border-slate-200 dark:border-[#2C2C3A] space-y-1">
+                                                            <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">{ans.question || `Pertanyaan ${idx + 1}`}</p>
+                                                            <p className="text-sm font-semibold text-foreground whitespace-pre-wrap">{ans.answer || '-'}</p>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        );
+                                    }
                                     if (parsed.type === 'written_test' || parsed.type === 'formative_quiz') {
                                         const systemScore = calculateSystemScore(selectedSubmission.content || '');
 
@@ -5613,14 +5855,14 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                         </div>
 
                         {/* Side: Grading Form */}
-                        <div className="w-full md:w-80 space-y-8 bg-muted/50 p-8 rounded-[2.5rem] border border-border">
+                        <div className="w-full md:w-80 space-y-8 bg-muted/50 p-8 rounded-[2.5rem] border border-border overflow-y-auto max-h-[70vh] pr-2 custom-scrollbar">
                             <form onSubmit={handleGrade} className="space-y-6">
-                                {assignment.instrument_type === 'reflective_journal' || assignment.instrument_type === 'self_assessment' || assignment.instrument_type === 'peer_assessment' ? (
+                                {['reflective_journal', 'self_assessment', 'peer_assessment', 'structured_assignment'].includes(assignment.instrument_type) ? (
                                     <div className="space-y-6">
                                         {/* KKTP Approach: Criteria Description */}
                                         {(() => {
                                             const gradingApproach = getGradingApproach();
-                                            const items = (assignment.instrument_type === 'self_assessment' || assignment.instrument_type === 'peer_assessment')
+                                            const items = (assignment.instrument_type === 'self_assessment' || assignment.instrument_type === 'peer_assessment' || assignment.instrument_type === 'structured_assignment')
                                                 ? (assignment.instrument_config?.indicators || [])
                                                 : (assignment.instrument_config?.questions || []);
                                             
