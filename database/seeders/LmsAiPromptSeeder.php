@@ -400,6 +400,18 @@ Untuk jenis evaluasi reflektif ("exit_ticket" atau "reflective_journal"):
   "kktp": {"approach": "criteria_description", "min_criteria": 2}
 }
 
+Untuk jenis peta konsep ("concept_map"):
+- Rancang topik utama peta konsep yang menarik.
+- Sediakan metode pengumpulan (submission_mode: "hybrid").
+- Tulis instruksi/petunjuk pembuatan peta konsep yang sangat sederhana, ramah anak SMP, dan mudah diikuti (maksimal 2-3 kalimat ringkas).
+- Sediakan daftar kata kunci acak (keywords) sebanyak 6 sampai 8 kata atau frasa pendek yang relevan dengan materi, sangat familiar untuk siswa SMP.
+{
+  "central_topic": "Topik Utama Peta Konsep (misalnya: Siklus Air, Struktur Sel)",
+  "submission_mode": "hybrid",
+  "instructions": "Petunjuk pembuatan peta konsep dengan kalimat sederhana yang mudah dipahami murid SMP",
+  "keywords": ["kata_kunci_1", "kata_kunci_2", "kata_kunci_3", "kata_kunci_4", "kata_kunci_5", "kata_kunci_6"]
+}
+
 Pastikan seluruh deskripsi spesifik terhadap konteks materi "{content}" dan tidak bersifat umum/generik. Gunakan bahasa yang sederhana bagi siswa SMP.
 PROMPT
             ],

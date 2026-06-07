@@ -190,6 +190,10 @@ export default function CreateAssignment({ teachings, objectives, assessment_typ
                     if (suggestion.context !== undefined) newConfig.context = suggestion.context;
                     if (suggestion.teacher_notes !== undefined) newConfig.teacher_notes = suggestion.teacher_notes;
                     if (suggestion.levels !== undefined) newConfig.levels = suggestion.levels;
+                    if (suggestion.central_topic !== undefined) newConfig.central_topic = suggestion.central_topic;
+                    if (suggestion.submission_mode !== undefined) newConfig.submission_mode = suggestion.submission_mode;
+                    if (suggestion.instructions !== undefined) newConfig.instructions = suggestion.instructions;
+                    if (suggestion.keywords !== undefined) newConfig.keywords = suggestion.keywords;
                     if (suggestion.kktp !== undefined) {
                         newConfig.kktp = {
                             ...newConfig.kktp,
@@ -198,8 +202,8 @@ export default function CreateAssignment({ teachings, objectives, assessment_typ
                     }
 
                     // Pre-fill title & description if suggested
-                    const newTitle = prev.title || suggestion.title || `Asesmen ${suggestion.criteria || 'Baru'}`;
-                    const newDesc = prev.description || suggestion.description || suggestion.stimulus || '';
+                    const newTitle = prev.title || suggestion.title || (suggestion.central_topic ? `Peta Konsep: ${suggestion.central_topic}` : `Asesmen ${suggestion.criteria || 'Baru'}`);
+                    const newDesc = prev.description || suggestion.description || suggestion.stimulus || suggestion.instructions || '';
 
                     return {
                         ...prev,

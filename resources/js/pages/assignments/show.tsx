@@ -43,9 +43,13 @@ import {
     FolderOpen,
     ImageIcon,
     Ticket,
-    RotateCcw
+    RotateCcw,
+    Maximize2,
+    Minimize2,
+    ZoomIn,
+    ZoomOut
 } from 'lucide-react';
-import { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import {
     Dialog,
@@ -81,41 +85,25 @@ import CommentSection from '@/components/CommentSection';
 import ReflectionForm from '@/components/ReflectionForm';
 import { PlusCircle, Link2, Move, Type, Trash } from 'lucide-react';
 
-const ConceptMapCanvas = ({ data, setData, readOnly = false }: { data: any, setData?: any, readOnly?: boolean }) => {
+const ConceptMapCanvas = ({ data, setData, readOnly = false, canvasHeight }: { data: any, setData?: any, readOnly?: boolean, canvasHeight?: string }) => {
+    const canvasRef = React.useRef<HTMLDivElement>(null);
     const [draggingNode, setDraggingNode] = useState<string | null>(null);
+    const [selectedNode, setSelectedNode] = useState<string | null>(null);
     const [connectingFrom, setConnectingFrom] = useState<string | null>(null);
-    const [offset, setOffset] = useState({ x: 0, y: 0 });
+    const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
 
-    const handleMouseDown = (nodeId: string, e: React.MouseEvent) => {
-        if (readOnly) return;
-        setDraggingNode(nodeId);
-        const node = data.nodes.find((n: any) => n.id === nodeId);
-        setOffset({ x: e.clientX - node.x, y: e.clientY - node.y });
-    };
-
-    const handleMouseMove = (e: React.MouseEvent) => {
-        if (draggingNode && !readOnly) {
-            const newNodes = data.nodes.map((n: any) => 
-                n.id === draggingNode ? { ...n, x: e.clientX - offset.x, y: e.clientY - offset.y } : n
-            );
-            setData({ ...data, nodes: newNodes });
-        }
-    };
-
-    const handleMouseUp = () => {
-        setDraggingNode(null);
-    };
-
+    // --- Node Actions ---
     const addNode = () => {
         if (readOnly) return;
         const newNode = {
             id: `node_${Date.now()}`,
             text: 'Konsep Baru',
-            x: 100 + Math.random() * 200,
-            y: 100 + Math.random() * 200,
+            x: 120 + Math.random() * 300,
+            y: 80 + Math.random() * 250,
             color: 'indigo'
         };
         setData({ ...data, nodes: [...data.nodes, newNode] });
+        setSelectedNode(newNode.id);
     };
 
     const updateNodeText = (id: string, text: string) => {
@@ -125,37 +113,11 @@ const ConceptMapCanvas = ({ data, setData, readOnly = false }: { data: any, setD
 
     const deleteNode = (id: string) => {
         if (readOnly) return;
+        setSelectedNode(null);
         setData({
             nodes: data.nodes.filter((n: any) => n.id !== id),
             edges: data.edges.filter((e: any) => e.from !== id && e.to !== id)
         });
-    };
-
-    const startConnection = (id: string) => {
-        if (readOnly) return;
-        setConnectingFrom(id);
-    };
-
-    const endConnection = (id: string) => {
-        if (readOnly || !connectingFrom || connectingFrom === id) {
-            setConnectingFrom(null);
-            return;
-        }
-        
-        // Avoid duplicate edges
-        if (data.edges.some((e: any) => e.from === connectingFrom && e.to === id)) {
-            setConnectingFrom(null);
-            return;
-        }
-
-        const newEdge = {
-            id: `edge_${Date.now()}`,
-            from: connectingFrom,
-            to: id,
-            label: 'berhubungan dengan'
-        };
-        setData({ ...data, edges: [...data.edges, newEdge] });
-        setConnectingFrom(null);
     };
 
     const updateEdgeLabel = (id: string, label: string) => {
@@ -168,131 +130,448 @@ const ConceptMapCanvas = ({ data, setData, readOnly = false }: { data: any, setD
         setData({ ...data, edges: data.edges.filter((e: any) => e.id !== id) });
     };
 
+    // --- Connection ---
+    const startConnection = (nodeId: string) => {
+        if (readOnly) return;
+        setConnectingFrom(nodeId);
+        setSelectedNode(null);
+    };
+
+    const endConnection = (targetId: string) => {
+        if (!connectingFrom || connectingFrom === targetId) {
+            setConnectingFrom(null);
+            return;
+        }
+        if (data.edges.some((e: any) => e.from === connectingFrom && e.to === targetId)) {
+            setConnectingFrom(null);
+            return;
+        }
+        const newEdge = {
+            id: `edge_${Date.now()}`,
+            from: connectingFrom,
+            to: targetId,
+            label: 'berhubungan dengan'
+        };
+        setData({ ...data, edges: [...data.edges, newEdge] });
+        setConnectingFrom(null);
+    };
+
+    // --- Drag Handling (mouse) ---
+    const hasDraggedRef = useRef(false);
+
+    const handleNodeMouseDown = (nodeId: string, e: React.MouseEvent) => {
+        if (readOnly || connectingFrom) return;
+        e.stopPropagation();
+        const node = data.nodes.find((n: any) => n.id === nodeId);
+        if (!node || !canvasRef.current) return;
+        const rect = canvasRef.current.getBoundingClientRect();
+        setDragOffset({ x: e.clientX - rect.left - node.x, y: e.clientY - rect.top - node.y });
+        setDraggingNode(nodeId);
+        hasDraggedRef.current = false;
+    };
+
+    useEffect(() => {
+        if (!draggingNode) return;
+        const handleMouseMove = (e: MouseEvent) => {
+            hasDraggedRef.current = true;
+            if (!canvasRef.current) return;
+            const rect = canvasRef.current.getBoundingClientRect();
+            const x = Math.max(90, Math.min(rect.width - 90, e.clientX - rect.left - dragOffset.x));
+            const y = Math.max(30, Math.min(rect.height - 80, e.clientY - rect.top - dragOffset.y));
+            setData((prev: any) => ({
+                ...prev,
+                nodes: prev.nodes.map((n: any) => n.id === draggingNode ? { ...n, x, y } : n)
+            }));
+        };
+        const handleMouseUp = () => setDraggingNode(null);
+        window.addEventListener('mousemove', handleMouseMove);
+        window.addEventListener('mouseup', handleMouseUp);
+        return () => {
+            window.removeEventListener('mousemove', handleMouseMove);
+            window.removeEventListener('mouseup', handleMouseUp);
+        };
+    }, [draggingNode, dragOffset]);
+
+    // --- Touch Drag Handling ---
+    const handleNodeTouchStart = (nodeId: string, e: React.TouchEvent) => {
+        if (readOnly || connectingFrom || e.touches.length === 0) return;
+        e.stopPropagation();
+        const touch = e.touches[0];
+        const node = data.nodes.find((n: any) => n.id === nodeId);
+        if (!node || !canvasRef.current) return;
+        const rect = canvasRef.current.getBoundingClientRect();
+        setDragOffset({ x: touch.clientX - rect.left - node.x, y: touch.clientY - rect.top - node.y });
+        setDraggingNode(nodeId);
+        hasDraggedRef.current = false;
+    };
+
+    useEffect(() => {
+        if (!draggingNode || !canvasRef.current) return;
+        const canvas = canvasRef.current;
+        const handleTouchMove = (e: TouchEvent) => {
+            e.preventDefault();
+            hasDraggedRef.current = true;
+            if (e.touches.length === 0) return;
+            const touch = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            const x = Math.max(90, Math.min(rect.width - 90, touch.clientX - rect.left - dragOffset.x));
+            const y = Math.max(30, Math.min(rect.height - 80, touch.clientY - rect.top - dragOffset.y));
+            setData((prev: any) => ({
+                ...prev,
+                nodes: prev.nodes.map((n: any) => n.id === draggingNode ? { ...n, x, y } : n)
+            }));
+        };
+        const handleTouchEnd = () => {
+            setDraggingNode(null);
+            // For touch: if no drag happened, treat as a tap to select
+            if (!hasDraggedRef.current && !readOnly) {
+                setSelectedNode(draggingNode);
+            }
+        };
+        canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+        canvas.addEventListener('touchend', handleTouchEnd);
+        return () => {
+            canvas.removeEventListener('touchmove', handleTouchMove);
+            canvas.removeEventListener('touchend', handleTouchEnd);
+        };
+    }, [draggingNode, dragOffset]);
+
+    // --- Click canvas background to deselect / cancel ---
+    const handleCanvasClick = () => {
+        setSelectedNode(null);
+        if (connectingFrom) setConnectingFrom(null);
+    };
+
+    // --- Node click (fires after mousedown+mouseup without drag) ---
+    const handleNodeClick = (nodeId: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (hasDraggedRef.current) return; // was a drag, not a click
+        if (connectingFrom) {
+            endConnection(nodeId);
+        } else {
+            setSelectedNode(nodeId === selectedNode ? null : nodeId);
+        }
+    };
+
+    // --- SVG lines for edges ---
+    const svgRef = React.useRef<SVGSVGElement>(null);
+
+    // --- Pan & Zoom for readOnly mode ---
+    const [viewZoom, setViewZoom] = useState(1);
+    const [viewPan, setViewPan] = useState({ x: 0, y: 0 });
+    const [isPanning, setIsPanning] = useState(false);
+    const [panStart, setPanStart] = useState({ x: 0, y: 0 });
+    const initialFitDone = useRef(false);
+
+    // Calculate fit-all transform
+    const calcFitAll = () => {
+        if (data.nodes.length === 0) return { zoom: 1, panX: 0, panY: 0 };
+        const padding = 120;
+        const xs = data.nodes.map((n: any) => n.x);
+        const ys = data.nodes.map((n: any) => n.y);
+        const minX = Math.min(...xs) - padding;
+        const minY = Math.min(...ys) - padding;
+        const maxX = Math.max(...xs) + padding;
+        const maxY = Math.max(...ys) + padding;
+        const contentW = maxX - minX;
+        const contentH = maxY - minY;
+        if (!canvasRef.current) return { zoom: 1, panX: 0, panY: 0 };
+        const containerW = canvasRef.current.clientWidth;
+        const containerH = canvasRef.current.clientHeight;
+        const zoom = Math.min(1, containerW / contentW, containerH / contentH);
+        const panX = -minX * zoom + (containerW - contentW * zoom) / 2;
+        const panY = -minY * zoom + (containerH - contentH * zoom) / 2;
+        return { zoom, panX, panY };
+    };
+
+    // Auto-fit on first render for readOnly
+    useEffect(() => {
+        if (readOnly && data.nodes.length > 0 && !initialFitDone.current) {
+            // Small delay to ensure container has rendered
+            const timer = setTimeout(() => {
+                const fit = calcFitAll();
+                setViewZoom(fit.zoom);
+                setViewPan({ x: fit.panX, y: fit.panY });
+                initialFitDone.current = true;
+            }, 50);
+            return () => clearTimeout(timer);
+        }
+    }, [readOnly, data.nodes]);
+
+    const handleFitAll = () => {
+        const fit = calcFitAll();
+        setViewZoom(fit.zoom);
+        setViewPan({ x: fit.panX, y: fit.panY });
+    };
+
+    const handleZoomIn = () => setViewZoom(z => Math.min(2, z + 0.15));
+    const handleZoomOut = () => setViewZoom(z => Math.max(0.2, z - 0.15));
+
+    // Mouse wheel zoom for readOnly
+    const handleWheel = (e: React.WheelEvent) => {
+        if (!readOnly) return;
+        e.preventDefault();
+        const delta = e.deltaY > 0 ? -0.08 : 0.08;
+        setViewZoom(z => Math.min(2, Math.max(0.2, z + delta)));
+    };
+
+    // Pan handlers for readOnly
+    const handlePanMouseDown = (e: React.MouseEvent) => {
+        if (!readOnly) return;
+        e.preventDefault();
+        setIsPanning(true);
+        setPanStart({ x: e.clientX - viewPan.x, y: e.clientY - viewPan.y });
+    };
+
+    const handlePanMouseMove = (e: React.MouseEvent) => {
+        if (!readOnly || !isPanning) return;
+        setViewPan({ x: e.clientX - panStart.x, y: e.clientY - panStart.y });
+    };
+
+    const handlePanMouseUp = () => setIsPanning(false);
+
+    // Compute transform style for readOnly content
+    const viewTransformStyle = readOnly ? {
+        transform: `translate(${viewPan.x}px, ${viewPan.y}px) scale(${viewZoom})`,
+        transformOrigin: '0 0',
+    } : {};
+
+    const [isFullscreen, setIsFullscreen] = useState(false);
+
+    // Escape key to exit fullscreen
+    useEffect(() => {
+        if (!isFullscreen) return;
+        const handleKey = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') setIsFullscreen(false);
+        };
+        window.addEventListener('keydown', handleKey);
+        return () => window.removeEventListener('keydown', handleKey);
+    }, [isFullscreen]);
+
+    const defaultHeight = readOnly ? (canvasHeight || 'h-[500px]') : 'h-[600px]';
+
     return (
-        <div className="relative w-full h-[600px] bg-slate-50 dark:bg-slate-950 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 overflow-hidden select-none group/canvas">
+        <>
+        {/* Fullscreen backdrop */}
+        {isFullscreen && (
+            <div 
+                className="fixed inset-0 z-[199] bg-slate-950/80 backdrop-blur-sm"
+                onClick={() => setIsFullscreen(false)}
+            />
+        )}
+        <div 
+            ref={canvasRef}
+            className={`relative w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 overflow-hidden select-none group/canvas ${
+                isFullscreen 
+                    ? 'fixed inset-4 z-[200] rounded-[2rem] shadow-2xl' 
+                    : `${defaultHeight} rounded-[2.5rem]`
+            } ${readOnly ? 'cursor-grab' : ''} ${isPanning ? '!cursor-grabbing' : ''}`}
+            onClick={handleCanvasClick}
+            onWheel={handleWheel}
+            onMouseDown={readOnly ? handlePanMouseDown : undefined}
+            onMouseMove={readOnly ? handlePanMouseMove : undefined}
+            onMouseUp={readOnly ? handlePanMouseUp : undefined}
+            onMouseLeave={readOnly ? handlePanMouseUp : undefined}
+            style={{ touchAction: 'none' }}
+        >
             {/* Grid Pattern */}
             <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05]" style={{ backgroundImage: 'radial-gradient(#6366f1 1px, transparent 1px)', backgroundSize: '30px 30px' }} />
             
+            {/* Interactive Help Banner — hidden in readOnly */}
             {!readOnly && (
-                <div className="absolute top-6 left-6 z-10 flex gap-2">
+                <div className="absolute bottom-4 left-4 right-4 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200 dark:border-slate-800 rounded-2xl p-3 flex flex-wrap items-center justify-between gap-3 z-20 shadow-lg shadow-slate-100 dark:shadow-none animate-in fade-in duration-300" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                        <span className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300"><Move className="h-3.5 w-3.5 text-indigo-500 shrink-0" /> Geser konsep untuk memindahkan</span>
+                        <span className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300"><Link2 className="h-3.5 w-3.5 text-amber-500 shrink-0" /> Klik rantai lalu klik konsep lain</span>
+                        <span className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300"><Trash className="h-3.5 w-3.5 text-rose-500 shrink-0" /> Klik konsep lalu hapus</span>
+                    </div>
                     <button 
                         type="button"
-                        onClick={addNode}
-                        className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-indigo-200 dark:shadow-none hover:scale-105 transition-all active:scale-95"
+                        onClick={(e) => { e.stopPropagation(); addNode(); }}
+                        className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-[10px] font-black uppercase tracking-wider shadow-lg shadow-indigo-100 dark:shadow-none hover:scale-105 active:scale-95 transition cursor-pointer"
                     >
                         <PlusCircle className="h-4 w-4" />
                         Tambah Konsep
                     </button>
-                    {connectingFrom && (
-                        <div className="px-4 py-2 bg-amber-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest animate-pulse">
-                            Pilih konsep tujuan...
-                        </div>
-                    )}
                 </div>
             )}
 
-            <svg 
-                className="w-full h-full cursor-crosshair" 
-                onMouseMove={handleMouseMove} 
-                onMouseUp={handleMouseUp}
-                onMouseLeave={handleMouseUp}
-            >
-                {/* Edges */}
+            {/* Zoom controls for readOnly */}
+            {readOnly && data.nodes.length > 0 && (
+                <div className="absolute top-4 right-4 z-30 flex flex-col gap-1.5" onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
+                    <button 
+                        type="button" 
+                        onClick={() => setIsFullscreen(f => !f)} 
+                        className="h-8 w-8 flex items-center justify-center bg-indigo-600 hover:bg-indigo-700 border border-indigo-500 rounded-lg shadow-md text-white transition-colors cursor-pointer" 
+                        title={isFullscreen ? 'Keluar Layar Penuh' : 'Tampilkan Layar Penuh'}
+                    >
+                        {isFullscreen ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+                    </button>
+                    <button type="button" onClick={handleZoomIn} className="h-8 w-8 flex items-center justify-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-md text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-sm font-bold cursor-pointer" title="Zoom In">
+                        <ZoomIn className="h-3.5 w-3.5" />
+                    </button>
+                    <button type="button" onClick={handleZoomOut} className="h-8 w-8 flex items-center justify-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-md text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-sm font-bold cursor-pointer" title="Zoom Out">
+                        <ZoomOut className="h-3.5 w-3.5" />
+                    </button>
+                    <button type="button" onClick={handleFitAll} className="h-8 w-8 flex items-center justify-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-md text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer" title="Fit Semua">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/></svg>
+                    </button>
+                    <div className="text-[8px] font-bold text-slate-400 text-center mt-1">{Math.round(viewZoom * 100)}%</div>
+                </div>
+            )}
+            {/* Fullscreen hint banner */}
+            {isFullscreen && (
+                <div className="absolute top-4 left-4 z-30 flex items-center gap-2 bg-indigo-600/90 backdrop-blur-sm text-white px-3 py-1.5 rounded-xl text-[10px] font-bold shadow-lg">
+                    <Maximize2 className="h-3 w-3" />
+                    Layar Penuh — Geser & Scroll untuk navigasi
+                </div>
+            )}
+
+            {connectingFrom && (
+                <div className="absolute top-6 left-6 z-20 px-4 py-2 bg-amber-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-amber-200 dark:shadow-none animate-pulse">
+                    Klik konsep tujuan untuk menghubungkan...
+                </div>
+            )}
+
+            {/* Content layer — pan+zoom in readOnly, normal in edit */}
+            <div className="absolute inset-0" style={viewTransformStyle}>
+
+            {/* SVG layer for edges only */}
+            <svg ref={svgRef} className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 1 }}>
+                <defs>
+                    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+                        <polygon points="0 0, 10 3.5, 0 7" fill="#94a3b8" />
+                    </marker>
+                </defs>
                 {data.edges.map((edge: any) => {
                     const fromNode = data.nodes.find((n: any) => n.id === edge.from);
                     const toNode = data.nodes.find((n: any) => n.id === edge.to);
                     if (!fromNode || !toNode) return null;
-
-                    const midX = (fromNode.x + toNode.x) / 2;
-                    const midY = (fromNode.y + toNode.y) / 2;
-
                     return (
-                        <g key={edge.id} className="group/edge">
-                            <line 
-                                x1={fromNode.x} y1={fromNode.y} 
-                                x2={toNode.x} y2={toNode.y} 
-                                className="stroke-slate-300 dark:stroke-slate-700 stroke-[2] transition-colors group-hover/edge:stroke-indigo-400"
-                                markerEnd="url(#arrowhead)"
-                            />
-                            <foreignObject x={midX - 60} y={midY - 15} width={120} height={30}>
-                                <div className="flex items-center justify-center h-full">
-                                    <input 
-                                        value={edge.label}
-                                        readOnly={readOnly}
-                                        onChange={(e) => updateEdgeLabel(edge.id, e.target.value)}
-                                        className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm border border-border rounded-lg px-2 py-0.5 text-[8px] font-bold text-muted-foreground dark:text-muted-foreground text-center focus:ring-1 focus:ring-indigo-400 outline-none w-auto min-w-[60px]"
-                                    />
-                                    {!readOnly && (
-                                        <button 
-                                            onClick={() => deleteEdge(edge.id)}
-                                            className="ml-1 opacity-0 group-hover/edge:opacity-100 text-rose-400 hover:text-rose-500 transition-opacity"
-                                        >
-                                            <X className="h-2.5 w-2.5" />
-                                        </button>
-                                    )}
-                                </div>
-                            </foreignObject>
-                        </g>
+                        <line
+                            key={edge.id}
+                            x1={fromNode.x} y1={fromNode.y}
+                            x2={toNode.x} y2={toNode.y}
+                            stroke="#94a3b8" strokeWidth="2"
+                            markerEnd="url(#arrowhead)"
+                        />
                     );
                 })}
-
-                <defs>
-                    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="25" refY="3.5" orient="auto">
-                        <polygon points="0 0, 10 3.5, 0 7" fill="#cbd5e1" className="dark:fill-slate-700" />
-                    </marker>
-                </defs>
-
-                {/* Nodes */}
-                {data.nodes.map((node: any) => (
-                    <g 
-                        key={node.id} 
-                        transform={`translate(${node.x},${node.y})`}
-                        className={`cursor-move transition-transform ${draggingNode === node.id ? 'scale-105' : ''}`}
-                        onMouseDown={(e) => handleMouseDown(node.id, e)}
-                    >
-                        {/* Node Bubble */}
-                        <rect 
-                            x="-70" y="-25" width="140" height="50" rx="25"
-                            className={`${connectingFrom === node.id ? 'fill-amber-500' : 'fill-white dark:fill-slate-900'} stroke-2 ${connectingFrom === node.id ? 'stroke-amber-600' : 'stroke-indigo-500'} shadow-xl`}
-                            onClick={() => connectingFrom && endConnection(node.id)}
-                        />
-                        
-                        <foreignObject x="-60" y="-20" width="120" height="40">
-                            <div className="flex flex-col items-center justify-center h-full text-center">
-                                <input 
-                                    value={node.text}
-                                    readOnly={readOnly}
-                                    onChange={(e) => updateNodeText(node.id, e.target.value)}
-                                    className="bg-transparent border-none p-0 text-[10px] font-black text-foreground text-center focus:ring-0 outline-none w-full"
-                                />
-                            </div>
-                        </foreignObject>
-
-                        {!readOnly && (
-                            <g className="opacity-0 group-hover/canvas:opacity-100 transition-opacity">
-                                {/* Actions handle */}
-                                <circle 
-                                    cx="70" cy="-25" r="12" 
-                                    className="fill-rose-500 cursor-pointer hover:scale-110 transition-transform"
-                                    onClick={(e) => { e.stopPropagation(); deleteNode(node.id); }}
-                                />
-                                <Trash className="h-3 w-3 text-white pointer-events-none" x="64" y="-31" />
-                                
-                                <circle 
-                                    cx="70" cy="25" r="12" 
-                                    className="fill-amber-500 cursor-pointer hover:scale-110 transition-transform"
-                                    onClick={(e) => { e.stopPropagation(); startConnection(node.id); }}
-                                />
-                                <Link2 className="h-3 w-3 text-white pointer-events-none" x="64" y="19" />
-                            </g>
-                        )}
-                    </g>
-                ))}
             </svg>
+
+            {/* Edge labels as HTML */}
+            {data.edges.map((edge: any) => {
+                const fromNode = data.nodes.find((n: any) => n.id === edge.from);
+                const toNode = data.nodes.find((n: any) => n.id === edge.to);
+                if (!fromNode || !toNode) return null;
+                const midX = (fromNode.x + toNode.x) / 2;
+                const midY = (fromNode.y + toNode.y) / 2;
+                return (
+                    <div
+                        key={edge.id}
+                        className="absolute flex items-center gap-1 group/edge"
+                        style={{ left: midX - 65, top: midY - 14, zIndex: 5 }}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <input
+                            value={edge.label}
+                            readOnly={readOnly}
+                            onChange={(e) => updateEdgeLabel(edge.id, e.target.value)}
+                            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-2 py-1 text-[9px] font-bold text-slate-500 dark:text-slate-400 text-center focus:ring-1 focus:ring-indigo-400 outline-none w-[110px] shadow-sm"
+                        />
+                        {!readOnly && (
+                            <button
+                                type="button"
+                                onClick={() => deleteEdge(edge.id)}
+                                className="opacity-0 group-hover/edge:opacity-100 text-rose-500 hover:text-rose-600 transition-opacity bg-rose-50 dark:bg-rose-950/30 p-1 rounded-md"
+                            >
+                                <X className="h-3 w-3" />
+                            </button>
+                        )}
+                    </div>
+                );
+            })}
+
+            {/* Nodes as HTML divs */}
+            {data.nodes.map((node: any) => {
+                const isSelected = selectedNode === node.id;
+                const isConnectSource = connectingFrom === node.id;
+                const isConnectTarget = connectingFrom && connectingFrom !== node.id;
+                
+                return (
+                    <div
+                        key={node.id}
+                        className={`absolute flex items-center group/node ${draggingNode === node.id ? 'z-30 scale-105' : 'z-10'} transition-transform`}
+                        style={{
+                            left: node.x - 80,
+                            top: node.y - 22,
+                            cursor: connectingFrom ? 'pointer' : 'grab',
+                            userSelect: 'none',
+                        }}
+                        onMouseDown={(e) => handleNodeMouseDown(node.id, e)}
+                        onTouchStart={(e) => handleNodeTouchStart(node.id, e)}
+                        onClick={(e) => handleNodeClick(node.id, e)}
+                    >
+                        {/* Node pill */}
+                        <div
+                            className={`
+                                relative flex items-center justify-center px-4 py-2 rounded-full border-2 shadow-md transition-all duration-200 min-w-[140px] max-w-[200px]
+                                ${isConnectSource 
+                                    ? 'bg-amber-50 dark:bg-amber-950/20 border-amber-500 shadow-amber-100' 
+                                    : isConnectTarget 
+                                        ? 'bg-indigo-50 dark:bg-indigo-950/20 border-indigo-400 hover:border-indigo-600 hover:shadow-indigo-200 shadow-indigo-50' 
+                                        : isSelected 
+                                            ? 'bg-white dark:bg-slate-900 border-indigo-600 shadow-indigo-200 dark:shadow-indigo-950/30'
+                                            : 'bg-white dark:bg-slate-900 border-indigo-400/60 hover:border-indigo-500'
+                                }
+                            `}
+                        >
+                            <input
+                                value={node.text}
+                                readOnly={readOnly || !!connectingFrom}
+                                onChange={(e) => updateNodeText(node.id, e.target.value)}
+                                onClick={(e) => { if (!connectingFrom) e.stopPropagation(); }}
+                                onMouseDown={(e) => { if (!connectingFrom) e.stopPropagation(); }}
+                                onTouchStart={(e) => { if (!connectingFrom) e.stopPropagation(); }}
+                                className="bg-transparent border-none p-0 text-[11px] font-bold text-slate-800 dark:text-slate-100 text-center focus:ring-0 outline-none w-full min-w-0 cursor-text"
+                                style={{ pointerEvents: connectingFrom ? 'none' : 'auto' }}
+                            />
+                        </div>
+
+                        {/* Action buttons — only visible when selected & not in connection mode */}
+                        {!readOnly && isSelected && !connectingFrom && (
+                            <div className="absolute -top-10 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-2 py-1.5 shadow-lg animate-in fade-in zoom-in-95 duration-200 z-40"
+                                onClick={(e) => e.stopPropagation()}
+                                onMouseDown={(e) => e.stopPropagation()}
+                            >
+                                <button
+                                    type="button"
+                                    onClick={() => startConnection(node.id)}
+                                    className="flex items-center gap-1 px-2 py-1 rounded-lg text-[9px] font-bold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 hover:bg-amber-100 dark:hover:bg-amber-950/50 transition-colors cursor-pointer"
+                                    title="Hubungkan ke konsep lain"
+                                >
+                                    <Link2 className="h-3 w-3" />
+                                    Hubungkan
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => deleteNode(node.id)}
+                                    className="flex items-center gap-1 px-2 py-1 rounded-lg text-[9px] font-bold text-rose-700 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/30 hover:bg-rose-100 dark:hover:bg-rose-950/50 transition-colors cursor-pointer"
+                                    title="Hapus konsep"
+                                >
+                                    <Trash className="h-3 w-3" />
+                                    Hapus
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                );
+            })}
+            </div>{/* end auto-fit wrapper */}
             
             {data.nodes.length === 0 && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                    <div className="h-16 w-16 bg-slate-100 dark:bg-slate-900 rounded-[2rem] flex items-center justify-center text-slate-300 mb-4">
+                    <div className="h-16 w-16 bg-slate-100 dark:bg-slate-900 rounded-[2rem] flex items-center justify-center text-slate-350 dark:text-slate-700 mb-4">
                         <GitBranch className="h-8 w-8" />
                     </div>
                     <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest italic">Kanvas Peta Konsep Kosong</p>
@@ -300,6 +579,7 @@ const ConceptMapCanvas = ({ data, setData, readOnly = false }: { data: any, setD
                 </div>
             )}
         </div>
+        </>
     );
 };
 
@@ -356,7 +636,14 @@ export default function ShowAssignment({ assignment, students, my_submission, my
         const nextState = { ...conceptRubric, [field]: checked };
         setConceptRubric(nextState);
         const feedbackString = handleGenerateDescriptiveFeedback(nextState);
-        teacherForm.setData('feedback', feedbackString);
+        // Auto-calculate score: each of 3 criteria = 1/3 of max_points
+        const checkedCount = [nextState.koneksi, nextState.kataHubung, nextState.kelengkapan].filter(Boolean).length;
+        const autoScore = Math.round((checkedCount / 3) * (assignment.max_points || 100));
+        teacherForm.setData({
+            ...teacherForm.data,
+            feedback: feedbackString,
+            score: autoScore,
+        });
     };
 
     const [journalCheckedIndicators, setJournalCheckedIndicators] = useState<Record<number, boolean>>({});
@@ -5473,11 +5760,36 @@ export default function ShowAssignment({ assignment, students, my_submission, my
             {/* Grading Modal (Standard Quiz/Essay) */}
             {selectedSubmission && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-md p-4 animate-in fade-in duration-300">
-                    <div className="w-full max-w-4xl max-h-[90vh] overflow-hidden rounded-[3rem] bg-white dark:bg-slate-900 p-10 shadow-2xl border border-white/20 animate-in zoom-in-95 duration-300 flex flex-col md:flex-row gap-8">
+                    <div className={`w-full max-h-[95vh] overflow-hidden rounded-[2.5rem] bg-white dark:bg-slate-900 shadow-2xl border border-white/20 animate-in zoom-in-95 duration-300 flex gap-0 ${
+                        (() => {
+                            try {
+                                const p = JSON.parse(selectedSubmission.content || '');
+                                return p.type === 'concept_map' 
+                                    ? 'max-w-[95vw] w-full flex-col lg:flex-row h-[90vh]' 
+                                    : 'max-w-4xl flex-col md:flex-row p-10';
+                            } catch { return 'max-w-4xl flex-col md:flex-row p-10'; }
+                        })()
+                    }`}>
                         {/* Side: Student Response Preview */}
-                        <div className="flex-1 space-y-6 overflow-y-auto max-h-[70vh] pr-4 custom-scrollbar">
-                            <div className="flex items-center justify-between mb-4">
+                        <div className={`overflow-y-auto custom-scrollbar ${
+                            (() => {
+                                try {
+                                    const p = JSON.parse(selectedSubmission.content || '');
+                                    return p.type === 'concept_map'
+                                        ? 'flex-1 p-8 h-full flex flex-col min-h-0 overflow-hidden'
+                                        : 'flex-1 pr-4 max-h-[70vh] space-y-6';
+                                } catch { return 'flex-1 pr-4 max-h-[70vh] space-y-6'; }
+                            })()
+                        }`}>
+                            <div className="flex items-center justify-between mb-4 shrink-0">
                                 <h3 className="text-lg font-black text-foreground tracking-tight">Evaluasi Jawaban: {selectedSubmission.student_name}</h3>
+                                <button
+                                    type="button"
+                                    onClick={() => setSelectedSubmission(null)}
+                                    className="h-8 w-8 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 transition-colors cursor-pointer"
+                                >
+                                    <X className="h-4 w-4" />
+                                </button>
                             </div>
                             {(assignment.instrument_config?.stimulus || assignment.description) && (
                                 <div className="p-6 rounded-[2rem] bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100/50 dark:border-indigo-900/30 shadow-sm space-y-3">
@@ -5693,30 +6005,50 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                     }
                                     if (parsed.type === 'concept_map') {
                                         return (
-                                            <div className="space-y-6">
-                                                <div className="p-5 rounded-[2.5rem] bg-indigo-50/30 dark:bg-indigo-950/10 border border-indigo-100 dark:border-indigo-900/30">
-                                                    <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-1 leading-none">Topik Utama:</p>
-                                                    <p className="text-sm font-black text-foreground">{assignment.instrument_config?.central_topic}</p>
+                                            <div className="flex-1 flex flex-col min-h-0 space-y-4">
+                                                <div className="flex items-center justify-between flex-wrap gap-2 shrink-0">
+                                                    <div className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-indigo-50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/30">
+                                                        <GitBranch className="h-4 w-4 text-indigo-500" />
+                                                        <div>
+                                                            <p className="text-[9px] font-black text-indigo-400 uppercase tracking-widest leading-none">Topik Utama</p>
+                                                            <p className="text-sm font-black text-foreground leading-tight mt-0.5">{assignment.instrument_config?.central_topic}</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center gap-2 text-[9px] font-bold text-muted-foreground bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-xl">
+                                                        <span>🖱️ Geser = navigasi</span>
+                                                        <span>·</span>
+                                                        <span>⚲ Scroll = zoom</span>
+                                                        <span>·</span>
+                                                        <span>⛶ Expand = layar penuh</span>
+                                                    </div>
                                                 </div>
                                                 {parsed.submission_type === 'upload' ? (
-                                                    <div className="relative overflow-hidden rounded-[2.5rem] border border-border bg-slate-50 dark:bg-slate-900 p-6 text-center">
-                                                        <p className="text-[9px] font-black text-indigo-500 uppercase tracking-widest mb-3 text-left">Foto Peta Konsep Murid:</p>
+                                                    <div className="flex-1 min-h-0 relative overflow-hidden rounded-2xl border border-border bg-slate-50 dark:bg-slate-900 p-6 flex flex-col justify-center items-center">
+                                                        <p className="text-[9px] font-black text-indigo-500 uppercase tracking-widest mb-3 self-start">Foto Peta Konsep Murid:</p>
                                                         {selectedSubmission.file_path ? (
-                                                            <img 
-                                                                src={`/storage/${selectedSubmission.file_path}`} 
-                                                                alt="Peta Konsep Murid" 
-                                                                className="max-h-[500px] w-auto mx-auto rounded-3xl object-contain shadow-lg border border-border cursor-zoom-in"
-                                                                onClick={() => window.open(`/storage/${selectedSubmission.file_path}`, '_blank')}
-                                                            />
+                                                            <div className="relative group/img flex-1 flex items-center justify-center min-h-0 overflow-hidden">
+                                                                <img 
+                                                                    src={`/storage/${selectedSubmission.file_path}`} 
+                                                                    alt="Peta Konsep Murid" 
+                                                                    className="max-h-full max-w-full object-contain rounded-2xl border border-border shadow-lg cursor-zoom-in transition-transform hover:scale-[1.005]"
+                                                                    onClick={() => window.open(`/storage/${selectedSubmission.file_path}`, '_blank')}
+                                                                />
+                                                                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/img:opacity-100 transition-opacity pointer-events-none">
+                                                                    <div className="bg-black/50 backdrop-blur-sm text-white text-[10px] font-bold px-4 py-2 rounded-full flex items-center gap-2">
+                                                                        <ExternalLink className="h-3.5 w-3.5" /> Klik untuk buka di tab baru
+                                                                    </div>
+                                                                </div>
+                                                            </div>
                                                         ) : (
                                                             <p className="text-xs text-muted-foreground italic">Foto tidak ditemukan.</p>
                                                         )}
                                                     </div>
                                                 ) : (
-                                                    <div className="scale-90 origin-top">
+                                                    <div className="flex-1 min-h-0 rounded-2xl overflow-hidden border border-border relative">
                                                         <ConceptMapCanvas 
                                                             data={{ nodes: parsed.nodes || [], edges: parsed.edges || [] }} 
-                                                            readOnly={true} 
+                                                            readOnly={true}
+                                                            canvasHeight="h-full"
                                                         />
                                                     </div>
                                                 )}
@@ -6069,224 +6401,335 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                         </div>
 
                         {/* Side: Grading Form */}
-                        <div className="w-full md:w-80 space-y-8 bg-muted/50 p-8 rounded-[2.5rem] border border-border overflow-y-auto max-h-[70vh] pr-2 custom-scrollbar">
-                            <form onSubmit={handleGrade} className="space-y-6">
-                                {['reflective_journal', 'self_assessment', 'peer_assessment', 'structured_assignment', 'exit_ticket'].includes(assignment.instrument_type) ? (
-                                    <div className="space-y-6">
-                                        {/* KKTP Approach: Criteria Description */}
-                                        {(() => {
-                                            const gradingApproach = getGradingApproach();
-                                            const items = (
-                                                assignment.instrument_type === 'self_assessment' || 
-                                                assignment.instrument_type === 'peer_assessment' || 
-                                                assignment.instrument_type === 'structured_assignment' ||
-                                                (assignment.instrument_type === 'exit_ticket' && assignment.instrument_config?.assessment_mode === 'checklist')
-                                            )
-                                                ? (assignment.instrument_config?.indicators || [])
-                                                : (assignment.instrument_config?.questions || []);
-                                            
-                                            if (gradingApproach === 'criteria_description') {
-                                                return (
-                                                    <div className="space-y-4 p-5 rounded-[2rem] bg-indigo-50/40 dark:bg-indigo-950/15 border border-indigo-100/60 dark:border-indigo-900/35">
-                                                        <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest leading-none mb-1">Capaian Indikator (KKTP)</p>
-                                                        <p className="text-[9px] text-muted-foreground font-medium mb-3">Tandai indikator yang dicapai secara memadai oleh siswa</p>
-                                                        
-                                                        <div className="space-y-3">
-                                                            {items.map((item: any, idx: number) => {
-                                                                const checked = journalCheckedIndicators[idx] || false;
-                                                                return (
-                                                                    <label key={idx} className="flex items-start gap-2.5 text-xs font-bold text-slate-700 dark:text-slate-200 cursor-pointer select-none">
-                                                                        <input 
-                                                                            type="checkbox"
-                                                                            checked={checked}
-                                                                            onChange={(e) => handleJournalCheckboxChange(idx, e.target.checked)}
-                                                                            className="mt-0.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 h-4 w-4"
-                                                                        />
-                                                                        <div>
-                                                                            <p className="leading-snug">{(assignment.instrument_type === 'reflective_journal' || (assignment.instrument_type === 'exit_ticket' && assignment.instrument_config?.assessment_mode !== 'checklist')) ? `Pertanyaan ${idx + 1}` : `Indikator ${idx + 1}`}</p>
-                                                                            <p className="text-[9px] text-muted-foreground font-medium mt-0.5 line-clamp-2 leading-relaxed">{item.text || item.name}</p>
-                                                                        </div>
-                                                                    </label>
-                                                                );
-                                                            })}
-                                                        </div>
-
-                                                        <div className="pt-4 border-t border-indigo-100/50 dark:border-indigo-900/30 flex items-center justify-between">
-                                                            <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Status KKTP:</span>
-                                                            {(() => {
-                                                                const total = items.length;
-                                                                const minCriteria = assignment.instrument_config?.kktp?.min_criteria ?? Math.max(1, Math.round(total / 2));
-                                                                const checkedCount = Object.values(journalCheckedIndicators).filter(Boolean).length;
-                                                                const isPassed = checkedCount >= minCriteria;
-                                                                return isPassed ? (
-                                                                    <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 dark:bg-emerald-950/20 px-2 py-1 rounded-md uppercase tracking-wider">Tuntas ({checkedCount}/{total})</span>
-                                                                ) : (
-                                                                    <span className="text-[9px] font-black text-rose-600 bg-rose-50 dark:bg-rose-950/20 px-2 py-1 rounded-md uppercase tracking-wider">Belum Tuntas ({checkedCount}/{total})</span>
-                                                                );
-                                                            })()}
-                                                        </div>
+                        <div className={`bg-muted/50 border-border overflow-y-auto custom-scrollbar ${
+                            (() => {
+                                try {
+                                    const p = JSON.parse(selectedSubmission.content || '');
+                                    return p.type === 'concept_map'
+                                        ? 'w-full lg:w-[400px] p-8 border-t lg:border-t-0 lg:border-l border-slate-150 dark:border-slate-800 h-full flex flex-col shrink-0 overflow-hidden bg-slate-50/50 dark:bg-slate-900/30'
+                                        : 'w-full md:w-80 p-8 rounded-[2.5rem] border max-h-[70vh] pr-2 space-y-6';
+                                } catch { return 'w-full md:w-80 p-8 rounded-[2.5rem] border max-h-[70vh] pr-2 space-y-6'; }
+                            })()
+                        }`}>
+                            <form 
+                                onSubmit={handleGrade} 
+                                className={`flex flex-col h-full min-h-0 ${assignment.instrument_type === 'concept_map' ? '' : 'space-y-6'}`}
+                            >
+                                {assignment.instrument_type === 'concept_map' ? (
+                                    <>
+                                        <div className="flex-1 overflow-y-auto pr-1 space-y-6 min-h-0 custom-scrollbar mb-4">
+                                            {/* Concept map: checklist-only grading (no numeric score input) */}
+                                            <div className="space-y-4 p-5 rounded-[2rem] bg-indigo-50/40 dark:bg-indigo-950/15 border border-indigo-100/60 dark:border-indigo-900/35 animate-in slide-in-from-top-2 duration-200">
+                                                <div className="flex items-center justify-between">
+                                                    <div>
+                                                        <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest leading-none">Rubrik Penilaian Peta Konsep</p>
+                                                        <p className="text-[9px] text-muted-foreground font-medium mt-1">Centang kriteria yang terpenuhi — skor dihitung otomatis</p>
                                                     </div>
-                                                );
-                                            } else {
-                                                return (
-                                                    <div className="space-y-4 p-5 rounded-[2rem] bg-indigo-50/40 dark:bg-indigo-950/15 border border-indigo-100/60 dark:border-indigo-900/35">
-                                                        <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest leading-none mb-1">Kategori Capaian KKTP</p>
-                                                        <p className="text-[9px] text-muted-foreground font-medium mb-3">Pilih tingkat capaian siswa</p>
-                                                        
-                                                        <div className="grid grid-cols-1 gap-2">
-                                                            {(assignment.instrument_config?.levels || [
-                                                                { name: 'Perlu Bimbingan', desc: 'Siswa belum menunjukkan pemahaman konsep dasar.' },
-                                                                { name: 'Cukup', desc: 'Siswa memahami sebagian besar konsep dasar namun belum konsisten.' },
-                                                                { name: 'Baik', desc: 'Siswa menguasai seluruh indikator ketuntasan dengan baik.' },
-                                                                { name: 'Sangat Baik', desc: 'Siswa menunjukkan penguasaan luar biasa dan pemahaman mendalam.' }
-                                                            ]).map((lvl: any, idx: number) => {
-                                                                const isSelected = journalSelectedLevel === lvl.name;
-                                                                return (
-                                                                    <button
-                                                                        key={idx}
-                                                                        type="button"
-                                                                        onClick={() => handleJournalLevelChange(lvl.name)}
-                                                                        className={`p-3 rounded-xl border text-left transition-all ${
-                                                                            isSelected 
-                                                                                ? 'border-indigo-500 bg-indigo-500/10 dark:bg-indigo-500/20 shadow-sm' 
-                                                                                : 'border-border bg-white dark:bg-slate-900 hover:border-slate-300'
-                                                                        }`}
-                                                                    >
-                                                                        <p className="text-xs font-bold text-foreground leading-none">{lvl.name}</p>
-                                                                        <p className="text-[9px] text-muted-foreground mt-1.5 leading-normal">{lvl.desc}</p>
-                                                                    </button>
-                                                                );
-                                                            })}
-                                                        </div>
-
-                                                        <div className="pt-4 border-t border-indigo-100/50 dark:border-indigo-900/30 flex items-center justify-between">
-                                                            <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Status KKTP:</span>
-                                                            {(() => {
-                                                                const levelName = journalSelectedLevel;
-                                                                const levels = assignment.instrument_config?.levels || [];
-                                                                const selectedLvlObj = levels.find((l: any) => l.name === levelName);
-                                                                const passingLvlObj = levels.find((l: any) => l.name === assignment.instrument_config?.kktp?.passing_level);
-                                                                
-                                                                let isPassed = true;
-                                                                if (passingLvlObj && levelName) {
-                                                                    const selectedIdx = levels.findIndex((l: any) => l.name === levelName);
-                                                                    const passingIdx = levels.findIndex((l: any) => l.name === assignment.instrument_config?.kktp?.passing_level);
-                                                                    isPassed = selectedIdx >= passingIdx;
-                                                                }
-                                                                
-                                                                return levelName ? (
-                                                                    isPassed ? (
-                                                                        <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 dark:bg-emerald-950/20 px-2 py-1 rounded-md uppercase tracking-wider">Tuntas</span>
-                                                                    ) : (
-                                                                        <span className="text-[9px] font-black text-rose-600 bg-rose-50 dark:bg-rose-950/20 px-2 py-1 rounded-md uppercase tracking-wider">Belum Tuntas</span>
-                                                                    )
-                                                                ) : (
-                                                                    <span className="text-[9px] font-black text-amber-600 bg-amber-50 dark:bg-amber-950/20 px-2 py-1 rounded-md uppercase tracking-wider">Pilih Kategori</span>
-                                                                );
-                                                            })()}
-                                                        </div>
+                                                    {/* Auto-score badge */}
+                                                    <div className="flex flex-col items-center justify-center h-12 w-12 rounded-2xl bg-indigo-600 text-white shadow-lg shadow-indigo-200 dark:shadow-none shrink-0">
+                                                        <span className="text-lg font-black leading-none">{teacherForm.data.score}</span>
+                                                        <span className="text-[7px] font-bold opacity-70 uppercase tracking-widest">skor</span>
                                                     </div>
-                                                );
-                                            }
-                                        })()}
-                                    </div>
-                                ) : (
-                                    <div className="space-y-3">
-                                        <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Skor Pencapaian (0-{assignment.max_points})</label>
-                                        <input 
-                                            type="number"
-                                            max={assignment.max_points}
-                                            min={0}
-                                            value={teacherForm.data.score}
-                                            onChange={(e) => teacherForm.setData('score', parseInt(e.target.value))}
-                                            className="w-full rounded-2xl border border-slate-100 bg-white px-5 py-4 text-xl font-black text-slate-800 outline-none focus:border-sky-400 focus:ring-4 focus:ring-sky-50 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-100 transition-all text-center"
-                                        />
-                                    </div>
-                                )}
-
-                                {assignment.instrument_type === 'concept_map' && (
-                                    <div className="space-y-4 p-5 rounded-[2rem] bg-indigo-50/40 dark:bg-indigo-950/15 border border-indigo-100/60 dark:border-indigo-900/35 animate-in slide-in-from-top-2 duration-200">
-                                        <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest leading-none mb-1">Ceklis Rubrik Komponen</p>
-                                        <p className="text-[9px] text-muted-foreground font-medium mb-3">Centang untuk menghasilkan umpan balik otomatis</p>
-                                        
-                                        <div className="space-y-3">
-                                            <label className="flex items-start gap-2.5 text-xs font-bold text-slate-700 dark:text-slate-200 cursor-pointer select-none">
-                                                <input 
-                                                    type="checkbox"
-                                                    checked={conceptRubric.koneksi}
-                                                    onChange={(e) => handleRubricCheckboxChange('koneksi', e.target.checked)}
-                                                    className="mt-0.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 h-4 w-4"
-                                                />
-                                                <div>
-                                                    <p className="leading-none">Koneksi Logis</p>
-                                                    <p className="text-[9px] text-muted-foreground font-medium mt-1">Hubungan antar kata kunci terjalin logis</p>
                                                 </div>
-                                            </label>
 
-                                            <label className="flex items-start gap-2.5 text-xs font-bold text-slate-700 dark:text-slate-200 cursor-pointer select-none">
-                                                <input 
-                                                    type="checkbox"
-                                                    checked={conceptRubric.kataHubung}
-                                                    onChange={(e) => handleRubricCheckboxChange('kataHubung', e.target.checked)}
-                                                    className="mt-0.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 h-4 w-4"
-                                                />
-                                                <div>
-                                                    <p className="leading-none">Kata Hubung Tepat</p>
-                                                    <p className="text-[9px] text-muted-foreground font-medium mt-1">Kata sambung di atas garis panah tepat makna</p>
-                                                </div>
-                                            </label>
+                                                <div className="space-y-2">
+                                                    {/* Koneksi Logis */}
+                                                    <label className={`flex items-center gap-3 p-3 rounded-2xl border-2 cursor-pointer select-none transition-all ${
+                                                        conceptRubric.koneksi
+                                                            ? 'border-emerald-400 bg-emerald-50 dark:bg-emerald-950/20'
+                                                            : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-indigo-300'
+                                                    }`}>
+                                                        <input 
+                                                            type="checkbox"
+                                                            checked={conceptRubric.koneksi}
+                                                            onChange={(e) => handleRubricCheckboxChange('koneksi', e.target.checked)}
+                                                            className="sr-only"
+                                                        />
+                                                        <div className={`h-5 w-5 rounded-lg flex items-center justify-center shrink-0 border-2 transition-all ${
+                                                            conceptRubric.koneksi
+                                                                ? 'bg-emerald-500 border-emerald-500 text-white'
+                                                                : 'border-slate-300 dark:border-slate-600'
+                                                        }`}>
+                                                            {conceptRubric.koneksi && <CheckCircle2 className="h-3.5 w-3.5" />}
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className={`text-xs font-bold leading-none ${ conceptRubric.koneksi ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-700 dark:text-slate-200' }`}>Koneksi Logis</p>
+                                                            <p className="text-[9px] text-muted-foreground font-medium mt-0.5">Hubungan antar kata kunci terjalin logis</p>
+                                                        </div>
+                                                        {conceptRubric.koneksi && <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />}
+                                                    </label>
 
-                                            <label className="flex items-start gap-2.5 text-xs font-bold text-slate-700 dark:text-slate-200 cursor-pointer select-none">
-                                                <input 
-                                                    type="checkbox"
-                                                    checked={conceptRubric.kelengkapan}
-                                                    onChange={(e) => handleRubricCheckboxChange('kelengkapan', e.target.checked)}
-                                                    className="mt-0.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 h-4 w-4"
-                                                />
-                                                <div>
-                                                    <p className="leading-none">Kelengkapan Materi</p>
-                                                    <p className="text-[9px] text-muted-foreground font-medium mt-1">Semua kata kunci utama disajikan lengkap</p>
+                                                    {/* Kata Hubung Tepat */}
+                                                    <label className={`flex items-center gap-3 p-3 rounded-2xl border-2 cursor-pointer select-none transition-all ${
+                                                        conceptRubric.kataHubung
+                                                            ? 'border-emerald-400 bg-emerald-50 dark:bg-emerald-950/20'
+                                                            : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-indigo-300'
+                                                    }`}>
+                                                        <input 
+                                                            type="checkbox"
+                                                            checked={conceptRubric.kataHubung}
+                                                            onChange={(e) => handleRubricCheckboxChange('kataHubung', e.target.checked)}
+                                                            className="sr-only"
+                                                        />
+                                                        <div className={`h-5 w-5 rounded-lg flex items-center justify-center shrink-0 border-2 transition-all ${
+                                                            conceptRubric.kataHubung
+                                                                ? 'bg-emerald-500 border-emerald-500 text-white'
+                                                                : 'border-slate-300 dark:border-slate-600'
+                                                        }`}>
+                                                            {conceptRubric.kataHubung && <CheckCircle2 className="h-3.5 w-3.5" />}
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className={`text-xs font-bold leading-none ${ conceptRubric.kataHubung ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-700 dark:text-slate-200' }`}>Kata Hubung Tepat</p>
+                                                            <p className="text-[9px] text-muted-foreground font-medium mt-0.5">Kata sambung di garis panah tepat makna</p>
+                                                        </div>
+                                                        {conceptRubric.kataHubung && <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />}
+                                                    </label>
+
+                                                    {/* Kelengkapan Materi */}
+                                                    <label className={`flex items-center gap-3 p-3 rounded-2xl border-2 cursor-pointer select-none transition-all ${
+                                                        conceptRubric.kelengkapan
+                                                            ? 'border-emerald-400 bg-emerald-50 dark:bg-emerald-950/20'
+                                                            : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-indigo-300'
+                                                    }`}>
+                                                        <input 
+                                                            type="checkbox"
+                                                            checked={conceptRubric.kelengkapan}
+                                                            onChange={(e) => handleRubricCheckboxChange('kelengkapan', e.target.checked)}
+                                                            className="sr-only"
+                                                        />
+                                                        <div className={`h-5 w-5 rounded-lg flex items-center justify-center shrink-0 border-2 transition-all ${
+                                                            conceptRubric.kelengkapan
+                                                                ? 'bg-emerald-500 border-emerald-500 text-white'
+                                                                : 'border-slate-300 dark:border-slate-600'
+                                                        }`}>
+                                                            {conceptRubric.kelengkapan && <CheckCircle2 className="h-3.5 w-3.5" />}
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className={`text-xs font-bold leading-none ${ conceptRubric.kelengkapan ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-700 dark:text-slate-200' }`}>Kelengkapan Materi</p>
+                                                            <p className="text-[9px] text-muted-foreground font-medium mt-0.5">Semua kata kunci utama disajikan lengkap</p>
+                                                        </div>
+                                                        {conceptRubric.kelengkapan && <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />}
+                                                    </label>
                                                 </div>
-                                            </label>
+
+                                                {/* Status KKTP */}
+                                                <div className="pt-3 border-t border-indigo-100/50 dark:border-indigo-900/30 flex items-center justify-between">
+                                                    <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Status Penilaian:</span>
+                                                    {(() => {
+                                                        const checkedCount = [conceptRubric.koneksi, conceptRubric.kataHubung, conceptRubric.kelengkapan].filter(Boolean).length;
+                                                        const isPassed = checkedCount >= 2;
+                                                        return checkedCount === 0 ? (
+                                                            <span className="text-[9px] font-black text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-md uppercase tracking-wider">Belum Dinilai</span>
+                                                        ) : isPassed ? (
+                                                            <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 dark:bg-emerald-950/20 px-2 py-1 rounded-md uppercase tracking-wider">Tuntas ({checkedCount}/3)</span>
+                                                        ) : (
+                                                            <span className="text-[9px] font-black text-rose-600 bg-rose-50 dark:bg-rose-950/20 px-2 py-1 rounded-md uppercase tracking-wider">Belum Tuntas ({checkedCount}/3)</span>
+                                                        );
+                                                    })()}
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-3">
+                                                <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Umpan Balik Kualitatif</label>
+                                                <textarea 
+                                                    rows={4}
+                                                    placeholder="Tuliskan masukan untuk pengembangan murid..."
+                                                    value={teacherForm.data.feedback}
+                                                    onChange={(e) => teacherForm.setData('feedback', e.target.value)}
+                                                    className="w-full rounded-[1.5rem] border border-slate-200 bg-white px-5 py-4 text-xs font-medium outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-100 transition-all resize-none shadow-sm"
+                                                ></textarea>
+                                            </div>
                                         </div>
-                                    </div>
+
+                                        <div className="space-y-3 pt-4 border-t border-slate-100 dark:border-slate-800 shrink-0 bg-transparent">
+                                            <button 
+                                                type="submit"
+                                                disabled={teacherForm.processing}
+                                                className="w-full rounded-2xl bg-gradient-to-r from-sky-500 to-indigo-600 py-4 text-xs font-black text-white shadow-xl shadow-sky-200 dark:shadow-none hover:scale-[1.02] active:scale-[0.98] transition-all uppercase tracking-widest"
+                                            >
+                                                {teacherForm.processing ? 'Menyimpan...' : 'Simpan Penilaian'}
+                                            </button>
+                                            <button 
+                                                type="button"
+                                                onClick={() => setSelectedSubmission(null)}
+                                                className="w-full rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 py-4 text-xs font-black text-muted-foreground uppercase tracking-widest hover:bg-slate-50 transition-all text-center block"
+                                            >
+                                                Tutup
+                                            </button>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <>
+                                        {['reflective_journal', 'self_assessment', 'peer_assessment', 'structured_assignment', 'exit_ticket'].includes(assignment.instrument_type) ? (
+                                            <div className="space-y-6">
+                                                {/* KKTP Approach: Criteria Description */}
+                                                {(() => {
+                                                    const gradingApproach = getGradingApproach();
+                                                    const items = (
+                                                        assignment.instrument_type === 'self_assessment' || 
+                                                        assignment.instrument_type === 'peer_assessment' || 
+                                                        assignment.instrument_type === 'structured_assignment' ||
+                                                        (assignment.instrument_type === 'exit_ticket' && assignment.instrument_config?.assessment_mode === 'checklist')
+                                                    )
+                                                        ? (assignment.instrument_config?.indicators || [])
+                                                        : (assignment.instrument_config?.questions || []);
+                                                    
+                                                    if (gradingApproach === 'criteria_description') {
+                                                        return (
+                                                            <div className="space-y-4 p-5 rounded-[2rem] bg-indigo-50/40 dark:bg-indigo-950/15 border border-indigo-100/60 dark:border-indigo-900/35">
+                                                                <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest leading-none mb-1">Capaian Indikator (KKTP)</p>
+                                                                <p className="text-[9px] text-muted-foreground font-medium mb-3">Tandai indikator yang dicapai secara memadai oleh siswa</p>
+                                                                
+                                                                <div className="space-y-3">
+                                                                    {items.map((item: any, idx: number) => {
+                                                                        const checked = journalCheckedIndicators[idx] || false;
+                                                                        return (
+                                                                            <label key={idx} className="flex items-start gap-2.5 text-xs font-bold text-slate-700 dark:text-slate-200 cursor-pointer select-none">
+                                                                                <input 
+                                                                                    type="checkbox"
+                                                                                    checked={checked}
+                                                                                    onChange={(e) => handleJournalCheckboxChange(idx, e.target.checked)}
+                                                                                    className="mt-0.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 h-4 w-4"
+                                                                                />
+                                                                                <div>
+                                                                                    <p className="leading-snug">{(assignment.instrument_type === 'reflective_journal' || (assignment.instrument_type === 'exit_ticket' && assignment.instrument_config?.assessment_mode !== 'checklist')) ? `Pertanyaan ${idx + 1}` : `Indikator ${idx + 1}`}</p>
+                                                                                    <p className="text-[9px] text-muted-foreground font-medium mt-0.5 line-clamp-2 leading-relaxed">{item.text || item.name}</p>
+                                                                                </div>
+                                                                            </label>
+                                                                        );
+                                                                    })}
+                                                                </div>
+
+                                                                <div className="pt-4 border-t border-indigo-100/50 dark:border-indigo-900/30 flex items-center justify-between">
+                                                                    <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Status KKTP:</span>
+                                                                    {(() => {
+                                                                        const total = items.length;
+                                                                        const minCriteria = assignment.instrument_config?.kktp?.min_criteria ?? Math.max(1, Math.round(total / 2));
+                                                                        const checkedCount = Object.values(journalCheckedIndicators).filter(Boolean).length;
+                                                                        const isPassed = checkedCount >= minCriteria;
+                                                                        return isPassed ? (
+                                                                            <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 dark:bg-emerald-950/20 px-2 py-1 rounded-md uppercase tracking-wider">Tuntas ({checkedCount}/{total})</span>
+                                                                        ) : (
+                                                                            <span className="text-[9px] font-black text-rose-600 bg-rose-50 dark:bg-rose-950/20 px-2 py-1 rounded-md uppercase tracking-wider">Belum Tuntas ({checkedCount}/{total})</span>
+                                                                        );
+                                                                    })()}
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    } else {
+                                                        return (
+                                                            <div className="space-y-4 p-5 rounded-[2rem] bg-indigo-50/40 dark:bg-indigo-950/15 border border-indigo-100/60 dark:border-indigo-900/35">
+                                                                <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest leading-none mb-1">Kategori Capaian KKTP</p>
+                                                                <p className="text-[9px] text-muted-foreground font-medium mb-3">Pilih tingkat capaian siswa</p>
+                                                                
+                                                                <div className="grid grid-cols-1 gap-2">
+                                                                    {(assignment.instrument_config?.levels || [
+                                                                        { name: 'Perlu Bimbingan', desc: 'Siswa belum menunjukkan pemahaman konsep dasar.' },
+                                                                        { name: 'Cukup', desc: 'Siswa memahami sebagian besar konsep dasar namun belum konsisten.' },
+                                                                        { name: 'Baik', desc: 'Siswa menguasai seluruh indikator ketuntasan dengan baik.' },
+                                                                        { name: 'Sangat Baik', desc: 'Siswa menunjukkan penguasaan luar biasa dan pemahaman mendalam.' }
+                                                                    ]).map((lvl: any, idx: number) => {
+                                                                        const isSelected = journalSelectedLevel === lvl.name;
+                                                                        return (
+                                                                            <button
+                                                                                key={idx}
+                                                                                type="button"
+                                                                                onClick={() => handleJournalLevelChange(lvl.name)}
+                                                                                className={`p-3 rounded-xl border text-left transition-all ${
+                                                                                    isSelected 
+                                                                                        ? 'border-indigo-500 bg-indigo-500/10 dark:bg-indigo-500/20 shadow-sm' 
+                                                                                        : 'border-border bg-white dark:bg-slate-900 hover:border-slate-300'
+                                                                                }`}
+                                                                            >
+                                                                                <p className="text-xs font-bold text-foreground leading-none">{lvl.name}</p>
+                                                                                <p className="text-[9px] text-muted-foreground mt-1.5 leading-normal">{lvl.desc}</p>
+                                                                            </button>
+                                                                        );
+                                                                    })}
+                                                                </div>
+
+                                                                <div className="pt-4 border-t border-indigo-100/50 dark:border-indigo-900/30 flex items-center justify-between">
+                                                                    <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Status KKTP:</span>
+                                                                    {(() => {
+                                                                        const levelName = journalSelectedLevel;
+                                                                        const levels = assignment.instrument_config?.levels || [];
+                                                                        const selectedLvlObj = levels.find((l: any) => l.name === levelName);
+                                                                        const passingLvlObj = levels.find((l: any) => l.name === assignment.instrument_config?.kktp?.passing_level);
+                                                                        
+                                                                        let isPassed = true;
+                                                                        if (passingLvlObj && levelName) {
+                                                                            const selectedIdx = levels.findIndex((l: any) => l.name === levelName);
+                                                                            const passingIdx = levels.findIndex((l: any) => l.name === assignment.instrument_config?.kktp?.passing_level);
+                                                                            isPassed = selectedIdx >= passingIdx;
+                                                                        }
+                                                                        
+                                                                        return levelName ? (
+                                                                            isPassed ? (
+                                                                                <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 dark:bg-emerald-950/20 px-2 py-1 rounded-md uppercase tracking-wider">Tuntas</span>
+                                                                            ) : (
+                                                                                <span className="text-[9px] font-black text-rose-600 bg-rose-50 dark:bg-rose-950/20 px-2 py-1 rounded-md uppercase tracking-wider">Belum Tuntas</span>
+                                                                            )
+                                                                        ) : (
+                                                                            <span className="text-[9px] font-black text-amber-600 bg-amber-50 dark:bg-amber-950/20 px-2 py-1 rounded-md uppercase tracking-wider">Pilih Kategori</span>
+                                                                        );
+                                                                    })()}
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    }
+                                                })()}
+                                            </div>
+                                        ) : (
+                                            // Other types: numeric score input
+                                            <div className="space-y-3">
+                                                <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Skor Pencapaian (0-{assignment.max_points})</label>
+                                                <input 
+                                                    type="number"
+                                                    max={assignment.max_points}
+                                                    min={0}
+                                                    value={teacherForm.data.score}
+                                                    onChange={(e) => teacherForm.setData('score', parseInt(e.target.value))}
+                                                    className="w-full rounded-2xl border border-slate-100 bg-white px-5 py-4 text-xl font-black text-slate-800 outline-none focus:border-sky-400 focus:ring-4 focus:ring-sky-50 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-100 transition-all text-center"
+                                                />
+                                            </div>
+                                        )}
+
+                                        <div className="space-y-3">
+                                            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Umpan Balik Kualitatif</label>
+                                            <textarea 
+                                                rows={6}
+                                                placeholder="Tuliskan masukan untuk pengembangan murid..."
+                                                value={teacherForm.data.feedback}
+                                                onChange={(e) => teacherForm.setData('feedback', e.target.value)}
+                                                className="w-full rounded-[2rem] border border-slate-100 bg-white px-5 py-4 text-xs font-medium outline-none focus:border-sky-400 focus:ring-4 focus:ring-sky-50 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-100 transition-all resize-none"
+                                            ></textarea>
+                                        </div>
+
+                                        <div className="flex flex-col gap-3">
+                                            {(!(assignment.instrument_config?.questions && assignment.instrument_config.questions.length > 0 && assignment.instrument_config.questions.every((q: any) => q.type === 'multiple_choice'))) && (
+                                                <button 
+                                                    type="submit"
+                                                    disabled={teacherForm.processing}
+                                                    className="w-full rounded-2xl bg-gradient-to-r from-sky-500 to-indigo-600 py-4 text-xs font-black text-white shadow-xl shadow-sky-200 dark:shadow-none hover:scale-[1.02] active:scale-[0.98] transition-all uppercase tracking-widest"
+                                                >
+                                                    {teacherForm.processing ? 'Menyimpan...' : 'Simpan Penilaian'}
+                                                </button>
+                                            )}
+                                            <button 
+                                                type="button"
+                                                onClick={() => setSelectedSubmission(null)}
+                                                className="w-full rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 py-4 text-xs font-black text-muted-foreground uppercase tracking-widest hover:bg-slate-50 transition-all"
+                                            >
+                                                {(!(assignment.instrument_config?.questions && assignment.instrument_config.questions.length > 0 && assignment.instrument_config.questions.every((q: any) => q.type === 'multiple_choice'))) ? 'Tutup' : 'Selesai'}
+                                            </button>
+                                        </div>
+                                    </>
                                 )}
-
-                                <div className="space-y-3">
-                                    <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Umpan Balik Kualitatif</label>
-                                    <textarea 
-                                        rows={6}
-                                        placeholder="Tuliskan masukan untuk pengembangan murid..."
-                                        value={teacherForm.data.feedback}
-                                        onChange={(e) => teacherForm.setData('feedback', e.target.value)}
-                                        className="w-full rounded-[2rem] border border-slate-100 bg-white px-5 py-4 text-xs font-medium outline-none focus:border-sky-400 focus:ring-4 focus:ring-sky-50 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-100 transition-all resize-none"
-                                    ></textarea>
-                                </div>
-
-                                <div className="flex flex-col gap-3">
-                                    {(!(assignment.instrument_config?.questions && assignment.instrument_config.questions.length > 0 && assignment.instrument_config.questions.every((q: any) => q.type === 'multiple_choice'))) && (
-                                        <button 
-                                            type="submit"
-                                            disabled={teacherForm.processing}
-                                            className="w-full rounded-2xl bg-gradient-to-r from-sky-500 to-indigo-600 py-4 text-xs font-black text-white shadow-xl shadow-sky-200 dark:shadow-none hover:scale-[1.02] active:scale-[0.98] transition-all uppercase tracking-widest"
-                                        >
-                                            {teacherForm.processing ? 'Menyimpan...' : 'Simpan Penilaian'}
-                                        </button>
-                                    )}
-                                    <button 
-                                        type="button"
-                                        onClick={() => setSelectedSubmission(null)}
-                                        className="w-full rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 py-4 text-xs font-black text-muted-foreground uppercase tracking-widest hover:bg-slate-50 transition-all"
-                                    >
-                                        {(!(assignment.instrument_config?.questions && assignment.instrument_config.questions.length > 0 && assignment.instrument_config.questions.every((q: any) => q.type === 'multiple_choice'))) ? 'Tutup' : 'Selesai'}
-                                    </button>
-                                </div>
                             </form>
                         </div>
                     </div>
                 </div>
             )}
-            </>
 
             <ConfirmDialog
                 open={showDeleteConfirm}
@@ -6323,8 +6766,9 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                     </div>
                 </DialogContent>
             </Dialog>
-        </AppLayout>
-    );
+        </>
+    </AppLayout>
+);
 }
 
 // Custom CSS for scrollbar

@@ -567,6 +567,10 @@ export default function InstructionalDesignCreate({
                             })),
                             criteria: cleanPlainText(suggestion.criteria || instrumentsArray[idx].instrument_config.criteria),
                             teacher_notes: cleanPlainText(suggestion.teacher_notes || instrumentsArray[idx].instrument_config.teacher_notes),
+                            central_topic: cleanPlainText(suggestion.central_topic || instrumentsArray[idx].instrument_config.central_topic || ''),
+                            submission_mode: suggestion.submission_mode || instrumentsArray[idx].instrument_config.submission_mode || 'hybrid',
+                            instructions: cleanPlainText(suggestion.instructions || instrumentsArray[idx].instrument_config.instructions || ''),
+                            keywords: (suggestion.keywords || instrumentsArray[idx].instrument_config.keywords || []).map((kw: any) => cleanPlainText(String(kw))),
                             kktp: suggestion.kktp || instrumentsArray[idx].instrument_config.kktp,
                         }
                     };
@@ -598,6 +602,10 @@ export default function InstructionalDesignCreate({
                             })),
                             criteria: cleanPlainText(suggestion.criteria || currentSection.instrument_config.criteria),
                             teacher_notes: cleanPlainText(suggestion.teacher_notes || currentSection.instrument_config.teacher_notes),
+                            central_topic: cleanPlainText(suggestion.central_topic || currentSection.instrument_config.central_topic || ''),
+                            submission_mode: suggestion.submission_mode || currentSection.instrument_config.submission_mode || 'hybrid',
+                            instructions: cleanPlainText(suggestion.instructions || currentSection.instrument_config.instructions || ''),
+                            keywords: (suggestion.keywords || currentSection.instrument_config.keywords || []).map((kw: any) => cleanPlainText(String(kw))),
                             kktp: suggestion.kktp || currentSection.instrument_config.kktp,
                         }
                     };
