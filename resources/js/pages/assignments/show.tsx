@@ -42,7 +42,8 @@ import {
     ChevronDown,
     FolderOpen,
     ImageIcon,
-    Ticket
+    Ticket,
+    RotateCcw
 } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';
 import { ConfirmDialog } from '@/components/confirm-dialog';
@@ -1520,6 +1521,17 @@ export default function ShowAssignment({ assignment, students, my_submission, my
         router.delete(route('assignments.destroy', assignment.id));
     };
 
+    const handleOpenRemedial = (studentId: number) => {
+        if (confirm('Buka akses remedial kuis untuk siswa ini? Siswa akan dapat mengerjakan ulang kuis.')) {
+            router.post(route('assignments.open_remedial'), {
+                assignment_id: assignment.id,
+                student_id: studentId
+            }, {
+                preserveScroll: true
+            });
+        }
+    };
+
     const submissionMap = useMemo(() => {
         const map: Record<number, Submission> = {};
         assignment.submissions.forEach((s: Submission) => {
@@ -2051,7 +2063,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                             ) : (
                                                 assignment.submissions.map((s: Submission) => {
                                                     const displayScore = s.score ?? calculateSystemScore(s.content ?? '');
-                                                    const effectivePassed = s.score !== null ? s.is_passed : (displayScore >= (assignment.passing_grade || 0));
+                                                    const effectivePassed = s.score !== null ? s.is_passed : (displayScore >= (assignment.passing_grade || assignment.instrument_config?.pass_threshold || 70));
 
                                                     return (
                                                         <tr key={s.id} className="group hover:bg-slate-50/30 dark:hover:bg-slate-800/20 transition-all">
@@ -2114,19 +2126,45 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                             {displayScore}
                                                                         </span>
                                                                         <span className="text-[10px] font-black text-muted-foreground"> / {assignment.max_points}</span>
+                                                                        {s.remedial_history && s.remedial_history.length > 0 && (
+                                                                            <div className="text-[9px] text-muted-foreground mt-1 space-y-0.5">
+                                                                                {s.remedial_history.map((hist: any, hIdx: number) => (
+                                                                                    <div key={hIdx}>
+                                                                                        Ke-{hist.attempt}: <span className="font-semibold text-foreground">{hist.score}</span>
+                                                                                    </div>
+                                                                                ))}
+                                                                            </div>
+                                                                        )}
                                                                     </>
                                                                 )}
                                                             </td>
                                                             <td className="px-8 py-6 text-right">
-                                                                <button 
-                                                                    onClick={() => openGradeModal(s)}
-                                                                    className="inline-flex items-center gap-2 rounded-xl bg-sky-500 text-white px-5 py-2.5 text-xs font-black shadow-lg shadow-sky-100 transition-all hover:scale-105 active:scale-95 uppercase tracking-widest"
-                                                                >
-                                                                    <Activity className="h-3.5 w-3.5" />
-                                                                    {assignment.instrument_type === 'reflective_journal' || assignment.instrument_type === 'self_assessment' || assignment.instrument_type === 'peer_assessment'
-                                                                        ? (s.score !== null ? 'Edit Penilaian' : 'Beri Penilaian')
-                                                                        : (s.score !== null ? 'Edit Nilai' : 'Beri Nilai')}
-                                                                </button>
+                                                                <div className="flex justify-end gap-2 items-center">
+                                                                    {assignment.instrument_type === 'formative_quiz' && (
+                                                                        s.is_remedial_open ? (
+                                                                            <span className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/20 text-[10px] font-black text-warning uppercase border border-amber-200 dark:border-amber-900/30">
+                                                                                Akses Remedial Aktif
+                                                                            </span>
+                                                                        ) : (
+                                                                            <button
+                                                                                onClick={() => handleOpenRemedial(s.student_id)}
+                                                                                className="inline-flex items-center gap-1.5 rounded-xl bg-amber-500 text-white px-4 py-2 text-xs font-black shadow-lg shadow-amber-100 transition-all hover:scale-105 active:scale-95 uppercase tracking-widest"
+                                                                            >
+                                                                                <RotateCcw className="h-3.5 w-3.5" />
+                                                                                Buka Remedial
+                                                                            </button>
+                                                                        )
+                                                                    )}
+                                                                    <button 
+                                                                        onClick={() => openGradeModal(s)}
+                                                                        className="inline-flex items-center gap-2 rounded-xl bg-sky-500 text-white px-5 py-2.5 text-xs font-black shadow-lg shadow-sky-100 transition-all hover:scale-105 active:scale-95 uppercase tracking-widest"
+                                                                    >
+                                                                        <Activity className="h-3.5 w-3.5" />
+                                                                        {assignment.instrument_type === 'reflective_journal' || assignment.instrument_type === 'self_assessment' || assignment.instrument_type === 'peer_assessment'
+                                                                            ? (s.score !== null ? 'Edit Penilaian' : 'Beri Penilaian')
+                                                                            : (s.score !== null ? 'Edit Nilai' : 'Beri Nilai')}
+                                                                    </button>
+                                                                </div>
                                                             </td>
                                                         </tr>
                                                     );
@@ -2569,7 +2607,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
 
                                             <div className="space-y-8">
                                                 {(assignment.instrument_config?.questions || []).map((q: any, idx: number) => {
-                                                    const isAnswered = studentForm.data.answers[q.id] !== undefined && studentForm.data.answers[q.id] !== '';
+                                                    const isAnswered = studentForm.data.answers[q.id] !== undefined && studentForm.data.answers[q.id] !== '' && !my_submission?.is_remedial_open;
                                                     const studentAns = studentForm.data.answers[q.id];
                                                     
                                                     // Determine correct option for formative instant check
@@ -3438,7 +3476,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                 : 'rounded-[2rem] bg-gradient-to-r from-sky-500 to-indigo-600 shadow-sky-200 py-5 text-sm font-black'
                                         } text-white shadow-2xl dark:shadow-none hover:opacity-90 transition-all active:scale-[0.98] disabled:opacity-50 uppercase tracking-widest`}
                                     >
-                                        {my_submission ? 'Perbarui Jawaban' : 'Kirim Jawaban Sekarang'}
+                                        {my_submission ? (my_submission.is_remedial_open ? 'Kirim Jawaban Remedial' : 'Perbarui Jawaban') : 'Kirim Jawaban Sekarang'}
                                     </button>
                                 </form>
                             </div>
@@ -3457,6 +3495,12 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                 {my_submission ? (
                                     <>
                                         <div className="space-y-6">
+                                            {my_submission.is_remedial_open && (
+                                                <div className="p-4 rounded-[6px] bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-xs font-semibold leading-relaxed flex items-start gap-2">
+                                                    <RotateCcw className="h-4 w-4 shrink-0 mt-0.5" />
+                                                    <span>Kesempatan remedial dibuka oleh guru. Silakan kerjakan kembali kuis di sebelah kiri dan kirim jawaban baru.</span>
+                                                </div>
+                                            )}
                                             <div className={`flex items-center gap-4 p-5 border ${
                                                 (assignment.instrument_type === 'formative_quiz' || assignment.instrument_type === 'exit_ticket')
                                                     ? 'rounded-[8px] bg-emerald-500/10 border-emerald-500/20 dark:bg-emerald-950/20 dark:border-emerald-900/30'
@@ -3564,6 +3608,19 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                             })()}
                                                         </div>
                                                     )}
+                                                     {my_submission?.remedial_history && my_submission.remedial_history.length > 0 && (
+                                                         <div className="pt-4 border-t border-slate-100 dark:border-[#2C2C3A] text-left space-y-2">
+                                                             <p className="text-[10px] font-black text-muted-foreground uppercase tracking-wider">Riwayat Remedial:</p>
+                                                             <div className="space-y-1 bg-slate-50 dark:bg-[#101014] p-3 rounded-lg border border-slate-100 dark:border-slate-800">
+                                                                 {my_submission.remedial_history.map((hist: any, hIdx: number) => (
+                                                                     <div key={hIdx} className="text-[10px] text-muted-foreground flex justify-between">
+                                                                         <span>Percobaan {hist.attempt}:</span>
+                                                                         <span className="font-bold text-foreground">{hist.score} / {assignment.max_points}</span>
+                                                                     </div>
+                                                                 ))}
+                                                             </div>
+                                                         </div>
+                                                     )}
                                                     {displayScore === null && (
                                                         <p className="text-[9px] font-black text-amber-500 uppercase tracking-widest animate-pulse">Menunggu Penilaian Guru</p>
                                                     )}

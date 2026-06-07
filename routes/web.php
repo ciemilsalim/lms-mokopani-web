@@ -85,6 +85,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('assignments', [AssignmentController::class, 'store'])->name('assignments.store');
         Route::get('assignments/{assignment}/edit', [AssignmentController::class, 'edit'])->name('assignments.edit');
         Route::post('assignments/grade', [AssignmentController::class, 'grade'])->name('assignments.grade');
+        Route::post('assignments/open-remedial', [AssignmentController::class, 'openRemedial'])->name('assignments.open_remedial');
         Route::post('assignments/{assignment}', [AssignmentController::class, 'update'])->name('assignments.update');
         Route::delete('assignments/{assignment}', [AssignmentController::class, 'destroy'])->name('assignments.destroy');
 

@@ -481,6 +481,9 @@ class AssignmentController extends Controller
                     }
                 }
             }
+            if ($assignment->instrument_type === 'formative_quiz') {
+                return ($s && $s->score !== null) ? ($s->score >= ($assignment->passing_grade ?? 70)) : false;
+            }
             return $assignment->assessment_type === 'formative' ? true : ($s->score !== null && $s->score >= ($assignment->passing_grade ?? 70));
         };
 
@@ -501,29 +504,33 @@ class AssignmentController extends Controller
                 'scoring_tool'      => $assignment->scoring_tool,
                 'scoring_tool_config' => $assignment->scoring_tool_config,
                 'submissions'       => $assignment->submissions->map(fn ($s) => [
-                    'id'           => $s->id,
-                    'student_id'   => $s->student_id,
-                    'student_name' => $s->student?->name ?? 'Unknown',
-                    'content'      => $s->content,
-                    'file_path'    => $s->file_path,
-                    'score'        => $s->score,
-                    'attempts'     => $s->attempts,
-                    'is_passed'    => $getIsPassed($s),
-                    'feedback'     => $s->feedback,
-                    'submitted_at' => $s->created_at->format('d M Y, H:i'),
+                    'id'               => $s->id,
+                    'student_id'       => $s->student_id,
+                    'student_name'     => $s->student?->name ?? 'Unknown',
+                    'content'          => $s->content,
+                    'file_path'        => $s->file_path,
+                    'score'            => $s->score,
+                    'attempts'         => $s->attempts,
+                    'is_remedial_open' => (bool) $s->is_remedial_open,
+                    'remedial_history' => $s->remedial_history,
+                    'is_passed'        => $getIsPassed($s),
+                    'feedback'         => $s->feedback,
+                    'submitted_at'     => $s->created_at->format('d M Y, H:i'),
                 ]),
             ],
             'students'      => $students,
             'comments'      => $comments,
             'my_submission' => $mySubmission ? [
-                'id'           => $mySubmission->id,
-                'content'      => $mySubmission->content,
-                'file_path'    => $mySubmission->file_path,
-                'score'        => $mySubmission->score,
-                'attempts'     => $mySubmission->attempts,
-                'is_passed'    => $getIsPassed($mySubmission),
-                'feedback'     => $mySubmission->feedback,
-                'submitted_at' => $mySubmission->created_at->format('d M Y, H:i'),
+                'id'               => $mySubmission->id,
+                'content'          => $mySubmission->content,
+                'file_path'        => $mySubmission->file_path,
+                'score'            => $mySubmission->score,
+                'attempts'         => $mySubmission->attempts,
+                'is_remedial_open' => (bool) $mySubmission->is_remedial_open,
+                'remedial_history' => $mySubmission->remedial_history,
+                'is_passed'        => $getIsPassed($mySubmission),
+                'feedback'         => $mySubmission->feedback,
+                'submitted_at'     => $mySubmission->created_at->format('d M Y, H:i'),
             ] : null,
             'my_reflection'   => $myReflection,
             'user_role'       => $user->role ?? ($user->teacher ? 'teacher' : 'student'),
@@ -628,23 +635,36 @@ class AssignmentController extends Controller
 
         $submissionRecord = null;
         if ($submission) {
+            $history = $submission->remedial_history ?? [];
+            if ($submission->is_remedial_open || $assignment->instrument_type === 'formative_quiz') {
+                $history[] = [
+                    'attempt' => $submission->attempts,
+                    'score' => $submission->score,
+                    'submitted_at' => $submission->submitted_at ? $submission->submitted_at->toDateTimeString() : now()->toDateTimeString(),
+                ];
+            }
+
             $submission->update([
-                'content'      => $validated['content'],
-                'file_path'    => $filePath ?? $submission->file_path,
-                'submitted_at' => now(),
-                'attempts'     => $submission->attempts + 1,
-                'score'        => $score,
+                'content'          => $validated['content'],
+                'file_path'        => $filePath ?? $submission->file_path,
+                'submitted_at'     => now(),
+                'attempts'         => $submission->attempts + 1,
+                'score'            => $score,
+                'is_remedial_open' => false,
+                'remedial_history' => $history,
             ]);
             $submissionRecord = $submission;
         } else {
             $submissionRecord = LmsSubmission::create([
-                'assignment_id' => $assignment->id,
-                'student_id'    => $student->id,
-                'content'       => $validated['content'],
-                'file_path'     => $filePath,
-                'submitted_at'  => now(),
-                'attempts'      => 1,
-                'score'         => $score,
+                'assignment_id'    => $assignment->id,
+                'student_id'       => $student->id,
+                'content'          => $validated['content'],
+                'file_path'        => $filePath,
+                'submitted_at'     => now(),
+                'attempts'         => 1,
+                'is_remedial_open' => false,
+                'remedial_history' => null,
+                'score'            => $score,
             ]);
         }
 
@@ -690,6 +710,26 @@ class AssignmentController extends Controller
         }
 
         return back()->with('success', 'Penilaian berhasil disimpan.');
+    }
+
+    public function openRemedial(Request $request)
+    {
+        $validated = $request->validate([
+            'assignment_id' => 'required|exists:lms_assignments,id',
+            'student_id'    => 'required|exists:mysql_absensi.students,id',
+        ]);
+
+        $submission = \App\Models\LmsSubmission::where('assignment_id', $validated['assignment_id'])
+            ->where('student_id', $validated['student_id'])
+            ->first();
+
+        if ($submission) {
+            $submission->update([
+                'is_remedial_open' => true,
+            ]);
+        }
+
+        return back()->with('success', 'Remedial berhasil dibuka untuk siswa ini.');
     }
 
     public function edit(LmsAssignment $assignment)

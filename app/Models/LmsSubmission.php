@@ -18,12 +18,16 @@ class LmsSubmission extends Model
         'file_path',
         'score',
         'attempts',
+        'is_remedial_open',
+        'remedial_history',
         'feedback',
         'submitted_at',
     ];
 
     protected $casts = [
         'submitted_at' => 'datetime',
+        'is_remedial_open' => 'boolean',
+        'remedial_history' => 'array',
     ];
 
     public function assignment()
