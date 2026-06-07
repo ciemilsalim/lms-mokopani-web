@@ -668,6 +668,20 @@ class AssignmentController extends Controller
             ]);
         }
 
+        // Kirim notifikasi ke guru bahwa ada tugas baru dikumpulkan
+        if ($assignment->teacher_id) {
+            \App\Models\Notification::create([
+                'user_id' => $assignment->teacher_id,
+                'type'    => 'submission',
+                'title'   => 'Tugas Dikumpulkan: ' . $assignment->title,
+                'message' => $student->name . ' mengumpulkan tugas ' . $assignment->title,
+                'data'    => [
+                    'assignment_id' => $assignment->id,
+                    'student_name'  => $student->name,
+                ],
+            ]);
+        }
+
         // Auto-analyze diagnostic results for initial assessments
         if ($assignment->assessment_type === 'initial') {
             $adaptiveService->analyzeDiagnostic($submissionRecord);

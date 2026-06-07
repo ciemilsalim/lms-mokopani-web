@@ -107,7 +107,7 @@ class GradebookController extends Controller
             });
 
             // Formative scores (remain based on assignments for now)
-            $otherScores = $otherAssignments->map(function ($a) use ($student, $submissions) {
+            $otherScores = $otherAssignments->values()->map(function ($a) use ($student, $submissions) {
                 $sub = $submissions->where('student_id', $student->id)->where('assignment_id', $a->id)->first();
                 return ['id' => $a->id, 'score' => $sub?->score ?? '-', 'type' => $a->assessment_type];
             });
@@ -156,7 +156,7 @@ class GradebookController extends Controller
                 'tp' => $tp->code ?: ('TP ' . ($index + 1)),
                 'tp_desc' => $tp->description,
             ]),
-            'other_headers'     => $otherAssignments->map(fn($a) => ['id' => $a->id, 'title' => $a->title, 'type' => $a->assessment_type]),
+            'other_headers'     => $otherAssignments->values()->map(fn($a) => ['id' => $a->id, 'title' => $a->title, 'type' => $a->assessment_type]),
             'gradeData'         => $gradeData,
             'period'            => $activeYear?->name . ' - ' . $activeSemester?->name,
         ]);

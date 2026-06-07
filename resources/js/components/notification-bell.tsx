@@ -44,6 +44,12 @@ export default function NotificationBell() {
         setUnread(unread_count ?? 0);
     }, [unread_count]);
 
+    // Polling notifikasi setiap 30 detik agar guru lihat tugas baru langsung
+    useEffect(() => {
+        const interval = setInterval(fetchNotifications, 30000);
+        return () => clearInterval(interval);
+    }, [fetchNotifications]);
+
     useEffect(() => {
         const handleClickOutside = (e: MouseEvent) => {
             if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
@@ -77,7 +83,9 @@ export default function NotificationBell() {
 
     const handleClick = (n: NotificationItem) => {
         if (!n.is_read) markAsRead(n.id);
-        if (n.type === 'assignment' && n.data?.assignment_id) {
+        if (n.type === 'submission' && n.data?.assignment_id) {
+            router.visit(route('assignments.show', n.data.assignment_id));
+        } else if (n.type === 'assignment' && n.data?.assignment_id) {
             router.visit(route('assignments.show', n.data.assignment_id));
         } else if (n.type === 'announcement') {
             router.visit(route('announcements.index'));
