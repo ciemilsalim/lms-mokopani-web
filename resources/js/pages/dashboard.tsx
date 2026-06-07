@@ -3,10 +3,11 @@ import { type BreadcrumbItem, type SharedData } from '@/types';
 import { Head, usePage, Link } from '@inertiajs/react';
 import {
     BookOpen, ClipboardCheck, ClipboardList, GraduationCap, Library,
-    TrendingUp, Users, Bell, ChevronRight, Clock, Award, BarChart3,
+    TrendingUp, Users, Bell, ChevronRight, ChevronLeft, Clock, Award, BarChart3,
     MoreHorizontal, Play, Target, Calendar, CheckCircle2, Circle,
-    User, Star, FileText, Activity, ArrowUpRight, Zap, Heart,
+    User, Star, FileText, Activity, ArrowUpRight, Zap, Heart, ArrowUpDown,
 } from 'lucide-react';
+import { useState, useMemo } from 'react';
 import { Cell, PieChart, Pie, ResponsiveContainer, RadialBarChart, RadialBar } from 'recharts';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -29,7 +30,7 @@ interface DashboardStats {
     topic_data?: { name: string; value: number; color: string }[];
     assignment_progress?: { completed: number; pending: number; total: number };
     popular_instructors?: { name: string; role: string; lessons: number; color?: string }[];
-    course_progress?: { student: string; course: string; progress: number; status: string }[];
+    course_progress?: { student_id: number; student: string; course: string; subject_id: number; progress: number; status: string }[];
 }
 
 interface IdentityInfo {
@@ -70,6 +71,7 @@ interface AnnouncementItem {
 interface DashboardProps {
     stats: DashboardStats;
     identity?: IdentityInfo;
+    subjects?: { id: number; name: string }[];
     recentActivities: RecentActivity[];
     recentAnnouncements: AnnouncementItem[];
     todaySchedule: ScheduleItem[];
@@ -166,7 +168,7 @@ const activityLabelMap: Record<string, string> = {
 
 
 
-export default function Dashboard({ stats, identity, recentActivities, recentAnnouncements, todaySchedule, todayName }: DashboardProps) {
+export default function Dashboard({ stats, identity, subjects, recentActivities, recentAnnouncements, todaySchedule, todayName }: DashboardProps) {
     const { auth, user_role } = usePage<SharedData>().props;
 
     const roleLabel: Record<string, string> = {
@@ -203,6 +205,24 @@ export default function Dashboard({ stats, identity, recentActivities, recentAnn
 
     const popularInstructors = safeStats.popular_instructors ?? [];
     const courseData = safeStats.course_progress ?? [];
+
+    const [subjectFilter, setSubjectFilter] = useState<number | 'all'>('all');
+    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+    const [perPage, setPerPage] = useState(10);
+    const [page, setPage] = useState(1);
+
+    const filteredData = useMemo(() => {
+        return courseData
+            .filter(row => subjectFilter === 'all' || row.subject_id === subjectFilter)
+            .sort((a, b) => sortOrder === 'desc' ? b.progress - a.progress : a.progress - b.progress);
+    }, [courseData, subjectFilter, sortOrder]);
+
+    const totalFiltered = filteredData.length;
+    const totalPages = Math.max(1, Math.ceil(totalFiltered / perPage));
+    const safePage = Math.min(page, totalPages);
+    const paginatedData = filteredData.slice((safePage - 1) * perPage, safePage * perPage);
+    const startRow = totalFiltered > 0 ? (safePage - 1) * perPage + 1 : 0;
+    const endRow = Math.min(safePage * perPage, totalFiltered);
 
     const todayDate = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
 
@@ -532,61 +552,130 @@ export default function Dashboard({ stats, identity, recentActivities, recentAnn
                                 <h2 className="font-semibold text-foreground">Progress Siswa</h2>
                                 <p className="text-xs text-muted-foreground mt-0.5">Status pembelajaran terkini</p>
                             </div>
-                            <Link href={route('students.index')} className="text-xs font-medium text-primary hover:underline">
-                                Lihat semua
-                            </Link>
+                            <div className="flex items-center gap-3">
+                                {subjects && subjects.length > 0 && (
+                                    <select
+                                        value={subjectFilter}
+                                        onChange={e => { setSubjectFilter(e.target.value === 'all' ? 'all' : Number(e.target.value)); setPage(1); }}
+                                        className="rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                                    >
+                                        <option value="all">Semua Mapel</option>
+                                        {subjects.map(s => (
+                                            <option key={s.id} value={s.id}>{s.name}</option>
+                                        ))}
+                                    </select>
+                                )}
+                                <select
+                                    value={perPage}
+                                    onChange={e => { setPerPage(Number(e.target.value)); setPage(1); }}
+                                    className="rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                                >
+                                    <option value={10}>10</option>
+                                    <option value={20}>20</option>
+                                    <option value={50}>50</option>
+                                    <option value={100}>100</option>
+                                </select>
+                            </div>
                         </div>
                         <div className="overflow-x-auto">
                             {courseData.length > 0 ? (
-                                <table className="w-full text-sm">
-                                    <thead>
-                                        <tr className="border-b text-left text-xs font-semibold uppercase text-muted-foreground">
-                                            <th className="px-6 py-3 font-medium">Siswa</th>
-                                            <th className="px-6 py-3 font-medium">Mata Pelajaran</th>
-                                            <th className="px-6 py-3 font-medium">Progress</th>
-                                            <th className="px-6 py-3 font-medium">Status</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {courseData.map((row, i) => (
-                                            <tr key={i} className="border-b last:border-0 transition hover:bg-muted/30">
-                                                <td className="px-6 py-3">
-                                                    <div className="flex items-center gap-3">
-                                                        <Avatar className="h-8 w-8">
-                                                            <AvatarFallback className="text-[10px] font-semibold bg-primary/10 text-primary">
-                                                                {row.student.split(' ').map(n => n[0]).slice(0, 2).join('')}
-                                                            </AvatarFallback>
-                                                        </Avatar>
-                                                        <span className="font-medium text-foreground">{row.student}</span>
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-3 text-muted-foreground">{row.course}</td>
-                                                <td className="px-6 py-3">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="h-1.5 flex-1 rounded-full bg-muted overflow-hidden">
-                                                            <div
-                                                                className="h-full rounded-full transition-all"
-                                                                style={{
-                                                                    width: `${row.progress}%`,
-                                                                    backgroundColor: row.progress >= 80 ? '#28c76f' : row.progress >= 50 ? '#ff9f43' : '#ea5455',
-                                                                }}
-                                                            />
-                                                        </div>
-                                                        <span className="w-8 text-xs font-medium text-right text-muted-foreground">{row.progress}%</span>
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-3">
-                                                    <Badge
-                                                        variant={row.status === 'completed' ? 'default' : row.status === 'active' ? 'secondary' : 'outline'}
-                                                        className={row.status === 'completed' ? 'bg-[#28c76f]/10 text-[#28c76f] hover:bg-[#28c76f]/20 border-0' : ''}
-                                                    >
-                                                        {row.status === 'completed' ? 'Selesai' : row.status === 'active' ? 'Aktif' : 'Tertunda'}
-                                                    </Badge>
-                                                </td>
+                                <>
+                                    <table className="w-full text-sm">
+                                        <thead>
+                                            <tr className="border-b text-left text-xs font-semibold uppercase text-muted-foreground">
+                                                <th className="px-6 py-3 font-medium">Siswa</th>
+                                                <th className="px-6 py-3 font-medium">Mata Pelajaran</th>
+                                                <th
+                                                    className="px-6 py-3 font-medium cursor-pointer select-none hover:text-foreground transition-colors"
+                                                    onClick={() => setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc')}
+                                                >
+                                                    <span className="inline-flex items-center gap-1">
+                                                        Progress
+                                                        <ArrowUpDown className="h-3 w-3" />
+                                                        {sortOrder === 'desc' ? '↓' : '↑'}
+                                                    </span>
+                                                </th>
+                                                <th className="px-6 py-3 font-medium">Status</th>
                                             </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
+                                        </thead>
+                                        <tbody>
+                                            {paginatedData.map((row) => (
+                                                <tr key={row.student_id + '-' + row.subject_id} className="border-b last:border-0 transition hover:bg-muted/30">
+                                                    <td className="px-6 py-3">
+                                                        <div className="flex items-center gap-3">
+                                                            <Avatar className="h-8 w-8">
+                                                                <AvatarFallback className="text-[10px] font-semibold bg-primary/10 text-primary">
+                                                                    {row.student.split(' ').map((n: string) => n[0]).slice(0, 2).join('')}
+                                                                </AvatarFallback>
+                                                            </Avatar>
+                                                            <span className="font-medium text-foreground">{row.student}</span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-3 text-muted-foreground">{row.course}</td>
+                                                    <td className="px-6 py-3">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="h-1.5 flex-1 rounded-full bg-muted overflow-hidden">
+                                                                <div
+                                                                    className="h-full rounded-full transition-all"
+                                                                    style={{
+                                                                        width: `${row.progress}%`,
+                                                                        backgroundColor: row.progress >= 80 ? '#28c76f' : row.progress >= 50 ? '#ff9f43' : '#ea5455',
+                                                                    }}
+                                                                />
+                                                            </div>
+                                                            <span className="w-8 text-xs font-medium text-right text-muted-foreground">{row.progress}%</span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-3">
+                                                        <Badge
+                                                            variant={row.status === 'completed' ? 'default' : row.status === 'active' ? 'secondary' : 'outline'}
+                                                            className={row.status === 'completed' ? 'bg-[#28c76f]/10 text-[#28c76f] hover:bg-[#28c76f]/20 border-0' : ''}
+                                                        >
+                                                            {row.status === 'completed' ? 'Selesai' : row.status === 'active' ? 'Aktif' : 'Tertunda'}
+                                                        </Badge>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                    <div className="flex items-center justify-between border-t px-6 py-3 text-xs text-muted-foreground">
+                                        <span>Menampilkan {startRow}-{endRow} dari {totalFiltered}</span>
+                                        <div className="flex items-center gap-1">
+                                            <button
+                                                onClick={() => setPage(p => Math.max(1, p - 1))}
+                                                disabled={safePage <= 1}
+                                                className="rounded-lg border border-border px-2.5 py-1.5 font-medium hover:bg-muted transition disabled:opacity-30 disabled:pointer-events-none"
+                                            >
+                                                <ChevronLeft className="h-3.5 w-3.5" />
+                                            </button>
+                                            {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                                                const startPage = Math.max(1, safePage - 2);
+                                                const pageNum = startPage + i;
+                                                if (pageNum > totalPages) return null;
+                                                return (
+                                                    <button
+                                                        key={pageNum}
+                                                        onClick={() => setPage(pageNum)}
+                                                        className={`min-w-[28px] rounded-lg px-2.5 py-1.5 font-medium transition ${
+                                                            pageNum === safePage
+                                                                ? 'bg-primary text-primary-foreground'
+                                                                : 'border border-border hover:bg-muted'
+                                                        }`}
+                                                    >
+                                                        {pageNum}
+                                                    </button>
+                                                );
+                                            })}
+                                            <button
+                                                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                                                disabled={safePage >= totalPages}
+                                                className="rounded-lg border border-border px-2.5 py-1.5 font-medium hover:bg-muted transition disabled:opacity-30 disabled:pointer-events-none"
+                                            >
+                                                <ChevronRight className="h-3.5 w-3.5" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                </>
                             ) : (
                                 <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
                                     <BookOpen className="h-12 w-12 mb-3 opacity-30" />

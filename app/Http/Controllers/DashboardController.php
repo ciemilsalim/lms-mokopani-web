@@ -128,6 +128,7 @@ class DashboardController extends Controller
         $todaySchedule = $this->getTeacherSchedule($user);
 
         $mapelList = $teacher->subjects->pluck('name')->join(', ');
+        $subjects = $teacher->subjects->values()->map(fn($s) => ['id' => $s->id, 'name' => $s->name]);
 
         return Inertia::render('dashboard', [
             'stats'               => $stats,
@@ -141,6 +142,7 @@ class DashboardController extends Controller
                 'tahunAjaran' => $activeYear?->name,
                 'semester'   => $activeSemester?->name,
             ],
+            'subjects'            => $subjects,
             'recentActivities'    => $recentActivities,
             'recentAnnouncements' => $this->getAnnouncements($user),
             'todaySchedule'       => $todaySchedule,
@@ -335,7 +337,7 @@ class DashboardController extends Controller
         }
 
         if ($teacher && $classIds) {
-            $students = Student::whereIn('school_class_id', $classIds)->take(5)->get();
+            $students = Student::whereIn('school_class_id', $classIds)->get();
             $subjects = Subject::whereIn('id', TeachingAssignment::where('teacher_id', $teacher->id)
                 ->select('subject_id')->distinct())->get();
 
@@ -350,12 +352,13 @@ class DashboardController extends Controller
                         ->whereIn('assignment_id', $assignmentIds)
                         ->whereNotNull('score')->count();
                     $result[] = [
-                        'student'  => $student->name,
-                        'course'   => $subject->name,
-                        'progress' => round(($completed / $total) * 100),
-                        'status'   => $completed >= $total ? 'completed' : ($completed > 0 ? 'active' : 'pending'),
+                        'student_id' => $student->id,
+                        'student'    => $student->name,
+                        'course'     => $subject->name,
+                        'subject_id' => $subject->id,
+                        'progress'   => round(($completed / $total) * 100),
+                        'status'     => $completed >= $total ? 'completed' : ($completed > 0 ? 'active' : 'pending'),
                     ];
-                    if (count($result) >= 15) break 2;
                 }
             }
             return $result;
