@@ -46,7 +46,11 @@ export default function StepAssessmentSummative({
             due_date: '',
             instrument_config: {
                 stimulus: '',
-                criteria: '',
+                criteria: [
+                    { id: 'c1', text: '', weight: 30, descriptions: {} as Record<string, string> },
+                    { id: 'c2', text: '', weight: 40, descriptions: {} as Record<string, string> },
+                    { id: 'c3', text: '', weight: 30, descriptions: {} as Record<string, string> }
+                ],
                 questions: [],
                 indicators: [],
                 teacher_notes: '',
@@ -54,10 +58,10 @@ export default function StepAssessmentSummative({
                 phase_execution: '',
                 phase_product: '',
                 levels: [
-                    { name: 'Perlu Bimbingan', desc: '' },
-                    { name: 'Cukup', desc: '' },
-                    { name: 'Baik', desc: '' },
-                    { name: 'Sangat Baik', desc: '' }
+                    { id: 'l1', name: 'Perlu Bimbingan', desc: '', score: 25 },
+                    { id: 'l2', name: 'Cukup', desc: '', score: 50 },
+                    { id: 'l3', name: 'Baik', desc: '', score: 75 },
+                    { id: 'l4', name: 'Sangat Baik', desc: '', score: 100 }
                 ],
                 kktp: {
                     approach: defaultApproach

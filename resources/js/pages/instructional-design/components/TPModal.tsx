@@ -118,7 +118,7 @@ export default function TPModal({
                             </label>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-40 overflow-y-auto p-3 bg-muted/30 dark:bg-popover rounded-lg border border-border">
                                 {cpList
-                                    .filter(cp => cp.subject_id.toString() === subjectId)
+                                    .filter(cp => cp.subject.id.toString() === subjectId)
                                     .map(cp => (
                                         <label
                                             key={cp.id}
@@ -158,7 +158,7 @@ export default function TPModal({
                             >
                                 <option value="">-- Pilih Elemen CP --</option>
                                 {cpList
-                                    .filter(cp => cp.subject_id.toString() === subjectId)
+                                    .filter(cp => cp.subject.id.toString() === subjectId)
                                     .map(cp => <option key={cp.id} value={cp.id}>{cp.elemen} (Fase {cp.fase})</option>)
                                 }
                             </select>

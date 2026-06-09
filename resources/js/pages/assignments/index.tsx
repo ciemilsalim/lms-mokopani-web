@@ -565,7 +565,7 @@ export default function Assignments({ assignments, grouped_assignments, teacher_
                 {/* Content */}
                 {user_role === 'teacher' ? (
                     <TeacherGroupedView groups={teacher_grouped ?? []} search={search} filterType={filterType} />
-                ) : user_role !== 'teacher' ? (
+                ) : user_role === 'student' ? (
                     <GroupedView groups={grouped_assignments ?? []} search={search} filterType={filterType} />
                 ) : (
                     <FlatView assignments={assignments ?? []} search={search} filterType={filterType} />

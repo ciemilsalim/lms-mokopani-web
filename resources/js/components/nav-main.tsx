@@ -17,7 +17,7 @@ function isActive(itemUrl: string, currentUrl: string) {
 function NavItemComponent({ item, currentUrl }: { item: NavItem; currentUrl: string }) {
     const [open, setOpen] = useState(() => {
         if (hasChildren(item)) {
-            return item.children.some((child) => isActive(child.url, currentUrl));
+            return item.children.some((child) => isActive(child.url || '', currentUrl));
         }
         return false;
     });
@@ -37,8 +37,8 @@ function NavItemComponent({ item, currentUrl }: { item: NavItem; currentUrl: str
                         <SidebarMenuSub>
                             {item.children.map((child) => (
                                 <SidebarMenuSubItem key={child.title}>
-                                    <SidebarMenuSubButton asChild isActive={isActive(child.url, currentUrl)}>
-                                        <Link href={child.url} prefetch>
+                                    <SidebarMenuSubButton asChild isActive={isActive(child.url || '', currentUrl)}>
+                                        <Link href={child.url || ''} prefetch>
                                             <span>{child.title}</span>
                                         </Link>
                                     </SidebarMenuSubButton>
@@ -53,8 +53,8 @@ function NavItemComponent({ item, currentUrl }: { item: NavItem; currentUrl: str
 
     return (
         <SidebarMenuItem>
-            <SidebarMenuButton asChild isActive={isActive(item.url, currentUrl)}>
-                <Link href={item.url} prefetch>
+            <SidebarMenuButton asChild isActive={isActive(item.url || '', currentUrl)}>
+                <Link href={item.url || ''} prefetch>
                     {item.icon && <item.icon />}
                     <span>{item.title}</span>
                 </Link>
@@ -69,7 +69,7 @@ export function NavMain({ items = [], label = 'Menu' }: { items: NavItem[]; labe
     if (items.length === 0) return null;
 
     const hasActive = items.some(item => {
-        if (hasChildren(item)) return item.children.some(c => isActive(c.url, page.url));
+        if (hasChildren(item)) return item.children.some(c => isActive(c.url || '', page.url));
         return isActive(item.url || '', page.url);
     });
 

@@ -656,11 +656,16 @@ class InstructionalSmartService
                 'phase_planning' => "Murid mampu menyusun jadwal, pembagian peran, dan desain awal projek terkait {$content}.",
                 'phase_execution' => "Murid menunjukkan ketekunan dan kerjasama dalam merealisasikan desain menjadi produk nyata.",
                 'phase_product' => "Produk akhir berfungsi dengan baik, estetis, dan menjawab pertanyaan utama projek.",
+                'criteria' => [
+                    ['id' => 'c1', 'text' => 'Perencanaan Proyek', 'weight' => 30, 'descriptions' => ['l1' => 'Tidak ada perencanaan', 'l2' => 'Perencanaan kurang detail', 'l3' => 'Perencanaan baik dan terstruktur', 'l4' => 'Perencanaan sangat matang dan inovatif']],
+                    ['id' => 'c2', 'text' => 'Pelaksanaan Proyek', 'weight' => 40, 'descriptions' => ['l1' => 'Tidak terlaksana', 'l2' => 'Terlaksana sebagian', 'l3' => 'Terlaksana dengan baik sesuai jadwal', 'l4' => 'Terlaksana sangat baik dengan kolaborasi efektif']],
+                    ['id' => 'c3', 'text' => 'Produk/Hasil Proyek', 'weight' => 30, 'descriptions' => ['l1' => 'Tidak ada produk', 'l2' => 'Produk kurang lengkap', 'l3' => 'Produk sesuai kriteria dan berfungsi', 'l4' => 'Produk inovatif dan berkualitas tinggi']],
+                ],
                 'levels' => [
-                    ['name' => 'Perlu Bimbingan', 'desc' => "Projek belum selesai atau banyak tahapan yang terlewati tanpa dokumentasi yang jelas."],
-                    ['name' => 'Cukup', 'desc' => "Projek selesai namun beberapa bagian pada tahap pelaksanaan kurang optimal."],
-                    ['name' => 'Baik', 'desc' => "Projek berhasil diselesaikan dengan baik di semua tahapan dan produk berfungsi."],
-                    ['name' => 'Sangat Baik', 'desc' => "Projek menunjukkan inovasi luar biasa, dokumentasi lengkap, dan hasil produk sangat berkualitas."],
+                    ['id' => 'l1', 'name' => 'Perlu Bimbingan', 'desc' => "Projek belum selesai atau banyak tahapan yang terlewati tanpa dokumentasi yang jelas.", 'score' => 25],
+                    ['id' => 'l2', 'name' => 'Cukup', 'desc' => "Projek selesai namun beberapa bagian pada tahap pelaksanaan kurang optimal.", 'score' => 50],
+                    ['id' => 'l3', 'name' => 'Baik', 'desc' => "Projek berhasil diselesaikan dengan baik di semua tahapan dan produk berfungsi.", 'score' => 75],
+                    ['id' => 'l4', 'name' => 'Sangat Baik', 'desc' => "Projek menunjukkan inovasi luar biasa, dokumentasi lengkap, dan hasil produk sangat berkualitas.", 'score' => 100],
                 ],
                 'kktp' => [
                     'approach' => 'rubric',

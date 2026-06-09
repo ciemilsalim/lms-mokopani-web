@@ -400,6 +400,27 @@ Untuk jenis evaluasi reflektif ("exit_ticket" atau "reflective_journal"):
   "kktp": {"approach": "criteria_description", "min_criteria": 2}
 }
 
+Untuk jenis proyek ("project"):
+{
+  "stimulus": "Pertanyaan utama (driving question) proyek terkait {content}",
+  "teacher_notes": "Tahapan Projek: 1. Perencanaan, 2. Pelaksanaan, 3. Pelaporan",
+  "phase_planning": "Fokus evaluasi tahap perencanaan proyek terkait {content}",
+  "phase_execution": "Fokus evaluasi tahap pelaksanaan proyek terkait {content}",
+  "phase_product": "Fokus evaluasi produk/hasil proyek terkait {content}",
+  "criteria": [
+    {"id": "c1", "text": "Perencanaan Proyek", "weight": 30, "descriptions": {"l1": "Tidak ada perencanaan", "l2": "Perencanaan kurang detail", "l3": "Perencanaan baik dan terstruktur", "l4": "Perencanaan sangat matang dan inovatif"}},
+    {"id": "c2", "text": "Pelaksanaan Proyek", "weight": 40, "descriptions": {"l1": "Tidak terlaksana", "l2": "Terlaksana sebagian", "l3": "Terlaksana dengan baik sesuai jadwal", "l4": "Terlaksana sangat baik dengan kolaborasi efektif"}},
+    {"id": "c3", "text": "Produk/Hasil Proyek", "weight": 30, "descriptions": {"l1": "Tidak ada produk", "l2": "Produk kurang lengkap", "l3": "Produk sesuai kriteria dan berfungsi", "l4": "Produk inovatif dan berkualitas tinggi"}}
+  ],
+  "levels": [
+    {"id": "l1", "name": "Perlu Bimbingan", "desc": "Projek belum selesai atau banyak tahapan terlewati", "score": 25},
+    {"id": "l2", "name": "Cukup", "desc": "Projek selesai namun beberapa bagian kurang optimal", "score": 50},
+    {"id": "l3", "name": "Baik", "desc": "Projek berhasil diselesaikan dengan baik di semua tahapan", "score": 75},
+    {"id": "l4", "name": "Sangat Baik", "desc": "Projek menunjukkan inovasi luar biasa dan produk sangat berkualitas", "score": 100}
+  ],
+  "kktp": {"approach": "rubric", "passing_level": "Baik"}
+}
+
 Untuk jenis peta konsep ("concept_map"):
 - Rancang topik utama peta konsep yang menarik.
 - Sediakan metode pengumpulan (submission_mode: "hybrid").

@@ -101,7 +101,7 @@ export default function GradebookShow({ summative_headers, other_headers, gradeD
                     </div>
                     <div className="flex gap-2">
                         <Link
-                            href={`/gradebook/learning-report/${encodeURIComponent(classId)}/${encodeURIComponent(subjectId)}`}
+                            href={`/gradebook/learning-report/${encodeURIComponent(classId || '')}/${encodeURIComponent(subjectId || '')}`}
                             className="inline-flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-4 py-2 text-sm font-bold text-primary hover:bg-primary/10 transition dark:border-primary/30 dark:bg-primary/5 dark:text-primary"
                         >
                             <FileText className="h-4 w-4" />

@@ -85,7 +85,7 @@ export function AppHeader({ breadcrumbs = [] }: AppHeaderProps) {
                                                 return (
                                                     <Link
                                                         key={item.title}
-                                                        href={item.url}
+                                                        href={item.url || ''}
                                                         className={cn(
                                                             'flex items-center space-x-3 rounded-lg px-3 py-2.5 font-medium transition-colors',
                                                             isItemActive
@@ -116,7 +116,7 @@ export function AppHeader({ breadcrumbs = [] }: AppHeaderProps) {
                                 {mainNavItems.map((item, index) => (
                                     <NavigationMenuItem key={index} className="relative flex h-full items-center">
                                         <Link
-                                            href={item.url}
+                                            href={item.url || ''}
                                             className={cn(
                                                 navigationMenuTriggerStyle(),
                                                 page.url === item.url && activeItemStyles,

@@ -48,6 +48,7 @@ interface Score {
 interface Project {
     id: number;
     judul: string;
+    deskripsi?: string | null;
     tema: string | null;
     status: string;
     alokasi_waktu: number | null;

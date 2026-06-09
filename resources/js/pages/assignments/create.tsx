@@ -131,7 +131,7 @@ export default function CreateAssignment({ teachings, objectives, assessment_typ
                     { min: 81, max: 100, label: 'Sudah Mencapai', desc: 'Perlu pengayaan' }
                 ]
             }
-        },
+        } as any,
     });
 
     const [aiLoading, setAiLoading] = useState(false);

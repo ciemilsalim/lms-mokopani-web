@@ -73,7 +73,7 @@ interface EditAssignmentProps {
     };
     teachings: { subject_id: number; subject_name: string; class_id: number; class_name: string }[];
     objectives: Objective[];
-    assessment_types: { id: string; name: string }[];
+    assessment_types: { id: string; name: string; desc?: string }[];
     instruments: Record<string, Instrument[]>;
     holidays: { title: string; date: string; end: string }[];
     scoring_tools: any[];
@@ -145,7 +145,7 @@ export default function EditAssignment({ assignment, teachings, objectives, asse
                     { min: 81, max: 100, label: 'Sudah Mencapai', desc: 'Perlu pengayaan' }
                 ]
             }
-        },
+        } as any,
     });
 
     const updateConfig = (field: string, value: any) => {

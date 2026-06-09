@@ -27,7 +27,7 @@ interface Assignment {
     title: string;
 }
 
-interface Record {
+interface RemedialRecord {
     id: number;
     type: 'remedial' | 'pengayaan';
     initial_score: number | null;
@@ -42,7 +42,7 @@ interface Record {
 }
 
 interface Pagination {
-    data: Record[];
+    data: RemedialRecord[];
     current_page: number;
     last_page: number;
     per_page: number;

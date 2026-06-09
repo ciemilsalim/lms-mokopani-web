@@ -525,7 +525,7 @@ export default function Dashboard({ stats, identity, subjects, recentActivities,
                                     <ChevronRight className="h-3 w-3" />
                                 </Link>
                             </div>
-                            {safeStats.p5_total > 0 && (
+                            {(safeStats.p5_total ?? 0) > 0 && (
                                 <div className="mt-4 space-y-2">
                                     <div className="flex items-center justify-between text-xs">
                                         <span className="text-muted-foreground">Progress</span>

@@ -8,7 +8,7 @@ interface ObservationBuilderProps {
     updateInitialConfig: (field: string, value: any) => void;
     updateFormativeConfig: (idx: number, field: string, value: any) => void;
     updateSummativeConfig: (idx: number, field: string, value: any) => void;
-    observationMode?: 'checklist' | 'anecdotal';
+    observationMode?: 'checklist' | 'anecdotal' | 'simple_rubric';
 }
 
 export default function ObservationBuilder({

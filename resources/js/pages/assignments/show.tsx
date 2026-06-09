@@ -47,7 +47,8 @@ import {
     Maximize2,
     Minimize2,
     ZoomIn,
-    ZoomOut
+    ZoomOut,
+    ClipboardCheck
 } from 'lucide-react';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { ConfirmDialog } from '@/components/confirm-dialog';
@@ -73,6 +74,8 @@ interface Submission {
     content_type?: string | null;
     original_filename?: string | null;
     submitted_at: string;
+    remedial_history?: { attempt: number; score: number }[];
+    is_remedial_open?: boolean;
 }
 
 interface Student {
@@ -971,7 +974,8 @@ export default function ShowAssignment({ assignment, students, my_submission, my
     // Project Assessment State (Teacher - Summative)
     const [projectGradingData, setProjectGradingData] = useState({
         scores: {} as Record<string, string>,
-        notes: ''
+        notes: '',
+        checklist: {} as Record<string, boolean>
     });
 
     // Portfolio Assessment State (Teacher - Summative)
@@ -1359,9 +1363,15 @@ export default function ShowAssignment({ assignment, students, my_submission, my
         });
     };
 
-    const calculatePerformanceScore = (scores: Record<string, any>) => {
+    const calculatePerformanceScore = (scores: Record<string, any>, checklist?: Record<string, boolean>) => {
         const config = assignment.instrument_config;
         if (!config) return 0;
+
+        // Checklist-based scoring (project type)
+        if (checklist && Object.keys(checklist).length > 0) {
+            const checkedCount = Object.keys(checklist).filter(k => checklist[k]).length;
+            return Math.round((checkedCount / Object.keys(checklist).length) * assignment.max_points);
+        }
 
         if (config.indicators && config.indicators.length > 0) {
             const checkedCount = config.indicators.filter((ind: any, idx: number) => {
@@ -1397,7 +1407,8 @@ export default function ShowAssignment({ assignment, students, my_submission, my
         
         let initialData = {
             scores: {} as Record<string, string>,
-            notes: ''
+            notes: '',
+            checklist: {} as Record<string, boolean>
         };
 
         if (sub?.content) {
@@ -1406,6 +1417,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                 if (parsed.type === 'project') {
                     initialData = {
                         scores: parsed.scores || {},
+                        checklist: parsed.checklist || {},
                         notes: sub.feedback || ''
                     };
                 }
@@ -1413,10 +1425,11 @@ export default function ShowAssignment({ assignment, students, my_submission, my
         }
 
         setProjectGradingData(initialData);
+        const score = calculatePerformanceScore(initialData.scores, initialData.checklist);
         teacherForm.setData({
             assignment_id: assignment.id,
             student_id: student.id.toString(),
-            score: sub?.score ?? 0,
+            score: sub?.score ?? score,
             feedback: initialData.notes,
             content: sub?.content ?? ''
         });
@@ -1425,7 +1438,8 @@ export default function ShowAssignment({ assignment, students, my_submission, my
     const handleSaveProject = () => {
         const content = JSON.stringify({
             type: 'project',
-            scores: projectGradingData.scores
+            scores: projectGradingData.scores,
+            checklist: projectGradingData.checklist
         });
 
         router.post(route('assignments.grade'), {
@@ -2013,7 +2027,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                         <tbody className="divide-y divide-border">
                                             {students.map((student) => {
                                                 const sub = submissionMap[student.id];
-                                                const indicatorCount = (assignment.instrument_config?.indicators || []).length;
+                                                let indicatorCount = (assignment.instrument_config?.indicators || []).length;
                                                 let munculCount = 0;
                                                 if (sub?.content) {
                                                     try {
@@ -2031,6 +2045,12 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                             } else {
                                                                 munculCount = Object.keys(p.scores || {}).length;
                                                             }
+                                                        } else if (assignment.instrument_type === 'project') {
+                                                            const checklist = p.checklist || {};
+                                                            const checked = Object.values(checklist).filter(v => v === true).length;
+                                                            const total = Object.keys(checklist).length;
+                                                            munculCount = checked;
+                                                            indicatorCount = total > 0 ? total : 6;
                                                         } else {
                                                             munculCount = Object.values(p.checklist || {}).filter(v => v === true).length;
                                                         }
@@ -2571,7 +2591,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                     )}
                                 </div>
 
-                                {assignment.instrument_config?.stimulus && (
+                                {assignment.instrument_config?.stimulus && assignment.instrument_type !== 'project' && (
                                     <div className="mb-10 p-8 rounded-[2.5rem] bg-indigo-50/30 dark:bg-slate-800/50 border border-indigo-100 dark:border-slate-800 space-y-6">
                                         <div className="flex items-center gap-3 text-[10px] font-black text-primary uppercase tracking-widest">
                                             <MessageSquare className="h-4 w-4" />
@@ -3532,6 +3552,13 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                 <div className="p-5 rounded-[8px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#1B1B25] shadow-none">
                                                     <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-2">Pertanyaan Utama (Driving Question):</p>
                                                     <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium italic">{assignment.instrument_config.stimulus}</p>
+                                                </div>
+                                            )}
+
+                                            {assignment.instrument_config?.teacher_notes && (
+                                                <div className="p-5 rounded-[8px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#1B1B25] shadow-none">
+                                                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-2">Alur & Instruksi:</p>
+                                                    <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium whitespace-pre-wrap">{assignment.instrument_config.teacher_notes}</p>
                                                 </div>
                                             )}
 
@@ -5422,6 +5449,58 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                 </div>
                                             </div>
                                         ))}
+
+                                        {/* Checklist Penilaian Proyek */}
+                                        {(() => {
+                                            const sub = submissionMap[selectedStudent.id];
+                                            let parsedContent: any = {};
+                                            try { parsedContent = JSON.parse(sub?.content || '{}'); } catch {}
+                                            const hasFile = !!sub?.file_path;
+                                            const hasDescription = !!parsedContent.description;
+                                            const hasProcessNotes = !!parsedContent.process_notes;
+                                            const phases = [
+                                                { key: 'phase_planning', label: assignment.instrument_config?.phase_planning || 'Sesuai fase Perencanaan', auto: undefined },
+                                                { key: 'phase_execution', label: assignment.instrument_config?.phase_execution || 'Sesuai fase Pelaksanaan', auto: undefined },
+                                                { key: 'phase_product', label: assignment.instrument_config?.phase_product || 'Sesuai fase Produk/Hasil', auto: undefined },
+                                            ];
+                                            const autoItems = [
+                                                { key: 'file', label: 'File proyek dikumpulkan', auto: hasFile },
+                                                { key: 'description', label: 'Deskripsi proyek diisi', auto: hasDescription },
+                                                { key: 'process_notes', label: 'Catatan proses diisi', auto: hasProcessNotes },
+                                            ];
+                                            const allItems = [...autoItems, ...phases];
+                                            return (
+                                                <div className="space-y-3 pt-6 border-t border-border">
+                                                    <h4 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+                                                        <ClipboardCheck className="h-4 w-4 text-indigo-500" /> Checklist Penilaian
+                                                    </h4>
+                                                    <div className="grid gap-1.5">
+                                                        {allItems.map(item => {
+                                                            const isChecked = projectGradingData.checklist[item.key] ?? item.auto;
+                                                            return (
+                                                                <label key={item.key} className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer select-none transition-all ${isChecked ? 'border-indigo-400 bg-indigo-50/50 dark:bg-indigo-950/20' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-[#1B1B25] hover:border-indigo-300'}`}>
+                                                                    <input type="checkbox" checked={isChecked}
+                                                                        onChange={(e) => {
+                                                                            const newChecklist = { ...projectGradingData.checklist, [item.key]: e.target.checked };
+                                                                            setProjectGradingData({ ...projectGradingData, checklist: newChecklist });
+                                                                            const score = calculatePerformanceScore(projectGradingData.scores, newChecklist);
+                                                                            teacherForm.setData('score', score);
+                                                                        }}
+                                                                        className="sr-only"
+                                                                    />
+                                                                    <div className={`h-5 w-5 rounded-lg flex items-center justify-center shrink-0 border-2 transition-all ${isChecked ? 'bg-indigo-500 border-indigo-500 text-white' : 'border-slate-300 dark:border-slate-600'}`}>
+                                                                        {isChecked && <CheckCircle2 className="h-3.5 w-3.5" />}
+                                                                    </div>
+                                                                    <span className={`text-xs font-bold ${isChecked ? 'text-indigo-700 dark:text-indigo-400' : 'text-slate-700 dark:text-slate-300'}`}>
+                                                                        {item.label}
+                                                                    </span>
+                                                                </label>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })()}
 
                                         <div className="space-y-4 pt-6 border-t border-border">
                                             <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-4">Umpan Balik Proyek</label>

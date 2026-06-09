@@ -38,7 +38,7 @@ export default function ScoreDistributionChart({ data }: { data: DistributionIte
                             border: '1px solid hsl(var(--border))',
                             fontSize: 12,
                         }}
-                        formatter={(value: number) => [value, 'Siswa']}
+                        formatter={(value: any) => [value, 'Siswa']}
                     />
                     <Bar dataKey="count" radius={[8, 8, 0, 0]} maxBarSize={60}>
                         {data.map((_, i) => (
