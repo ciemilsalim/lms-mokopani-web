@@ -3,7 +3,8 @@ import { type BreadcrumbItem } from '@/types';
 import { Head, Link } from '@inertiajs/react';
 import {
     Users, AlertTriangle, TrendingUp, ClipboardList, BarChart3, Target,
-    CheckCircle2, XCircle, Clock, AlertCircle, Brain, BookOpen
+    CheckCircle2, XCircle, Clock, AlertCircle, Brain, BookOpen,
+    FileSpreadsheet, FileText, FileDown
 } from 'lucide-react';
 import PerformanceTrendChart from '@/components/analytics/PerformanceTrendChart';
 import ScoreDistributionChart from '@/components/analytics/ScoreDistributionChart';
@@ -91,6 +92,158 @@ interface SubjectAnalyticsProps {
 
 export default function SubjectAnalytics({ subject, class: cls, performance, score_matrix, risk_summary, question_analysis }: SubjectAnalyticsProps) {
     const [selectedStudent, setSelectedStudent] = useState<AtRiskStudent | null>(null);
+
+    const exportToExcel = () => {
+        const headers = ['Siswa', ...score_matrix.assignments.map(a => a.title), 'Rata-rata'];
+        const rows = score_matrix.students.map(s => {
+            return [
+                s.name,
+                ...s.scores.map(sc => sc.score !== null ? sc.score : '-'),
+                s.average !== null ? s.average : '-'
+            ];
+        });
+        const csvContent = "\uFEFF" + [headers.join(','), ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))].join('\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", `Matriks_Nilai_${subject.name}_${cls.name}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    const exportToWord = () => {
+        const title = `Matriks Nilai Siswa: ${subject.name} - ${cls.name}`;
+        const numAssignments = score_matrix.assignments.length;
+        const fontSize = numAssignments > 12 ? '7.5pt' : (numAssignments > 8 ? '8.5pt' : (numAssignments > 5 ? '9.5pt' : '10.5pt'));
+        const padding = numAssignments > 8 ? '4px 3px' : '6px 5px';
+
+        let html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">`;
+        html += `<head><meta charset="utf-8"><title>${title}</title>`;
+        html += `<style>
+            @page Section1 {
+                size: 29.7cm 21.0cm;
+                margin: 0.5in 0.5in 0.5in 0.5in;
+                mso-header-margin: .3in;
+                mso-footer-margin: .3in;
+                mso-paper-source: 0;
+                mso-page-orientation: landscape;
+            }
+            div.Section1 { page: Section1; }
+            body { font-family: Arial, sans-serif; font-size: 11px; }
+            h2 { text-align: center; margin-bottom: 20px; font-family: Arial, sans-serif; }
+            table { width: 100%; border-collapse: collapse; margin-top: 10px; table-layout: auto; }
+            th, td { 
+                border: 1px solid #cbd5e1; 
+                padding: ${padding}; 
+                font-size: ${fontSize}; 
+                text-align: left; 
+                vertical-align: middle;
+                word-wrap: break-word;
+            }
+            th { background-color: #f8fafc; font-weight: bold; color: #475569; }
+            .center { text-align: center; }
+            .right { text-align: right; }
+            .score-pass { color: #10b981; font-weight: bold; }
+            .score-fail { color: #f43f5e; font-weight: bold; }
+        </style></head><body><div class="Section1">`;
+        html += `<h2>${title}</h2>`;
+        html += `<table>`;
+        html += `<thead><tr>`;
+        html += `<th style="max-width: 150px;">Siswa</th>`;
+        score_matrix.assignments.forEach(a => {
+            html += `<th class="center" style="max-width: 90px; word-wrap: break-word;">${a.title} <br/><span style="font-size: 8pt; font-weight: normal; color: #64748b;">(Max: ${a.max_points})</span></th>`;
+        });
+        html += `<th class="right" style="max-width: 80px;">Rata-rata</th>`;
+        html += `</tr></thead><tbody>`;
+        score_matrix.students.forEach(s => {
+            html += `<tr>`;
+            html += `<td style="max-width: 150px; font-weight: bold;">${s.name}</td>`;
+            s.scores.forEach(sc => {
+                const scoreClass = sc.score === null ? '' : (sc.is_passed ? 'score-pass' : 'score-fail');
+                html += `<td class="center ${scoreClass}">${sc.score ?? '-'}</td>`;
+            });
+            const avg = s.average ?? 0;
+            html += `<td class="right ${avg >= 70 ? 'score-pass' : 'score-fail'}"><strong>${s.average ?? '-'}</strong></td>`;
+            html += `</tr>`;
+        });
+        html += `</tbody></table></div></body></html>`;
+        const blob = new Blob(['\ufeff' + html], { type: 'application/msword' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", `Matriks_Nilai_${subject.name}_${cls.name}.doc`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    const exportToPdf = () => {
+        const printWindow = window.open('', '_blank');
+        if (!printWindow) return;
+        const title = `Matriks Nilai Siswa: ${subject.name} - ${cls.name}`;
+        
+        let html = '<html><head><title>' + title + '</title>';
+        html += '<style>';
+        html += 'body { font-family: "Inter", sans-serif; padding: 40px; color: #333; }';
+        html += '.header { margin-bottom: 30px; border-bottom: 2px solid #eaeaea; padding-bottom: 15px; }';
+        html += '.header h1 { font-size: 20px; margin: 0 0 5px 0; color: #000; }';
+        html += '.header p { font-size: 12px; margin: 0; color: #666; }';
+        html += 'table { width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 15px; }';
+        html += 'th, td { border: 1px solid #e2e8f0; padding: 10px; text-align: left; }';
+        html += 'th { background-color: #f8fafc; color: #475569; font-weight: 700; text-transform: uppercase; font-size: 9px; letter-spacing: 0.05em; }';
+        html += '.center { text-align: center; }';
+        html += '.right { text-align: right; }';
+        html += '.badge { padding: 3px 6px; border-radius: 4px; font-weight: 700; font-size: 10px; }';
+        html += '.badge-pass { background-color: #d1fae5; color: #065f46; }';
+        html += '.badge-fail { background-color: #fee2e2; color: #991b1b; }';
+        html += '.badge-null { background-color: #f1f5f9; color: #64748b; }';
+        html += '.avg-text { font-weight: 700; font-size: 12px; }';
+        html += '.avg-high { color: #059669; }';
+        html += '.avg-mid { color: #d97706; }';
+        html += '.avg-low { color: #dc2626; }';
+        html += '@media print { body { padding: 0; } @page { size: A4 landscape; margin: 1.5cm; } }';
+        html += '</style></head><body>';
+        
+        html += '<div class="header">';
+        html += '<h1>Matriks Nilai Siswa</h1>';
+        html += '<p>Mata Pelajaran: <strong>' + subject.name + '</strong> &middot; Kelas: <strong>' + cls.name + '</strong></p>';
+        html += '<p>Waktu Cetak: ' + new Date().toLocaleString('id-ID') + '</p>';
+        html += '</div>';
+        
+        html += '<table><thead><tr>';
+        html += '<th>Nama Siswa</th>';
+        score_matrix.assignments.forEach(a => {
+            html += '<th class="center">' + a.title + '</th>';
+        });
+        html += '<th class="right">Rata-rata</th>';
+        html += '</tr></thead><tbody>';
+        
+        score_matrix.students.forEach(s => {
+            html += '<tr>';
+            html += '<td><strong>' + s.name + '</strong></td>';
+            s.scores.forEach(sc => {
+                if (sc.score === null) {
+                    html += '<td class="center"><span class="badge badge-null">-</span></td>';
+                } else {
+                    const badgeClass = sc.is_passed ? 'badge-pass' : 'badge-fail';
+                    html += '<td class="center"><span class="badge ' + badgeClass + '">' + sc.score + '</span></td>';
+                }
+            });
+            const avg = s.average ?? 0;
+            const avgClass = avg >= 70 ? 'avg-high' : (avg >= 40 ? 'avg-mid' : 'avg-low');
+            html += '<td class="right"><span class="avg-text ' + avgClass + '">' + (s.average ?? '-') + '</span></td>';
+            html += '</tr>';
+        });
+        
+        html += '</tbody></table>';
+        html += '<script>window.onload = function() { window.print(); window.close(); };</script>';
+        html += '</body></html>';
+        
+        printWindow.document.write(html);
+        printWindow.document.close();
+    };
 
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Dashboard', href: '/dashboard' },
@@ -286,6 +439,92 @@ export default function SubjectAnalytics({ subject, class: cls, performance, sco
                     )}
                 </div>
 
+                {/* Student Score Matrix */}
+                <div className="rounded-2xl border bg-card p-6 shadow-sm">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-5 border-b border-border pb-4">
+                        <div>
+                            <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                                <Target className="h-4 w-4 text-primary" />
+                                Matriks Nilai Siswa
+                            </h3>
+                            <p className="text-[11px] text-muted-foreground mt-0.5">Ringkasan perolehan nilai seluruh tugas dan ujian siswa</p>
+                        </div>
+                        {score_matrix.students.length > 0 && (
+                            <div className="flex flex-wrap items-center gap-2">
+                                <button
+                                    onClick={exportToPdf}
+                                    className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-muted transition duration-150 shadow-sm cursor-pointer"
+                                >
+                                    <FileDown className="h-3.5 w-3.5 text-rose-500" />
+                                    PDF
+                                </button>
+                                <button
+                                    onClick={exportToExcel}
+                                    className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-muted transition duration-150 shadow-sm cursor-pointer"
+                                >
+                                    <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-500" />
+                                    Spreadsheet
+                                </button>
+                                <button
+                                    onClick={exportToWord}
+                                    className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-muted transition duration-150 shadow-sm cursor-pointer"
+                                >
+                                    <FileText className="h-3.5 w-3.5 text-blue-500" />
+                                    Docs
+                                </button>
+                            </div>
+                        )}
+                    </div>
+
+                    {score_matrix.students.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                            <BarChart3 className="mb-3 h-10 w-10 opacity-20" />
+                            <p className="text-sm font-medium">Belum ada data nilai</p>
+                        </div>
+                    ) : (
+                        <div className="overflow-x-auto rounded-xl border border-border/60">
+                            <table className="w-full text-sm border-collapse">
+                                <thead>
+                                    <tr className="border-b bg-muted/30 text-left text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                                        <th className="py-3 px-4 sticky left-0 bg-card z-10 border-r border-border/80 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">Siswa</th>
+                                        {score_matrix.assignments.map((a) => (
+                                            <th key={a.id} className="py-3 px-3 text-center min-w-[100px] border-r border-border/40 last:border-r-0" title={a.title}>
+                                                <div className="font-semibold text-foreground truncate max-w-[120px]">{a.title}</div>
+                                                <div className="text-[9px] font-normal text-muted-foreground mt-0.5">Max: {a.max_points}</div>
+                                            </th>
+                                        ))}
+                                        <th className="py-3 px-4 text-right">Rata-rata</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {score_matrix.students.map((s) => (
+                                        <tr key={s.id} className="border-b last:border-b-0 hover:bg-muted/20 transition-colors">
+                                            <td className="py-2.5 px-4 sticky left-0 bg-card z-10 border-r border-border/80 font-bold text-foreground text-xs shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">{s.name}</td>
+                                            {s.scores.map((sc, i) => (
+                                                <td key={i} className="py-2.5 px-3 text-center border-r border-border/40 last:border-r-0">
+                                                    <span className={`inline-flex items-center justify-center h-7 w-10 rounded-lg text-[10px] font-black ${
+                                                        sc.score === null ? 'bg-muted text-muted-foreground' :
+                                                        sc.is_passed ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' :
+                                                        'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400'
+                                                    }`}>
+                                                        {sc.score ?? '-'}
+                                                    </span>
+                                                </td>
+                                            ))}
+                                            <td className="py-2.5 px-4 text-right">
+                                                <span className={`font-black text-sm ${
+                                                    (s.average ?? 0) >= 70 ? 'text-emerald-600' :
+                                                    (s.average ?? 0) >= 40 ? 'text-amber-600' : 'text-rose-600'
+                                                }`}>{s.average ?? '-'}</span>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </div>
+
                 {/* Question Difficulty Analysis */}
                 {question_analysis.length > 0 && (
                     <div className="rounded-2xl border bg-card p-6 shadow-sm">
@@ -348,63 +587,6 @@ export default function SubjectAnalytics({ subject, class: cls, performance, sco
                         </div>
                     </div>
                 )}
-
-                {/* Student Score Matrix */}
-                <div className="rounded-2xl border bg-card p-6 shadow-sm">
-                    <div className="flex items-center justify-between mb-5">
-                        <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
-                            <Target className="h-4 w-4 text-primary" />
-                            Matriks Nilai Siswa
-                        </h3>
-                    </div>
-
-                    {score_matrix.students.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-                            <BarChart3 className="mb-3 h-10 w-10 opacity-20" />
-                            <p className="text-sm font-medium">Belum ada data nilai</p>
-                        </div>
-                    ) : (
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm">
-                                <thead>
-                                    <tr className="border-b text-left text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                                        <th className="pb-3 pr-4 sticky left-0 bg-card">Siswa</th>
-                                        {score_matrix.assignments.map((a) => (
-                                            <th key={a.id} className="pb-3 pr-3 text-center min-w-[60px]" title={a.title}>
-                                                {a.title.length > 8 ? a.title.substring(0, 8) + '…' : a.title}
-                                            </th>
-                                        ))}
-                                        <th className="pb-3 text-right">Rata-rata</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {score_matrix.students.map((s) => (
-                                        <tr key={s.id} className="border-b last:border-b-0 hover:bg-muted/20 transition-colors">
-                                            <td className="py-2.5 pr-4 sticky left-0 bg-card font-bold text-foreground text-xs">{s.name}</td>
-                                            {s.scores.map((sc, i) => (
-                                                <td key={i} className="py-2.5 pr-3 text-center">
-                                                    <span className={`inline-flex items-center justify-center h-7 w-10 rounded-lg text-[10px] font-black ${
-                                                        sc.score === null ? 'bg-muted text-muted-foreground' :
-                                                        sc.is_passed ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' :
-                                                        'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400'
-                                                    }`}>
-                                                        {sc.score ?? '-'}
-                                                    </span>
-                                                </td>
-                                            ))}
-                                            <td className="py-2.5 text-right">
-                                                <span className={`font-black text-sm ${
-                                                    (s.average ?? 0) >= 70 ? 'text-emerald-600' :
-                                                    (s.average ?? 0) >= 40 ? 'text-amber-600' : 'text-rose-600'
-                                                }`}>{s.average ?? '-'}</span>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
-                </div>
             </div>
         </AppLayout>
     );
