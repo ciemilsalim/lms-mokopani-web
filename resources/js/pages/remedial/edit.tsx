@@ -87,7 +87,7 @@ export default function EditRemedial({ record }: EditRemedialProps) {
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Detail Remedial – LMS Mokopani" />
+            <Head title={`Detail ${record.type === 'remedial' ? 'Remedial' : 'Pengayaan'} – LMS Mokopani`} />
 
             <div className="flex h-full flex-1 flex-col gap-6 p-6">
                 <button
@@ -101,7 +101,9 @@ export default function EditRemedial({ record }: EditRemedialProps) {
                 <div className="grid gap-6 lg:grid-cols-3">
                     <div className="lg:col-span-2 space-y-6">
                         <form onSubmit={handleSubmit} className="rounded-3xl border border-border bg-card p-8 shadow-xl shadow-border/30">
-                            <h2 className="text-xl font-bold text-foreground mb-6">Edit Records Remedial</h2>
+                            <h2 className="text-xl font-bold text-foreground mb-6">
+                                Edit Record {record.type === 'remedial' ? 'Remedial' : 'Pengayaan'}
+                            </h2>
 
                             <div className="grid gap-6 md:grid-cols-2">
                                 <div className="space-y-2">
@@ -118,7 +120,9 @@ export default function EditRemedial({ record }: EditRemedialProps) {
                                 </div>
 
                                 <div className="space-y-2">
-                                    <label className="text-sm font-bold text-foreground">Nilai Remedial</label>
+                                    <label className="text-sm font-bold text-foreground">
+                                        Nilai {record.type === 'remedial' ? 'Remedial' : 'Pengayaan'}
+                                    </label>
                                     <input
                                         type="number"
                                         value={form.remedial_score}
@@ -126,7 +130,7 @@ export default function EditRemedial({ record }: EditRemedialProps) {
                                         min="0"
                                         max="100"
                                         className="w-full rounded-xl border border-border bg-white px-4 py-3 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 dark:bg-slate-900"
-                                        placeholder="Masukkan nilai setelah remedial"
+                                        placeholder={`Masukkan nilai setelah ${record.type === 'remedial' ? 'remedial' : 'pengayaan'}`}
                                     />
                                 </div>
 

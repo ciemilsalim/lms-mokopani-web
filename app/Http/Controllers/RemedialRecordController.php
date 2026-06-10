@@ -176,8 +176,10 @@ class RemedialRecordController extends Controller
             ]);
         }
 
+        $firstRecord = reset($created);
+        $typeName = ($firstRecord && $firstRecord->type === 'pengayaan') ? 'Pengayaan' : 'Remedial';
         return redirect()->route('remedial.index')
-            ->with('success', count($created) . ' records remedial berhasil dibuat.');
+            ->with('success', count($created) . " record {$typeName} berhasil dibuat.");
     }
 
     public function edit(LmsRemedialRecord $remedial)
@@ -202,8 +204,9 @@ class RemedialRecordController extends Controller
 
         $remedial->update($validated);
 
+        $typeName = $remedial->type === 'remedial' ? 'Remedial' : 'Pengayaan';
         return redirect()->route('remedial.index')
-            ->with('success', 'Records remedial berhasil diperbarui.');
+            ->with('success', "Record {$typeName} berhasil diperbarui.");
     }
 
     public function destroy(LmsRemedialRecord $remedial)
@@ -211,8 +214,9 @@ class RemedialRecordController extends Controller
         $this->authorizeTeacher($remedial);
         $remedial->delete();
 
+        $typeName = $remedial->type === 'remedial' ? 'Remedial' : 'Pengayaan';
         return redirect()->route('remedial.index')
-            ->with('success', 'Records remedial berhasil dihapus.');
+            ->with('success', "Record {$typeName} berhasil dihapus.");
     }
 
     protected function authorizeTeacher(LmsRemedialRecord $record)

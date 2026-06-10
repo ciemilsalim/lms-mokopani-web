@@ -1,8 +1,8 @@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
-import { Plus, FileWarning, Users, BookOpen, Search, ChevronRight } from 'lucide-react';
-import { useState } from 'react';
+import { Plus, FileWarning, Users, BookOpen, ChevronRight } from 'lucide-react';
+import { useState, useEffect } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: '/dashboard' },
@@ -61,14 +61,43 @@ export default function RemedialIndex({ records, teachings, filters }: RemedialI
     const [searchType, setSearchType] = useState(filters.type || '');
     const [searchStatus, setSearchStatus] = useState(filters.status || '');
     const [searchSubject, setSearchSubject] = useState(filters.subject_id || '');
+    const [searchClass, setSearchClass] = useState(filters.class_id || '');
 
-    const applyFilters = () => {
-        router.get(route('remedial.index'), {
-            type: searchType || undefined,
-            status: searchStatus || undefined,
-            subject_id: searchSubject || undefined,
-        }, { preserveState: true, preserveScroll: true });
+    useEffect(() => {
+        setSearchType(filters.type || '');
+        setSearchStatus(filters.status || '');
+        setSearchSubject(filters.subject_id || '');
+        setSearchClass(filters.class_id || '');
+    }, [filters]);
+
+    const handleFilterChange = (key: string, value: string) => {
+        const newFilters = {
+            type: key === 'type' ? value : searchType || undefined,
+            status: key === 'status' ? value : searchStatus || undefined,
+            subject_id: key === 'subject_id' ? value : searchSubject || undefined,
+            class_id: key === 'class_id' ? value : searchClass || undefined,
+        };
+
+        if (key === 'subject_id') {
+            newFilters.class_id = undefined;
+            setSearchClass('');
+        }
+
+        router.get(route('remedial.index'), newFilters, { preserveState: true, preserveScroll: true });
     };
+
+    // Filter unique subjects
+    const uniqueSubjects = Array.from(
+        new Map(teachings.map((t) => [t.subject_id, t.subject_name])).entries()
+    ).map(([id, name]) => ({ id, name }));
+
+    // Filter classes based on selected subject
+    const filteredClasses = teachings
+        .filter((t) => !searchSubject || t.subject_id === Number(searchSubject))
+        .filter((value, index, self) =>
+            self.findIndex((t) => t.class_id === value.class_id) === index
+        )
+        .map((t) => ({ id: t.class_id, name: t.class_name }));
 
     const statusBadge = (status: string) => {
         const map: Record<string, string> = {
@@ -112,26 +141,56 @@ export default function RemedialIndex({ records, teachings, filters }: RemedialI
                 <div className="flex flex-wrap gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm">
                     <select
                         value={searchSubject}
-                        onChange={(e) => setSearchSubject(e.target.value)}
+                        onChange={(e) => {
+                            const val = e.target.value;
+                            setSearchSubject(val);
+                            setSearchClass('');
+                            handleFilterChange('subject_id', val);
+                        }}
                         className="rounded-xl border border-border bg-white px-4 py-2 text-sm outline-none focus:border-primary dark:bg-slate-900"
                     >
                         <option value="">Semua Mapel</option>
-                        {teachings.map((t) => (
-                            <option key={t.subject_id} value={t.subject_id}>{t.subject_name}</option>
+                        {uniqueSubjects.map((s) => (
+                            <option key={s.id} value={s.id}>{s.name}</option>
                         ))}
                     </select>
+
+                    <select
+                        value={searchClass}
+                        onChange={(e) => {
+                            const val = e.target.value;
+                            setSearchClass(val);
+                            handleFilterChange('class_id', val);
+                        }}
+                        className="rounded-xl border border-border bg-white px-4 py-2 text-sm outline-none focus:border-primary dark:bg-slate-900"
+                    >
+                        <option value="">Semua Kelas</option>
+                        {filteredClasses.map((c) => (
+                            <option key={c.id} value={c.id}>{c.name}</option>
+                        ))}
+                    </select>
+
                     <select
                         value={searchType}
-                        onChange={(e) => setSearchType(e.target.value)}
+                        onChange={(e) => {
+                            const val = e.target.value;
+                            setSearchType(val);
+                            handleFilterChange('type', val);
+                        }}
                         className="rounded-xl border border-border bg-white px-4 py-2 text-sm outline-none focus:border-primary dark:bg-slate-900"
                     >
                         <option value="">Semua Tipe</option>
                         <option value="remedial">Remedial</option>
                         <option value="pengayaan">Pengayaan</option>
                     </select>
+
                     <select
                         value={searchStatus}
-                        onChange={(e) => setSearchStatus(e.target.value)}
+                        onChange={(e) => {
+                            const val = e.target.value;
+                            setSearchStatus(val);
+                            handleFilterChange('status', val);
+                        }}
                         className="rounded-xl border border-border bg-white px-4 py-2 text-sm outline-none focus:border-primary dark:bg-slate-900"
                     >
                         <option value="">Semua Status</option>
@@ -140,13 +199,6 @@ export default function RemedialIndex({ records, teachings, filters }: RemedialI
                         <option value="completed">Selesai</option>
                         <option value="expired">Kadaluarsa</option>
                     </select>
-                    <button
-                        onClick={applyFilters}
-                        className="inline-flex items-center gap-2 rounded-xl bg-primary/10 px-4 py-2 text-sm font-bold text-primary hover:bg-primary/20 transition"
-                    >
-                        <Search className="h-4 w-4" />
-                        Terapkan
-                    </button>
                 </div>
 
                 <div className="overflow-hidden rounded-3xl border border-border bg-card shadow-xl shadow-border/30 dark:shadow-none">
@@ -158,7 +210,9 @@ export default function RemedialIndex({ records, teachings, filters }: RemedialI
                                     <th className="px-6 py-4 font-bold text-foreground">Tugas</th>
                                     <th className="px-6 py-4 font-bold text-foreground">Tipe</th>
                                     <th className="px-6 py-4 font-bold text-foreground">Nilai Awal</th>
-                                    <th className="px-6 py-4 font-bold text-foreground">Nilai Remedial</th>
+                                    <th className="px-6 py-4 font-bold text-foreground">
+                                        {searchType === 'remedial' ? 'Nilai Remedial' : searchType === 'pengayaan' ? 'Nilai Pengayaan' : 'Nilai Remedial / Pengayaan'}
+                                    </th>
                                     <th className="px-6 py-4 font-bold text-foreground">Status</th>
                                     <th className="px-6 py-4 font-bold text-foreground">Tenggat</th>
                                     <th className="px-6 py-4 font-bold text-foreground"></th>
@@ -169,7 +223,7 @@ export default function RemedialIndex({ records, teachings, filters }: RemedialI
                                     <tr>
                                         <td colSpan={8} className="px-6 py-16 text-center text-muted-foreground">
                                             <FileWarning className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                                            <p className="text-sm">Belum ada records remedial.</p>
+                                            <p className="text-sm">Belum ada records remedial / pengayaan.</p>
                                         </td>
                                     </tr>
                                 ) : (
