@@ -1,7 +1,7 @@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router, usePage } from '@inertiajs/react';
-import { BookOpen, ClipboardList, Clock, Plus, Search, Info, Target, GraduationCap, ChevronDown, ChevronRight, Pencil, Trash2, CheckCircle2 } from 'lucide-react';
+import { BookOpen, ClipboardList, Clock, Plus, Search, Info, Target, GraduationCap, ChevronDown, ChevronRight, Pencil, Trash2, CheckCircle2, Users } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -113,84 +113,129 @@ function AssignmentCard({ asgn, isTeacher = false }: { asgn: Assignment; isTeach
     return (
         <div
             onClick={() => isAccessible && router.visit(`/assignments/${asgn.id}`)}
-            className={`group flex cursor-pointer flex-col justify-between rounded-2xl border border-border/60 bg-card p-5 transition-all hover:border-primary/30 hover:shadow-md ${!isAccessible ? 'opacity-60 grayscale-[30%] cursor-not-allowed' : ''}`}
+            className={`group flex cursor-pointer flex-col justify-between rounded-2xl border border-border/60 bg-card p-6 transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg dark:hover:shadow-primary/5 active:scale-[0.99] ${
+                !isAccessible ? 'opacity-60 grayscale-[30%] cursor-not-allowed pointer-events-none' : ''
+            }`}
         >
-            <div className="flex items-start justify-between gap-2">
-                <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${style?.bg || 'bg-muted'} ${style?.text || 'text-muted-foreground'} flex-shrink-0 relative`}>
-                    <TypeIcon className="h-5 w-5" />
-                    {!isAccessible && (
-                        <div className="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-muted border border-border text-muted-foreground">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-lock"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                        </div>
-                    )}
+            <div>
+                {/* Card Header */}
+                <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                        <span className={`h-2.5 w-2.5 rounded-full ${
+                            asgn.assessment_type === 'initial' ? 'bg-indigo-500' : 
+                            asgn.assessment_type === 'formative' ? 'bg-amber-500' : 'bg-emerald-500'
+                        }`} />
+                        <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
+                            {asgn.assessment_type === 'initial' ? 'Awal' : 
+                             asgn.assessment_type === 'formative' ? 'Formatif' : 'Sumatif'}
+                        </span>
+                    </div>
+
+                    <div className="flex items-center gap-1 min-h-[28px]">
+                        {asgn.due_date && (
+                            <span className={`inline-flex items-center gap-1.5 text-[11px] font-bold ${
+                                overdue 
+                                    ? 'text-destructive' 
+                                    : 'text-muted-foreground'
+                            }`}>
+                                <Clock className="h-3.5 w-3.5" />
+                                {asgn.due_date}
+                            </span>
+                        )}
+
+                        {isTeacher && (
+                            <div className="flex items-center gap-0.5 ml-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                                <button
+                                    onClick={handleEdit}
+                                    className="rounded-lg p-1.5 text-muted-foreground hover:bg-primary/10 hover:text-primary transition cursor-pointer"
+                                    title="Edit asesmen"
+                                >
+                                    <Pencil className="h-3.5 w-3.5" />
+                                </button>
+                                <button
+                                    onClick={handleDelete}
+                                    className="rounded-lg p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition cursor-pointer"
+                                    title="Hapus asesmen"
+                                >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                </button>
+                            </div>
+                        )}
+                    </div>
                 </div>
-                <div className="flex items-center gap-1">
-                    {isTeacher && (
+
+                {/* Card Title & Description */}
+                <h3 className="mt-3 text-[14px] font-bold text-foreground group-hover:text-primary transition-colors leading-snug line-clamp-2">
+                    {asgn.title}
+                </h3>
+                {asgn.description && (
+                    <p className="mt-1.5 text-[12px] text-muted-foreground leading-relaxed line-clamp-2 font-medium">
+                        {asgn.description}
+                    </p>
+                )}
+
+                {/* Instrument Metadata */}
+                <div className="mt-4 flex items-center gap-2 text-[11px] font-semibold text-muted-foreground flex-wrap">
+                    <div className={`flex h-6 w-6 items-center justify-center rounded-lg ${style?.bg || 'bg-muted'} ${style?.text || 'text-muted-foreground'}`}>
+                        <TypeIcon className="h-3.5 w-3.5" />
+                    </div>
+                    <span>
+                        {instrumentLabels[asgn.instrument_type || ''] || asgn.instrument_type}
+                    </span>
+                    {asgn.scoring_tool && (
                         <>
-                            <button
-                                onClick={handleEdit}
-                                className="rounded-lg p-1.5 text-muted-foreground opacity-0 group-hover:opacity-100 hover:bg-primary/5 hover:text-primary transition-all cursor-pointer"
-                                title="Edit asesmen"
-                            >
-                                <Pencil className="h-3.5 w-3.5" />
-                            </button>
-                            <button
-                                onClick={handleDelete}
-                                className="rounded-lg p-1.5 text-muted-foreground opacity-0 group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive transition-all cursor-pointer"
-                                title="Hapus asesmen"
-                            >
-                                <Trash2 className="h-3.5 w-3.5" />
-                            </button>
+                            <span className="text-muted-foreground/30">•</span>
+                            <span>
+                                {scoringToolLabels[asgn.scoring_tool] || asgn.scoring_tool}
+                            </span>
                         </>
                     )}
-                    {asgn.due_date && (
-                        <span className={`flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold ${overdue ? 'bg-destructive/10 text-destructive border border-destructive/20' : 'bg-muted text-muted-foreground'}`}>
-                            <Clock className="h-3 w-3" />
-                            {asgn.due_date}
+                    {!isTeacher && asgn.student_submission?.is_graded && (
+                        <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                            <CheckCircle2 className="h-2.5 w-2.5" /> Dinilai
                         </span>
                     )}
                 </div>
             </div>
-            <h3 className="mt-4 text-sm font-black text-foreground group-hover:text-primary transition-colors line-clamp-2">
-                {asgn.title}
-            </h3>
 
-            <div className="mt-4 flex flex-wrap gap-1.5">
-                {asgn.assessment_type && (
-                    <span className={`rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wider ${style?.bg} ${style?.text}`}>
-                        {asgn.assessment_type === 'initial' ? 'Awal' : asgn.assessment_type === 'formative' ? 'Formatif' : 'Sumatif'}
-                    </span>
-                )}
-                {asgn.instrument_type && (
-                    <span className="rounded-full bg-muted px-2 py-0.5 text-[9px] font-bold text-muted-foreground uppercase tracking-wider">
-                        {instrumentLabels[asgn.instrument_type] || asgn.instrument_type}
-                    </span>
-                )}
-                {asgn.scoring_tool && (
-                    <span className="rounded-full bg-primary/10 border border-primary/20 px-2 py-0.5 text-[9px] font-bold text-primary uppercase tracking-wider">
-                        {scoringToolLabels[asgn.scoring_tool] || asgn.scoring_tool}
-                    </span>
-                )}
-                {!isTeacher && asgn.student_submission?.is_graded && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
-                        <CheckCircle2 className="h-2.5 w-2.5" /> Dinilai
-                    </span>
-                )}
-            </div>
+            <div className="mt-5">
+                {/* Divider */}
+                <div className="h-[1px] bg-border/40 dark:bg-[#2C2C3A]/50 w-full mb-4" />
 
-            <div className="mt-4 flex items-center justify-end border-t border-border/50 pt-3">
-                <div className="flex items-center gap-2">
-                    {isTeacher && asgn.submissions_count > 0 ? (
-                        <span className="rounded-full bg-indigo-500/10 border border-indigo-500/20 px-2.5 py-0.5 text-[10px] font-black text-indigo-600 dark:text-indigo-400">
-                            {asgn.submissions_count} Mengumpulkan
-                        </span>
+                {/* Card Footer */}
+                <div className="flex items-center justify-between">
+                    {isTeacher ? (
+                        asgn.submissions_count > 0 ? (
+                            <div className="flex items-center gap-1.5 text-[11px] font-bold text-primary">
+                                <Users className="h-3.5 w-3.5" />
+                                <span>{asgn.submissions_count} Mengumpulkan</span>
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground">
+                                <Users className="h-3.5 w-3.5 animate-pulse" />
+                                <span>0 mengumpulkan</span>
+                            </div>
+                        )
                     ) : (
-                        <span className="text-[10px] text-muted-foreground whitespace-nowrap">{asgn.submissions_count} dikumpulkan</span>
+                        <div className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground">
+                            {asgn.student_submission ? (
+                                <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-bold">
+                                    <CheckCircle2 className="h-3.5 w-3.5" />
+                                    Sudah Dikumpulkan
+                                </span>
+                            ) : (
+                                <span className="inline-flex items-center gap-1 text-amber-500 font-semibold">
+                                    <Clock className="h-3.5 w-3.5 animate-pulse" />
+                                    Belum Dikumpulkan
+                                </span>
+                            )}
+                        </div>
                     )}
-                    <span className="rounded-full bg-success/10 border border-success/20 px-2 py-0.5 text-[10px] font-bold text-success">
+
+                    <span className="rounded-lg bg-muted dark:bg-[#1F1F2E] px-2.5 py-1 text-[10px] font-bold text-foreground border border-border dark:border-[#2C2C3A]/30">
                         {['reflective_journal', 'self_assessment', 'peer_assessment'].includes(asgn.instrument_type || '') 
-                            ? 'Deskriptif (KKTP)' 
-                            : `${asgn.max_points} pts`}
+                            ? 'Deskriptif' 
+                            : `${asgn.max_points} Poin`}
                     </span>
                 </div>
             </div>

@@ -1890,6 +1890,41 @@ export default function ShowAssignment({ assignment, students, my_submission, my
         return map;
     }, [assignment.submissions]);
 
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const studentIdParam = params.get('student_id');
+        if (studentIdParam && students.length > 0 && user_role === 'teacher') {
+            const studentId = parseInt(studentIdParam);
+            const student = students.find(s => s.id === studentId);
+            if (student) {
+                const sub = submissionMap[student.id];
+                if (assignment.instrument_type === 'anecdotal_notes') {
+                    openAnecdotalModal(student, sub);
+                } else if (assignment.instrument_type === 'rubric') {
+                    openRubricModal(student, sub);
+                } else if (assignment.instrument_type === 'performance') {
+                    openPerformanceGrading(student);
+                } else if (assignment.instrument_type === 'performance_observation') {
+                    openObservationModal(student, sub);
+                } else if (assignment.instrument_type === 'guided_discussion') {
+                    openObservationModal(student, sub);
+                } else if (assignment.instrument_type === 'project') {
+                    openProjectGrading(student);
+                } else if (assignment.instrument_type === 'portfolio') {
+                    openPortfolioGrading(student);
+                } else if (assignment.instrument_type === 'oral_test') {
+                    openOralGrading(student);
+                } else if (assignment.instrument_type === 'observation_checklist') {
+                    openObservationModal(student, sub);
+                } else {
+                    if (sub) {
+                        openGradeModal(sub);
+                    }
+                }
+            }
+        }
+    }, [students, assignment.instrument_type, submissionMap, user_role]);
+
     return (
         <AppLayout breadcrumbs={[
             { title: 'Dashboard', href: '/dashboard' },

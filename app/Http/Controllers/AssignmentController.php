@@ -116,12 +116,12 @@ class AssignmentController extends Controller
                 $accessibleTpIds = app(AdaptiveLearningService::class)->getStudentAccessibleTpIds($user->student->id, $user->student->school_class_id);
             }
 
-            $grouped = $models->groupBy('subject_id')->map(function ($items, $subjectId) use ($accessibleTpIds, $user) {
+            $grouped = $models->groupBy('subject_id')->map(function ($items, $subjectId) use ($accessibleTpIds, $user, $studentSubmissions) {
                 $first = $items->first();
                 $tpGroups = $items->groupBy(function ($item) {
                     return $item->learning_objective_id ?? 'null';
                 });
-                $objectives = $tpGroups->map(function ($tpItems, $tpId) use ($accessibleTpIds, $user) {
+                $objectives = $tpGroups->map(function ($tpItems, $tpId) use ($accessibleTpIds, $user, $studentSubmissions) {
                     $firstTp = $tpItems->first();
                     $isAccessible = $user->role === 'admin' || $tpId === 'null' || in_array($firstTp->learning_objective_id, $accessibleTpIds);
                     return [
@@ -668,15 +668,17 @@ class AssignmentController extends Controller
             ]);
         }
 
-        // Kirim notifikasi ke guru bahwa ada tugas baru dikumpulkan
-        if ($assignment->teacher_id) {
+        // Kirim notifikasi ke guru bahwa ada tugas baru dikumpulkan / diperbarui
+        if ($assignment->teacher_id && $assignment->teacher) {
+            $isResubmission = $submission ? true : false;
             \App\Models\Notification::create([
-                'user_id' => $assignment->teacher_id,
+                'user_id' => $assignment->teacher->user_id,
                 'type'    => 'submission',
-                'title'   => 'Tugas Dikumpulkan: ' . $assignment->title,
-                'message' => $student->name . ' mengumpulkan tugas ' . $assignment->title,
+                'title'   => ($isResubmission ? 'Tugas Diperbarui: ' : 'Tugas Dikumpulkan: ') . $assignment->title,
+                'message' => $student->name . ($isResubmission ? ' memperbarui tugas ' : ' mengumpulkan tugas ') . $assignment->title,
                 'data'    => [
                     'assignment_id' => $assignment->id,
+                    'student_id'    => $student->id,
                     'student_name'  => $student->name,
                 ],
             ]);

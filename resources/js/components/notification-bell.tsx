@@ -84,7 +84,10 @@ export default function NotificationBell() {
     const handleClick = (n: NotificationItem) => {
         if (!n.is_read) markAsRead(n.id);
         if (n.type === 'submission' && n.data?.assignment_id) {
-            router.visit(route('assignments.show', n.data.assignment_id));
+            router.visit(route('assignments.show', { 
+                assignment: n.data.assignment_id, 
+                student_id: n.data.student_id 
+            }));
         } else if (n.type === 'assignment' && n.data?.assignment_id) {
             router.visit(route('assignments.show', n.data.assignment_id));
         } else if (n.type === 'announcement') {
