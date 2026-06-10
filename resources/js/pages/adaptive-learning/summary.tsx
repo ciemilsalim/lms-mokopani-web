@@ -1,7 +1,8 @@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
-import { Head, Link } from '@inertiajs/react';
-import { ChevronLeft, Brain, User, BookOpen, Target, Zap, Star, AlertCircle, CheckCircle2, TrendingUp, Palette, Music, Activity, Heart, Layers, Video } from 'lucide-react';
+import { Head, Link, usePage, router } from '@inertiajs/react';
+import { ChevronLeft, Brain, User, BookOpen, Target, Zap, Star, AlertCircle, CheckCircle2, TrendingUp, Palette, Music, Activity, Heart, Layers, Video, RefreshCw, Loader2 } from 'lucide-react';
+import { useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: '/dashboard' },
@@ -61,7 +62,7 @@ interface AdaptiveSummaryProps {
     student: { id: number; name: string; nis: string; class_name: string };
     summary: Summary;
     non_cognitive: NonCognitive | null;
-    differentiated_strategy: DifferentiatedStrategy;
+    differentiated_strategy: DifferentiatedStrategy | null;
 }
 
 const masteryColors: Record<string, string> = {
@@ -90,7 +91,74 @@ const getStyleIcon = (style: string | null) => {
     return <Palette className="h-5 w-5" />;
 };
 
+const getMotivationDisplay = (motivation: any) => {
+    if (!motivation) return '-';
+    const intrinsic = motivation.intrinsik || motivation.intrinsic || '-';
+    const extrinsic = motivation.ekstrinsik || motivation.extrinsic || '-';
+    return `Intrinsik: ${intrinsic} | Ekstrinsik: ${extrinsic}`;
+};
+
+const getInterestsArray = (interests: any): string[] => {
+    if (!interests) return [];
+    if (Array.isArray(interests)) return interests;
+    let list: string[] = [];
+    if (Array.isArray(interests.daftar)) {
+        list = [...interests.daftar];
+    }
+    if (interests.lainnya) {
+        list.push(interests.lainnya);
+    }
+    return list;
+};
+
+const getFamilyBackgroundDisplay = (family: any) => {
+    if (!family) return '-';
+    const parts: string[] = [];
+
+    if (family.pekerjaan_ayah) parts.push(`Ayah: ${family.pekerjaan_ayah}`);
+    if (family.pekerjaan_ibu) parts.push(`Ibu: ${family.pekerjaan_ibu}`);
+    if (family.jumlah_saudara) parts.push(`Saudara: ${family.jumlah_saudara}`);
+    if (family.status_tinggal) {
+        const tinggalMap: Record<string, string> = {
+            orang_tua: 'Orang Tua',
+            wali: 'Wali',
+            saudara: 'Saudara',
+            pondok: 'Pondok/Asrama',
+            lainnya: 'Lainnya',
+        };
+        parts.push(`Tinggal: ${tinggalMap[family.status_tinggal] || family.status_tinggal}`);
+    }
+
+    if (parts.length === 0) {
+        if (family.parent_education) {
+            const edu = family.parent_education;
+            parts.push(`Pendidikan Ayah: ${edu.Ayah || '-'}, Ibu: ${edu.Ibu || '-'}`);
+        }
+        if (family.economic_status) parts.push(`Ekonomi: ${family.economic_status}`);
+        if (family.study_support) parts.push(`Dukungan Belajar: ${family.study_support}`);
+    }
+
+    return parts.length > 0 ? parts.join(' | ') : '-';
+};
+
 export default function AdaptiveSummary({ subject, student, summary, non_cognitive, differentiated_strategy }: AdaptiveSummaryProps) {
+    const { user_role } = usePage<any>().props;
+    const canGenerate = user_role === 'teacher' || user_role === 'admin';
+    const [loading, setLoading] = useState(false);
+
+    const handleGenerate = () => {
+        setLoading(true);
+        router.get(
+            route('adaptive-learning.summary', [subject.id, student.id]),
+            { regenerate: 'true' },
+            {
+                preserveState: true,
+                preserveScroll: true,
+                onFinish: () => setLoading(false),
+            }
+        );
+    };
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`Diagnostik ${subject.name} – LMS Mokopani`} />
@@ -225,20 +293,18 @@ export default function AdaptiveSummary({ subject, student, summary, non_cogniti
                             
                             <div className="rounded-2xl border border-border p-4 bg-background">
                                 <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Tingkat Motivasi</p>
-                                <div className="font-medium text-sm">
-                                    {non_cognitive.motivation_level && non_cognitive.motivation_level.length > 0 
-                                        ? non_cognitive.motivation_level.join(', ') 
-                                        : '-'}
+                                <div className="font-semibold text-sm capitalize">
+                                    {getMotivationDisplay(non_cognitive.motivation_level)}
                                 </div>
                             </div>
 
                             <div className="rounded-2xl border border-border p-4 bg-background">
                                 <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Minat & Hobi</p>
                                 <div className="flex flex-wrap gap-2">
-                                    {non_cognitive.interests && non_cognitive.interests.length > 0 ? (
-                                        non_cognitive.interests.map((interest, i) => (
-                                            <span key={i} className="inline-flex rounded-md bg-secondary px-2 py-1 text-xs font-medium text-secondary-foreground">
-                                                {interest}
+                                    {getInterestsArray(non_cognitive.interests).length > 0 ? (
+                                        getInterestsArray(non_cognitive.interests).map((interest, i) => (
+                                            <span key={i} className="inline-flex rounded-md bg-secondary px-2 py-1 text-xs font-medium text-secondary-foreground capitalize">
+                                                {interest.replace('_', ' ')}
                                             </span>
                                         ))
                                     ) : (
@@ -250,73 +316,122 @@ export default function AdaptiveSummary({ subject, student, summary, non_cogniti
                             <div className="rounded-2xl border border-border p-4 bg-background">
                                 <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Latar Belakang</p>
                                 <div className="text-sm text-muted-foreground">
-                                    {non_cognitive.family_background && non_cognitive.family_background.length > 0
-                                        ? non_cognitive.family_background.join(', ')
-                                        : '-'}
+                                    {getFamilyBackgroundDisplay(non_cognitive.family_background)}
                                 </div>
                             </div>
                         </div>
                     )}
-                </div>
-
-                {/* Strategi Diferensiasi PPA 2025 */}
+                </div>                {/* Strategi Diferensiasi PPA 2026 */}
                 <div className="rounded-3xl border border-border bg-card p-6 shadow-sm mt-2 mb-8">
-                    <div className="flex items-center gap-3 mb-6">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 text-blue-600">
-                            <Layers className="h-5 w-5" />
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+                        <div className="flex items-center gap-3">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 text-blue-600">
+                                <Layers className="h-5 w-5" />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-foreground">Strategi Pembelajaran Terdiferensiasi</h3>
+                                <p className="text-xs text-muted-foreground">Rekomendasi AI berbasis PPA 2026</p>
+                            </div>
                         </div>
-                        <div>
-                            <h3 className="font-bold text-foreground">Strategi Pembelajaran Terdiferensiasi</h3>
-                            <p className="text-xs text-muted-foreground">Rekomendasi otomatis berbasis PPA 2025</p>
-                        </div>
+                        {canGenerate && differentiated_strategy && (
+                            <button
+                                onClick={handleGenerate}
+                                disabled={loading}
+                                className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-3.5 py-2 text-xs font-semibold text-foreground shadow-sm hover:bg-muted transition duration-150 disabled:opacity-50"
+                            >
+                                {loading ? (
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                ) : (
+                                    <RefreshCw className="h-3.5 w-3.5" />
+                                )}
+                                {loading ? 'Meregenerasi...' : 'Generate Ulang'}
+                            </button>
+                        )}
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div className="space-y-3">
-                            <div className="flex items-center gap-2 border-b border-border pb-2">
-                                <BookOpen className="h-4 w-4 text-emerald-600" />
-                                <h4 className="font-bold text-sm text-foreground">Diferensiasi Konten</h4>
+                    {!differentiated_strategy ? (
+                        canGenerate ? (
+                            <div className="flex flex-col items-center justify-center p-8 text-center bg-muted/20 border border-dashed border-border rounded-2xl">
+                                <Brain className="h-12 w-12 text-primary/50 mb-3 animate-pulse" />
+                                <h4 className="font-bold text-sm text-foreground mb-1">Strategi Belum Dihasilkan</h4>
+                                <p className="text-xs text-muted-foreground max-w-md mb-4 leading-relaxed">
+                                    Strategi pembelajaran terdiferensiasi (Konten, Proses, Produk) belum digenerate untuk profil siswa ini. Silakan klik tombol di bawah untuk menghasilkan rekomendasi AI berbasis PPA 2026.
+                                </p>
+                                <button
+                                    onClick={handleGenerate}
+                                    disabled={loading}
+                                    className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow hover:bg-primary/95 transition duration-150 disabled:opacity-50"
+                                >
+                                    {loading ? (
+                                        <>
+                                            <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
+                                            Menganalisis & Menghasilkan...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Brain className="h-3.5 w-3.5 mr-1" />
+                                            Generate dengan AI
+                                        </>
+                                    )}
+                                </button>
                             </div>
-                            <ul className="space-y-2">
-                                {differentiated_strategy.content.map((item, i) => (
-                                    <li key={i} className="text-xs text-muted-foreground flex items-start gap-2">
-                                        <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 mt-1.5 shrink-0" />
-                                        <span>{item}</span>
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
+                        ) : (
+                            <div className="flex flex-col items-center justify-center p-8 text-center bg-muted/20 border border-dashed border-border rounded-2xl">
+                                <Brain className="h-12 w-12 text-muted-foreground/30 mb-3" />
+                                <h4 className="font-bold text-sm text-foreground mb-1">Strategi Belum Tersedia</h4>
+                                <p className="text-xs text-muted-foreground max-w-md leading-relaxed">
+                                    Strategi pembelajaran terdiferensiasi belum digenerate oleh Guru Anda untuk mata pelajaran ini. Silakan hubungi Guru untuk informasi lebih lanjut.
+                                </p>
+                            </div>
+                        )
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div className="space-y-3">
+                                <div className="flex items-center gap-2 border-b border-border pb-2">
+                                    <BookOpen className="h-4 w-4 text-emerald-600" />
+                                    <h4 className="font-bold text-sm text-foreground">Diferensiasi Konten</h4>
+                                </div>
+                                <ul className="space-y-2">
+                                    {differentiated_strategy.content.map((item, i) => (
+                                        <li key={i} className="text-xs text-muted-foreground flex items-start gap-2">
+                                            <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 mt-1.5 shrink-0" />
+                                            <span>{item}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
 
-                        <div className="space-y-3">
-                            <div className="flex items-center gap-2 border-b border-border pb-2">
-                                <Activity className="h-4 w-4 text-amber-600" />
-                                <h4 className="font-bold text-sm text-foreground">Diferensiasi Proses</h4>
+                            <div className="space-y-3">
+                                <div className="flex items-center gap-2 border-b border-border pb-2">
+                                    <Activity className="h-4 w-4 text-amber-600" />
+                                    <h4 className="font-bold text-sm text-foreground">Diferensiasi Proses</h4>
+                                </div>
+                                <ul className="space-y-2">
+                                    {differentiated_strategy.process.map((item, i) => (
+                                        <li key={i} className="text-xs text-muted-foreground flex items-start gap-2">
+                                            <div className="h-1.5 w-1.5 rounded-full bg-amber-500 mt-1.5 shrink-0" />
+                                            <span>{item}</span>
+                                        </li>
+                                    ))}
+                                </ul>
                             </div>
-                            <ul className="space-y-2">
-                                {differentiated_strategy.process.map((item, i) => (
-                                    <li key={i} className="text-xs text-muted-foreground flex items-start gap-2">
-                                        <div className="h-1.5 w-1.5 rounded-full bg-amber-500 mt-1.5 shrink-0" />
-                                        <span>{item}</span>
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
 
-                        <div className="space-y-3">
-                            <div className="flex items-center gap-2 border-b border-border pb-2">
-                                <Video className="h-4 w-4 text-purple-600" />
-                                <h4 className="font-bold text-sm text-foreground">Diferensiasi Produk</h4>
+                            <div className="space-y-3">
+                                <div className="flex items-center gap-2 border-b border-border pb-2">
+                                    <Video className="h-4 w-4 text-purple-600" />
+                                    <h4 className="font-bold text-sm text-foreground">Diferensiasi Produk</h4>
+                                </div>
+                                <ul className="space-y-2">
+                                    {differentiated_strategy.product.map((item, i) => (
+                                        <li key={i} className="text-xs text-muted-foreground flex items-start gap-2">
+                                            <div className="h-1.5 w-1.5 rounded-full bg-purple-500 mt-1.5 shrink-0" />
+                                            <span>{item}</span>
+                                        </li>
+                                    ))}
+                                </ul>
                             </div>
-                            <ul className="space-y-2">
-                                {differentiated_strategy.product.map((item, i) => (
-                                    <li key={i} className="text-xs text-muted-foreground flex items-start gap-2">
-                                        <div className="h-1.5 w-1.5 rounded-full bg-purple-500 mt-1.5 shrink-0" />
-                                        <span>{item}</span>
-                                    </li>
-                                ))}
-                            </ul>
                         </div>
-                    </div>
+                    )}
                 </div>
 
             </div>

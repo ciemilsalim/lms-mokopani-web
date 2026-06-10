@@ -69,7 +69,7 @@ class AdaptiveLearningController extends Controller
         ]);
     }
 
-    public function summary($subjectId, $studentId)
+    public function summary(Request $request, $subjectId, $studentId)
     {
         $subject = Subject::findOrFail($subjectId);
         $student = Student::with('schoolClass')->findOrFail($studentId);
@@ -81,7 +81,9 @@ class AdaptiveLearningController extends Controller
             // but usually non-cognitive is general per student. We'll just take the first one.
             ->first();
 
-        $differentiatedStrategy = $this->adaptiveLearning->generateDifferentiatedStrategy($summary, $nonCognitive);
+        $regenerate = $request->boolean('regenerate');
+
+        $differentiatedStrategy = $this->adaptiveLearning->generateDifferentiatedStrategy($summary, $nonCognitive, $regenerate);
 
         return Inertia::render('adaptive-learning/summary', [
             'subject' => ['id' => $subject->id, 'name' => $subject->name],

@@ -46,4 +46,9 @@ interface AiProviderInterface
         bool $regenerate = false,
         ?string $observationMode = null
     ): array;
+
+    /**
+     * Generate content dynamically from a raw prompt.
+     */
+    public function generateContent(string $prompt): ?string;
 }

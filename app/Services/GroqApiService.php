@@ -152,7 +152,7 @@ class GroqApiService implements AiProviderInterface
         return $result;
     }
 
-    private function generateContent(string $prompt): ?string
+    public function generateContent(string $prompt): ?string
     {
         if (empty($this->apiKeys)) return null;
 

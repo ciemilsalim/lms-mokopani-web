@@ -327,9 +327,183 @@ class AdaptiveLearningService
     }
 
     /**
-     * Generate Differentiated Learning Strategy based on Cognitive and Non-Cognitive profiles (PPA 2025).
+     * Generate Differentiated Learning Strategy based on Cognitive and Non-Cognitive profiles (PPA 2026).
      */
-    public function generateDifferentiatedStrategy(array $cognitiveSummary, ?\App\Models\StudentNonCognitiveDiagnostic $nonCognitive): array
+    public function generateDifferentiatedStrategy(array $cognitiveSummary, ?\App\Models\StudentNonCognitiveDiagnostic $nonCognitive, bool $regenerate = false): ?array
+    {
+        $studentId = $nonCognitive?->student_id ?? 0;
+        
+        $subjectId = 0;
+        if (!empty($cognitiveSummary['results'])) {
+            $subjectId = $cognitiveSummary['results'][0]['subject_id'] ?? 0;
+        }
+
+        $hash = md5('diff_strategy_' . $subjectId . '_' . $studentId);
+
+        // 1. Jika tidak dipaksa regenerate, coba ambil dari cache database
+        if (!$regenerate) {
+            $cached = \App\Models\LmsAiCache::getCache($hash);
+            if ($cached) {
+                $decoded = json_decode($cached, true);
+                if (is_array($decoded)) {
+                    return [
+                        'content' => $decoded['content'] ?? [],
+                        'process' => $decoded['process'] ?? [],
+                        'product' => $decoded['product'] ?? [],
+                        'is_cached' => true,
+                    ];
+                }
+            }
+            
+            // Jika belum ada di cache dan tidak meregenerate, kembalikan null agar tombol muncul
+            return null;
+        }
+
+        // 2. Dapatkan strategi cadangan (rule-based)
+        $fallbackStrategy = $this->getRuleBasedDifferentiatedStrategy($cognitiveSummary, $nonCognitive);
+
+        try {
+            // 3. Periksa apakah AI terkonfigurasi dan aktif
+            $aiManager = app(\App\Services\AiManager::class);
+            $aiProvider = $aiManager->getActiveProvider();
+
+            if ($aiProvider && $aiProvider->isConfigured()) {
+                // Siapkan data kognitif
+                $averageScore = $cognitiveSummary['average_score'] ?? 'Belum ada nilai';
+                
+                $cognitiveCategory = 'Belum Siap';
+                $weakTopics = [];
+                if (!empty($cognitiveSummary['results'])) {
+                    $latestResult = end($cognitiveSummary['results']);
+                    if (isset($latestResult['topic_breakdown'])) {
+                        if (is_array($latestResult['topic_breakdown'])) {
+                            // Check if it's the array-of-objects structure
+                            if (isset($latestResult['topic_breakdown'][0]['topic'])) {
+                                foreach ($latestResult['topic_breakdown'] as $topic) {
+                                    if (($topic['mastery_level'] ?? '') === 'rendah' || ($topic['mastery_pct'] ?? 0) < 60) {
+                                        $weakTopics[] = $topic['topic'];
+                                    }
+                                }
+                            } else {
+                                // Or if it's key-value category structure
+                                $cognitiveCategory = $latestResult['topic_breakdown']['category'] ?? 'Belum Siap';
+                            }
+                        }
+                    }
+                    if (empty($cognitiveCategory)) {
+                        $cognitiveCategory = $latestResult['is_passed'] ? 'Siap' : 'Belum Siap';
+                    }
+                }
+                
+                $weakTopicsList = !empty($weakTopics) ? implode(', ', $weakTopics) : 'Tidak ada (siswa menguasai materi prasyarat)';
+
+                // Siapkan data non-kognitif
+                $learningStyle = $nonCognitive?->learning_style ?? 'Visual';
+                
+                $interestsList = '-';
+                if ($nonCognitive && $nonCognitive->interests) {
+                    $interests = $nonCognitive->interests;
+                    if (is_array($interests)) {
+                        if (isset($interests['daftar']) && is_array($interests['daftar'])) {
+                            $list = $interests['daftar'];
+                            if (!empty($interests['lainnya'])) {
+                                $list[] = $interests['lainnya'];
+                            }
+                            $interestsList = implode(', ', $list);
+                        } else {
+                            $interestsList = implode(', ', $interests);
+                        }
+                    }
+                }
+
+                $motivationList = '-';
+                if ($nonCognitive && $nonCognitive->motivation_level) {
+                    $motivation = $nonCognitive->motivation_level;
+                    if (is_array($motivation)) {
+                        $parts = [];
+                        if (isset($motivation['intrinsik'])) $parts[] = 'Intrinsik: ' . $motivation['intrinsik'];
+                        if (isset($motivation['intrinsic'])) $parts[] = 'Intrinsik: ' . $motivation['intrinsic'];
+                        if (isset($motivation['ekstrinsik'])) $parts[] = 'Ekstrinsik: ' . $motivation['ekstrinsik'];
+                        if (isset($motivation['extrinsic'])) $parts[] = 'Ekstrinsik: ' . $motivation['extrinsic'];
+                        $motivationList = implode(', ', $parts);
+                    } else {
+                        $motivationList = (string) $motivation;
+                    }
+                }
+
+                $notes = $nonCognitive?->notes ?? 'Tidak ada catatan tambahan';
+
+                // Buat prompt sesuai dengan PPA 2026
+                $prompt = "Sebagai asisten AI pendidikan profesional yang ahli dalam Kurikulum Merdeka (Panduan Pembelajaran dan Asesmen / PPA 2026), buatlah rekomendasi strategi pembelajaran terdiferensiasi (Diferensiasi Konten, Diferensiasi Proses, Diferensiasi Produk) untuk siswa berdasarkan profil berikut:\n\n" .
+                    "PROFIL KOGNITIF (Hasil Asesmen Awal):\n" .
+                    "- Rata-rata Skor Kesiapan: {$averageScore} (Skala 1-3, di mana 1=Belum Siap, 2=Siap, 3=Sangat Siap)\n" .
+                    "- Kategori Kesiapan: {$cognitiveCategory}\n" .
+                    "- Topik/Materi yang Belum Dikuasai: {$weakTopicsList}\n\n" .
+                    "PROFIL NON-KOGNITIF:\n" .
+                    "- Gaya Belajar Utama: {$learningStyle}\n" .
+                    "- Minat & Hobi: {$interestsList}\n" .
+                    "- Tingkat Motivasi: {$motivationList}\n" .
+                    "- Catatan Guru: {$notes}\n\n" .
+                    "Berdasarkan PPA 2026, buatlah rekomendasi strategi diferensiasi yang konkret, praktis, dan dapat segera diterapkan guru di kelas.\n" .
+                    "Format jawaban HARUS berupa JSON valid dengan struktur berikut (jangan berikan kalimat pembuka/penutup, markdown fence, atau penjelasan ekstra, langsung kembalikan raw JSON saja):\n" .
+                    "{\n" .
+                    "  \"content\": [\n" .
+                    "    \"Rekomendasi diferensiasi konten 1...\",\n" .
+                    "    \"Rekomendasi diferensiasi konten 2...\"\n" .
+                    "  ],\n" .
+                    "  \"process\": [\n" .
+                    "    \"Rekomendasi diferensiasi proses 1...\",\n" .
+                    "    \"Rekomendasi diferensiasi proses 2...\"\n" .
+                    "  ],\n" .
+                    "  \"product\": [\n" .
+                    "    \"Rekomendasi diferensiasi produk 1...\",\n" .
+                    "    \"Rekomendasi diferensiasi produk 2...\"\n" .
+                    "  ]\n" .
+                    "}";
+
+                $response = $aiProvider->generateContent($prompt);
+
+                if ($response) {
+                    $response = preg_replace('/^```(?:json)?\s*/i', '', $response);
+                    $response = preg_replace('/\s*```$/i', '', $response);
+                    $response = trim($response);
+
+                    $decoded = json_decode($response, true);
+                    if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                        $strategyResult = [
+                            'content' => $decoded['content'] ?? [],
+                            'process' => $decoded['process'] ?? [],
+                            'product' => $decoded['product'] ?? [],
+                        ];
+
+                        \App\Models\LmsAiCache::setCache($hash, 'differentiated_strategy', [
+                            'subject_id' => $subjectId,
+                            'student_id' => $studentId,
+                        ], json_encode($strategyResult));
+
+                        $strategyResult['is_cached'] = true;
+                        return $strategyResult;
+                    }
+                }
+            }
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('AI Differentiated Strategy Error: ' . $e->getMessage());
+        }
+
+        // Jika AI tidak terkonfigurasi/error, simpan fallback agar tidak terus-menerus memanggil API
+        \App\Models\LmsAiCache::setCache($hash, 'differentiated_strategy', [
+            'subject_id' => $subjectId,
+            'student_id' => $studentId,
+        ], json_encode($fallbackStrategy));
+
+        $fallbackStrategy['is_cached'] = true;
+        return $fallbackStrategy;
+    }
+
+    /**
+     * Fallback rule-based differentiated strategy generation.
+     */
+    private function getRuleBasedDifferentiatedStrategy(array $cognitiveSummary, ?\App\Models\StudentNonCognitiveDiagnostic $nonCognitive): array
     {
         $strategy = [
             'content' => [],
@@ -337,22 +511,28 @@ class AdaptiveLearningService
             'product' => [],
         ];
 
-        // 1. Identify weak topics from cognitive summary
         $weakTopics = [];
         if (!empty($cognitiveSummary['results'])) {
-            // Get the latest diagnostic result
             $latestResult = end($cognitiveSummary['results']);
             if (isset($latestResult['topic_breakdown'])) {
-                foreach ($latestResult['topic_breakdown'] as $topic) {
-                    if ($topic['mastery_level'] === 'rendah') {
-                        $weakTopics[] = $topic['topic'];
+                if (is_array($latestResult['topic_breakdown'])) {
+                    if (isset($latestResult['topic_breakdown'][0]['topic'])) {
+                        foreach ($latestResult['topic_breakdown'] as $topic) {
+                            if (($topic['mastery_level'] ?? '') === 'rendah') {
+                                $weakTopics[] = $topic['topic'];
+                            }
+                        }
+                    } else {
+                        $category = $latestResult['topic_breakdown']['category'] ?? '';
+                        if ($category === 'Belum Siap') {
+                            $weakTopics[] = 'Materi Prasyarat';
+                        }
                     }
                 }
             }
         }
 
-        $style = strtolower($nonCognitive?->learning_style ?? 'visual'); // Default visual if none
-        $styleDisplay = ucfirst($style);
+        $style = strtolower($nonCognitive?->learning_style ?? 'visual');
 
         // Content Differentiation
         if ($style === 'visual') {
@@ -384,7 +564,16 @@ class AdaptiveLearningService
             $strategy['process'][] = "Berikan tugas proyek, role-play, atau eksperimen langsung.";
         }
 
-        if (in_array(strtolower($nonCognitive?->motivation_level[0] ?? ''), ['rendah', 'low'])) {
+        $firstMotivation = '-';
+        if ($nonCognitive && $nonCognitive->motivation_level) {
+            $motivationVal = $nonCognitive->motivation_level;
+            if (is_array($motivationVal)) {
+                $firstMotivation = strtolower(reset($motivationVal));
+            } else {
+                $firstMotivation = strtolower((string) $motivationVal);
+            }
+        }
+        if (in_array($firstMotivation, ['rendah', 'low'])) {
             $strategy['process'][] = "Berikan pendampingan lebih intensif dan umpan balik positif secara berkala.";
         } else {
             $strategy['process'][] = "Berikan kebebasan lebih dalam memilih cara mengeksplorasi materi (mandiri).";
@@ -397,6 +586,8 @@ class AdaptiveLearningService
             $strategy['product'][] = "Asesmen bisa berbentuk presentasi lisan, debat, atau rekaman audio.";
         } elseif ($style === 'kinestetik' || $style === 'kinesthetic') {
             $strategy['product'][] = "Asesmen berupa pembuatan maket, demonstrasi, atau portofolio karya fisik.";
+        } else {
+            $strategy['product'][] = "Siswa dibebaskan memilih bentuk produk akhir (esai, poster, audio, atau video).";
         }
 
         return $strategy;

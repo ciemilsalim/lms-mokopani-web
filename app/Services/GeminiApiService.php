@@ -212,7 +212,7 @@ class GeminiApiService implements AiProviderInterface
     /**
      * Kirim prompt ke Gemini API dan terima respons teks.
      */
-    private function generateContent(string $prompt): ?string
+    public function generateContent(string $prompt): ?string
     {
         if (empty($this->apiKeys)) return null;
 
