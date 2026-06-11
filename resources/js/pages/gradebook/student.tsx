@@ -1,6 +1,6 @@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
-import { Head } from '@inertiajs/react';
+import { Head, Link } from '@inertiajs/react';
 import { useState } from 'react';
 import { 
     BookOpen, 
@@ -8,7 +8,8 @@ import {
     TrendingUp, 
     CheckCircle2, 
     Clock,
-    Info
+    Info,
+    ArrowRight
 } from 'lucide-react';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -255,7 +256,17 @@ export default function StudentGrade({ report, period }: StudentGradeProps) {
                                                                                         {item.score}
                                                                                         <span className="text-xs font-normal text-muted-foreground"> / {item.max_points}</span>
                                                                                     </div>
-                                                                                    <TrendingUp className="h-4 w-4 text-muted-foreground/30" />
+                                                                                    {item.is_remedial && item.remedial_status !== 'completed' ? (
+                                                                                        <Link
+                                                                                            href={route('assignments.show', item.id)}
+                                                                                            className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 active:scale-[0.97] px-3 py-1.5 text-[10px] font-bold text-white uppercase tracking-wider shadow-sm transition-all"
+                                                                                        >
+                                                                                            Kerjakan
+                                                                                            <ArrowRight className="h-3 w-3" />
+                                                                                        </Link>
+                                                                                    ) : (
+                                                                                        <TrendingUp className="h-4 w-4 text-muted-foreground/30" />
+                                                                                    )}
                                                                                 </div>
                                                                             </div>
                                                                         ))}
