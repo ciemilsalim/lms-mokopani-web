@@ -113,7 +113,7 @@ function AssignmentCard({ asgn, isTeacher = false }: { asgn: Assignment; isTeach
     return (
         <div
             onClick={() => isAccessible && router.visit(`/assignments/${asgn.id}`)}
-            className={`group flex cursor-pointer flex-col justify-between rounded-2xl border border-border/60 bg-card p-6 transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg dark:hover:shadow-primary/5 active:scale-[0.99] ${
+            className={`group flex cursor-pointer flex-col justify-between rounded-2xl border border-border/80 bg-card p-6 card-hover shadow-sm ${
                 !isAccessible ? 'opacity-60 grayscale-[30%] cursor-not-allowed pointer-events-none' : ''
             }`}
         >
@@ -200,7 +200,7 @@ function AssignmentCard({ asgn, isTeacher = false }: { asgn: Assignment; isTeach
 
             <div className="mt-5">
                 {/* Divider */}
-                <div className="h-[1px] bg-border/40 dark:bg-[#2C2C3A]/50 w-full mb-4" />
+                <div className="h-[1px] bg-border/40 dark:bg-border/20 w-full mb-4" />
 
                 {/* Card Footer */}
                 <div className="flex items-center justify-between">
@@ -232,7 +232,7 @@ function AssignmentCard({ asgn, isTeacher = false }: { asgn: Assignment; isTeach
                         </div>
                     )}
 
-                    <span className="rounded-lg bg-muted dark:bg-[#1F1F2E] px-2.5 py-1 text-[10px] font-bold text-foreground border border-border dark:border-[#2C2C3A]/30">
+                    <span className="rounded-lg bg-muted dark:bg-slate-800 px-2.5 py-1 text-[10px] font-bold text-foreground border border-border dark:border-border/30">
                         {['reflective_journal', 'self_assessment', 'peer_assessment'].includes(asgn.instrument_type || '') 
                             ? 'Deskriptif' 
                             : `${asgn.max_points} Poin`}

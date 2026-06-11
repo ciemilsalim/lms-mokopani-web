@@ -73,14 +73,33 @@ const getFileIcon = (type: string | null) => {
     return FileCode;
 };
 
+const getFileTypeBadge = (type: string | null) => {
+    if (!type) return { bg: 'bg-slate-100 text-slate-700 dark:bg-slate-850 dark:text-slate-350 border border-slate-200/50 dark:border-slate-800', label: 'DOKUMEN' };
+    const t = type.toLowerCase();
+    if (['pdf', 'doc', 'docx'].includes(t)) {
+        return { bg: 'bg-rose-50 text-rose-700 border border-rose-100 dark:bg-rose-950/30 dark:text-rose-350 dark:border-rose-900/30', label: t.toUpperCase() };
+    }
+    if (['jpg', 'jpeg', 'png', 'svg'].includes(t)) {
+        return { bg: 'bg-emerald-50 text-emerald-700 border border-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-350 dark:border-emerald-900/30', label: 'GAMBAR' };
+    }
+    if (['mp4', 'mov', 'avi'].includes(t)) {
+        return { bg: 'bg-indigo-50 text-indigo-700 border border-indigo-100 dark:bg-indigo-950/30 dark:text-indigo-350 dark:border-indigo-900/30', label: 'VIDEO' };
+    }
+    if (['zip', 'rar', '7z'].includes(t)) {
+        return { bg: 'bg-amber-50 text-amber-700 border border-amber-100 dark:bg-amber-950/30 dark:text-amber-350 dark:border-amber-900/30', label: 'ARSIP' };
+    }
+    return { bg: 'bg-sky-50 text-sky-700 border border-sky-100 dark:bg-sky-950/30 dark:text-sky-350 dark:border-sky-900/30', label: t.toUpperCase() };
+};
+
 function MaterialCard({ m, onDelete }: { m: Material; onDelete?: (id: number) => void }) {
     const Icon = getFileIcon(m.file_type);
     const isAccessible = m.is_accessible !== false;
+    const badge = getFileTypeBadge(m.file_type);
 
     return (
-        <div className={`group relative rounded-xl border border-[#2C2C3A]/20 bg-white p-5 shadow-sm transition-shadow hover:border-[#5E6AD2]/30 hover:shadow-md dark:border-[#2C2C3A] dark:bg-[#1B1B25] dark:hover:border-[#5E6AD2]/40 dark:hover:shadow-lg dark:hover:shadow-black/20 ${!isAccessible ? 'opacity-60 grayscale-[30%] cursor-not-allowed' : ''}`}>
+        <div className={`group relative rounded-xl border border-border/80 bg-card p-5 card-hover shadow-sm ${!isAccessible ? 'opacity-60 grayscale-[30%] cursor-not-allowed' : ''}`}>
             <div className="mb-4 flex items-start justify-between">
-                <div className="relative flex h-12 w-12 items-center justify-center rounded-xl bg-[#F1F1F4]/30 text-[#8A8F98] dark:bg-[#2C2C3A] dark:text-[#8A8F98]">
+                <div className="relative flex h-12 w-12 items-center justify-center rounded-xl bg-slate-50 text-slate-500 dark:bg-slate-900 dark:text-slate-400 border border-slate-100 dark:border-slate-800">
                     <Icon className="h-6 w-6" />
                     {!isAccessible && (
                         <div className="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-muted border border-border text-muted-foreground">
@@ -91,29 +110,34 @@ function MaterialCard({ m, onDelete }: { m: Material; onDelete?: (id: number) =>
                 {onDelete && (
                     <button
                         onClick={() => onDelete(m.id)}
-                        className="p-2 text-[#8A8F98]/40 hover:text-[#EB5757] transition cursor-pointer"
+                        className="p-2 text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10 rounded-lg transition cursor-pointer"
                     >
                         <Trash2 className="h-4 w-4" />
                     </button>
                 )}
             </div>
 
-            <div className="space-y-1">
-                <span className="text-[10px] font-bold text-[#5E6AD2] uppercase tracking-wider">
-                    {m.subject_name}
-                </span>
-                <h3 className="line-clamp-2 text-base font-bold text-[#1B1B25] group-hover:text-[#5E6AD2] transition dark:text-[#F1F1F4]">
+            <div className="space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                    <span className="text-[10px] font-bold text-primary uppercase tracking-wider truncate">
+                        {m.subject_name}
+                    </span>
+                    <span className={`shrink-0 rounded px-1.5 py-0.5 text-[9px] font-extrabold tracking-wide uppercase ${badge.bg}`}>
+                        {badge.label}
+                    </span>
+                </div>
+                <h3 className="line-clamp-2 text-base font-bold text-foreground group-hover:text-primary transition-colors leading-snug">
                     {m.title}
                 </h3>
-                <p className="text-xs text-[#8A8F98]">Dibuat oleh {m.teacher_name}</p>
+                <p className="text-xs text-muted-foreground">Dibuat oleh {m.teacher_name}</p>
             </div>
 
-            <div className="mt-6 flex items-center justify-between border-t border-[#2C2C3A]/10 pt-4 dark:border-[#2C2C3A]">
-                <span className="text-[10px] font-medium text-[#8A8F98]">{m.created_at}</span>
+            <div className="mt-6 flex items-center justify-between border-t border-slate-100 dark:border-slate-800/80 pt-4">
+                <span className="text-[10px] font-medium text-muted-foreground">{m.created_at}</span>
                 {isAccessible ? (
                     <Link
                         href={route('materials.show', m.id)}
-                        className="flex items-center gap-1.5 text-xs font-bold text-[#5E6AD2] hover:underline"
+                        className="flex items-center gap-1.5 text-xs font-bold text-primary hover:text-primary-hover hover:underline"
                     >
                         Buka Materi
                         <ExternalLink className="h-3 w-3" />
@@ -157,10 +181,10 @@ function TeacherGroupedView({ groups, search }: { groups: TeacherClassGroup[]; s
 
     if (visible.length === 0) {
         return (
-            <div className="flex flex-col items-center justify-center py-20 text-[#8A8F98]">
+            <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
                 <BookOpen className="h-14 w-14 mb-4 opacity-25" />
                 <p className="text-sm font-medium">Belum ada materi</p>
-                <p className="text-[10px] mt-1">Mulai rancang pembelajaran untuk membuat materi baru.</p>
+                <p className="text-[10px] mt-1 text-muted-foreground/80">Mulai rancang pembelajaran untuk membuat materi baru.</p>
             </div>
         );
     }
@@ -171,23 +195,23 @@ function TeacherGroupedView({ groups, search }: { groups: TeacherClassGroup[]; s
                 {visible.map((cls) => {
                     const isClassOpen = expandedClasses[cls.class_id] !== false;
                     return (
-                        <div key={cls.class_id} className="overflow-hidden rounded-2xl border border-[#2C2C3A]/20 dark:border-[#2C2C3A] bg-white dark:bg-[#1B1B25] shadow-sm">
+                        <div key={cls.class_id} className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
                             <button
                                 onClick={() => setExpandedClasses(prev => ({ ...prev, [cls.class_id]: !isClassOpen }))}
-                                className="flex w-full items-center justify-between border-b border-[#2C2C3A]/10 dark:border-[#2C2C3A] bg-[#F1F1F4]/10 dark:bg-[#1F1F2E]/50 px-6 py-4 text-left"
+                                className="flex w-full items-center justify-between border-b border-border bg-muted/30 px-6 py-4 text-left cursor-pointer"
                             >
                                 <div className="flex items-center gap-3">
-                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white dark:bg-[#1F1F2E] shadow-sm">
-                                        <BookOpen className="h-5 w-5 text-[#5E6AD2]" />
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-background dark:bg-popover shadow-sm border border-border/50">
+                                        <BookOpen className="h-5 w-5 text-primary" />
                                     </div>
                                     <div>
-                                        <h3 className="text-lg font-bold text-[#1B1B25] dark:text-[#F1F1F4]">{cls.class_name}</h3>
-                                        <p className="text-[10px] font-bold text-[#8A8F98] uppercase tracking-tight">
+                                        <h3 className="text-lg font-bold text-foreground">{cls.class_name}</h3>
+                                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight">
                                             {cls.subjects.length} mapel • {cls.subjects.reduce((sum, s) => sum + s.materials.length, 0)} materi
                                         </p>
                                     </div>
                                 </div>
-                                {isClassOpen ? <ChevronDown className="h-5 w-5 text-[#8A8F98]" /> : <ChevronRight className="h-5 w-5 text-[#8A8F98]" />}
+                                {isClassOpen ? <ChevronDown className="h-5 w-5 text-muted-foreground" /> : <ChevronRight className="h-5 w-5 text-muted-foreground" />}
                             </button>
                             {isClassOpen && (
                                 <div className="p-6 space-y-4">
@@ -195,20 +219,20 @@ function TeacherGroupedView({ groups, search }: { groups: TeacherClassGroup[]; s
                                         const subjKey = `${cls.class_id}-${subj.subject_id}`;
                                         const isSubjOpen = expandedSubjects[subjKey] !== false;
                                         return (
-                                            <div key={subjKey} className="rounded-xl border border-[#2C2C3A]/10 dark:border-[#2C2C3A]/50 bg-[#F1F1F4]/5 dark:bg-[#1F1F2E]/20 overflow-hidden">
+                                            <div key={subjKey} className="rounded-xl border border-border/50 bg-muted/20 overflow-hidden">
                                                 <button
                                                     onClick={() => setExpandedSubjects(prev => ({ ...prev, [subjKey]: !isSubjOpen }))}
-                                                    className="flex w-full items-center justify-between px-5 py-3 text-left hover:bg-[#F1F1F4]/10 dark:hover:bg-[#1F1F2E]/30 transition"
+                                                    className="flex w-full items-center justify-between px-5 py-3 text-left hover:bg-muted/30 transition cursor-pointer"
                                                 >
                                                     <div className="flex items-center gap-2 min-w-0">
-                                                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#5E6AD2]/10 text-[#5E6AD2] shrink-0">
+                                                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary shrink-0 border border-primary/20">
                                                             <FolderOpen className="h-4 w-4" />
                                                         </div>
-                                                        <p className="text-xs font-bold text-[#1B1B25] dark:text-[#F1F1F4] truncate">{subj.subject_name}</p>
+                                                        <p className="text-xs font-bold text-foreground truncate">{subj.subject_name}</p>
                                                     </div>
                                                     <div className="flex items-center gap-3 shrink-0 ml-3">
-                                                        <span className="text-[10px] font-medium text-[#8A8F98] whitespace-nowrap">{subj.materials.length} materi</span>
-                                                        {isSubjOpen ? <ChevronDown className="h-4 w-4 text-[#8A8F98]" /> : <ChevronRight className="h-4 w-4 text-[#8A8F98]" />}
+                                                        <span className="text-[10px] font-medium text-muted-foreground whitespace-nowrap">{subj.materials.length} materi</span>
+                                                        {isSubjOpen ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
                                                     </div>
                                                 </button>
                                                 {isSubjOpen && (
@@ -256,7 +280,7 @@ function StudentGroupedView({ groups, search }: { groups: SubjectGroup[]; search
 
     if (visible.length === 0) {
         return (
-            <div className="flex flex-col items-center justify-center py-20 text-[#8A8F98]">
+            <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
                 <BookOpen className="h-14 w-14 mb-4 opacity-25" />
                 <p className="text-sm font-medium">Belum ada materi</p>
             </div>
@@ -268,27 +292,27 @@ function StudentGroupedView({ groups, search }: { groups: SubjectGroup[]; search
             {visible.map((group) => {
                 const isOpen = expanded[group.subject_id] !== false;
                 return (
-                    <div key={group.subject_id} className="overflow-hidden rounded-2xl border border-[#2C2C3A]/20 dark:border-[#2C2C3A] bg-white dark:bg-[#1B1B25] shadow-sm transition-all hover:shadow-md">
+                    <div key={group.subject_id} className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-all hover:shadow-md">
                         <button
                             onClick={() => setExpanded(prev => ({ ...prev, [group.subject_id]: !isOpen }))}
-                            className="flex w-full items-center justify-between border-b border-[#2C2C3A]/10 dark:border-[#2C2C3A] bg-[#F1F1F4]/10 dark:bg-[#1F1F2E]/50 px-6 py-4 text-left"
+                            className="flex w-full items-center justify-between border-b border-border bg-muted/30 px-6 py-4 text-left cursor-pointer"
                         >
                             <div className="flex items-center gap-3">
-                                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white dark:bg-[#1F1F2E] shadow-sm">
-                                    <BookOpen className="h-5 w-5 text-[#5E6AD2]" />
+                                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-background dark:bg-popover shadow-sm border border-border/50">
+                                    <BookOpen className="h-5 w-5 text-primary" />
                                 </div>
                                 <div>
-                                    <h3 className="text-lg font-bold text-[#1B1B25] dark:text-[#F1F1F4]">{group.subject_name}</h3>
-                                    <p className="text-[10px] font-bold text-[#8A8F98] uppercase tracking-tight">
+                                    <h3 className="text-lg font-bold text-foreground">{group.subject_name}</h3>
+                                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight">
                                         {group.materials.length} materi
                                     </p>
                                 </div>
                             </div>
                             <div className="flex items-center gap-3">
-                                <span className="rounded-full bg-[#5E6AD2]/10 px-3 py-1 text-xs font-bold text-[#5E6AD2]">
+                                <span className="rounded-full bg-primary/10 border border-primary/20 px-3 py-1 text-xs font-bold text-primary">
                                     {group.total} total
                                 </span>
-                                {isOpen ? <ChevronDown className="h-5 w-5 text-[#8A8F98]" /> : <ChevronRight className="h-5 w-5 text-[#8A8F98]" />}
+                                {isOpen ? <ChevronDown className="h-5 w-5 text-muted-foreground" /> : <ChevronRight className="h-5 w-5 text-muted-foreground" />}
                             </div>
                         </button>
                         {isOpen && (
@@ -374,13 +398,13 @@ export default function Materials({ materials, grouped_materials, teacher_groupe
 
                 {/* Search */}
                 <div className="relative">
-                    <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8A8F98]" />
+                    <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     <input
                         type="text"
                         placeholder="Cari judul materi atau mata pelajaran..."
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        className="w-full rounded-xl border border-[#2C2C3A]/20 bg-white px-11 py-2.5 text-sm shadow-sm outline-none focus:border-[#5E6AD2] focus:ring-2 focus:ring-[#5E6AD2]/10 dark:border-[#2C2C3A] dark:bg-[#1B1B25] dark:text-[#F1F1F4] dark:focus:ring-[#5E6AD2]/20"
+                        className="w-full rounded-xl border border-border bg-card px-11 py-2.5 text-sm shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 dark:border-border dark:text-foreground dark:focus:ring-primary/20"
                     />
                 </div>
 

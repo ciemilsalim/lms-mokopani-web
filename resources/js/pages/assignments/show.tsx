@@ -367,7 +367,7 @@ const ConceptMapCanvas = ({ data, setData, readOnly = false, canvasHeight }: { d
             className={`relative w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 overflow-hidden select-none group/canvas ${
                 isFullscreen 
                     ? 'fixed inset-4 z-[200] rounded-[2rem] shadow-2xl' 
-                    : `${defaultHeight} rounded-[2.5rem]`
+                    : `${defaultHeight} rounded-2xl`
             } ${readOnly ? 'cursor-grab' : ''} ${isPanning ? '!cursor-grabbing' : ''}`}
             onClick={handleCanvasClick}
             onWheel={handleWheel}
@@ -1963,7 +1963,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                 </div>
 
                 {/* Assignment Info Card */}
-                <div className="rounded-[2.5rem] border border-border bg-white dark:bg-slate-900 p-8 shadow-2xl shadow-slate-100/50 dark:shadow-none">
+                <div className="rounded-2xl border border-border bg-white dark:bg-slate-900 p-8 shadow-2xl shadow-slate-100/50 dark:shadow-none">
                     <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
                         <div className="space-y-3">
                             <div className="flex items-center gap-3">
@@ -2050,7 +2050,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                     </div>
                                 </div>
 
-                                <div className="overflow-hidden rounded-[2.5rem] border border-border bg-white dark:bg-slate-900 shadow-2xl shadow-slate-100/50 dark:shadow-none">
+                                <div className="overflow-hidden rounded-2xl border border-border bg-white dark:bg-slate-900 shadow-2xl shadow-slate-100/50 dark:shadow-none">
                                     <table className="w-full text-left text-sm border-collapse">
                                         <thead className="bg-slate-50/50 dark:bg-slate-800/50 text-[10px] font-black text-muted-foreground uppercase tracking-widest border-b border-border">
                                             <tr>
@@ -2189,10 +2189,10 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                 {assignment.instrument_type === 'exit_ticket' && (assignment.instrument_config?.assessment_mode || 'default') === 'default' && exitTicketStats && (
                                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in slide-in-from-top-4 duration-500 mb-8">
                                         {/* SVG Donut Chart Card */}
-                                        <div className="rounded-[8px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#1B1B25] p-6 shadow-none flex flex-col justify-between">
+                                        <div className="rounded-xl border border-slate-200 dark:border-slate-800 border-slate-100 bg-white dark:bg-[#0b0f19]/30 bg-white/70 backdrop-blur-md p-6 shadow-none flex flex-col justify-between">
                                             <div>
-                                                <h3 className="text-sm font-semibold tracking-[-0.03em] text-slate-800 dark:text-[#F1F1F4]">Distribusi Pemahaman</h3>
-                                                <p className="text-[10px] text-slate-500 dark:text-[#8A8F98] uppercase tracking-wider mt-1">Rasio Evaluasi Cepat Refleksi</p>
+                                                <h3 className="text-sm font-semibold tracking-[-0.03em] text-slate-800 text-foreground">Distribusi Pemahaman</h3>
+                                                <p className="text-[10px] text-slate-500 text-muted-foreground uppercase tracking-wider mt-1">Rasio Evaluasi Cepat Refleksi</p>
                                             </div>
 
                                             <div className="flex items-center justify-center py-6 relative">
@@ -2266,25 +2266,25 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                 )}
                                             </div>
 
-                                            <div className="space-y-2 border-t border-slate-100 dark:border-[#2C2C3A] pt-4">
+                                            <div className="space-y-2 border-t border-slate-100 dark:border-slate-800 border-slate-100 pt-4">
                                                 <div className="flex items-center justify-between text-xs">
                                                     <div className="flex items-center gap-2">
                                                         <span className="h-3 w-3 rounded-full bg-emerald-500" />
-                                                        <span className="font-semibold text-slate-600 dark:text-[#8A8F98]">😊 Paham</span>
+                                                        <span className="font-semibold text-slate-600 text-muted-foreground">😊 Paham</span>
                                                     </div>
                                                     <span className="font-bold">{exitTicketStats.paham} siswa ({exitTicketStats.total > 0 ? Math.round((exitTicketStats.paham / exitTicketStats.total) * 100) : 0}%)</span>
                                                 </div>
                                                 <div className="flex items-center justify-between text-xs">
                                                     <div className="flex items-center gap-2">
                                                         <span className="h-3 w-3 rounded-full bg-amber-500" />
-                                                        <span className="font-semibold text-slate-600 dark:text-[#8A8F98]">😐 Ragu-Ragu</span>
+                                                        <span className="font-semibold text-slate-600 text-muted-foreground">😐 Ragu-Ragu</span>
                                                     </div>
                                                     <span className="font-bold">{exitTicketStats.ragu} siswa ({exitTicketStats.total > 0 ? Math.round((exitTicketStats.ragu / exitTicketStats.total) * 100) : 0}%)</span>
                                                 </div>
                                                 <div className="flex items-center justify-between text-xs">
                                                     <div className="flex items-center gap-2">
                                                         <span className="h-3 w-3 rounded-full bg-rose-500" />
-                                                        <span className="font-semibold text-slate-600 dark:text-[#8A8F98]">🙁 Bingung</span>
+                                                        <span className="font-semibold text-slate-600 text-muted-foreground">🙁 Bingung</span>
                                                     </div>
                                                     <span className="font-bold text-rose-500">{exitTicketStats.bingung} siswa ({exitTicketStats.total > 0 ? Math.round((exitTicketStats.bingung / exitTicketStats.total) * 100) : 0}%)</span>
                                                 </div>
@@ -2292,14 +2292,14 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                         </div>
 
                                         {/* Emotional-Qualitative Sorting Dashboard */}
-                                        <div className="rounded-[8px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#1B1B25] p-6 shadow-none flex flex-col h-full lg:col-span-2 justify-between">
+                                        <div className="rounded-xl border border-slate-200 dark:border-slate-800 border-slate-100 bg-white dark:bg-[#0b0f19]/30 bg-white/70 backdrop-blur-md p-6 shadow-none flex flex-col h-full lg:col-span-2 justify-between">
                                             <div>
-                                                <div className="flex items-center justify-between border-b border-slate-100 dark:border-[#2C2C3A] pb-4">
+                                                <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 border-slate-100 pb-4">
                                                     <div>
-                                                        <h3 className="text-sm font-semibold tracking-[-0.03em] text-slate-800 dark:text-[#F1F1F4]">Umpan Balik Kualitatif</h3>
-                                                        <p className="text-[10px] text-slate-500 dark:text-[#8A8F98] uppercase tracking-wider mt-1">Pemetaan Emosional Siswa</p>
+                                                        <h3 className="text-sm font-semibold tracking-[-0.03em] text-slate-800 text-foreground">Umpan Balik Kualitatif</h3>
+                                                        <p className="text-[10px] text-slate-500 text-muted-foreground uppercase tracking-wider mt-1">Pemetaan Emosional Siswa</p>
                                                     </div>
-                                                    <div className="flex gap-1.5 bg-slate-100 dark:bg-[#101014] p-1 rounded-lg">
+                                                    <div className="flex gap-1.5 bg-slate-100 dark:bg-slate-950/40 bg-slate-50 p-1 rounded-lg">
                                                         {[
                                                             { id: 'all', label: 'Semua', count: exitTicketStats.total },
                                                             { id: 'paham', label: '😊 Paham', count: exitTicketStats.paham },
@@ -2314,8 +2314,8 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                     emojiFilter === tab.id 
                                                                         ? tab.id === 'bingung'
                                                                             ? 'bg-rose-500 text-white shadow-sm'
-                                                                            : 'bg-[#5E6AD2] text-white shadow-sm'
-                                                                        : 'text-slate-500 hover:text-slate-700 dark:text-[#8A8F98] dark:hover:text-[#F1F1F4]'
+                                                                            : 'bg-primary text-white shadow-sm'
+                                                                        : 'text-slate-500 hover:text-slate-700 text-muted-foreground dark:hover:text-foreground'
                                                                 }`}
                                                             >
                                                                 {tab.label} <span className="ml-1 opacity-70">({tab.count})</span>
@@ -2333,7 +2333,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                 .map((ref, idx) => (
                                                                     <div 
                                                                         key={idx} 
-                                                                        className={`p-4 rounded-[6px] border transition-all ${
+                                                                        className={`p-4 rounded-lg border transition-all ${
                                                                             ref.emoji === 'bingung'
                                                                                 ? 'border-rose-100 bg-rose-500/5 dark:border-rose-950/20 dark:bg-rose-950/10'
                                                                                 : ref.emoji === 'ragu'
@@ -2345,7 +2345,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                             <span className="text-[10px] font-black uppercase tracking-widest">{ref.student_name}</span>
                                                                             <span className="text-xs">{ref.emoji === 'paham' ? '😊 Paham' : ref.emoji === 'ragu' ? '😐 Ragu' : '🙁 Bingung'}</span>
                                                                         </div>
-                                                                        <p className="text-[11px] font-medium text-slate-600 dark:text-[#8A8F98] leading-relaxed italic">
+                                                                        <p className="text-[11px] font-medium text-slate-600 text-muted-foreground leading-relaxed italic">
                                                                             "{ref.text || 'Tidak menuliskan umpan balik teks'}"
                                                                         </p>
                                                                     </div>
@@ -2353,7 +2353,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                         ) : (
                                                             <div className="py-12 flex flex-col items-center justify-center text-center">
                                                                 <span className="text-2xl mb-2">🎈</span>
-                                                                <p className="text-[10px] font-semibold text-slate-350 dark:text-[#8A8F98] uppercase tracking-widest italic">Tidak ada respon refleksi untuk kategori ini</p>
+                                                                <p className="text-[10px] font-semibold text-slate-350 text-muted-foreground uppercase tracking-widest italic">Tidak ada respon refleksi untuk kategori ini</p>
                                                             </div>
                                                         )}
                                                 </div>
@@ -2363,8 +2363,8 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                 )}
 
                                 {assignment.instrument_type === 'exit_ticket' && (assignment.instrument_config?.assessment_mode) === 'checklist' && (
-                                    <div className="rounded-[8px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#1B1B25] p-6 shadow-none animate-in slide-in-from-top-4 duration-500 mb-8">
-                                        <h3 className="text-sm font-semibold tracking-[-0.03em] text-slate-800 dark:text-[#F1F1F4] mb-4">Hasil Exit Ticket - Ceklis</h3>
+                                    <div className="rounded-xl border border-slate-200 dark:border-slate-800 border-slate-100 bg-white dark:bg-[#0b0f19]/30 bg-white/70 backdrop-blur-md p-6 shadow-none animate-in slide-in-from-top-4 duration-500 mb-8">
+                                        <h3 className="text-sm font-semibold tracking-[-0.03em] text-slate-800 text-foreground mb-4">Hasil Exit Ticket - Ceklis</h3>
                                         <div className="space-y-3">
                                             {(assignment.submissions || []).map((sub: any) => {
                                                 try {
@@ -2390,8 +2390,8 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                 )}
 
                                 {assignment.instrument_type === 'exit_ticket' && (assignment.instrument_config?.assessment_mode) === 'short_note' && (
-                                    <div className="rounded-[8px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#1B1B25] p-6 shadow-none animate-in slide-in-from-top-4 duration-500 mb-8">
-                                        <h3 className="text-sm font-semibold tracking-[-0.03em] text-slate-800 dark:text-[#F1F1F4] mb-4">Hasil Exit Ticket - Catatan Singkat</h3>
+                                    <div className="rounded-xl border border-slate-200 dark:border-slate-800 border-slate-100 bg-white dark:bg-[#0b0f19]/30 bg-white/70 backdrop-blur-md p-6 shadow-none animate-in slide-in-from-top-4 duration-500 mb-8">
+                                        <h3 className="text-sm font-semibold tracking-[-0.03em] text-slate-800 text-foreground mb-4">Hasil Exit Ticket - Catatan Singkat</h3>
                                         <div className="space-y-4">
                                             {(assignment.submissions || []).map((sub: any) => {
                                                 try {
@@ -2416,24 +2416,24 @@ export default function ShowAssignment({ assignment, students, my_submission, my
 
                                 {/* Concept Difficulty Alert for Formative Quiz */}
                                 {assignment.instrument_type === 'formative_quiz' && formativeDifficultyStats && formativeDifficultyStats.hardQuestions.length > 0 && (
-                                    <div className="rounded-[8px] border border-rose-500/30 bg-rose-500/5 dark:bg-rose-950/15 p-6 animate-in slide-in-from-top-4 duration-500 mb-6 flex items-start gap-4">
-                                        <div className="h-10 w-10 rounded-[6px] bg-rose-500 text-white flex items-center justify-center flex-shrink-0 shadow-lg shadow-rose-200/50 dark:shadow-none">
+                                    <div className="rounded-xl border border-rose-500/30 bg-rose-500/5 dark:bg-rose-950/15 p-6 animate-in slide-in-from-top-4 duration-500 mb-6 flex items-start gap-4">
+                                        <div className="h-10 w-10 rounded-lg bg-rose-500 text-white flex items-center justify-center flex-shrink-0 shadow-lg shadow-rose-200/50 dark:shadow-none">
                                             <AlertCircle className="h-5 w-5" />
                                         </div>
                                         <div className="space-y-2">
                                             <h3 className="text-sm font-black text-rose-600 dark:text-rose-450 uppercase tracking-wider">Deteksi Konsep Sulit (Auto-Analisis)</h3>
-                                            <p className="text-xs text-slate-600 dark:text-[#8A8F98] leading-relaxed font-medium">
+                                            <p className="text-xs text-slate-600 text-muted-foreground leading-relaxed font-medium">
                                                 Terdapat <strong>{formativeDifficultyStats.hardQuestions.length} pertanyaan</strong> dengan persentase kegagalan <strong>di atas 50%</strong>. Siswa kelas Anda mengalami kesulitan serius di konsep-konsep ini:
                                             </p>
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
                                                 {formativeDifficultyStats.hardQuestions.map((q) => (
-                                                    <div key={q.id} className="p-3.5 rounded-[6px] bg-white dark:bg-[#101014] border border-rose-200 dark:border-rose-950 flex flex-col justify-between">
+                                                    <div key={q.id} className="p-3.5 rounded-lg bg-white dark:bg-slate-950/40 bg-slate-50 border border-rose-200 dark:border-rose-950 flex flex-col justify-between">
                                                         <div>
                                                             <div className="flex justify-between items-center mb-1.5">
                                                                 <span className="text-[9px] font-black uppercase tracking-wider text-rose-500">Soal Nomor {q.num}</span>
                                                                 <span className="text-[10px] font-mono font-bold text-rose-500">{q.wrongPct}% Siswa Salah</span>
                                                             </div>
-                                                            <p className="text-[11px] font-semibold text-slate-700 dark:text-[#F1F1F4] line-clamp-2 leading-relaxed">"{q.text}"</p>
+                                                            <p className="text-[11px] font-semibold text-slate-700 text-foreground line-clamp-2 leading-relaxed">"{q.text}"</p>
                                                         </div>
                                                         <p className="text-[9px] text-slate-400 mt-2 font-bold uppercase tracking-widest italic">Rekomendasi: Review Pembahasan Besok Pagi</p>
                                                     </div>
@@ -2449,7 +2449,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                     </span>
                                 </div>
 
-                                <div className="overflow-hidden rounded-[2.5rem] border border-border bg-white dark:bg-slate-900 shadow-2xl shadow-slate-100/50 dark:shadow-none">
+                                <div className="overflow-hidden rounded-2xl border border-border bg-white dark:bg-slate-900 shadow-2xl shadow-slate-100/50 dark:shadow-none">
                                     <table className="w-full text-left text-sm">
                                         <thead className="bg-slate-50/50 dark:bg-slate-800/50 text-[10px] font-black text-muted-foreground uppercase tracking-widest border-b border-border">
                                             <tr>
@@ -2606,7 +2606,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                             </div>
                         )}
                         
-                        <div className="rounded-[2.5rem] border border-border bg-white dark:bg-slate-900 p-8 shadow-sm">
+                        <div className="rounded-2xl border border-border bg-white dark:bg-slate-900 p-8 shadow-sm">
                             <CommentSection 
                                 assignmentId={assignment.id} 
                                 comments={comments} 
@@ -2620,12 +2620,9 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                         <div className="grid gap-8 lg:grid-cols-3">
                         {/* Submission Form */}
                         <div className="lg:col-span-2 space-y-4">
-                            <div className={(assignment.instrument_type === 'formative_quiz' || assignment.instrument_type === 'exit_ticket')
-                                ? "rounded-[8px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#1B1B25] p-6 md:p-8 shadow-none"
-                                : "rounded-[2.5rem] border border-border bg-white dark:bg-slate-900 p-10 shadow-2xl shadow-slate-100/50 dark:shadow-none"
-                            }>
-                                <div className="flex items-center justify-between mb-8">
-                                    <h2 className="text-xl font-black text-foreground tracking-tight uppercase tracking-widest">Kumpulkan Jawaban</h2>
+                            <div className="rounded-2xl border border-border bg-card p-6 md:p-8 shadow-sm">
+                                <div className="flex items-center justify-between mb-6">
+                                    <h2 className="text-lg font-black text-foreground tracking-tight uppercase tracking-wider">Kumpulkan Jawaban</h2>
                                     {assignment.assessment_type === 'initial' && (
                                         <div className="flex items-center gap-2 px-4 py-1.5 bg-amber-50 dark:bg-amber-950/30 text-warning rounded-full text-[10px] font-black uppercase tracking-widest border border-amber-100 dark:border-amber-900/30">
                                             <Zap className="h-3 w-3" /> Formatif
@@ -2633,8 +2630,22 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                     )}
                                 </div>
 
+                                {isSummativeLocked && (
+                                    <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50/50 dark:border-amber-900/30 dark:bg-amber-950/20 p-5 flex items-start gap-3.5 animate-pulse">
+                                        <div className="h-9 w-9 rounded-xl bg-amber-500 text-white flex items-center justify-center flex-shrink-0 shadow-sm">
+                                            <AlertCircle className="h-4 w-4" />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <h3 className="text-xs font-bold text-amber-800 dark:text-amber-300 uppercase tracking-wider">Asesmen Sumatif Terkunci</h3>
+                                            <p className="text-xs text-amber-700/95 dark:text-amber-400 leading-relaxed font-medium">
+                                                Anda sudah mengumpulkan jawaban untuk evaluasi sumatif ini. Pengunggahan jawaban kembali telah dikunci kecuali guru membuka program remedial untuk Anda.
+                                            </p>
+                                        </div>
+                                    </div>
+                                )}
+
                                 {assignment.instrument_config?.stimulus && assignment.instrument_type !== 'project' && (
-                                    <div className="mb-10 p-8 rounded-[2.5rem] bg-indigo-50/30 dark:bg-slate-800/50 border border-indigo-100 dark:border-slate-800 space-y-6">
+                                    <div className="mb-10 p-8 rounded-2xl bg-indigo-50/30 dark:bg-slate-800/50 border border-indigo-100 dark:border-slate-800 space-y-6">
                                         <div className="flex items-center gap-3 text-[10px] font-black text-primary uppercase tracking-widest">
                                             <MessageSquare className="h-4 w-4" />
                                             Stimulus / Studi Kasus
@@ -2988,7 +2999,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                     placeholder="Cth: Saya masih kesulitan di bagian perkalian, strateginya saya akan berlatih lebih banyak di rumah..."
                                                                     value={selfAssessmentData.reflection_notes}
                                                                     onChange={(e) => setSelfAssessmentData({ ...selfAssessmentData, reflection_notes: e.target.value })}
-                                                                    className="w-full rounded-[2.5rem] border border-slate-100 bg-slate-50/30 px-8 py-6 text-sm font-medium outline-none focus:border-indigo-400 focus:bg-white transition-all shadow-sm dark:bg-slate-800/50 dark:border-slate-800 dark:text-slate-200"
+                                                                    className="w-full rounded-2xl border border-slate-100 bg-slate-50/30 px-8 py-6 text-sm font-medium outline-none focus:border-indigo-400 focus:bg-white transition-all shadow-sm dark:bg-slate-800/50 dark:border-slate-800 dark:text-slate-200"
                                                                 ></textarea>
                                                             </div>
                                                         </div>
@@ -2999,15 +3010,15 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                     ) : (assignment.instrument_type === 'written_test' || (assignment.instrument_type === 'formative_quiz' && (assignment.instrument_config?.assessment_mode || 'rubrik') === 'rubrik')) ? (
                                         <div className="space-y-12 animate-in fade-in duration-700">
                                             {/* Test Header & Progress */}
-                                            <div className="relative overflow-hidden rounded-[8px] bg-slate-50 border border-slate-200 dark:bg-[#1B1B25] dark:border-[#2C2C3A] p-6 shadow-none text-slate-800 dark:text-[#F1F1F4]">
-                                                <div className="absolute top-0 right-0 -mt-10 -mr-10 h-64 w-64 rounded-full bg-[#5E6AD2]/5 blur-3xl" />
+                                            <div className="relative overflow-hidden rounded-xl bg-slate-50 border border-slate-200 dark:bg-[#0b0f19]/30 bg-white/70 backdrop-blur-md dark:border-slate-800 border-slate-100 p-6 shadow-none text-slate-800 text-foreground">
+                                                <div className="absolute top-0 right-0 -mt-10 -mr-10 h-64 w-64 rounded-full bg-primary/5 blur-3xl" />
                                                 <div className="relative flex items-center justify-between">
                                                     <div className="flex items-center gap-5">
-                                                        <div className="h-11 w-11 rounded-[6px] bg-[#5E6AD2]/10 dark:bg-[#5E6AD2] text-[#5E6AD2] dark:text-white shadow-none flex items-center justify-center shadow-xl">
+                                                        <div className="h-11 w-11 rounded-lg bg-primary/10 dark:bg-primary text-primary dark:text-white shadow-none flex items-center justify-center shadow-xl">
                                                             <ListChecks className="h-5 w-5" />
                                                         </div>
                                                         <div>
-                                                            <h3 className="font-semibold tracking-[-0.03em] text-lg text-slate-800 dark:text-[#F1F1F4]">
+                                                            <h3 className="font-semibold tracking-[-0.03em] text-lg text-slate-800 text-foreground">
                                                                  {assignment.instrument_type === 'formative_quiz' ? 'Tes/Penugasan Singkat (Umpan Balik Instan)' : 'Lembar Tes Tertulis'}
                                                             </h3>
                                                             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider mt-1">
@@ -3016,20 +3027,20 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                         </div>
                                                     </div>
                                                     <div className="text-right">
-                                                        <p className="text-[10px] font-semibold text-slate-500 dark:text-[#8A8F98] uppercase tracking-wider mb-1">Total Poin</p>
+                                                        <p className="text-[10px] font-semibold text-slate-500 text-muted-foreground uppercase tracking-wider mb-1">Total Poin</p>
                                                         <p className="text-2xl font-semibold tracking-tight">{assignment.max_points}</p>
                                                     </div>
                                                 </div>
                                                 
                                                 {/* Progress Bar */}
                                                 <div className="mt-8">
-                                                    <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider mb-2 text-slate-500 dark:text-[#8A8F98]">
+                                                    <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider mb-2 text-slate-500 text-muted-foreground">
                                                         <span>Progres Pengerjaan</span>
                                                         <span>{Math.round((Object.keys(studentForm.data.answers).length / (assignment.instrument_config?.questions?.length || 1)) * 100)}%</span>
                                                     </div>
-                                                    <div className="h-1.5 w-full rounded-full bg-slate-200 dark:bg-[#101014] overflow-hidden">
+                                                    <div className="h-1.5 w-full rounded-full bg-slate-200 dark:bg-slate-950/40 bg-slate-50 overflow-hidden">
                                                         <div 
-                                                            className="h-full bg-[#5E6AD2] transition-all duration-500"
+                                                            className="h-full bg-primary transition-all duration-500"
                                                             style={{ width: `${(Object.keys(studentForm.data.answers).length / (assignment.instrument_config?.questions?.length || 1)) * 100}%` }}
                                                         />
                                                     </div>
@@ -3048,18 +3059,18 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                     return (
                                                         <div 
                                                             key={q.id} 
-                                                            className={`group relative transition-all duration-150 rounded-[8px] border border-slate-200 bg-white dark:border-[#2C2C3A] dark:bg-[#1B1B25] p-6 shadow-none ${
+                                                            className={`group relative transition-all duration-150 rounded-xl border border-slate-200 bg-white dark:border-slate-800 border-slate-100 dark:bg-[#0b0f19]/30 bg-white/70 backdrop-blur-md p-6 shadow-none ${
                                                                 isAnswered 
                                                                     ? assignment.instrument_type === 'formative_quiz'
                                                                         ? isCorrect
                                                                             ? 'border-emerald-500/50 bg-emerald-500/5 dark:bg-emerald-950/10'
                                                                             : 'border-rose-500/50 bg-rose-500/5 dark:bg-rose-950/10'
-                                                                        : 'border-[#5E6AD2]/50 bg-[#5E6AD2]/5 dark:bg-[#1E1E2A]' 
+                                                                        : 'border-primary/50 bg-primary/5 dark:bg-[#1E1E2A]' 
                                                                     : 'hover:border-[#6E79D6]/50 hover:bg-slate-50/50 dark:hover:bg-[#1E1E2A]/20'
                                                             }`}
                                                         >
                                                             <div className="flex items-center gap-3 mb-6">
-                                                                <span className="font-mono text-xs font-semibold text-slate-500 dark:text-[#8A8F98] bg-slate-50 dark:bg-[#101014] px-2.5 py-1 rounded-[4px] border border-slate-200 dark:border-[#2C2C3A]">Q{idx + 1}</span>
+                                                                <span className="font-mono text-xs font-semibold text-slate-500 text-muted-foreground bg-slate-50 dark:bg-slate-950/40 bg-slate-50 px-2.5 py-1 rounded-[4px] border border-slate-200 dark:border-slate-800 border-slate-100">Q{idx + 1}</span>
                                                                 {assignment.instrument_type === 'formative_quiz' && isAnswered && (
                                                                     <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded ${
                                                                         isCorrect 
@@ -3075,8 +3086,8 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                             <div className="space-y-6">
                                                                 <div className="space-y-4">
                                                                     <div className="flex items-start justify-between gap-4">
-                                                                        <h4 className="leading-relaxed text-sm font-semibold tracking-[-0.01em] text-slate-850 dark:text-[#F1F1F4]">{q.text}</h4>
-                                                                        <span className="px-2 py-0.5 rounded-[4px] text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap border bg-[#5E6AD2]/10 text-[#5E6AD2] dark:text-[#6E79D6] border-[#5E6AD2]/20">{q.points} Pts</span>
+                                                                        <h4 className="leading-relaxed text-sm font-semibold tracking-[-0.01em] text-slate-850 text-foreground">{q.text}</h4>
+                                                                        <span className="px-2 py-0.5 rounded-[4px] text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap border bg-primary/10 text-primary dark:text-[#6E79D6] border-primary/20">{q.points} Pts</span>
                                                                     </div>
                                                                     {q.image_url && (
                                                                         <div className="rounded-xl overflow-hidden border border-border shadow-md max-w-xl">
@@ -3093,8 +3104,8 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                                 const isOptCorrect = opt.id == correctOptId;
 
                                                                                 // For Formative Quiz: Show green if this option is correct (and question is answered), or red if selected but incorrect.
-                                                                                let btnStyle = 'border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#101014] hover:bg-slate-50 dark:hover:bg-[#1F1F2E] hover:border-[#6E79D6]/50';
-                                                                                let badgeStyle = 'border-slate-200 dark:border-[#2C2C3A] bg-slate-50 dark:bg-[#1B1B25] text-slate-500 dark:text-[#8A8F98] group-hover/opt:border-[#6E79D6] group-hover/opt:text-[#6E79D6]';
+                                                                                let btnStyle = 'border-slate-200 dark:border-slate-800 border-slate-100 bg-white dark:bg-slate-950/40 bg-slate-50 hover:bg-slate-50 dark:hover:bg-[#1F1F2E] hover:border-[#6E79D6]/50';
+                                                                                let badgeStyle = 'border-slate-200 dark:border-slate-800 border-slate-100 bg-slate-50 dark:bg-[#0b0f19]/30 bg-white/70 backdrop-blur-md text-slate-500 text-muted-foreground group-hover/opt:border-[#6E79D6] group-hover/opt:text-[#6E79D6]';
                                                                                 
                                                                                 if (assignment.instrument_type === 'formative_quiz' && isAnswered) {
                                                                                     if (isOptCorrect) {
@@ -3104,13 +3115,13 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                                         btnStyle = 'border-rose-500 bg-rose-500/10 dark:bg-rose-950/20';
                                                                                         badgeStyle = 'bg-rose-500 border-rose-500 text-white';
                                                                                     } else {
-                                                                                        btnStyle = 'border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#101014] opacity-50 cursor-not-allowed';
+                                                                                        btnStyle = 'border-slate-200 dark:border-slate-800 border-slate-100 bg-white dark:bg-slate-950/40 bg-slate-50 opacity-50 cursor-not-allowed';
                                                                                     }
                                                                                 } else {
                                                                                     // Default written test style
                                                                                     if (isSelected) {
-                                                                                        btnStyle = 'border-[#5E6AD2] bg-[#5E6AD2]/10 dark:bg-[#1E1E2A]';
-                                                                                        badgeStyle = 'bg-[#5E6AD2] border-[#5E6AD2] text-white';
+                                                                                        btnStyle = 'border-primary bg-primary/10 dark:bg-[#1E1E2A]';
+                                                                                        badgeStyle = 'bg-primary border-primary text-white';
                                                                                     }
                                                                                 }
 
@@ -3124,12 +3135,12 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                                             if (assignment.instrument_type === 'formative_quiz' && isAnswered) return;
                                                                                             studentForm.setData('answers', { ...studentForm.data.answers, [q.id]: opt.id });
                                                                                         }}
-                                                                                        className={`flex items-center gap-3 p-3.5 rounded-[8px] border transition-all text-left group/opt ${btnStyle} ${isSummativeLocked ? 'opacity-55 cursor-not-allowed' : ''}`}
+                                                                                        className={`flex items-center gap-3 p-3.5 rounded-xl border transition-all text-left group/opt ${btnStyle} ${isSummativeLocked ? 'opacity-55 cursor-not-allowed' : ''}`}
                                                                                     >
                                                                                         <div className={`h-6 w-6 rounded-full border flex items-center justify-center flex-shrink-0 font-semibold text-[11px] font-mono transition-all ${badgeStyle}`}>
                                                                                             {String.fromCharCode(65 + optIdx)}
                                                                                         </div>
-                                                                                        <span className={`text-xs font-semibold ${isSelected ? 'text-[#5E6AD2] dark:text-[#F1F1F4]' : 'text-slate-700 dark:text-[#8A8F98]'}`}>{opt.text}</span>
+                                                                                        <span className={`text-xs font-semibold ${isSelected ? 'text-primary text-foreground' : 'text-slate-700 text-muted-foreground'}`}>{opt.text}</span>
                                                                                     </button>
                                                                                 );
                                                                             })}
@@ -3145,12 +3156,12 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                                     disabled={(assignment.instrument_type === 'formative_quiz' && isAnswered) || isSummativeLocked}
                                                                                     onChange={(e) => studentForm.setData('answers', { ...studentForm.data.answers, [q.id]: e.target.value })}
                                                                                     placeholder="Ketik jawaban singkat Anda..."
-                                                                                    className={`w-full rounded-[6px] border bg-white dark:bg-[#101014] px-4 py-3 text-xs font-medium focus:ring-1 focus:ring-[#5E6AD2]/15 transition-all text-slate-800 dark:text-[#F1F1F4] placeholder-slate-450 dark:placeholder-[#8A8F98] ${
+                                                                                    className={`w-full rounded-lg border bg-white dark:bg-slate-950/40 bg-slate-50 px-4 py-3 text-xs font-medium focus:ring-1 focus:ring-primary/15 transition-all text-slate-800 text-foreground placeholder-slate-450 dark:placeholder-[#8A8F98] ${
                                                                                         assignment.instrument_type === 'formative_quiz' && isAnswered
                                                                                             ? isCorrect
                                                                                                 ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400 bg-emerald-500/5'
                                                                                                 : 'border-rose-500 text-rose-600 dark:text-rose-450 bg-rose-500/5'
-                                                                                            : 'border-slate-200 dark:border-[#2C2C3A] focus:border-[#5E6AD2]'
+                                                                                            : 'border-slate-200 dark:border-slate-800 border-slate-100 focus:border-primary'
                                                                                     }`}
                                                                                 />
                                                                                 <PenTool className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -3180,7 +3191,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                                 disabled={isSummativeLocked}
                                                                                 onChange={(e) => studentForm.setData('answers', { ...studentForm.data.answers, [q.id]: e.target.value })}
                                                                                 placeholder="Tuliskan uraian atau penjelasan lengkap Anda..."
-                                                                                className="w-full rounded-[6px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#101014] px-4 py-3 text-xs font-medium focus:border-[#5E6AD2] focus:ring-1 focus:ring-[#5E6AD2]/15 transition-all text-slate-800 dark:text-[#F1F1F4] placeholder-slate-450 dark:placeholder-[#8A8F98] resize-none leading-relaxed disabled:opacity-75 disabled:bg-slate-100 dark:disabled:bg-slate-900/50"
+                                                                                className="w-full rounded-lg border border-slate-200 dark:border-slate-800 border-slate-100 bg-white dark:bg-slate-950/40 bg-slate-50 px-4 py-3 text-xs font-medium focus:border-primary focus:ring-1 focus:ring-primary/15 transition-all text-slate-800 text-foreground placeholder-slate-450 dark:placeholder-[#8A8F98] resize-none leading-relaxed disabled:opacity-75 disabled:bg-slate-100 dark:disabled:bg-slate-900/50"
                                                                             />
                                                                             <FileText className="absolute right-4 top-4 h-4 w-4 text-slate-400" />
                                                                         </div>
@@ -3188,12 +3199,12 @@ export default function ShowAssignment({ assignment, students, my_submission, my
 
                                                                     {/* Formative Instant Feedback Discussion Block */}
                                                                     {assignment.instrument_type === 'formative_quiz' && isAnswered && (
-                                                                        <div className="mt-4 p-4 rounded-[6px] bg-slate-50 dark:bg-[#101014] border border-slate-200 dark:border-[#2C2C3A] animate-in slide-in-from-top-2 duration-300">
+                                                                        <div className="mt-4 p-4 rounded-lg bg-slate-50 dark:bg-slate-950/40 bg-slate-50 border border-slate-200 dark:border-slate-800 border-slate-100 animate-in slide-in-from-top-2 duration-300">
                                                                             <div className="flex items-center gap-2 mb-2 text-primary">
                                                                                 <Info className="h-3.5 w-3.5" />
                                                                                 <span className="text-[10px] font-bold uppercase tracking-wider">Pembahasan Kunci Jawaban</span>
                                                                             </div>
-                                                                            <p className="text-xs text-slate-600 dark:text-[#8A8F98] leading-relaxed">
+                                                                            <p className="text-xs text-slate-600 text-muted-foreground leading-relaxed">
                                                                                 {q.explanation || `Kunci jawaban yang benar adalah ${q.type === 'multiple_choice' ? String.fromCharCode(65 + q.options?.findIndex((o: any) => o.id == correctOptId)) : q.correct_answer || q.answer || '-'}. Silakan ulas kembali materi terkait untuk penguasaan konsep yang lebih mendalam.`}
                                                                             </p>
                                                                         </div>
@@ -3280,20 +3291,20 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                         </div>
                                     ) : (assignment.instrument_type === 'formative_quiz' && (assignment.instrument_config?.assessment_mode) === 'checklist') ? (
                                         <div className="space-y-6 animate-in fade-in duration-500">
-                                            <div className="relative overflow-hidden rounded-[8px] bg-slate-50 border border-slate-200 dark:bg-[#1B1B25] dark:border-[#2C2C3A] p-6 shadow-none text-slate-800 dark:text-[#F1F1F4]">
-                                                <div className="absolute top-0 right-0 -mt-10 -mr-10 h-64 w-64 rounded-full bg-[#5E6AD2]/5 blur-3xl" />
+                                            <div className="relative overflow-hidden rounded-xl bg-slate-50 border border-slate-200 dark:bg-[#0b0f19]/30 bg-white/70 backdrop-blur-md dark:border-slate-800 border-slate-100 p-6 shadow-none text-slate-800 text-foreground">
+                                                <div className="absolute top-0 right-0 -mt-10 -mr-10 h-64 w-64 rounded-full bg-primary/5 blur-3xl" />
                                                 <div className="relative flex items-center gap-5">
-                                                    <div className="h-11 w-11 rounded-[6px] bg-[#5E6AD2]/10 dark:bg-[#5E6AD2] text-[#5E6AD2] dark:text-white shadow-none flex items-center justify-center">
+                                                    <div className="h-11 w-11 rounded-lg bg-primary/10 dark:bg-primary text-primary dark:text-white shadow-none flex items-center justify-center">
                                                         <CheckSquare className="h-5 w-5" />
                                                     </div>
                                                     <div>
-                                                        <h3 className="font-semibold tracking-[-0.03em] text-lg text-slate-800 dark:text-[#F1F1F4]">Ceklis Jawaban</h3>
+                                                        <h3 className="font-semibold tracking-[-0.03em] text-lg text-slate-800 text-foreground">Ceklis Jawaban</h3>
                                                         <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider mt-1">Tandai pertanyaan yang bisa kamu jawab</p>
                                                     </div>
                                                 </div>
                                             </div>
                                             {(assignment.instrument_config?.indicators || []).map((ind: any, idx: number) => (
-                                                <label key={idx} className="flex items-center gap-4 p-4 rounded-[8px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#1B1B25] hover:border-[#5E6AD2]/50 transition-all cursor-pointer group shadow-none">
+                                                <label key={idx} className="flex items-center gap-4 p-4 rounded-xl border border-slate-200 dark:border-slate-800 border-slate-100 bg-white dark:bg-[#0b0f19]/30 bg-white/70 backdrop-blur-md hover:border-primary/50 transition-all cursor-pointer group shadow-none">
                                                     <input
                                                         type="checkbox"
                                                         checked={quizChecklistData[idx]?.checked || false}
@@ -3303,7 +3314,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                             newData[idx].checked = !newData[idx].checked;
                                                             setQuizChecklistData(newData);
                                                         }}
-                                                        className="h-5 w-5 rounded border-slate-300 text-[#5E6AD2] focus:ring-[#5E6AD2]"
+                                                        className="h-5 w-5 rounded border-slate-300 text-primary focus:ring-primary"
                                                     />
                                                     <div className="flex-1">
                                                         <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{ind.name}</span>
@@ -3316,15 +3327,15 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                         (assignment.instrument_config?.assessment_mode || 'default') === 'default' ? (
                                         <div className="space-y-12 animate-in fade-in duration-700">
                                             {/* Exit Ticket Header & Progress */}
-                                            <div className="relative overflow-hidden rounded-[8px] bg-slate-50 border border-slate-200 dark:bg-[#1B1B25] dark:border-[#2C2C3A] p-6 shadow-none text-slate-800 dark:text-[#F1F1F4]">
-                                                <div className="absolute top-0 right-0 -mt-10 -mr-10 h-64 w-64 rounded-full bg-[#5E6AD2]/5 blur-3xl" />
+                                            <div className="relative overflow-hidden rounded-xl bg-slate-50 border border-slate-200 dark:bg-[#0b0f19]/30 bg-white/70 backdrop-blur-md dark:border-slate-800 border-slate-100 p-6 shadow-none text-slate-800 text-foreground">
+                                                <div className="absolute top-0 right-0 -mt-10 -mr-10 h-64 w-64 rounded-full bg-primary/5 blur-3xl" />
                                                 <div className="relative flex items-center justify-between">
                                                     <div className="flex items-center gap-5">
-                                                        <div className="h-11 w-11 rounded-[6px] bg-[#5E6AD2]/10 dark:bg-[#5E6AD2] text-[#5E6AD2] dark:text-white shadow-none flex items-center justify-center">
+                                                        <div className="h-11 w-11 rounded-lg bg-primary/10 dark:bg-primary text-primary dark:text-white shadow-none flex items-center justify-center">
                                                             <Ticket className="h-5 w-5" />
                                                         </div>
                                                         <div>
-                                                            <h3 className="font-semibold tracking-[-0.03em] text-lg text-slate-800 dark:text-[#F1F1F4]">
+                                                            <h3 className="font-semibold tracking-[-0.03em] text-lg text-slate-800 text-foreground">
                                                                 Exit Ticket / Refleksi Akhir Kelas
                                                             </h3>
                                                             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider mt-1">Bagikan pemahamanmu hari ini secara instan!</p>
@@ -3334,13 +3345,13 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                 
                                                 {/* Progress Bar */}
                                                 <div className="mt-8">
-                                                    <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider mb-2 text-slate-500 dark:text-[#8A8F98]">
+                                                    <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider mb-2 text-slate-500 text-muted-foreground">
                                                         <span>Progres Pengisian</span>
                                                         <span>{studentForm.data.answers.emoji ? '100%' : '50%'}</span>
                                                     </div>
-                                                    <div className="h-1.5 w-full rounded-full bg-slate-200 dark:bg-[#101014] overflow-hidden">
+                                                    <div className="h-1.5 w-full rounded-full bg-slate-200 dark:bg-slate-950/40 bg-slate-50 overflow-hidden">
                                                         <div 
-                                                            className="h-full bg-[#5E6AD2] transition-all duration-500"
+                                                            className="h-full bg-primary transition-all duration-500"
                                                             style={{ width: `${studentForm.data.answers.emoji ? 100 : 50}%` }}
                                                         />
                                                     </div>
@@ -3349,12 +3360,12 @@ export default function ShowAssignment({ assignment, students, my_submission, my
 
                                             <div className="space-y-8">
                                                 {/* Emoji Rating Cards */}
-                                                <div className="rounded-[8px] border border-slate-200 bg-white dark:border-[#2C2C3A] dark:bg-[#1B1B25] p-6 shadow-none space-y-6">
+                                                <div className="rounded-xl border border-slate-200 bg-white dark:border-slate-800 border-slate-100 dark:bg-[#0b0f19]/30 bg-white/70 backdrop-blur-md p-6 shadow-none space-y-6">
                                                     <div>
-                                                        <h4 className="text-sm font-semibold tracking-[-0.01em] text-slate-850 dark:text-[#F1F1F4] leading-relaxed">
+                                                        <h4 className="text-sm font-semibold tracking-[-0.01em] text-slate-850 text-foreground leading-relaxed">
                                                             Seberapa baik kamu memahami materi pembelajaran hari ini?
                                                         </h4>
-                                                        <p className="text-xs text-slate-500 dark:text-[#8A8F98] mt-1">Pilih emoji yang paling menggambarkan tingkat kepahamanmu.</p>
+                                                        <p className="text-xs text-slate-500 text-muted-foreground mt-1">Pilih emoji yang paling menggambarkan tingkat kepahamanmu.</p>
                                                     </div>
 
                                                     <div className="grid grid-cols-3 gap-4">
@@ -3370,17 +3381,17 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                     type="button"
                                                                     disabled={isSummativeLocked}
                                                                     onClick={() => studentForm.setData('answers', { ...studentForm.data.answers, emoji: item.id })}
-                                                                    className={`flex flex-col items-center justify-center p-5 rounded-[8px] border-2 transition-all duration-300 ${isSummativeLocked ? 'opacity-55 cursor-not-allowed pointer-events-none' : 'hover:scale-[1.03] active:scale-95'} text-center ${
+                                                                    className={`flex flex-col items-center justify-center p-5 rounded-xl border-2 transition-all duration-300 ${isSummativeLocked ? 'opacity-55 cursor-not-allowed pointer-events-none' : 'hover:scale-[1.03] active:scale-95'} text-center ${
                                                                         isSelected 
                                                                             ? item.color + ' border-current shadow-lg shadow-slate-100 dark:shadow-none' 
-                                                                            : 'border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#101014] hover:border-[#5E6AD2]/50'
+                                                                            : 'border-slate-200 dark:border-slate-800 border-slate-100 bg-white dark:bg-slate-950/40 bg-slate-50 hover:border-primary/50'
                                                                     }`}
                                                                 >
                                                                     <span className="text-4xl mb-2 transition-transform duration-300 hover:rotate-12 select-none">
                                                                         {item.id === 'bingung' ? '🙁' : item.emoji}
                                                                     </span>
                                                                     <span className="text-xs font-bold block mb-1">{item.label}</span>
-                                                                    <span className="text-[9px] font-medium text-slate-400 dark:text-[#8A8F98] max-w-[120px] hidden md:inline-block">{item.desc}</span>
+                                                                    <span className="text-[9px] font-medium text-slate-400 text-muted-foreground max-w-[120px] hidden md:inline-block">{item.desc}</span>
                                                                 </button>
                                                             );
                                                         })}
@@ -3391,10 +3402,10 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                 {(assignment.instrument_config?.questions && assignment.instrument_config.questions.length > 0) ? (
                                                     <div className="space-y-6">
                                                         {assignment.instrument_config.questions.map((q: any, idx: number) => (
-                                                            <div key={idx} className="rounded-[8px] border border-slate-200 bg-white dark:border-[#2C2C3A] dark:bg-[#1B1B25] p-6 shadow-none space-y-4 animate-in slide-in-from-bottom-2 duration-300">
+                                                            <div key={idx} className="rounded-xl border border-slate-200 bg-white dark:border-slate-800 border-slate-100 dark:bg-[#0b0f19]/30 bg-white/70 backdrop-blur-md p-6 shadow-none space-y-4 animate-in slide-in-from-bottom-2 duration-300">
                                                                 <div className="flex items-start gap-3">
-                                                                    <span className="h-6 w-6 rounded-full bg-[#5E6AD2]/10 text-[#5E6AD2] text-[10px] font-black flex items-center justify-center shrink-0 mt-0.5">{idx + 1}</span>
-                                                                    <h4 className="text-sm font-semibold tracking-[-0.01em] text-slate-855 dark:text-[#F1F1F4] leading-relaxed">{q.text}</h4>
+                                                                    <span className="h-6 w-6 rounded-full bg-primary/10 text-primary text-[10px] font-black flex items-center justify-center shrink-0 mt-0.5">{idx + 1}</span>
+                                                                    <h4 className="text-sm font-semibold tracking-[-0.01em] text-slate-855 text-foreground leading-relaxed">{q.text}</h4>
                                                                 </div>
                                                                 <div className="relative">
                                                                     <textarea 
@@ -3408,7 +3419,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                             setExitStandardAnswers(newAnswers);
                                                                         }}
                                                                         placeholder="Tuliskan jawaban refleksi Anda..."
-                                                                        className="w-full rounded-[6px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#101014] px-4 py-3 text-xs font-medium focus:border-[#5E6AD2] focus:ring-1 focus:ring-[#5E6AD2]/15 transition-all text-slate-800 dark:text-[#F1F1F4] placeholder-slate-450 dark:placeholder-[#8A8F98] resize-none leading-relaxed"
+                                                                        className="w-full rounded-lg border border-slate-200 dark:border-slate-800 border-slate-100 bg-white dark:bg-slate-950/40 bg-slate-50 px-4 py-3 text-xs font-medium focus:border-primary focus:ring-1 focus:ring-primary/15 transition-all text-slate-800 text-foreground placeholder-slate-450 dark:placeholder-[#8A8F98] resize-none leading-relaxed"
                                                                     />
                                                                     <div className="absolute right-4 bottom-4 flex items-center gap-2">
                                                                         <span className={`text-[10px] font-mono font-bold ${
@@ -3424,12 +3435,12 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                         ))}
                                                     </div>
                                                 ) : (
-                                                    <div className="rounded-[8px] border border-slate-200 bg-white dark:border-[#2C2C3A] dark:bg-[#1B1B25] p-6 shadow-none space-y-6">
+                                                    <div className="rounded-xl border border-slate-200 bg-white dark:border-slate-800 border-slate-100 dark:bg-[#0b0f19]/30 bg-white/70 backdrop-blur-md p-6 shadow-none space-y-6">
                                                         <div>
-                                                            <h4 className="text-sm font-semibold tracking-[-0.01em] text-slate-850 dark:text-[#F1F1F4] leading-relaxed">
+                                                            <h4 className="text-sm font-semibold tracking-[-0.01em] text-slate-850 text-foreground leading-relaxed">
                                                                 Tuliskan refleksi singkat pembelajaranmu hari ini
                                                             </h4>
-                                                            <p className="text-xs text-slate-500 dark:text-[#8A8F98] mt-1">Sebutkan bagian tersulit atau hal baru menarik yang kamu pelajari.</p>
+                                                            <p className="text-xs text-slate-500 text-muted-foreground mt-1">Sebutkan bagian tersulit atau hal baru menarik yang kamu pelajari.</p>
                                                         </div>
 
                                                         <div className="relative">
@@ -3440,7 +3451,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                 disabled={isSummativeLocked}
                                                                 onChange={(e) => studentForm.setData('answers', { ...studentForm.data.answers, reflection: e.target.value })}
                                                                 placeholder="Apa yang paling menantang dari materi hari ini? Apa yang ingin kamu tanyakan lebih lanjut? (Maksimal 280 karakter)"
-                                                                className="w-full rounded-[6px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#101014] px-4 py-3 text-xs font-medium focus:border-[#5E6AD2] focus:ring-1 focus:ring-[#5E6AD2]/15 transition-all text-slate-800 dark:text-[#F1F1F4] placeholder-slate-450 dark:placeholder-[#8A8F98] resize-none leading-relaxed disabled:opacity-75 disabled:bg-slate-100 dark:disabled:bg-slate-900/50"
+                                                                className="w-full rounded-lg border border-slate-200 dark:border-slate-800 border-slate-100 bg-white dark:bg-slate-950/40 bg-slate-50 px-4 py-3 text-xs font-medium focus:border-primary focus:ring-1 focus:ring-primary/15 transition-all text-slate-800 text-foreground placeholder-slate-450 dark:placeholder-[#8A8F98] resize-none leading-relaxed disabled:opacity-75 disabled:bg-slate-100 dark:disabled:bg-slate-900/50"
                                                             />
                                                             <div className="absolute right-4 bottom-4 flex items-center gap-2">
                                                                 <span className={`text-[10px] font-mono font-bold ${
@@ -3522,14 +3533,14 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                         )
                                     ) : assignment.instrument_type === 'structured_assignment' ? (
                                         <div className="space-y-8 animate-in fade-in duration-500">
-                                            <div className="relative overflow-hidden rounded-[8px] bg-slate-50 border border-slate-200 dark:bg-[#1B1B25] dark:border-[#2C2C3A] p-6 shadow-none text-slate-800 dark:text-[#F1F1F4]">
-                                                <div className="absolute top-0 right-0 -mt-10 -mr-10 h-64 w-64 rounded-full bg-[#5E6AD2]/5 blur-3xl" />
+                                            <div className="relative overflow-hidden rounded-xl bg-slate-50 border border-slate-200 dark:bg-[#0b0f19]/30 bg-white/70 backdrop-blur-md dark:border-slate-800 border-slate-100 p-6 shadow-none text-slate-800 text-foreground">
+                                                <div className="absolute top-0 right-0 -mt-10 -mr-10 h-64 w-64 rounded-full bg-primary/5 blur-3xl" />
                                                 <div className="relative flex items-center gap-5">
-                                                    <div className="h-11 w-11 rounded-[6px] bg-[#5E6AD2]/10 dark:bg-[#5E6AD2] text-[#5E6AD2] dark:text-white shadow-none flex items-center justify-center">
+                                                    <div className="h-11 w-11 rounded-lg bg-primary/10 dark:bg-primary text-primary dark:text-white shadow-none flex items-center justify-center">
                                                         <FileText className="h-5 w-5" />
                                                     </div>
                                                     <div>
-                                                        <h3 className="font-semibold tracking-[-0.03em] text-lg text-slate-800 dark:text-[#F1F1F4]">Penugasan Terstruktur (LKPD)</h3>
+                                                        <h3 className="font-semibold tracking-[-0.03em] text-lg text-slate-800 text-foreground">Penugasan Terstruktur (LKPD)</h3>
                                                         <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider mt-1">Kerjakan tugas dan kumpulkan jawabanmu</p>
                                                     </div>
                                                 </div>
@@ -3543,27 +3554,27 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                     disabled={isSummativeLocked}
                                                     onChange={(e) => setStructuredAssignmentData({ ...structuredAssignmentData, answer_text: e.target.value })}
                                                     placeholder="Tuliskan jawaban atau hasil kerja Anda di sini..."
-                                                    className="w-full rounded-[8px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#101014] px-4 py-3 text-xs font-medium focus:border-[#5E6AD2] focus:ring-1 focus:ring-[#5E6AD2]/15 transition-all text-slate-800 dark:text-[#F1F1F4] placeholder-slate-400 resize-none leading-relaxed disabled:opacity-75 disabled:bg-slate-100 dark:disabled:bg-slate-900/50"
+                                                    className="w-full rounded-xl border border-slate-200 dark:border-slate-800 border-slate-100 bg-white dark:bg-slate-950/40 bg-slate-50 px-4 py-3 text-xs font-medium focus:border-primary focus:ring-1 focus:ring-primary/15 transition-all text-slate-800 text-foreground placeholder-slate-400 resize-none leading-relaxed disabled:opacity-75 disabled:bg-slate-100 dark:disabled:bg-slate-900/50"
                                                 />
                                             </div>
 
                                             <div className="space-y-3">
                                                 <label className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">Lampiran File (Opsional)</label>
                                                 {my_submission?.file_path && (
-                                                    <div className="mb-4 p-4 rounded-[8px] bg-slate-50 dark:bg-[#101014] border border-slate-200 dark:border-[#2C2C3A] flex items-center justify-between">
+                                                    <div className="mb-4 p-4 rounded-xl bg-slate-50 dark:bg-slate-950/40 bg-slate-50 border border-slate-200 dark:border-slate-800 border-slate-100 flex items-center justify-between">
                                                         <div className="flex items-center gap-3">
-                                                            <div className="h-10 w-10 rounded-[6px] bg-white dark:bg-[#1B1B25] border border-slate-200 dark:border-[#2C2C3A] flex items-center justify-center text-[#5E6AD2]">
+                                                            <div className="h-10 w-10 rounded-lg bg-white dark:bg-[#0b0f19]/30 bg-white/70 backdrop-blur-md border border-slate-200 dark:border-slate-800 border-slate-100 flex items-center justify-center text-primary">
                                                                 <FileText className="h-6 w-6" />
                                                             </div>
                                                             <div className="text-left">
-                                                                <p className="text-[10px] font-bold text-[#5E6AD2] uppercase tracking-wider leading-none mb-1">File Terkirim</p>
-                                                                <p className="text-xs font-semibold text-slate-550 dark:text-[#8A8F98] truncate max-w-[200px]">{my_submission.file_path.split('/').pop()}</p>
+                                                                <p className="text-[10px] font-bold text-primary uppercase tracking-wider leading-none mb-1">File Terkirim</p>
+                                                                <p className="text-xs font-semibold text-slate-550 text-muted-foreground truncate max-w-[200px]">{my_submission.file_path.split('/').pop()}</p>
                                                             </div>
                                                         </div>
                                                         <a 
                                                             href={`/storage/${my_submission.file_path}`} 
                                                             target="_blank"
-                                                            className="h-8 px-4 rounded-lg bg-[#5E6AD2] text-white text-[10px] font-bold uppercase tracking-wider flex items-center justify-center hover:bg-[#4E5BBF] transition-all"
+                                                            className="h-8 px-4 rounded-lg bg-primary text-white text-[10px] font-bold uppercase tracking-wider flex items-center justify-center hover:bg-[#4E5BBF] transition-all"
                                                         >
                                                             Lihat File
                                                         </a>
@@ -3578,7 +3589,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                         const file = e.target.files?.[0] || null;
                                                         setStructuredAssignmentData({ ...structuredAssignmentData, file });
                                                     }}
-                                                    className="w-full text-xs text-slate-600 dark:text-slate-300 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-[#5E6AD2]/10 file:text-[#5E6AD2] hover:file:bg-[#5E6AD2]/20 file:cursor-pointer"
+                                                    className="w-full text-xs text-slate-600 dark:text-slate-300 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 file:cursor-pointer"
                                                 />
                                                 {structuredAssignmentData.file && (
                                                     <p className="text-[10px] text-emerald-600 font-medium">File dipilih: {structuredAssignmentData.file.name}</p>
@@ -3587,28 +3598,28 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                         </div>
                                     ) : assignment.instrument_type === 'project' ? (
                                         <div className="space-y-8 animate-in fade-in duration-500">
-                                            <div className="relative overflow-hidden rounded-[8px] bg-slate-50 border border-slate-200 dark:bg-[#1B1B25] dark:border-[#2C2C3A] p-6 shadow-none text-slate-800 dark:text-[#F1F1F4]">
-                                                <div className="absolute top-0 right-0 -mt-10 -mr-10 h-64 w-64 rounded-full bg-[#5E6AD2]/5 blur-3xl" />
+                                            <div className="relative overflow-hidden rounded-xl bg-slate-50 border border-slate-200 dark:bg-[#0b0f19]/30 bg-white/70 backdrop-blur-md dark:border-slate-800 border-slate-100 p-6 shadow-none text-slate-800 text-foreground">
+                                                <div className="absolute top-0 right-0 -mt-10 -mr-10 h-64 w-64 rounded-full bg-primary/5 blur-3xl" />
                                                 <div className="relative flex items-center gap-5">
-                                                    <div className="h-11 w-11 rounded-[6px] bg-[#5E6AD2]/10 dark:bg-[#5E6AD2] text-[#5E6AD2] dark:text-white shadow-none flex items-center justify-center">
+                                                    <div className="h-11 w-11 rounded-lg bg-primary/10 dark:bg-primary text-primary dark:text-white shadow-none flex items-center justify-center">
                                                         <FolderKanban className="h-5 w-5" />
                                                     </div>
                                                     <div>
-                                                        <h3 className="font-semibold tracking-[-0.03em] text-lg text-slate-800 dark:text-[#F1F1F4]">Penilaian Proyek & Produk</h3>
+                                                        <h3 className="font-semibold tracking-[-0.03em] text-lg text-slate-800 text-foreground">Penilaian Proyek & Produk</h3>
                                                         <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider mt-1">Kerjakan proyek dan kumpulkan hasilnya</p>
                                                     </div>
                                                 </div>
                                             </div>
 
                                             {assignment.instrument_config?.stimulus && (
-                                                <div className="p-5 rounded-[8px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#1B1B25] shadow-none">
+                                                <div className="p-5 rounded-xl border border-slate-200 dark:border-slate-800 border-slate-100 bg-white dark:bg-[#0b0f19]/30 bg-white/70 backdrop-blur-md shadow-none">
                                                     <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-2">Pertanyaan Utama (Driving Question):</p>
                                                     <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium italic">{assignment.instrument_config.stimulus}</p>
                                                 </div>
                                             )}
 
                                             {assignment.instrument_config?.teacher_notes && (
-                                                <div className="p-5 rounded-[8px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#1B1B25] shadow-none">
+                                                <div className="p-5 rounded-xl border border-slate-200 dark:border-slate-800 border-slate-100 bg-white dark:bg-[#0b0f19]/30 bg-white/70 backdrop-blur-md shadow-none">
                                                     <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-2">Alur & Instruksi:</p>
                                                     <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium whitespace-pre-wrap">{assignment.instrument_config.teacher_notes}</p>
                                                 </div>
@@ -3616,19 +3627,19 @@ export default function ShowAssignment({ assignment, students, my_submission, my
 
                                             <div className="grid md:grid-cols-3 gap-4">
                                                 {assignment.instrument_config?.phase_planning && (
-                                                    <div className="p-4 rounded-[8px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#1B1B25] shadow-none">
+                                                    <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 border-slate-100 bg-white dark:bg-[#0b0f19]/30 bg-white/70 backdrop-blur-md shadow-none">
                                                         <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-2">📋 Perencanaan</p>
                                                         <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-relaxed">{assignment.instrument_config.phase_planning}</p>
                                                     </div>
                                                 )}
                                                 {assignment.instrument_config?.phase_execution && (
-                                                    <div className="p-4 rounded-[8px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#1B1B25] shadow-none">
+                                                    <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 border-slate-100 bg-white dark:bg-[#0b0f19]/30 bg-white/70 backdrop-blur-md shadow-none">
                                                         <p className="text-[10px] font-black text-amber-500 uppercase tracking-widest mb-2">🔧 Pelaksanaan</p>
                                                         <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-relaxed">{assignment.instrument_config.phase_execution}</p>
                                                     </div>
                                                 )}
                                                 {assignment.instrument_config?.phase_product && (
-                                                    <div className="p-4 rounded-[8px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#1B1B25] shadow-none">
+                                                    <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 border-slate-100 bg-white dark:bg-[#0b0f19]/30 bg-white/70 backdrop-blur-md shadow-none">
                                                         <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-2">📦 Produk/Hasil</p>
                                                         <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-relaxed">{assignment.instrument_config.phase_product}</p>
                                                     </div>
@@ -3643,27 +3654,27 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                     disabled={isSummativeLocked}
                                                     onChange={(e) => setProjectData({ ...projectData, description: e.target.value })}
                                                     placeholder="Jelaskan proyek yang Anda kerjakan: apa yang dibuat, bagaimana prosesnya, dan hasil akhirnya..."
-                                                    className="w-full rounded-[8px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#101014] px-4 py-3 text-xs font-medium focus:border-[#5E6AD2] focus:ring-1 focus:ring-[#5E6AD2]/15 transition-all text-slate-800 dark:text-[#F1F1F4] placeholder-slate-400 resize-none leading-relaxed disabled:opacity-75 disabled:bg-slate-100 dark:disabled:bg-slate-900/50"
+                                                    className="w-full rounded-xl border border-slate-200 dark:border-slate-800 border-slate-100 bg-white dark:bg-slate-950/40 bg-slate-50 px-4 py-3 text-xs font-medium focus:border-primary focus:ring-1 focus:ring-primary/15 transition-all text-slate-800 text-foreground placeholder-slate-400 resize-none leading-relaxed disabled:opacity-75 disabled:bg-slate-100 dark:disabled:bg-slate-900/50"
                                                 />
                                             </div>
 
                                             <div className="space-y-3">
                                                 <label className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">Upload Bukti Proyek</label>
                                                 {my_submission?.file_path && (
-                                                    <div className="mb-4 p-4 rounded-[8px] bg-slate-50 dark:bg-[#101014] border border-slate-200 dark:border-[#2C2C3A] flex items-center justify-between">
+                                                    <div className="mb-4 p-4 rounded-xl bg-slate-50 dark:bg-slate-950/40 bg-slate-50 border border-slate-200 dark:border-slate-800 border-slate-100 flex items-center justify-between">
                                                         <div className="flex items-center gap-3">
-                                                            <div className="h-10 w-10 rounded-[6px] bg-white dark:bg-[#1B1B25] border border-slate-200 dark:border-[#2C2C3A] flex items-center justify-center text-[#5E6AD2]">
+                                                            <div className="h-10 w-10 rounded-lg bg-white dark:bg-[#0b0f19]/30 bg-white/70 backdrop-blur-md border border-slate-200 dark:border-slate-800 border-slate-100 flex items-center justify-center text-primary">
                                                                 <FileText className="h-6 w-6" />
                                                             </div>
                                                             <div className="text-left">
-                                                                <p className="text-[10px] font-bold text-[#5E6AD2] uppercase tracking-wider leading-none mb-1">File Terkirim</p>
-                                                                <p className="text-xs font-semibold text-slate-550 dark:text-[#8A8F98] truncate max-w-[200px]">{my_submission.file_path.split('/').pop()}</p>
+                                                                <p className="text-[10px] font-bold text-primary uppercase tracking-wider leading-none mb-1">File Terkirim</p>
+                                                                <p className="text-xs font-semibold text-slate-550 text-muted-foreground truncate max-w-[200px]">{my_submission.file_path.split('/').pop()}</p>
                                                             </div>
                                                         </div>
                                                         <a 
                                                             href={`/storage/${my_submission.file_path}`} 
                                                             target="_blank"
-                                                            className="h-8 px-4 rounded-lg bg-[#5E6AD2] text-white text-[10px] font-bold uppercase tracking-wider flex items-center justify-center hover:bg-[#4E5BBF] transition-all"
+                                                            className="h-8 px-4 rounded-lg bg-primary text-white text-[10px] font-bold uppercase tracking-wider flex items-center justify-center hover:bg-[#4E5BBF] transition-all"
                                                         >
                                                             Lihat File
                                                         </a>
@@ -3678,7 +3689,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                         const file = e.target.files?.[0] || null;
                                                         setProjectData({ ...projectData, file });
                                                     }}
-                                                    className="w-full text-xs text-slate-600 dark:text-slate-300 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-[#5E6AD2]/10 file:text-[#5E6AD2] hover:file:bg-[#5E6AD2]/20 file:cursor-pointer"
+                                                    className="w-full text-xs text-slate-600 dark:text-slate-300 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 file:cursor-pointer"
                                                 />
                                                 {projectData.file && (
                                                     <p className="text-[10px] text-emerald-600 font-medium">File dipilih: {projectData.file.name}</p>
@@ -3694,27 +3705,27 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                     disabled={isSummativeLocked}
                                                     onChange={(e) => setProjectData({ ...projectData, process_notes: e.target.value })}
                                                     placeholder="Tantangan: ..., Solusi: ..., Pembelajaran: ..."
-                                                    className="w-full rounded-[8px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#101014] px-4 py-3 text-xs font-medium focus:border-[#5E6AD2] focus:ring-1 focus:ring-[#5E6AD2]/15 transition-all text-slate-800 dark:text-[#F1F1F4] placeholder-slate-400 resize-none leading-relaxed disabled:opacity-75 disabled:bg-slate-100 dark:disabled:bg-slate-900/50"
+                                                    className="w-full rounded-xl border border-slate-200 dark:border-slate-800 border-slate-100 bg-white dark:bg-slate-950/40 bg-slate-50 px-4 py-3 text-xs font-medium focus:border-primary focus:ring-1 focus:ring-primary/15 transition-all text-slate-800 text-foreground placeholder-slate-400 resize-none leading-relaxed disabled:opacity-75 disabled:bg-slate-100 dark:disabled:bg-slate-900/50"
                                                 />
                                             </div>
                                         </div>
                                     ) : assignment.instrument_type === 'portfolio' ? (
                                         <div className="space-y-8 animate-in fade-in duration-500">
-                                            <div className="relative overflow-hidden rounded-[8px] bg-slate-50 border border-slate-200 dark:bg-[#1B1B25] dark:border-[#2C2C3A] p-6 shadow-none text-slate-800 dark:text-[#F1F1F4]">
-                                                <div className="absolute top-0 right-0 -mt-10 -mr-10 h-64 w-64 rounded-full bg-[#5E6AD2]/5 blur-3xl" />
+                                            <div className="relative overflow-hidden rounded-xl bg-slate-50 border border-slate-200 dark:bg-[#0b0f19]/30 bg-white/70 backdrop-blur-md dark:border-slate-800 border-slate-100 p-6 shadow-none text-slate-800 text-foreground">
+                                                <div className="absolute top-0 right-0 -mt-10 -mr-10 h-64 w-64 rounded-full bg-primary/5 blur-3xl" />
                                                 <div className="relative flex items-center gap-5">
-                                                    <div className="h-11 w-11 rounded-[6px] bg-[#5E6AD2]/10 dark:bg-[#5E6AD2] text-[#5E6AD2] dark:text-white shadow-none flex items-center justify-center">
+                                                    <div className="h-11 w-11 rounded-lg bg-primary/10 dark:bg-primary text-primary dark:text-white shadow-none flex items-center justify-center">
                                                         <Briefcase className="h-5 w-5" />
                                                     </div>
                                                     <div>
-                                                        <h3 className="font-semibold tracking-[-0.03em] text-lg text-slate-800 dark:text-[#F1F1F4]">Portofolio</h3>
+                                                        <h3 className="font-semibold tracking-[-0.03em] text-lg text-slate-800 text-foreground">Portofolio</h3>
                                                         <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider mt-1">Kumpulkan karya terbaikmu dan refleksikan perkembangan belajarmu</p>
                                                     </div>
                                                 </div>
                                             </div>
 
                                             {assignment.instrument_config?.stimulus && (
-                                                <div className="p-5 rounded-[8px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#1B1B25] shadow-none">
+                                                <div className="p-5 rounded-xl border border-slate-200 dark:border-slate-800 border-slate-100 bg-white dark:bg-[#0b0f19]/30 bg-white/70 backdrop-blur-md shadow-none">
                                                     <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-2">Instruksi Pengumpulan:</p>
                                                     <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium italic">{assignment.instrument_config.stimulus}</p>
                                                 </div>
@@ -3723,20 +3734,20 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                             <div className="space-y-3">
                                                 <label className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">Upload Karya Portofolio</label>
                                                 {my_submission?.file_path && (
-                                                    <div className="mb-4 p-4 rounded-[8px] bg-slate-50 dark:bg-[#101014] border border-slate-200 dark:border-[#2C2C3A] flex items-center justify-between">
+                                                    <div className="mb-4 p-4 rounded-xl bg-slate-50 dark:bg-slate-950/40 bg-slate-50 border border-slate-200 dark:border-slate-800 border-slate-100 flex items-center justify-between">
                                                         <div className="flex items-center gap-3">
-                                                            <div className="h-10 w-10 rounded-[6px] bg-white dark:bg-[#1B1B25] border border-slate-200 dark:border-[#2C2C3A] flex items-center justify-center text-[#5E6AD2]">
+                                                            <div className="h-10 w-10 rounded-lg bg-white dark:bg-[#0b0f19]/30 bg-white/70 backdrop-blur-md border border-slate-200 dark:border-slate-800 border-slate-100 flex items-center justify-center text-primary">
                                                                 <FileText className="h-6 w-6" />
                                                             </div>
                                                             <div className="text-left">
-                                                                <p className="text-[10px] font-bold text-[#5E6AD2] uppercase tracking-wider leading-none mb-1">File Terkirim</p>
-                                                                <p className="text-xs font-semibold text-slate-550 dark:text-[#8A8F98] truncate max-w-[200px]">{my_submission.file_path.split('/').pop()}</p>
+                                                                <p className="text-[10px] font-bold text-primary uppercase tracking-wider leading-none mb-1">File Terkirim</p>
+                                                                <p className="text-xs font-semibold text-slate-550 text-muted-foreground truncate max-w-[200px]">{my_submission.file_path.split('/').pop()}</p>
                                                             </div>
                                                         </div>
                                                         <a 
                                                             href={`/storage/${my_submission.file_path}`} 
                                                             target="_blank"
-                                                            className="h-8 px-4 rounded-lg bg-[#5E6AD2] text-white text-[10px] font-bold uppercase tracking-wider flex items-center justify-center hover:bg-[#4E5BBF] transition-all"
+                                                            className="h-8 px-4 rounded-lg bg-primary text-white text-[10px] font-bold uppercase tracking-wider flex items-center justify-center hover:bg-[#4E5BBF] transition-all"
                                                         >
                                                             Lihat File
                                                         </a>
@@ -3752,7 +3763,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                         const file = e.target.files?.[0] || null;
                                                         setPortfolioFile(file);
                                                     }}
-                                                    className="w-full text-xs text-slate-600 dark:text-slate-300 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-[#5E6AD2]/10 file:text-[#5E6AD2] hover:file:bg-[#5E6AD2]/20 file:cursor-pointer"
+                                                    className="w-full text-xs text-slate-600 dark:text-slate-300 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 file:cursor-pointer"
                                                 />
                                                 {portfolioFile && (
                                                     <p className="text-[10px] text-emerald-600 font-medium">File dipilih: {portfolioFile.name}</p>
@@ -3762,9 +3773,9 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                             <div className="space-y-6">
                                                 <label className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">Refleksi Perkembangan Belajar</label>
                                                 {(assignment.instrument_config?.reflection_prompts || []).map((prompt: string, idx: number) => (
-                                                    <div key={idx} className="p-5 rounded-[8px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#1B1B25] shadow-none space-y-3">
+                                                    <div key={idx} className="p-5 rounded-xl border border-slate-200 dark:border-slate-800 border-slate-100 bg-white dark:bg-[#0b0f19]/30 bg-white/70 backdrop-blur-md shadow-none space-y-3">
                                                         <div className="flex items-start gap-3">
-                                                            <span className="h-6 w-6 rounded-full bg-[#5E6AD2]/10 text-[#5E6AD2] text-[10px] font-black flex items-center justify-center shrink-0 mt-0.5">{idx + 1}</span>
+                                                            <span className="h-6 w-6 rounded-full bg-primary/10 text-primary text-[10px] font-black flex items-center justify-center shrink-0 mt-0.5">{idx + 1}</span>
                                                             <p className="text-sm font-bold text-slate-700 dark:text-slate-200 leading-relaxed">{prompt}</p>
                                                         </div>
                                                         <textarea
@@ -3778,7 +3789,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                 setPortfolioReflections(newReflections);
                                                             }}
                                                             placeholder="Tuliskan refleksimu di sini..."
-                                                            className="w-full rounded-[8px] border border-slate-200 dark:border-[#2C2C3A] bg-slate-50/30 dark:bg-[#101014] px-4 py-3 text-xs font-medium focus:border-[#5E6AD2] focus:ring-1 focus:ring-[#5E6AD2]/15 transition-all text-slate-800 dark:text-[#F1F1F4] placeholder-slate-400 resize-none leading-relaxed disabled:opacity-75 disabled:bg-slate-150 dark:disabled:bg-slate-900/50"
+                                                            className="w-full rounded-xl border border-slate-200 dark:border-slate-800 border-slate-100 bg-slate-50/30 dark:bg-slate-950/40 bg-slate-50 px-4 py-3 text-xs font-medium focus:border-primary focus:ring-1 focus:ring-primary/15 transition-all text-slate-800 text-foreground placeholder-slate-400 resize-none leading-relaxed disabled:opacity-75 disabled:bg-slate-150 dark:disabled:bg-slate-900/50"
                                                         />
                                                     </div>
                                                 ))}
@@ -3786,21 +3797,21 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                         </div>
                                     ) : assignment.instrument_type === 'assignment' ? (
                                         <div className="space-y-8 animate-in fade-in duration-500">
-                                            <div className="relative overflow-hidden rounded-[8px] bg-slate-50 border border-slate-200 dark:bg-[#1B1B25] dark:border-[#2C2C3A] p-6 shadow-none text-slate-800 dark:text-[#F1F1F4]">
-                                                <div className="absolute top-0 right-0 -mt-10 -mr-10 h-64 w-64 rounded-full bg-[#5E6AD2]/5 blur-3xl" />
+                                            <div className="relative overflow-hidden rounded-xl bg-slate-50 border border-slate-200 dark:bg-[#0b0f19]/30 bg-white/70 backdrop-blur-md dark:border-slate-800 border-slate-100 p-6 shadow-none text-slate-800 text-foreground">
+                                                <div className="absolute top-0 right-0 -mt-10 -mr-10 h-64 w-64 rounded-full bg-primary/5 blur-3xl" />
                                                 <div className="relative flex items-center gap-5">
-                                                    <div className="h-11 w-11 rounded-[6px] bg-[#5E6AD2]/10 dark:bg-[#5E6AD2] text-[#5E6AD2] dark:text-white shadow-none flex items-center justify-center">
+                                                    <div className="h-11 w-11 rounded-lg bg-primary/10 dark:bg-primary text-primary dark:text-white shadow-none flex items-center justify-center">
                                                         <FileText className="h-5 w-5" />
                                                     </div>
                                                     <div>
-                                                        <h3 className="font-semibold tracking-[-0.03em] text-lg text-slate-800 dark:text-[#F1F1F4]">Penugasan (Laporan/Studi Kasus)</h3>
+                                                        <h3 className="font-semibold tracking-[-0.03em] text-lg text-slate-800 text-foreground">Penugasan (Laporan/Studi Kasus)</h3>
                                                         <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider mt-1">Analisis studi kasus dan susun laporan pemecahan masalah</p>
                                                     </div>
                                                 </div>
                                             </div>
 
                                             {assignment.instrument_config?.stimulus && (
-                                                <div className="p-5 rounded-[8px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#1B1B25] shadow-none">
+                                                <div className="p-5 rounded-xl border border-slate-200 dark:border-slate-800 border-slate-100 bg-white dark:bg-[#0b0f19]/30 bg-white/70 backdrop-blur-md shadow-none">
                                                     <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-2">Deskripsi Studi Kasus:</p>
                                                     <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium">{assignment.instrument_config.stimulus}</p>
                                                 </div>
@@ -3814,27 +3825,27 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                     disabled={isSummativeLocked}
                                                     onChange={(e) => setAssignmentData({ ...assignmentData, report_text: e.target.value })}
                                                     placeholder="Susun laporan analisis studi kasus: Identifikasi Masalah, Analisis, Solusi, dan Kesimpulan..."
-                                                    className="w-full rounded-[8px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#101014] px-4 py-3 text-xs font-medium focus:border-[#5E6AD2] focus:ring-1 focus:ring-[#5E6AD2]/15 transition-all text-slate-800 dark:text-[#F1F1F4] placeholder-slate-400 resize-none leading-relaxed disabled:opacity-75 disabled:bg-slate-100 dark:disabled:bg-slate-900/50"
+                                                    className="w-full rounded-xl border border-slate-200 dark:border-slate-800 border-slate-100 bg-white dark:bg-slate-950/40 bg-slate-50 px-4 py-3 text-xs font-medium focus:border-primary focus:ring-1 focus:ring-primary/15 transition-all text-slate-800 text-foreground placeholder-slate-400 resize-none leading-relaxed disabled:opacity-75 disabled:bg-slate-100 dark:disabled:bg-slate-900/50"
                                                 />
                                             </div>
 
                                             <div className="space-y-3">
                                                 <label className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">Upload File Jawaban</label>
                                                 {my_submission?.file_path && (
-                                                    <div className="mb-4 p-4 rounded-[8px] bg-slate-50 dark:bg-[#101014] border border-slate-200 dark:border-[#2C2C3A] flex items-center justify-between">
+                                                    <div className="mb-4 p-4 rounded-xl bg-slate-50 dark:bg-slate-950/40 bg-slate-50 border border-slate-200 dark:border-slate-800 border-slate-100 flex items-center justify-between">
                                                         <div className="flex items-center gap-3">
-                                                            <div className="h-10 w-10 rounded-[6px] bg-white dark:bg-[#1B1B25] border border-slate-200 dark:border-[#2C2C3A] flex items-center justify-center text-[#5E6AD2]">
+                                                            <div className="h-10 w-10 rounded-lg bg-white dark:bg-[#0b0f19]/30 bg-white/70 backdrop-blur-md border border-slate-200 dark:border-slate-800 border-slate-100 flex items-center justify-center text-primary">
                                                                 <FileText className="h-6 w-6" />
                                                             </div>
                                                             <div className="text-left">
-                                                                <p className="text-[10px] font-bold text-[#5E6AD2] uppercase tracking-wider leading-none mb-1">File Terkirim</p>
-                                                                <p className="text-xs font-semibold text-slate-550 dark:text-[#8A8F98] truncate max-w-[200px]">{my_submission.file_path.split('/').pop()}</p>
+                                                                <p className="text-[10px] font-bold text-primary uppercase tracking-wider leading-none mb-1">File Terkirim</p>
+                                                                <p className="text-xs font-semibold text-slate-550 text-muted-foreground truncate max-w-[200px]">{my_submission.file_path.split('/').pop()}</p>
                                                             </div>
                                                         </div>
                                                         <a 
                                                             href={`/storage/${my_submission.file_path}`} 
                                                             target="_blank"
-                                                            className="h-8 px-4 rounded-lg bg-[#5E6AD2] text-white text-[10px] font-bold uppercase tracking-wider flex items-center justify-center hover:bg-[#4E5BBF] transition-all"
+                                                            className="h-8 px-4 rounded-lg bg-primary text-white text-[10px] font-bold uppercase tracking-wider flex items-center justify-center hover:bg-[#4E5BBF] transition-all"
                                                         >
                                                             Lihat File
                                                         </a>
@@ -3849,7 +3860,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                         const file = e.target.files?.[0] || null;
                                                         setAssignmentData({ ...assignmentData, file });
                                                     }}
-                                                    className="w-full text-xs text-slate-600 dark:text-slate-300 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-[#5E6AD2]/10 file:text-[#5E6AD2] hover:file:bg-[#5E6AD2]/20 file:cursor-pointer"
+                                                    className="w-full text-xs text-slate-600 dark:text-slate-300 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 file:cursor-pointer"
                                                 />
                                                 {assignmentData.file && (
                                                     <p className="text-[10px] text-emerald-600 font-medium">File dipilih: {assignmentData.file.name}</p>
@@ -3865,13 +3876,13 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                     disabled={isSummativeLocked}
                                                     onChange={(e) => setAssignmentData({ ...assignmentData, analysis_notes: e.target.value })}
                                                     placeholder="Langkah analisis: 1. Identifikasi..., 2. Analisis..., 3. Solusi..."
-                                                    className="w-full rounded-[8px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#101014] px-4 py-3 text-xs font-medium focus:border-[#5E6AD2] focus:ring-1 focus:ring-[#5E6AD2]/15 transition-all text-slate-800 dark:text-[#F1F1F4] placeholder-slate-400 resize-none leading-relaxed disabled:opacity-75 disabled:bg-slate-100 dark:disabled:bg-slate-900/50"
+                                                    className="w-full rounded-xl border border-slate-200 dark:border-slate-800 border-slate-100 bg-white dark:bg-slate-950/40 bg-slate-50 px-4 py-3 text-xs font-medium focus:border-primary focus:ring-1 focus:ring-primary/15 transition-all text-slate-800 text-foreground placeholder-slate-400 resize-none leading-relaxed disabled:opacity-75 disabled:bg-slate-100 dark:disabled:bg-slate-900/50"
                                                 />
                                             </div>
                                         </div>
                                     ) : assignment.instrument_type === 'concept_map' ? (
                                         <div className="space-y-8 animate-in fade-in duration-500">
-                                            <div className="p-6 rounded-[2.5rem] bg-indigo-50/30 dark:bg-indigo-950/10 border border-indigo-100 dark:border-indigo-900/30">
+                                            <div className="p-6 rounded-2xl bg-indigo-50/30 dark:bg-indigo-950/10 border border-indigo-100 dark:border-indigo-900/30">
                                                 <div className="flex items-center justify-between flex-wrap gap-4 mb-4">
                                                     <div className="flex items-center gap-4">
                                                         <div className="h-10 w-10 rounded-2xl bg-indigo-500 text-white flex items-center justify-center shadow-lg shadow-indigo-200">
@@ -3926,7 +3937,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                             )}
 
                                             {conceptMapSubMode === 'upload' && (
-                                                <div className="animate-in fade-in duration-300 space-y-4 p-8 rounded-[2.5rem] border-2 border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/20 dark:bg-slate-950/20 text-center flex flex-col items-center justify-center">
+                                                <div className="animate-in fade-in duration-300 space-y-4 p-8 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/20 dark:bg-slate-950/20 text-center flex flex-col items-center justify-center">
                                                     <div className="h-16 w-16 rounded-[2rem] bg-indigo-500/10 text-indigo-500 flex items-center justify-center mb-4">
                                                         <ImageIcon className="h-8 w-8" />
                                                     </div>
@@ -3939,14 +3950,14 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                         </div>
                                     ) : assignment.instrument_type === 'reflective_journal' ? (
                                         <div className="space-y-8 animate-in fade-in duration-500">
-                                            <div className="relative overflow-hidden rounded-[8px] bg-slate-50 border border-slate-200 dark:bg-[#1B1B25] dark:border-[#2C2C3A] p-6 shadow-none text-slate-800 dark:text-[#F1F1F4]">
-                                                <div className="absolute top-0 right-0 -mt-10 -mr-10 h-64 w-64 rounded-full bg-[#5E6AD2]/5 blur-3xl" />
+                                            <div className="relative overflow-hidden rounded-xl bg-slate-50 border border-slate-200 dark:bg-[#0b0f19]/30 bg-white/70 backdrop-blur-md dark:border-slate-800 border-slate-100 p-6 shadow-none text-slate-800 text-foreground">
+                                                <div className="absolute top-0 right-0 -mt-10 -mr-10 h-64 w-64 rounded-full bg-primary/5 blur-3xl" />
                                                 <div className="relative flex items-center gap-5">
-                                                    <div className="h-11 w-11 rounded-[6px] bg-[#5E6AD2]/10 dark:bg-[#5E6AD2] text-[#5E6AD2] dark:text-white shadow-none flex items-center justify-center">
+                                                    <div className="h-11 w-11 rounded-lg bg-primary/10 dark:bg-primary text-primary dark:text-white shadow-none flex items-center justify-center">
                                                         <BookOpen className="h-5 w-5" />
                                                     </div>
                                                     <div>
-                                                        <h3 className="font-semibold tracking-[-0.03em] text-lg text-slate-800 dark:text-[#F1F1F4]">Jurnal Reflektif</h3>
+                                                        <h3 className="font-semibold tracking-[-0.03em] text-lg text-slate-800 text-foreground">Jurnal Reflektif</h3>
                                                         <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider mt-1">Tuliskan refleksi pribadimu tentang proses belajar hari ini</p>
                                                     </div>
                                                 </div>
@@ -3954,9 +3965,9 @@ export default function ShowAssignment({ assignment, students, my_submission, my
 
                                             <div className="space-y-6">
                                                 {(assignment.instrument_config?.questions || []).map((q: any, idx: number) => (
-                                                    <div key={idx} className="p-5 rounded-[8px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#1B1B25] shadow-none space-y-3">
+                                                    <div key={idx} className="p-5 rounded-xl border border-slate-200 dark:border-slate-800 border-slate-100 bg-white dark:bg-[#0b0f19]/30 bg-white/70 backdrop-blur-md shadow-none space-y-3">
                                                         <div className="flex items-start gap-3">
-                                                            <span className="h-6 w-6 rounded-full bg-[#5E6AD2]/10 text-[#5E6AD2] text-[10px] font-black flex items-center justify-center shrink-0 mt-0.5">{idx + 1}</span>
+                                                            <span className="h-6 w-6 rounded-full bg-primary/10 text-primary text-[10px] font-black flex items-center justify-center shrink-0 mt-0.5">{idx + 1}</span>
                                                             <p className="text-sm font-bold text-slate-700 dark:text-slate-200 leading-relaxed">{q.text}</p>
                                                         </div>
                                                         <textarea
@@ -3970,7 +3981,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                 setJournalAnswers(newAnswers);
                                                             }}
                                                             placeholder="Tuliskan refleksimu di sini..."
-                                                            className="w-full rounded-[8px] border border-slate-200 dark:border-[#2C2C3A] bg-slate-50/30 dark:bg-[#101014] px-4 py-3 text-xs font-medium focus:border-[#5E6AD2] focus:ring-1 focus:ring-[#5E6AD2]/15 transition-all text-slate-800 dark:text-[#F1F1F4] placeholder-slate-400 resize-none leading-relaxed disabled:opacity-75 disabled:bg-slate-150 dark:disabled:bg-slate-900/50"
+                                                            className="w-full rounded-xl border border-slate-200 dark:border-slate-800 border-slate-100 bg-slate-50/30 dark:bg-slate-950/40 bg-slate-50 px-4 py-3 text-xs font-medium focus:border-primary focus:ring-1 focus:ring-primary/15 transition-all text-slate-800 text-foreground placeholder-slate-400 resize-none leading-relaxed disabled:opacity-75 disabled:bg-slate-150 dark:disabled:bg-slate-900/50"
                                                         />
                                                     </div>
                                                 ))}
@@ -3986,7 +3997,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                     value={studentForm.data.content}
                                                     disabled={isSummativeLocked}
                                                     onChange={(e) => studentForm.setData('content', e.target.value)}
-                                                    className="w-full rounded-[2.5rem] border border-slate-100 bg-slate-50/30 px-8 py-6 text-sm font-medium outline-none focus:border-sky-400 focus:bg-white focus:ring-4 focus:ring-sky-50 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-200 transition-all shadow-sm disabled:opacity-75 disabled:cursor-not-allowed"
+                                                    className="w-full rounded-2xl border border-slate-100 bg-slate-50/30 px-8 py-6 text-sm font-medium outline-none focus:border-sky-400 focus:bg-white focus:ring-4 focus:ring-sky-50 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-200 transition-all shadow-sm disabled:opacity-75 disabled:cursor-not-allowed"
                                                 />
                                             </div>
                                         </div>
@@ -4030,7 +4041,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                         </a>
                                                     </div>
                                                 )}
-                                                <div className={`w-full rounded-[2.5rem] border-2 border-dashed border-border bg-slate-50/20 px-8 py-12 text-center transition-all ${isSummativeLocked ? 'pointer-events-none opacity-60' : 'group-hover:border-sky-400 group-hover:bg-sky-50/10 cursor-pointer'}`}>
+                                                <div className={`w-full rounded-2xl border-2 border-dashed border-border bg-slate-50/20 px-8 py-12 text-center transition-all ${isSummativeLocked ? 'pointer-events-none opacity-60' : 'group-hover:border-sky-400 group-hover:bg-sky-50/10 cursor-pointer'}`}>
                                                     <div className="h-12 w-12 rounded-2xl bg-white dark:bg-slate-900 border border-border flex items-center justify-center mx-auto mb-4 text-muted-foreground group-hover:text-primary transition-colors shadow-sm">
                                                         <Upload className="h-6 w-6" />
                                                     </div>
@@ -4054,7 +4065,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                         disabled={isSubmitting || isSummativeLocked}
                                         className={`w-full ${
                                             (assignment.instrument_type === 'formative_quiz' || assignment.instrument_type === 'exit_ticket')
-                                                ? 'rounded-[6px] bg-[#5E6AD2] hover:bg-[#4E5BBF] shadow-none py-4 text-xs font-semibold'
+                                                ? 'rounded-lg bg-primary hover:bg-[#4E5BBF] shadow-none py-4 text-xs font-semibold'
                                                 : 'rounded-[2rem] bg-gradient-to-r from-sky-500 to-indigo-600 shadow-sky-200 py-5 text-sm font-black'
                                         } text-white shadow-2xl dark:shadow-none hover:opacity-90 transition-all active:scale-[0.98] disabled:opacity-50 uppercase tracking-widest`}
                                     >
@@ -4067,31 +4078,31 @@ export default function ShowAssignment({ assignment, students, my_submission, my
 
                         <div className="space-y-6">
                             <div className={(assignment.instrument_type === 'formative_quiz' || assignment.instrument_type === 'exit_ticket')
-                                ? "rounded-[8px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#1B1B25] p-6 shadow-none"
-                                : "rounded-[2.5rem] border border-border bg-white dark:bg-slate-900 p-8 shadow-sm"
+                                ? "rounded-xl border border-slate-200 dark:border-slate-800 border-slate-100 bg-white dark:bg-[#0b0f19]/30 bg-white/70 backdrop-blur-md p-6 shadow-none"
+                                : "rounded-2xl border border-border bg-white dark:bg-slate-900 p-8 shadow-sm"
                             }>
                                 <h2 className={`text-xs font-black text-foreground uppercase tracking-widest mb-6 border-b pb-4 ${
                                     (assignment.instrument_type === 'formative_quiz' || assignment.instrument_type === 'exit_ticket')
-                                        ? 'border-slate-100 dark:border-[#2C2C3A]'
+                                        ? 'border-slate-100 dark:border-slate-800 border-slate-100'
                                         : 'border-slate-50 dark:border-slate-800'
                                 }`}>Status Pengumpulan</h2>
                                 {my_submission ? (
                                     <>
                                         <div className="space-y-6">
                                             {my_submission.is_remedial_open && (
-                                                <div className="p-4 rounded-[6px] bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-xs font-semibold leading-relaxed flex items-start gap-2">
+                                                <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-xs font-semibold leading-relaxed flex items-start gap-2">
                                                     <RotateCcw className="h-4 w-4 shrink-0 mt-0.5" />
                                                     <span>Kesempatan remedial dibuka oleh guru. Silakan kerjakan kembali kuis di sebelah kiri dan kirim jawaban baru.</span>
                                                 </div>
                                             )}
                                             <div className={`flex items-center gap-4 p-5 border ${
                                                 (assignment.instrument_type === 'formative_quiz' || assignment.instrument_type === 'exit_ticket')
-                                                    ? 'rounded-[8px] bg-emerald-500/10 border-emerald-500/20 dark:bg-emerald-950/20 dark:border-emerald-900/30'
+                                                    ? 'rounded-xl bg-emerald-500/10 border-emerald-500/20 dark:bg-emerald-950/20 dark:border-emerald-900/30'
                                                     : 'rounded-3xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30'
                                             }`}>
                                                 <div className={`h-10 w-10 flex items-center justify-center text-white ${
                                                     (assignment.instrument_type === 'formative_quiz' || assignment.instrument_type === 'exit_ticket')
-                                                        ? 'rounded-[6px] bg-emerald-500 shadow-none'
+                                                        ? 'rounded-lg bg-emerald-500 shadow-none'
                                                         : 'rounded-2xl bg-emerald-500 shadow-lg shadow-emerald-200'
                                                 }`}>
                                                     <CheckCircle2 className="h-6 w-6" />
@@ -4193,9 +4204,9 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                         </div>
                                                     )}
                                                      {my_submission?.remedial_history && my_submission.remedial_history.length > 0 && (
-                                                         <div className="pt-4 border-t border-slate-100 dark:border-[#2C2C3A] text-left space-y-2">
+                                                         <div className="pt-4 border-t border-slate-100 dark:border-slate-800 border-slate-100 text-left space-y-2">
                                                              <p className="text-[10px] font-black text-muted-foreground uppercase tracking-wider">Riwayat Remedial:</p>
-                                                             <div className="space-y-1 bg-slate-50 dark:bg-[#101014] p-3 rounded-lg border border-slate-100 dark:border-slate-800">
+                                                             <div className="space-y-1 bg-slate-50 dark:bg-slate-950/40 bg-slate-50 p-3 rounded-lg border border-slate-100 dark:border-slate-800">
                                                                  {my_submission.remedial_history.map((hist: any, hIdx: number) => (
                                                                      <div key={hIdx} className="text-[10px] text-muted-foreground flex justify-between">
                                                                          <span>Percobaan {hist.attempt}:</span>
@@ -4217,8 +4228,8 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                     {Number(displayScore) >= Number(assignment.instrument_config?.pass_threshold || 60) ? (
                                                         <div className={`p-6 border space-y-4 ${
                                                             (assignment.instrument_type === 'formative_quiz' || assignment.instrument_type === 'exit_ticket')
-                                                                ? 'rounded-[8px] bg-emerald-500/10 border-emerald-500/20 dark:bg-emerald-950/20 dark:border-emerald-900/30'
-                                                                : 'rounded-[2.5rem] bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30'
+                                                                ? 'rounded-xl bg-emerald-500/10 border-emerald-500/20 dark:bg-emerald-950/20 dark:border-emerald-900/30'
+                                                                : 'rounded-2xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30'
                                                         }`}>
                                                             <div className="flex items-center gap-3">
                                                                 <div className={`h-6 w-6 flex items-center justify-center text-white ${
@@ -4237,8 +4248,8 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                     ) : (
                                                         <div className={`p-6 border space-y-4 ${
                                                             (assignment.instrument_type === 'formative_quiz' || assignment.instrument_type === 'exit_ticket')
-                                                                ? 'rounded-[8px] bg-rose-500/10 border-rose-500/20 dark:bg-rose-950/20 dark:border-rose-900/30'
-                                                                : 'rounded-[2.5rem] bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/30'
+                                                                ? 'rounded-xl bg-rose-500/10 border-rose-500/20 dark:bg-rose-950/20 dark:border-rose-900/30'
+                                                                : 'rounded-2xl bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/30'
                                                         }`}>
                                                             <div className="flex items-center gap-3">
                                                                 <div className={`h-6 w-6 flex items-center justify-center text-white ${
@@ -4263,7 +4274,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                     <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-3">Umpan Balik Guru:</p>
                                                     <div className={`p-5 border ${
                                                         (assignment.instrument_type === 'formative_quiz' || assignment.instrument_type === 'exit_ticket')
-                                                            ? 'rounded-[8px] bg-slate-50 dark:bg-[#101014] border-slate-200 dark:border-[#2C2C3A]'
+                                                            ? 'rounded-xl bg-slate-50 dark:bg-slate-950/40 bg-slate-50 border-slate-200 dark:border-slate-800 border-slate-100'
                                                             : 'rounded-3xl bg-muted/50 border border-border'
                                                     }`}>
                                                         <p className="text-xs text-slate-600 dark:text-slate-300 italic font-medium leading-relaxed">
@@ -4634,7 +4645,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                         {assignment.instrument_type === 'structured_assignment' && (
                                             <div className="pt-6 border-t border-slate-50 dark:border-slate-800 animate-in slide-in-from-top-4">
                                                 <div className="flex items-center gap-2 mb-6">
-                                                    <FileText className="h-4 w-4 text-[#5E6AD2]" />
+                                                    <FileText className="h-4 w-4 text-primary" />
                                                     <h3 className="text-xs font-black text-foreground uppercase tracking-widest">Hasil Penugasan Terstruktur</h3>
                                                 </div>
                                                 {(() => {
@@ -4644,13 +4655,13 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                         return (
                                                             <div className="space-y-4">
                                                                 {p.answer_text && (
-                                                                    <div className="p-5 rounded-[8px] bg-slate-50 dark:bg-[#101014] border border-slate-200 dark:border-[#2C2C3A]">
+                                                                    <div className="p-5 rounded-xl bg-slate-50 dark:bg-slate-950/40 bg-slate-50 border border-slate-200 dark:border-slate-800 border-slate-100">
                                                                         <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-2">Jawaban Teks:</p>
                                                                         <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium whitespace-pre-wrap">{p.answer_text}</p>
                                                                     </div>
                                                                 )}
                                                                 {my_submission.file_path && (
-                                                                    <a href={`/storage/${my_submission.file_path}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#5E6AD2]/10 text-[#5E6AD2] text-xs font-bold hover:bg-[#5E6AD2]/20 transition">
+                                                                    <a href={`/storage/${my_submission.file_path}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary/10 text-primary text-xs font-bold hover:bg-primary/20 transition">
                                                                         <Download className="h-3.5 w-3.5" /> Lihat Lampiran
                                                                     </a>
                                                                 )}
@@ -4690,8 +4701,8 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                  <div className="space-y-4">
                                                                      <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">Catatan Singkat</p>
                                                                      {(parsed.answers || []).map((ans: any, idx: number) => (
-                                                                         <div key={idx} className="p-4 rounded-xl bg-slate-50 dark:bg-[#101014] border border-slate-200 dark:border-[#2C2C3A] space-y-1">
-                                                                             <p className="text-[10px] font-black text-[#5E6AD2] uppercase tracking-widest">{ans.text || `Pertanyaan ${idx + 1}`}</p>
+                                                                         <div key={idx} className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950/40 bg-slate-50 border border-slate-200 dark:border-slate-800 border-slate-100 space-y-1">
+                                                                             <p className="text-[10px] font-black text-primary uppercase tracking-widest">{ans.text || `Pertanyaan ${idx + 1}`}</p>
                                                                              <p className="text-sm font-semibold text-foreground whitespace-pre-wrap">{ans.answer || '-'}</p>
                                                                          </div>
                                                                      ))}
@@ -4718,8 +4729,8 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                  {Array.isArray(parsed.answers?.reflection_answers) && parsed.answers.reflection_answers.length > 0 ? (
                                                                      <div className="space-y-4">
                                                                          {parsed.answers.reflection_answers.map((ans: any, idx: number) => (
-                                                                             <div key={idx} className="p-4 rounded-xl bg-slate-50 dark:bg-[#101014] border border-slate-200 dark:border-[#2C2C3A] space-y-1">
-                                                                                 <p className="text-[10px] font-black text-[#5E6AD2] uppercase tracking-widest">{ans.question || `Pertanyaan ${idx + 1}`}</p>
+                                                                             <div key={idx} className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950/40 bg-slate-50 border border-slate-200 dark:border-slate-800 border-slate-100 space-y-1">
+                                                                                 <p className="text-[10px] font-black text-primary uppercase tracking-widest">{ans.question || `Pertanyaan ${idx + 1}`}</p>
                                                                                  <p className="text-sm font-semibold text-foreground whitespace-pre-wrap">{ans.answer || '-'}</p>
                                                                              </div>
                                                                          ))}
@@ -4740,7 +4751,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                          {assignment.instrument_type === 'reflective_journal' && (
                                             <div className="pt-6 border-t border-slate-50 dark:border-slate-800 animate-in slide-in-from-top-4">
                                                 <div className="flex items-center gap-2 mb-6">
-                                                    <BookOpen className="h-4 w-4 text-[#5E6AD2]" />
+                                                    <BookOpen className="h-4 w-4 text-primary" />
                                                     <h3 className="text-xs font-black text-foreground uppercase tracking-widest">Jurnal Reflektif Siswa</h3>
                                                 </div>
                                                 {(() => {
@@ -4750,10 +4761,10 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                         return (
                                                             <div className="space-y-4">
                                                                 {(p.answers || []).map((a: any, idx: number) => (
-                                                                    <div key={idx} className="p-5 rounded-[8px] bg-slate-50 dark:bg-[#101014] border border-slate-200 dark:border-[#2C2C3A] space-y-2">
-                                                                        <p className="text-[10px] font-black text-[#5E6AD2] uppercase tracking-widest">Pertanyaan {idx + 1}:</p>
+                                                                    <div key={idx} className="p-5 rounded-xl bg-slate-50 dark:bg-slate-950/40 bg-slate-50 border border-slate-200 dark:border-slate-800 border-slate-100 space-y-2">
+                                                                        <p className="text-[10px] font-black text-primary uppercase tracking-widest">Pertanyaan {idx + 1}:</p>
                                                                         <p className="text-xs font-bold text-slate-700 dark:text-slate-200">{a.question}</p>
-                                                                        <div className="pt-2 border-t border-slate-200 dark:border-[#2C2C3A]">
+                                                                        <div className="pt-2 border-t border-slate-200 dark:border-slate-800 border-slate-100">
                                                                             <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">Jawaban:</p>
                                                                             <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium italic whitespace-pre-wrap">{a.answer || '-'}</p>
                                                                         </div>
@@ -4769,7 +4780,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                         {assignment.instrument_type === 'assignment' && (
                                             <div className="pt-6 border-t border-slate-50 dark:border-slate-800 animate-in slide-in-from-top-4">
                                                 <div className="flex items-center gap-2 mb-6">
-                                                    <FileText className="h-4 w-4 text-[#5E6AD2]" />
+                                                    <FileText className="h-4 w-4 text-primary" />
                                                     <h3 className="text-xs font-black text-foreground uppercase tracking-widest">Hasil Penugasan (Laporan/Studi Kasus)</h3>
                                                 </div>
                                                 {(() => {
@@ -4779,19 +4790,19 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                         return (
                                                             <div className="space-y-4">
                                                                 {p.report_text && (
-                                                                    <div className="p-5 rounded-[8px] bg-slate-50 dark:bg-[#101014] border border-slate-200 dark:border-[#2C2C3A]">
+                                                                    <div className="p-5 rounded-xl bg-slate-50 dark:bg-slate-950/40 bg-slate-50 border border-slate-200 dark:border-slate-800 border-slate-100">
                                                                         <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-2">Laporan / Analisis:</p>
                                                                         <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium whitespace-pre-wrap">{p.report_text}</p>
                                                                     </div>
                                                                 )}
                                                                 {p.analysis_notes && (
-                                                                    <div className="p-5 rounded-[8px] bg-slate-50 dark:bg-[#101014] border border-slate-200 dark:border-[#2C2C3A]">
+                                                                    <div className="p-5 rounded-xl bg-slate-50 dark:bg-slate-950/40 bg-slate-50 border border-slate-200 dark:border-slate-800 border-slate-100">
                                                                         <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-2">Catatan Proses Analisis:</p>
                                                                         <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium whitespace-pre-wrap">{p.analysis_notes}</p>
                                                                     </div>
                                                                 )}
                                                                 {my_submission.file_path && (
-                                                                    <a href={`/storage/${my_submission.file_path}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#5E6AD2]/10 text-[#5E6AD2] text-xs font-bold hover:bg-[#5E6AD2]/20 transition">
+                                                                    <a href={`/storage/${my_submission.file_path}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary/10 text-primary text-xs font-bold hover:bg-primary/20 transition">
                                                                         <Download className="h-3.5 w-3.5" /> Lihat File Jawaban
                                                                     </a>
                                                                 )}
@@ -4814,12 +4825,12 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                         if (p.type === 'concept_map') {
                                                             return (
                                                                 <div className="space-y-6">
-                                                                    <div className="p-5 rounded-[2.5rem] bg-indigo-50/30 dark:bg-indigo-950/10 border border-indigo-100 dark:border-indigo-900/30">
+                                                                    <div className="p-5 rounded-2xl bg-indigo-50/30 dark:bg-indigo-950/10 border border-indigo-100 dark:border-indigo-900/30">
                                                                         <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-1 leading-none">Topik Utama:</p>
                                                                         <p className="text-sm font-black text-foreground">{assignment.instrument_config?.central_topic}</p>
                                                                     </div>
                                                                     {p.submission_type === 'upload' ? (
-                                                                        <div className="relative overflow-hidden rounded-[2.5rem] border border-border bg-slate-50 dark:bg-slate-900 p-6 text-center">
+                                                                        <div className="relative overflow-hidden rounded-2xl border border-border bg-slate-50 dark:bg-slate-900 p-6 text-center">
                                                                             <p className="text-[9px] font-black text-indigo-500 uppercase tracking-widest mb-3 text-left">Foto Peta Konsep Terunggah:</p>
                                                                             {my_submission.file_path ? (
                                                                                 <img 
@@ -4850,7 +4861,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                             <div className="pt-6 border-t border-slate-50 dark:border-slate-800 animate-in slide-in-from-top-4">
                                                 <div className="flex items-center gap-2 mb-6">
                                                     {assignment.instrument_type === 'formative_quiz' ? (
-                                                        <ListChecks className="h-4 w-4 text-[#5E6AD2]" />
+                                                        <ListChecks className="h-4 w-4 text-primary" />
                                                     ) : (
                                                         <Layers className="h-4 w-4 text-rose-500" />
                                                     )}
@@ -4860,7 +4871,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                 </div>
                                                 <div className={
                                                     assignment.instrument_type === 'formative_quiz'
-                                                        ? "p-5 rounded-[8px] bg-slate-50 dark:bg-[#101014] border border-slate-200 dark:border-[#2C2C3A]"
+                                                        ? "p-5 rounded-xl bg-slate-50 dark:bg-slate-950/40 bg-slate-50 border border-slate-200 dark:border-slate-800 border-slate-100"
                                                         : "p-5 rounded-3xl bg-muted/50 border border-border"
                                                 }>
                                                     <p className={`text-xs font-bold leading-relaxed ${
@@ -4876,7 +4887,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                         {assignment.instrument_type === 'formative_quiz' && (assignment.instrument_config?.assessment_mode) === 'checklist' && (
                                             <div className="pt-6 border-t border-slate-50 dark:border-slate-800 animate-in slide-in-from-top-4">
                                                 <div className="flex items-center gap-2 mb-6">
-                                                    <CheckSquare className="h-4 w-4 text-[#5E6AD2]" />
+                                                    <CheckSquare className="h-4 w-4 text-primary" />
                                                     <h3 className="text-xs font-black text-foreground uppercase tracking-widest">Hasil Ceklis Jawaban</h3>
                                                 </div>
                                                 {(() => {
@@ -4976,7 +4987,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                         </div>
                     </div>
 
-                    <div className="rounded-[2.5rem] border border-border bg-white dark:bg-slate-900 p-8 shadow-sm">
+                    <div className="rounded-2xl border border-border bg-white dark:bg-slate-900 p-8 shadow-sm">
                             <CommentSection 
                                 assignmentId={assignment.id} 
                                 comments={comments} 
@@ -5151,7 +5162,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                         </h4>
                                         <div className="grid gap-6">
                                             {(assignment.instrument_config?.questions || []).map((q: any, idx: number) => (
-                                                <div key={q.id} className="p-6 rounded-[2.5rem] bg-slate-50/50 dark:bg-slate-800/20 border border-border space-y-4">
+                                                <div key={q.id} className="p-6 rounded-2xl bg-slate-50/50 dark:bg-slate-800/20 border border-border space-y-4">
                                                     <div className="flex items-start justify-between gap-4">
                                                         <div className="flex-1 space-y-1">
                                                             <span className="text-[9px] font-black text-indigo-500 uppercase tracking-widest">Pertanyaan 0{idx + 1}</span>
@@ -5403,7 +5414,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                         <h4 className="text-xs font-black text-foreground uppercase tracking-widest">Hasil Karya Siswa</h4>
                                     </div>
                                     
-                                    <div className="rounded-[2.5rem] bg-muted/40 border border-slate-100 dark:border-slate-700 p-8 min-h-[400px] flex flex-col items-center justify-center text-center">
+                                    <div className="rounded-2xl bg-muted/40 border border-slate-100 dark:border-slate-700 p-8 min-h-[400px] flex flex-col items-center justify-center text-center">
                                         {submissionMap[selectedStudent.id] ? (
                                             <div className="w-full space-y-6">
                                                 {/* File/Link Preview Logic */}
@@ -5542,7 +5553,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                         {allItems.map(item => {
                                                             const isChecked = projectGradingData.checklist[item.key] ?? item.auto;
                                                             return (
-                                                                <label key={item.key} className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer select-none transition-all ${isChecked ? 'border-indigo-400 bg-indigo-50/50 dark:bg-indigo-950/20' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-[#1B1B25] hover:border-indigo-300'}`}>
+                                                                <label key={item.key} className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer select-none transition-all ${isChecked ? 'border-indigo-400 bg-indigo-50/50 dark:bg-indigo-950/20' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-[#0b0f19]/30 bg-white/70 backdrop-blur-md hover:border-indigo-300'}`}>
                                                                     <input type="checkbox" checked={isChecked}
                                                                         onChange={(e) => {
                                                                             const newChecklist = { ...projectGradingData.checklist, [item.key]: e.target.checked };
@@ -5608,7 +5619,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                     </div>
                                 )}
                                 {/* Portfolio Header */}
-                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-amber-50 dark:bg-amber-950/20 p-8 rounded-[2.5rem] border border-amber-100 dark:border-amber-900/30">
+                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-amber-50 dark:bg-amber-950/20 p-8 rounded-2xl border border-amber-100 dark:border-amber-900/30">
                                     <div className="flex items-center gap-4">
                                         <div className="h-14 w-14 rounded-2xl bg-amber-500 text-white flex items-center justify-center shadow-xl shadow-amber-200 dark:shadow-none">
                                             <Briefcase className="h-8 w-8" />
@@ -5986,7 +5997,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
             {/* Grading Modal (Standard Quiz/Essay) */}
             {selectedSubmission && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-md p-4 animate-in fade-in duration-300">
-                    <div className={`w-full max-h-[95vh] overflow-hidden rounded-[2.5rem] bg-white dark:bg-slate-900 shadow-2xl border border-white/20 animate-in zoom-in-95 duration-300 flex gap-0 ${
+                    <div className={`w-full max-h-[95vh] overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-2xl border border-white/20 animate-in zoom-in-95 duration-300 flex gap-0 ${
                         (() => {
                             try {
                                 const p = JSON.parse(selectedSubmission.content || '');
@@ -6285,7 +6296,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                         return (
                                             <div className="space-y-6 animate-in fade-in duration-300">
                                                 <div className="p-6 rounded-[2rem] bg-white dark:bg-slate-900 border border-border shadow-sm space-y-4">
-                                                    <p className="text-[10px] font-black text-[#5E6AD2] uppercase tracking-widest leading-none">Jawaban LKPD Murid</p>
+                                                    <p className="text-[10px] font-black text-primary uppercase tracking-widest leading-none">Jawaban LKPD Murid</p>
                                                     <p className="text-sm font-semibold text-foreground whitespace-pre-wrap leading-relaxed">
                                                         {parsed.answer_text || '(Tidak ada jawaban teks)'}
                                                     </p>
@@ -6372,7 +6383,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                 <div className="p-6 rounded-[2rem] bg-white dark:bg-slate-900 border border-border shadow-sm space-y-4">
                                                     <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest leading-none mb-3">Refleksi Portofolio</p>
                                                     {(parsed.reflections || []).map((ref: any, idx: number) => (
-                                                        <div key={idx} className="p-4 rounded-xl bg-slate-50 dark:bg-[#101014] border border-slate-200 dark:border-[#2C2C3A] space-y-1">
+                                                        <div key={idx} className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950/40 bg-slate-50 border border-slate-200 dark:border-slate-800 border-slate-100 space-y-1">
                                                             <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Refleksi {idx + 1}</p>
                                                             <p className="text-sm font-semibold text-foreground whitespace-pre-wrap">{ref.answer || '-'}</p>
                                                         </div>
@@ -6400,7 +6411,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                 <div className="p-6 rounded-[2rem] bg-white dark:bg-slate-900 border border-border shadow-sm space-y-4">
                                                     <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest leading-none mb-3">Refleksi Jurnal Murid</p>
                                                     {(parsed.answers || []).map((ans: any, idx: number) => (
-                                                        <div key={idx} className="p-4 rounded-xl bg-slate-50 dark:bg-[#101014] border border-slate-200 dark:border-[#2C2C3A] space-y-1">
+                                                        <div key={idx} className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950/40 bg-slate-50 border border-slate-200 dark:border-slate-800 border-slate-100 space-y-1">
                                                             <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">{ans.question || `Pertanyaan ${idx + 1}`}</p>
                                                             <p className="text-sm font-semibold text-foreground whitespace-pre-wrap">{ans.answer || '-'}</p>
                                                         </div>
@@ -6416,19 +6427,19 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                             <div className="space-y-8">
                                                 <div className={`flex items-center justify-between p-6 ${
                                                     parsed.type === 'formative_quiz'
-                                                        ? 'rounded-[8px] bg-[#5E6AD2]/10 border border-[#5E6AD2]/20 text-[#5E6AD2]'
+                                                        ? 'rounded-xl bg-primary/10 border border-primary/20 text-primary'
                                                         : 'rounded-[2rem] bg-rose-50/50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/30 text-rose-500'
                                                 }`}>
                                                     <div>
                                                         <h4 className={`text-xs font-black uppercase tracking-widest leading-none mb-1 ${
                                                             parsed.type === 'formative_quiz'
-                                                                ? 'text-[#5E6AD2] dark:text-[#6E79D6]'
+                                                                ? 'text-primary dark:text-[#6E79D6]'
                                                                 : 'text-rose-700 dark:text-rose-450'
                                                         }`}>Skor Sistem</h4>
                                                         <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Objektif (Pilihan Ganda & Isian)</p>
                                                     </div>
                                                     <span className={`text-3xl font-black tracking-tighter ${
-                                                        parsed.type === 'formative_quiz' ? 'text-[#5E6AD2]' : 'text-rose-500'
+                                                        parsed.type === 'formative_quiz' ? 'text-primary' : 'text-rose-500'
                                                     }`}>{systemScore}</span>
                                                 </div>
 
@@ -6465,7 +6476,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
 
                                                                 <div className={`ml-8 p-5 border space-y-3 ${
                                                                     parsed.type === 'formative_quiz'
-                                                                        ? 'rounded-[8px] bg-slate-50 dark:bg-[#101014] border-slate-200 dark:border-[#2C2C3A]'
+                                                                        ? 'rounded-xl bg-slate-50 dark:bg-slate-950/40 bg-slate-50 border-slate-200 dark:border-slate-800 border-slate-100'
                                                                         : 'rounded-3xl bg-muted/50 border border-border'
                                                                 }`}>
                                                                     <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Jawaban Murid:</p>
@@ -6520,8 +6531,8 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                 <div className="space-y-4">
                                                     <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">Exit Ticket - Catatan Singkat</p>
                                                     {(parsed.answers || []).map((ans: any, idx: number) => (
-                                                        <div key={idx} className="p-4 rounded-xl bg-slate-50 dark:bg-[#101014] border border-slate-200 dark:border-[#2C2C3A] space-y-1 animate-in fade-in duration-300">
-                                                            <p className="text-[10px] font-black text-[#5E6AD2] uppercase tracking-widest">{ans.text || `Pertanyaan ${idx + 1}`}</p>
+                                                        <div key={idx} className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950/40 bg-slate-50 border border-slate-200 dark:border-slate-800 border-slate-100 space-y-1 animate-in fade-in duration-300">
+                                                            <p className="text-[10px] font-black text-primary uppercase tracking-widest">{ans.text || `Pertanyaan ${idx + 1}`}</p>
                                                             <p className="text-sm font-semibold text-foreground whitespace-pre-wrap">{ans.answer || '-'}</p>
                                                         </div>
                                                     ))}
@@ -6548,8 +6559,8 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                 {Array.isArray(parsed.answers?.reflection_answers) && parsed.answers.reflection_answers.length > 0 ? (
                                                     <div className="space-y-4">
                                                         {parsed.answers.reflection_answers.map((ans: any, idx: number) => (
-                                                            <div key={idx} className="p-4 rounded-xl bg-slate-50 dark:bg-[#101014] border border-slate-200 dark:border-[#2C2C3A] space-y-1">
-                                                                <p className="text-[10px] font-black text-[#5E6AD2] uppercase tracking-widest">{ans.question || `Pertanyaan ${idx + 1}`}</p>
+                                                            <div key={idx} className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950/40 bg-slate-50 border border-slate-200 dark:border-slate-800 border-slate-100 space-y-1">
+                                                                <p className="text-[10px] font-black text-primary uppercase tracking-widest">{ans.question || `Pertanyaan ${idx + 1}`}</p>
                                                                 <p className="text-sm font-semibold text-foreground whitespace-pre-wrap">{ans.answer || '-'}</p>
                                                             </div>
                                                         ))}
@@ -6567,7 +6578,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                 
                                 return (
                                     <div className="space-y-6">
-                                        <div className="p-8 rounded-[2.5rem] bg-muted/50 border border-border">
+                                        <div className="p-8 rounded-2xl bg-muted/50 border border-border">
                                             <p className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-4">Isi Jawaban:</p>
                                             {(() => {
                                                 try {
@@ -6633,8 +6644,8 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                     const p = JSON.parse(selectedSubmission.content || '');
                                     return p.type === 'concept_map'
                                         ? 'w-full lg:w-[400px] p-8 border-t lg:border-t-0 lg:border-l border-slate-150 dark:border-slate-800 h-full flex flex-col shrink-0 overflow-hidden bg-slate-50/50 dark:bg-slate-900/30'
-                                        : 'w-full md:w-80 p-8 rounded-[2.5rem] border max-h-[70vh] pr-2 space-y-6';
-                                } catch { return 'w-full md:w-80 p-8 rounded-[2.5rem] border max-h-[70vh] pr-2 space-y-6'; }
+                                        : 'w-full md:w-80 p-8 rounded-2xl border max-h-[70vh] pr-2 space-y-6';
+                                } catch { return 'w-full md:w-80 p-8 rounded-2xl border max-h-[70vh] pr-2 space-y-6'; }
                             })()
                         }`}>
                             <form 

@@ -1,4 +1,4 @@
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, Area, AreaChart } from 'recharts';
 
 interface AssignmentScore {
     id: number;
@@ -31,7 +31,13 @@ export default function PerformanceTrendChart({ data }: { data: AssignmentScore[
     return (
         <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 10 }}>
+                <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 10 }}>
+                    <defs>
+                        <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#4F46E5" stopOpacity={0.2} />
+                            <stop offset="95%" stopColor="#4F46E5" stopOpacity={0.01} />
+                        </linearGradient>
+                    </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.4} />
                     <XAxis
                         dataKey="name"
@@ -51,6 +57,9 @@ export default function PerformanceTrendChart({ data }: { data: AssignmentScore[
                             borderRadius: 12,
                             border: '1px solid hsl(var(--border))',
                             fontSize: 12,
+                            backgroundColor: 'hsl(var(--card))',
+                            color: 'hsl(var(--foreground))',
+                            boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
                         }}
                     />
                     <ReferenceLine
@@ -65,16 +74,17 @@ export default function PerformanceTrendChart({ data }: { data: AssignmentScore[
                             fill: 'hsl(var(--destructive))',
                         }}
                     />
-                    <Line
+                    <Area
                         type="monotone"
                         dataKey="avg"
-                        stroke="hsl(var(--primary))"
+                        stroke="#4F46E5"
                         strokeWidth={2.5}
-                        dot={{ r: 4, fill: 'hsl(var(--primary))', strokeWidth: 2, stroke: 'hsl(var(--background))' }}
-                        activeDot={{ r: 6 }}
+                        fill="url(#areaGradient)"
+                        dot={{ r: 5, fill: '#4F46E5', strokeWidth: 2, stroke: 'hsl(var(--background))' }}
+                        activeDot={{ r: 7, fill: '#4338CA', stroke: 'hsl(var(--background))', strokeWidth: 3 }}
                         connectNulls
                     />
-                </LineChart>
+                </AreaChart>
             </ResponsiveContainer>
         </div>
     );

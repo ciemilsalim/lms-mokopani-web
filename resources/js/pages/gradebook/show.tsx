@@ -85,7 +85,7 @@ export default function GradebookShow({ summative_headers, other_headers, gradeD
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`Alur Asesmen Detail – LMS Mokopani`} />
 
-            <div className="flex h-full flex-1 flex-col gap-6 p-6">
+            <div className="flex h-full flex-1 flex-col gap-6 p-6 fade-in">
                 {/* Header Actions */}
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
@@ -149,19 +149,19 @@ export default function GradebookShow({ summative_headers, other_headers, gradeD
                 </div>
 
                 {/* Main Table */}
-                <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm dark:shadow-none">
-                    <div className="overflow-x-auto">
+                <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+                    <div className="overflow-x-auto scrollbar-thin">
                         <table className="w-full border-collapse text-left text-sm">
                             <thead>
-                                <tr className="border-b border-border bg-muted/60 dark:bg-muted/20">
-                                    <th className="sticky left-0 z-10 bg-muted/60 dark:bg-muted/20 px-6 py-5 font-bold text-foreground min-w-[200px]">Nama Siswa</th>
+                                <tr className="border-b border-border bg-slate-50/80 dark:bg-slate-900/50">
+                                    <th className="sticky left-0 z-10 bg-slate-50/80 dark:bg-slate-900/50 px-6 py-4 text-[11px] font-bold uppercase tracking-widest text-muted-foreground min-w-[200px]">Nama Siswa</th>
                                     
                                     {viewMode === 'summative' ? (
                                         summative_headers.map(h => (
-                                            <th key={h.id} className="px-6 py-5 font-bold text-foreground min-w-[140px] text-center border-l border-border">
+                                            <th key={h.id} className="px-5 py-4 min-w-[140px] text-center border-l border-border">
                                                 <div className="flex flex-col gap-0.5" title={h.tp_desc || ''}>
-                                                    <span className="truncate max-w-[120px] mx-auto">{h.title}</span>
-                                                    <span className="text-[10px] font-bold text-primary uppercase">{h.tp}</span>
+                                                    <span className="truncate max-w-[120px] mx-auto text-[11px] font-bold text-foreground">{h.title}</span>
+                                                    <span className="text-[10px] font-bold text-primary uppercase tracking-wider">{h.tp}</span>
                                                     {h.tp_desc && (
                                                         <span className="text-[9px] font-medium text-muted-foreground line-clamp-2 max-w-[130px] mx-auto leading-tight">{h.tp_desc}</span>
                                                     )}
@@ -170,10 +170,10 @@ export default function GradebookShow({ summative_headers, other_headers, gradeD
                                         ))
                                     ) : (
                                         other_headers.map(h => (
-                                            <th key={h.id} className="px-6 py-5 font-bold text-foreground min-w-[140px] text-center border-l border-border">
+                                            <th key={h.id} className="px-5 py-4 min-w-[140px] text-center border-l border-border">
                                                 <div className="flex flex-col gap-0.5">
-                                                    <span className="truncate max-w-[120px] mx-auto">{h.title}</span>
-                                                    <span className={`text-[10px] font-bold uppercase ${h.type === 'initial' ? 'text-primary' : 'text-warning'}`}>
+                                                    <span className="truncate max-w-[120px] mx-auto text-[11px] font-bold text-foreground">{h.title}</span>
+                                                    <span className={`text-[10px] font-bold uppercase tracking-wider ${h.type === 'initial' ? 'text-primary' : 'text-warning'}`}>
                                                         {h.type}
                                                     </span>
                                                 </div>
@@ -183,9 +183,9 @@ export default function GradebookShow({ summative_headers, other_headers, gradeD
 
                                     {viewMode === 'summative' && (
                                         <>
-                                            <th className="px-6 py-5 font-bold text-primary min-w-[120px] text-center border-l border-border bg-primary/5">Sumatif Akhir</th>
-                                            <th className="px-6 py-5 font-bold text-primary min-w-[100px] text-center border-l border-border bg-primary/5">Nilai Akhir</th>
-                                            <th className="px-6 py-5 font-bold text-success min-w-[300px] border-l border-border bg-success/5">Capaian Kompetensi (Rapor)</th>
+                                            <th className="px-5 py-4 text-[11px] font-bold uppercase tracking-widest text-primary min-w-[120px] text-center border-l border-border bg-primary/5">Sumatif Akhir</th>
+                                            <th className="px-5 py-4 text-[11px] font-bold uppercase tracking-widest text-primary min-w-[100px] text-center border-l border-border bg-primary/5">Nilai Akhir</th>
+                                            <th className="px-5 py-4 text-[11px] font-bold uppercase tracking-widest text-success min-w-[300px] border-l border-border bg-success/5">Capaian Kompetensi (Rapor)</th>
                                         </>
                                     )}
                                 </tr>
@@ -198,9 +198,9 @@ export default function GradebookShow({ summative_headers, other_headers, gradeD
                                         </td>
                                     </tr>
                                 ) : (
-                                    filteredData.map((d) => (
-                                        <tr key={d.student_id} className="hover:bg-muted/30 dark:hover:bg-muted/10 transition-colors">
-                                            <td className="sticky left-0 z-10 bg-card px-6 py-4 font-medium">
+                                    filteredData.map((d, idx) => (
+                                        <tr key={d.student_id} className={`group transition-colors hover:bg-primary/[0.03] dark:hover:bg-primary/[0.06] ${idx % 2 === 1 ? 'bg-slate-50/40 dark:bg-slate-900/20' : ''}`}>
+                                            <td className={`sticky left-0 z-10 px-6 py-4 font-medium ${idx % 2 === 1 ? 'bg-slate-50/40 dark:bg-slate-900/20' : 'bg-card'}`}>
                                                 <div className="flex items-center gap-3">
                                                     <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary dark:bg-muted/50 dark:text-foreground/80">
                                                         <User className="h-4 w-4" />
@@ -246,9 +246,12 @@ export default function GradebookShow({ summative_headers, other_headers, gradeD
                                                         {Math.round((d.average + (localScores[d.student_id] || 0)) / ((localScores[d.student_id] ?? 0) > 0 ? 2 : 1))}
                                                     </td>
                                                     <td className="px-6 py-4 border-l border-border bg-success/5">
-                                                        <p className="text-[11px] leading-relaxed text-foreground/90 font-medium italic dark:text-slate-200">
-                                                            {d.description}
-                                                        </p>
+                                                        <div className="flex items-start gap-2.5 rounded-xl bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-100/60 dark:border-indigo-800/30 p-3">
+                                                            <Info className="h-4 w-4 shrink-0 text-indigo-500 dark:text-indigo-400 mt-0.5" />
+                                                            <p className="text-[11px] leading-relaxed text-indigo-800 dark:text-indigo-300 font-medium italic">
+                                                                {d.description}
+                                                            </p>
+                                                        </div>
                                                     </td>
                                                 </>
                                             )}

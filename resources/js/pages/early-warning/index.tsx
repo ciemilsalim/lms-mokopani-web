@@ -24,7 +24,7 @@ export default function EarlyWarningIndex({ teachings }: EarlyWarningIndexProps)
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Early Warning System – LMS Mokopani" />
 
-            <div className="flex h-full flex-1 flex-col gap-6 p-6">
+            <div className="flex h-full flex-1 flex-col gap-6 p-6 fade-in">
                 <div className="flex flex-col gap-1">
                     <h1 className="text-2xl font-bold text-foreground">Early Warning System</h1>
                     <p className="text-sm text-muted-foreground">Pantau siswa berisiko berdasarkan akademik, disiplin, pemahaman, absensi, dan diagnostik</p>
@@ -41,7 +41,7 @@ export default function EarlyWarningIndex({ teachings }: EarlyWarningIndexProps)
                             <Link
                                 key={`${t.subject_id}-${t.class_id}`}
                                 href={route('early-warning.show', [t.subject_id, t.class_id])}
-                                className="group relative overflow-hidden rounded-2xl border border-border bg-card p-6 shadow-sm transition-all hover:border-rose-400 hover:shadow-xl hover:shadow-rose-500/10"
+                                className="group card-hover relative overflow-hidden rounded-2xl border border-border bg-card p-6 shadow-sm transition-all hover:border-rose-400 hover:shadow-xl hover:shadow-rose-500/10"
                             >
                                 <div className="flex items-center justify-between mb-4">
                                     <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-rose-100 text-rose-600 transition-colors group-hover:bg-rose-600 group-hover:text-white dark:bg-rose-900/30">

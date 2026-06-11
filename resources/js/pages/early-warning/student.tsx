@@ -32,9 +32,9 @@ const iconMap: Record<string, any> = {
 };
 
 const levelConfig: Record<string, { label: string; class: string }> = {
-    high:   { label: 'Tinggi', class: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border-red-200 dark:border-red-900' },
-    medium: { label: 'Sedang', class: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border-amber-200 dark:border-amber-900' },
-    low:    { label: 'Rendah', class: 'bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400 border-sky-200 dark:border-sky-900' },
+    high:   { label: 'Tinggi', class: 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400 border-l-4 border-l-red-500' },
+    medium: { label: 'Sedang', class: 'bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400 border-l-4 border-l-amber-500' },
+    low:    { label: 'Rendah', class: 'bg-sky-50 text-sky-700 dark:bg-sky-900/20 dark:text-sky-400 border-l-4 border-l-sky-500' },
 };
 
 export default function EarlyWarningStudent({ student, subject, flags }: EarlyWarningStudentProps) {
@@ -42,7 +42,7 @@ export default function EarlyWarningStudent({ student, subject, flags }: EarlyWa
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`Early Warning – ${student.name} – LMS Mokopani`} />
 
-            <div className="flex h-full flex-1 flex-col gap-6 p-6">
+            <div className="flex h-full flex-1 flex-col gap-6 p-6 fade-in">
                 <Link
                     href={route('early-warning.index')}
                     className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary transition w-fit"
@@ -51,7 +51,7 @@ export default function EarlyWarningStudent({ student, subject, flags }: EarlyWa
                     Kembali
                 </Link>
 
-                <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
+                <div className="rounded-2xl border border-border bg-card p-6 shadow-sm border-l-4 border-l-primary">
                     <div className="flex items-center gap-4">
                         <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
                             <User className="h-7 w-7" />
@@ -64,7 +64,7 @@ export default function EarlyWarningStudent({ student, subject, flags }: EarlyWa
                 </div>
 
                 {flags.length === 0 ? (
-                    <div className="rounded-3xl border border-border bg-card p-12 text-center shadow-sm">
+                    <div className="rounded-2xl border border-border bg-card p-12 text-center shadow-sm">
                         <GraduationCap className="h-16 w-16 mx-auto mb-4 text-emerald-500 opacity-50" />
                         <h3 className="text-lg font-bold text-emerald-600">Siswa dalam kondisi baik</h3>
                         <p className="text-sm text-muted-foreground mt-2">Tidak ada indikator risiko yang terdeteksi untuk siswa ini.</p>
@@ -75,7 +75,7 @@ export default function EarlyWarningStudent({ student, subject, flags }: EarlyWa
                             const cfg = levelConfig[f.level] || levelConfig.low;
                             const Icon = iconMap[f.icon] || AlertTriangle;
                             return (
-                                <div key={i} className={`rounded-3xl border-2 p-6 shadow-sm ${cfg.class}`}>
+                                <div key={i} className={`rounded-2xl border border-border p-6 shadow-sm ${cfg.class}`}>
                                     <div className="flex items-start gap-4">
                                         <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/50">
                                             <Icon className="h-6 w-6" />

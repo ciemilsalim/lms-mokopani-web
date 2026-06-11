@@ -29,7 +29,7 @@
 
     --color-primary: var(--primary);
     --color-primary-foreground: var(--primary-foreground);
-    --color-primary-hover: #4E5BBF;
+    --color-primary-hover: #4338CA;
 
     --color-secondary: var(--secondary);
     --color-secondary-foreground: var(--secondary-foreground);
@@ -62,71 +62,71 @@
 }
 
 :root {
-    /* Violet Issue - Light Mode */
-    --background: #F8F8FC;
-    --foreground: #1B1B25;
+    /* EduAdmin Theme - Light Mode */
+    --background: #F8FAFC;
+    --foreground: #0F172A;
     --card: #FFFFFF;
-    --card-foreground: #1B1B25;
+    --card-foreground: #0F172A;
     --popover: #FFFFFF;
-    --popover-foreground: #1B1B25;
-    --primary: #5E6AD2;
+    --popover-foreground: #0F172A;
+    --primary: #4F46E5;
     --primary-foreground: #FFFFFF;
-    --secondary: #F1F1F4;
-    --secondary-foreground: #1B1B25;
-    --muted: #F1F1F4;
-    --muted-foreground: #8A8F98;
-    --accent: rgba(94, 106, 210, 0.08);
-    --accent-foreground: #5E6AD2;
-    --destructive: #EB5757;
+    --secondary: #F1F5F9;
+    --secondary-foreground: #0F172A;
+    --muted: #F1F5F9;
+    --muted-foreground: #64748B;
+    --accent: rgba(79, 70, 229, 0.08);
+    --accent-foreground: #4F46E5;
+    --destructive: #EF4444;
     --destructive-foreground: #FFFFFF;
-    --border: #E2E2EA;
-    --input: #F1F1F4;
-    --ring: rgba(94, 106, 210, 0.2);
+    --border: #E2E8F0;
+    --input: #F1F5F9;
+    --ring: rgba(79, 70, 229, 0.2);
 
     --radius: 0.5rem;
 
-    /* Sidebar Light - clean white with violet accents */
+    /* Sidebar Light - White and Indigo accents */
     --sidebar-background: #FFFFFF;
-    --sidebar-foreground: #1B1B25;
-    --sidebar-primary: #5E6AD2;
+    --sidebar-foreground: #475569;
+    --sidebar-primary: #4F46E5;
     --sidebar-primary-foreground: #FFFFFF;
-    --sidebar-accent: rgba(94, 106, 210, 0.06);
-    --sidebar-accent-foreground: #5E6AD2;
-    --sidebar-border: #E2E2EA;
-    --sidebar-ring: rgba(94, 106, 210, 0.2);
+    --sidebar-accent: rgba(79, 70, 229, 0.05);
+    --sidebar-accent-foreground: #4F46E5;
+    --sidebar-border: #E2E8F0;
+    --sidebar-ring: rgba(79, 70, 229, 0.2);
 }
 
 .dark {
-    /* Violet Issue - Dark Mode */
-    --background: #101014;
-    --foreground: #F1F1F4;
-    --card: #1B1B25;
-    --card-foreground: #F1F1F4;
-    --popover: #1F1F2E;
-    --popover-foreground: #F1F1F4;
-    --primary: #5E6AD2;
+    /* EduAdmin Theme - Dark Mode */
+    --background: #0B0F19;
+    --foreground: #F1F5F9;
+    --card: #111827;
+    --card-foreground: #F1F5F9;
+    --popover: #1F2937;
+    --popover-foreground: #F1F5F9;
+    --primary: #6366F1;
     --primary-foreground: #FFFFFF;
-    --secondary: #1F1F2E;
-    --secondary-foreground: #F1F1F4;
-    --muted: #1B1B25;
-    --muted-foreground: #8A8F98;
-    --accent: rgba(94, 106, 210, 0.1);
-    --accent-foreground: #5E6AD2;
-    --destructive: #EB5757;
+    --secondary: #1F2937;
+    --secondary-foreground: #F1F5F9;
+    --muted: #1F2937;
+    --muted-foreground: #9CA3AF;
+    --accent: rgba(99, 102, 241, 0.15);
+    --accent-foreground: #6366F1;
+    --destructive: #EF4444;
     --destructive-foreground: #FFFFFF;
-    --border: #2C2C3A;
-    --input: #1B1B25;
-    --ring: rgba(94, 106, 210, 0.15);
+    --border: #1E293B;
+    --input: #111827;
+    --ring: rgba(99, 102, 241, 0.3);
 
     /* Sidebar Dark */
-    --sidebar-background: #1B1B25;
-    --sidebar-foreground: #8A8F98;
-    --sidebar-primary: #5E6AD2;
+    --sidebar-background: #111827;
+    --sidebar-foreground: #9CA3AF;
+    --sidebar-primary: #6366F1;
     --sidebar-primary-foreground: #FFFFFF;
-    --sidebar-accent: #1F1F2E;
-    --sidebar-accent-foreground: #F1F1F4;
-    --sidebar-border: #2C2C3A;
-    --sidebar-ring: rgba(94, 106, 210, 0.15);
+    --sidebar-accent: rgba(99, 102, 241, 0.08);
+    --sidebar-accent-foreground: #818CF8;
+    --sidebar-border: #1E293B;
+    --sidebar-ring: rgba(99, 102, 241, 0.3);
 }
 
 @layer base {
@@ -256,3 +256,39 @@
 .dark .ql-snow.ql-toolbar .ql-picker-label.ql-active {
     color: #7367f0 !important;
 }
+
+/* Custom utilities from EduAdmin template */
+.scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+}
+.scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.fade-in {
+    animation: fadeIn 0.4s ease-out;
+}
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.card-hover {
+    transition: all 0.2s ease;
+}
+.card-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08);
+}
+

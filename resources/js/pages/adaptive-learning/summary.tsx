@@ -163,7 +163,7 @@ export default function AdaptiveSummary({ subject, student, summary, non_cogniti
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`Diagnostik ${subject.name} – LMS Mokopani`} />
 
-            <div className="flex h-full flex-1 flex-col gap-6 p-6">
+            <div className="flex h-full flex-1 flex-col gap-6 p-6 fade-in">
                 <Link
                     href={route('adaptive-learning.index')}
                     className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary transition w-fit"
@@ -172,9 +172,9 @@ export default function AdaptiveSummary({ subject, student, summary, non_cogniti
                     Kembali
                 </Link>
 
-                <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
+                <div className="rounded-2xl border border-border bg-card p-6 shadow-sm border-l-4 border-l-violet-500">
                     <div className="flex items-center gap-4">
-                        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-100 text-violet-600">
+                        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-100 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400">
                             <Brain className="h-7 w-7" />
                         </div>
                         <div>
@@ -194,7 +194,7 @@ export default function AdaptiveSummary({ subject, student, summary, non_cogniti
                 </div>
 
                 {!summary.has_diagnostic ? (
-                    <div className="rounded-3xl border border-border bg-card p-12 text-center shadow-sm">
+                    <div className="rounded-2xl border border-border bg-card p-12 text-center shadow-sm">
                         <Brain className="h-16 w-16 mx-auto mb-4 text-muted-foreground opacity-30" />
                         <h3 className="text-lg font-bold text-muted-foreground">Belum ada diagnostik</h3>
                         <p className="text-sm text-muted-foreground mt-2">Siswa belum mengerjakan asesmen diagnostik untuk mata pelajaran ini.</p>
@@ -202,7 +202,7 @@ export default function AdaptiveSummary({ subject, student, summary, non_cogniti
                 ) : (
                     <div className="grid gap-6">
                         {summary.results.map((result, idx) => (
-                            <div key={result.id} className="rounded-3xl border border-border bg-card p-6 shadow-sm">
+                            <div key={result.id} className="rounded-2xl border border-border bg-card p-6 shadow-sm">
                                 <div className="flex items-center justify-between mb-4">
                                     <div className="flex items-center gap-3">
                                         <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${
@@ -262,7 +262,7 @@ export default function AdaptiveSummary({ subject, student, summary, non_cogniti
                 )}
 
                 {/* Profil Non-Kognitif */}
-                <div className="rounded-3xl border border-border bg-card p-6 shadow-sm mt-2">
+                <div className="rounded-2xl border border-border bg-card p-6 shadow-sm mt-2">
                     <div className="flex items-center gap-3 mb-6">
                         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-pink-100 text-pink-600">
                             <Heart className="h-5 w-5" />
@@ -322,7 +322,7 @@ export default function AdaptiveSummary({ subject, student, summary, non_cogniti
                         </div>
                     )}
                 </div>                {/* Strategi Diferensiasi PPA 2026 */}
-                <div className="rounded-3xl border border-border bg-card p-6 shadow-sm mt-2 mb-8">
+                <div className="rounded-2xl border border-border bg-card p-6 shadow-sm mt-2 mb-8">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
                         <div className="flex items-center gap-3">
                             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 text-blue-600">

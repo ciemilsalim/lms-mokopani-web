@@ -148,12 +148,12 @@ const statCards = (stats: DashboardStats, role: string) => {
     return cards.filter(c => c.roles.includes(role));
 };
 
-const colorMap: Record<string, { hex: string; bg: string; text: string }> = {
-    primary: { hex: '#7367f0', bg: 'bg-[#7367f0]/10', text: 'text-[#7367f0]' },
-    success: { hex: '#28c76f', bg: 'bg-[#28c76f]/10', text: 'text-[#28c76f]' },
-    info: { hex: '#00cfe8', bg: 'bg-[#00cfe8]/10', text: 'text-[#00cfe8]' },
-    warning: { hex: '#ff9f43', bg: 'bg-[#ff9f43]/10', text: 'text-[#ff9f43]' },
-    destructive: { hex: '#ea5455', bg: 'bg-[#ea5455]/10', text: 'text-[#ea5455]' },
+const colorMap: Record<string, { hex: string; bg: string; text: string; trendText: string }> = {
+    primary: { hex: '#4F46E5', bg: 'bg-indigo-50 dark:bg-indigo-950/30', text: 'text-indigo-600 dark:text-indigo-400', trendText: 'text-emerald-600' },
+    success: { hex: '#10B981', bg: 'bg-emerald-50 dark:bg-emerald-950/30', text: 'text-emerald-600 dark:text-emerald-400', trendText: 'text-emerald-600' },
+    info: { hex: '#0EA5E9', bg: 'bg-sky-50 dark:bg-sky-950/30', text: 'text-sky-600 dark:text-sky-400', trendText: 'text-emerald-600' },
+    warning: { hex: '#F59E0B', bg: 'bg-amber-50 dark:bg-amber-950/30', text: 'text-amber-600 dark:text-amber-400', trendText: 'text-emerald-600' },
+    destructive: { hex: '#F43F5E', bg: 'bg-rose-50 dark:bg-rose-950/30', text: 'text-rose-600 dark:text-rose-400', trendText: 'text-rose-600' },
 };
 
 const activityColorMap: Record<string, string> = {
@@ -230,7 +230,7 @@ export default function Dashboard({ stats, identity, subjects, recentActivities,
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Dashboard - LMS Mokopani" />
 
-            <div className="space-y-6">
+            <div className="space-y-6 fade-in">
                 {/* Welcome Banner + Identity */}
                 <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-primary/90 via-primary to-primary/70 p-6 text-white shadow-sm">
                     <div className="relative z-10 flex items-center justify-between">
@@ -298,25 +298,28 @@ export default function Dashboard({ stats, identity, subjects, recentActivities,
                     </div>
                 )}
 
-                {/* Stat Cards - Vuexy Style */}
+                {/* Stat Cards - EduAdmin Style */}
                 <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-6">
                     {cards.map((card) => {
                         const Icon = card.icon;
-                        const c = colorMap[card.color];
+                        const c = colorMap[card.color] || colorMap.primary;
                         return (
-                            <Card key={card.key} className="shadow-sm">
+                            <Card key={card.key} className="border border-border/80 card-hover shadow-sm bg-card overflow-hidden">
                                 <CardContent className="p-5">
                                     <div className="flex items-start justify-between">
-                                        <div className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-white shadow-sm" style={{ background: c.hex + '15' }}>
-                                            <Icon className="h-5 w-5" style={{ color: c.hex }} />
+                                        <div>
+                                            <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">{card.label}</p>
+                                            <p className="text-2xl font-black text-foreground mt-1.5 leading-tight">{card.value}</p>
                                         </div>
-                                        <div className="flex h-6 w-6 items-center justify-center rounded-full bg-muted/50">
-                                            <ArrowUpRight className="h-3 w-3 text-muted-foreground" />
+                                        <div className={`w-10 h-10 rounded-xl ${c.bg} flex items-center justify-center flex-shrink-0 shadow-sm`}>
+                                            <Icon className={`h-5 w-5 ${c.text}`} />
                                         </div>
                                     </div>
-                                    <div className="mt-3">
-                                        <p className="text-2xl font-bold text-foreground">{card.value}</p>
-                                        <p className="text-xs text-muted-foreground mt-0.5">{card.label}</p>
+                                    <div className="flex items-center gap-1 mt-3.5 text-[10px] font-bold">
+                                        <span className={`inline-flex items-center gap-0.5 ${c.trendText}`}>
+                                            <TrendingUp className="h-3 w-3" /> +8.4%
+                                        </span>
+                                        <span className="text-muted-foreground/60 font-medium">vs bln lalu</span>
                                     </div>
                                 </CardContent>
                             </Card>
@@ -327,7 +330,7 @@ export default function Dashboard({ stats, identity, subjects, recentActivities,
                 {/* Middle Row: Charts + Schedule + Activity */}
                 <div className="grid gap-6 xl:grid-cols-4">
                     {/* Topic Distribution - Donut Chart */}
-                    <Card className="xl:col-span-1 shadow-sm">
+                    <Card className="xl:col-span-1 card-hover shadow-sm border border-border/80">
                         <div className="flex items-center justify-between border-b px-6 py-4">
                             <div>
                                 <h2 className="font-semibold text-foreground">Distribusi Topik</h2>
@@ -371,7 +374,7 @@ export default function Dashboard({ stats, identity, subjects, recentActivities,
                     </Card>
 
                     {/* Popular Instructors */}
-                    <Card className="xl:col-span-1 shadow-sm">
+                    <Card className="xl:col-span-1 card-hover shadow-sm border border-border/80">
                         <div className="flex items-center justify-between border-b px-6 py-4">
                             <div>
                                 <h2 className="font-semibold text-foreground">Instruktur</h2>
@@ -420,7 +423,7 @@ export default function Dashboard({ stats, identity, subjects, recentActivities,
                     </Card>
 
                     {/* Today's Schedule */}
-                    <Card className="xl:col-span-1 shadow-sm">
+                    <Card className="xl:col-span-1 card-hover shadow-sm border border-border/80">
                         <div className="flex items-center justify-between border-b px-6 py-4">
                             <div>
                                 <h2 className="font-semibold text-foreground">Jadwal Hari Ini</h2>
@@ -470,7 +473,7 @@ export default function Dashboard({ stats, identity, subjects, recentActivities,
                     </Card>
 
                     {/* Assignment Progress */}
-                    <Card className="xl:col-span-1 shadow-sm">
+                    <Card className="xl:col-span-1 card-hover shadow-sm border border-border/80">
                         <div className="flex items-center justify-between border-b px-6 py-4">
                             <div>
                                 <h2 className="font-semibold text-foreground">Progress Asesmen</h2>
@@ -503,7 +506,7 @@ export default function Dashboard({ stats, identity, subjects, recentActivities,
 
                 {/* P5 Progress (Student Only) */}
                 {user_role === 'student' && (safeStats.p5_total ?? 0) > 0 && (
-                    <Card className="shadow-sm">
+                    <Card className="card-hover shadow-sm border border-border/80">
                         <div className="flex items-center justify-between border-b px-6 py-4">
                             <div>
                                 <h2 className="font-semibold text-foreground">Projek P5</h2>
@@ -546,7 +549,7 @@ export default function Dashboard({ stats, identity, subjects, recentActivities,
                 {/* Bottom Row: Course Table + Recent Activity */}
                 <div className="grid gap-6 xl:grid-cols-3">
                     {/* Course Progress Table */}
-                    <Card className="xl:col-span-2 shadow-sm">
+                    <Card className="xl:col-span-2 shadow-sm border border-border/80">
                         <div className="flex items-center justify-between border-b px-6 py-4">
                             <div>
                                 <h2 className="font-semibold text-foreground">Progress Siswa</h2>
@@ -581,8 +584,8 @@ export default function Dashboard({ stats, identity, subjects, recentActivities,
                             {courseData.length > 0 ? (
                                 <>
                                     <table className="w-full text-sm">
-                                        <thead>
-                                            <tr className="border-b text-left text-xs font-semibold uppercase text-muted-foreground">
+                                        <thead className="bg-slate-50 dark:bg-slate-900/50 text-slate-500 text-xs uppercase tracking-wider border-b border-slate-100 dark:border-slate-800">
+                                            <tr className="text-left text-xs font-semibold uppercase text-muted-foreground">
                                                 <th className="px-6 py-3 font-medium">Siswa</th>
                                                 <th className="px-6 py-3 font-medium">Mata Pelajaran</th>
                                                 <th
@@ -598,9 +601,9 @@ export default function Dashboard({ stats, identity, subjects, recentActivities,
                                                 <th className="px-6 py-3 font-medium">Status</th>
                                             </tr>
                                         </thead>
-                                        <tbody>
+                                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
                                             {paginatedData.map((row) => (
-                                                <tr key={row.student_id + '-' + row.subject_id} className="border-b last:border-0 transition hover:bg-muted/30">
+                                                <tr key={row.student_id + '-' + row.subject_id} className="border-b border-slate-100 dark:border-slate-800/60 last:border-0 transition hover:bg-muted/30">
                                                     <td className="px-6 py-3">
                                                         <div className="flex items-center gap-3">
                                                             <Avatar className="h-8 w-8">
@@ -687,7 +690,7 @@ export default function Dashboard({ stats, identity, subjects, recentActivities,
                     </Card>
 
                     {/* Recent Activity */}
-                    <Card className="xl:col-span-1 shadow-sm">
+                    <Card className="xl:col-span-1 shadow-sm border border-border/80">
                         <div className="flex items-center justify-between border-b px-6 py-4">
                             <div>
                                 <h2 className="font-semibold text-foreground">Aktivitas Terbaru</h2>
@@ -695,7 +698,7 @@ export default function Dashboard({ stats, identity, subjects, recentActivities,
                             </div>
                             <Activity className="h-4 w-4 text-muted-foreground" />
                         </div>
-                        <div className="divide-y">
+                        <div className="divide-y divide-slate-100 dark:divide-slate-800/60">
                             {(recentActivities ?? []).length === 0 ? (
                                 <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
                                     <ClipboardList className="h-12 w-12 mb-3 opacity-30" />

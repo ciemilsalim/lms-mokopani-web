@@ -255,7 +255,7 @@ export default function SubjectAnalytics({ subject, class: cls, performance, sco
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`${subject.name} – Analitik`} />
 
-            <div className="flex h-full flex-1 flex-col gap-6 p-6">
+            <div className="flex h-full flex-1 flex-col gap-6 p-6 fade-in">
                 {/* Header */}
                 <div className="flex items-start justify-between">
                     <div>
@@ -266,7 +266,7 @@ export default function SubjectAnalytics({ subject, class: cls, performance, sco
 
                 {/* Overview Cards */}
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                    <div className="rounded-2xl border bg-card p-5 shadow-sm">
+                    <div className="card-hover rounded-2xl border border-border bg-card p-5 shadow-sm">
                         <div className="flex items-center justify-between">
                             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-100 text-sky-600 dark:bg-sky-950/30 dark:text-sky-400">
                                 <TrendingUp className="h-5 w-5" />
@@ -275,7 +275,7 @@ export default function SubjectAnalytics({ subject, class: cls, performance, sco
                         </div>
                         <p className="mt-2 text-xs font-bold text-muted-foreground uppercase tracking-wider">Rata-rata Kelas</p>
                     </div>
-                    <div className="rounded-2xl border bg-card p-5 shadow-sm">
+                    <div className="card-hover rounded-2xl border border-border bg-card p-5 shadow-sm">
                         <div className="flex items-center justify-between">
                             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400">
                                 <ClipboardList className="h-5 w-5" />
@@ -284,7 +284,7 @@ export default function SubjectAnalytics({ subject, class: cls, performance, sco
                         </div>
                         <p className="mt-2 text-xs font-bold text-muted-foreground uppercase tracking-wider">Pengumpulan Tugas</p>
                     </div>
-                    <div className="rounded-2xl border bg-card p-5 shadow-sm">
+                    <div className="card-hover rounded-2xl border border-border bg-card p-5 shadow-sm">
                         <div className="flex items-center justify-between">
                             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-100 text-amber-600 dark:bg-amber-950/30 dark:text-amber-400">
                                 <BarChart3 className="h-5 w-5" />
@@ -293,7 +293,7 @@ export default function SubjectAnalytics({ subject, class: cls, performance, sco
                         </div>
                         <p className="mt-2 text-xs font-bold text-muted-foreground uppercase tracking-wider">Total Tugas</p>
                     </div>
-                    <div className="rounded-2xl border bg-card p-5 shadow-sm">
+                    <div className="card-hover rounded-2xl border border-border bg-card p-5 shadow-sm">
                         <div className="flex items-center justify-between">
                             <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${
                                 risk_summary.at_risk_count > 0
@@ -312,26 +312,28 @@ export default function SubjectAnalytics({ subject, class: cls, performance, sco
 
                 <div className="grid gap-6 lg:grid-cols-2">
                     {/* Performance Trend */}
-                    <div className="rounded-2xl border bg-card p-6 shadow-sm">
-                        <h3 className="mb-4 text-sm font-bold text-foreground flex items-center gap-2">
+                    <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+                        <h3 className="mb-1 text-sm font-bold text-foreground flex items-center gap-2">
                             <TrendingUp className="h-4 w-4 text-primary" />
                             Tren Performa
                         </h3>
+                        <p className="mb-4 text-[11px] text-muted-foreground">Rata-rata nilai per asesmen sepanjang waktu</p>
                         <PerformanceTrendChart data={performance.assignment_scores} />
                     </div>
 
                     {/* Score Distribution */}
-                    <div className="rounded-2xl border bg-card p-6 shadow-sm">
-                        <h3 className="mb-4 text-sm font-bold text-foreground flex items-center gap-2">
+                    <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+                        <h3 className="mb-1 text-sm font-bold text-foreground flex items-center gap-2">
                             <BarChart3 className="h-4 w-4 text-primary" />
                             Distribusi Nilai
                         </h3>
+                        <p className="mb-4 text-[11px] text-muted-foreground">Persebaran siswa berdasarkan rentang nilai</p>
                         <ScoreDistributionChart data={performance.score_distribution} />
                     </div>
                 </div>
 
                 {/* Risk Summary */}
-                <div className="rounded-2xl border bg-card p-6 shadow-sm">
+                <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
                     <div className="flex items-center justify-between mb-5">
                         <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
                             <AlertTriangle className="h-4 w-4 text-rose-500" />
@@ -358,7 +360,7 @@ export default function SubjectAnalytics({ subject, class: cls, performance, sco
                             <p className="text-xs">Semua siswa menunjukkan performa baik</p>
                         </div>
                     ) : (
-                        <div className="overflow-x-auto">
+                        <div className="overflow-x-auto scrollbar-thin">
                             <table className="w-full text-sm">
                                 <thead>
                                     <tr className="border-b text-left text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
@@ -374,7 +376,7 @@ export default function SubjectAnalytics({ subject, class: cls, performance, sco
                                         return (
                                             <tr
                                                 key={s.id}
-                                                className="border-b last:border-b-0 hover:bg-muted/30 transition-colors cursor-pointer"
+                                                className={`border-b last:border-b-0 transition-colors cursor-pointer hover:bg-primary/[0.03] dark:hover:bg-primary/[0.06] ${risk_summary.students.indexOf(s) % 2 === 1 ? 'bg-slate-50/40 dark:bg-slate-900/20' : ''}`}
                                                 onClick={() => setSelectedStudent(selectedStudent?.id === s.id ? null : s)}
                                             >
                                                 <td className="py-3 pr-4">
@@ -440,7 +442,7 @@ export default function SubjectAnalytics({ subject, class: cls, performance, sco
                 </div>
 
                 {/* Student Score Matrix */}
-                <div className="rounded-2xl border bg-card p-6 shadow-sm">
+                <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-5 border-b border-border pb-4">
                         <div>
                             <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
@@ -482,11 +484,11 @@ export default function SubjectAnalytics({ subject, class: cls, performance, sco
                             <p className="text-sm font-medium">Belum ada data nilai</p>
                         </div>
                     ) : (
-                        <div className="overflow-x-auto rounded-xl border border-border/60">
+                        <div className="overflow-x-auto scrollbar-thin rounded-xl border border-border/60">
                             <table className="w-full text-sm border-collapse">
                                 <thead>
-                                    <tr className="border-b bg-muted/30 text-left text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                                        <th className="py-3 px-4 sticky left-0 bg-card z-10 border-r border-border/80 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">Siswa</th>
+                                    <tr className="border-b bg-slate-50/80 dark:bg-slate-900/50 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                                        <th className="py-3 px-4 sticky left-0 bg-slate-50/80 dark:bg-slate-900/50 z-10 border-r border-border/80 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">Siswa</th>
                                         {score_matrix.assignments.map((a) => (
                                             <th key={a.id} className="py-3 px-3 text-center min-w-[100px] border-r border-border/40 last:border-r-0" title={a.title}>
                                                 <div className="font-semibold text-foreground truncate max-w-[120px]">{a.title}</div>
@@ -497,9 +499,9 @@ export default function SubjectAnalytics({ subject, class: cls, performance, sco
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {score_matrix.students.map((s) => (
-                                        <tr key={s.id} className="border-b last:border-b-0 hover:bg-muted/20 transition-colors">
-                                            <td className="py-2.5 px-4 sticky left-0 bg-card z-10 border-r border-border/80 font-bold text-foreground text-xs shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">{s.name}</td>
+                                    {score_matrix.students.map((s, idx) => (
+                                        <tr key={s.id} className={`border-b last:border-b-0 transition-colors hover:bg-primary/[0.03] dark:hover:bg-primary/[0.06] ${idx % 2 === 1 ? 'bg-slate-50/40 dark:bg-slate-900/20' : ''}`}>
+                                            <td className={`py-2.5 px-4 sticky left-0 z-10 border-r border-border/80 font-bold text-foreground text-xs shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)] ${idx % 2 === 1 ? 'bg-slate-50/40 dark:bg-slate-900/20' : 'bg-card'}`}>{s.name}</td>
                                             {s.scores.map((sc, i) => (
                                                 <td key={i} className="py-2.5 px-3 text-center border-r border-border/40 last:border-r-0">
                                                     <span className={`inline-flex items-center justify-center h-7 w-10 rounded-lg text-[10px] font-black ${
@@ -527,7 +529,7 @@ export default function SubjectAnalytics({ subject, class: cls, performance, sco
 
                 {/* Question Difficulty Analysis */}
                 {question_analysis.length > 0 && (
-                    <div className="rounded-2xl border bg-card p-6 shadow-sm">
+                    <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
                         <h3 className="mb-5 text-sm font-bold text-foreground flex items-center gap-2">
                             <Brain className="h-4 w-4 text-primary" />
                             Analisis Kesulitan Butir Soal
