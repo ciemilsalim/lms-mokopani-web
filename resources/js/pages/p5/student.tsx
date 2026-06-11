@@ -75,7 +75,7 @@ export default function StudentP5({ projects, period }: StudentP5Props) {
                     </div>
                 </div>
 
-                {projects.length === 0 ? (
+                {!projects || (Array.isArray(projects) ? projects.length === 0 : Object.keys(projects).length === 0) ? (
                     <div className="flex flex-col items-center justify-center py-24 text-muted-foreground">
                         <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-muted/50 mb-5">
                             <Sparkles className="h-10 w-10 opacity-40" />
@@ -85,7 +85,7 @@ export default function StudentP5({ projects, period }: StudentP5Props) {
                     </div>
                 ) : (
                     <div className="space-y-8">
-                        {projects.map((project) => (
+                        {((Array.isArray(projects) ? projects : Object.values(projects || {})) as Project[]).map((project) => (
                             <div key={project.id} className="rounded-3xl border border-border bg-card shadow-sm overflow-hidden">
                                 <div className="border-b border-border bg-gradient-to-r from-rose-50 to-pink-50 dark:from-rose-950/20 dark:to-pink-950/20 px-8 py-6">
                                     <div className="flex items-start justify-between">
@@ -126,7 +126,7 @@ export default function StudentP5({ projects, period }: StudentP5Props) {
                                 </div>
 
                                 <div className="p-8 space-y-8">
-                                    {project.dimensi.map((dimensi) => (
+                                    {((Array.isArray(project.dimensi) ? project.dimensi : Object.values(project.dimensi || {})) as DimensiData[]).map((dimensi) => (
                                         <div key={dimensi.id} className="space-y-4">
                                             <div className="flex items-center gap-3">
                                                 <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-rose-100 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400">
@@ -139,14 +139,14 @@ export default function StudentP5({ projects, period }: StudentP5Props) {
                                             </div>
 
                                             <div className="space-y-4 pl-11">
-                                                {dimensi.elements.map((element) => (
+                                                {((Array.isArray(dimensi.elements) ? dimensi.elements : Object.values(dimensi.elements || {})) as ElementData[]).map((element) => (
                                                     <div key={element.id} className="space-y-2">
                                                         <p className="text-xs font-bold text-muted-foreground flex items-center gap-2">
                                                             <ChevronRight className="h-3 w-3" />
                                                             {element.nama}
                                                         </p>
                                                         <div className="grid gap-2 pl-5">
-                                                            {element.sub_elements.map((se) => (
+                                                            {((Array.isArray(element.sub_elements) ? element.sub_elements : Object.values(element.sub_elements || {})) as SubElementScore[]).map((se) => (
                                                                 <div key={se.id} className="flex items-center justify-between rounded-xl border border-border bg-muted/30 px-4 py-3">
                                                                     <div className="flex-1 min-w-0">
                                                                         <p className="text-sm font-medium text-foreground truncate">{se.nama}</p>

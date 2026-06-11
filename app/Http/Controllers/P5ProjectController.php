@@ -66,7 +66,8 @@ class P5ProjectController extends Controller
                                     'nama'    => $se->nama,
                                     'nilai'   => $studentScores->get($se->id)?->nilai ?? '-',
                                     'catatan' => $studentScores->get($se->id)?->catatan ?? '',
-                                ]),
+                                ])
+                                ->values(),
                         ])
                         ->filter(fn($e) => count($e['sub_elements']) > 0)
                         ->values(),
