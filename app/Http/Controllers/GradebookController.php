@@ -268,6 +268,12 @@ class GradebookController extends Controller
             ->where('student_id', $student->id)
             ->get();
 
+        // Ambil record remedial siswa
+        $remedialRecords = \App\Models\LmsRemedialRecord::where('student_id', $student->id)
+            ->whereIn('assignment_id', $assignments->pluck('id'))
+            ->get()
+            ->keyBy('assignment_id');
+
         // Ambil data absensi mata pelajaran dari db_absen
         $attendances = \App\Models\SubjectAttendance::with(['schedule.teachingAssignment'])
             ->where('student_id', $student->id)
@@ -279,7 +285,7 @@ class GradebookController extends Controller
         $allTpIds = $assignments->pluck('learning_objective_id')->unique()->filter()->values();
         $allTps = \App\Models\LmsLearningObjective::with('capaianPembelajaran')->whereIn('id', $allTpIds)->get()->keyBy('id');
 
-        $report = $assignments->groupBy('subject_id')->map(function ($subjectAssignments) use ($submissions, $attendances, $student, $allTps) {
+        $report = $assignments->groupBy('subject_id')->map(function ($subjectAssignments) use ($submissions, $remedialRecords, $attendances, $student, $allTps) {
             $subjectId = $subjectAssignments->first()->subject_id;
             $subjectName = $subjectAssignments->first()->subject->name;
             $subjectKktp = get_kktp($subjectId);
@@ -293,16 +299,27 @@ class GradebookController extends Controller
             $presentCount = $subjectAttendances->where('status', 'Hadir')->count();
             $attendancePercentage = $totalMeetings > 0 ? round(($presentCount / $totalMeetings) * 100) : 100;
 
-            $items = $subjectAssignments->map(function ($assignment) use ($submissions) {
+            $items = $subjectAssignments->map(function ($assignment) use ($submissions, $remedialRecords) {
                 $submission = $submissions->where('assignment_id', $assignment->id)->first();
+                $remedial = $remedialRecords->get($assignment->id);
+                
+                $isRemedialOpen = $submission ? (bool)$submission->is_remedial_open : false;
+                $remedialStatus = $remedial?->status; // 'assigned', 'in_progress', 'completed'
+                
+                // Masih remedial jika: is_remedial_open bernilai true,
+                // ATAU ada LmsRemedialRecord dengan status 'assigned' atau 'in_progress'
+                $isRemedial = $isRemedialOpen || ($remedial && in_array($remedialStatus, ['assigned', 'in_progress']));
+
                 return [
-                    'id'         => $assignment->id,
-                    'title'      => $assignment->title,
-                    'score'      => $submission?->score ?? '-',
-                    'max_points' => $assignment->max_points,
-                    'status'     => $submission ? 'Selesai' : 'Belum Mengerjakan',
-                    'type'       => $assignment->assessment_type,
-                    'tp_id'      => $assignment->learning_objective_id
+                    'id'               => $assignment->id,
+                    'title'            => $assignment->title,
+                    'score'            => $submission?->score ?? '-',
+                    'max_points'       => $assignment->max_points,
+                    'status'           => $submission ? 'Selesai' : 'Belum Mengerjakan',
+                    'type'             => $assignment->assessment_type,
+                    'tp_id'            => $assignment->learning_objective_id,
+                    'is_remedial'      => $isRemedial,
+                    'remedial_status'  => $remedialStatus,
                 ];
             });
 
@@ -380,13 +397,16 @@ class GradebookController extends Controller
                 return $cpGrp;
             }, $groupedByCp));
 
+            $hasRemedial = $items->contains('is_remedial', true);
+
             return [
                 'subject_name'          => $subjectName,
                 'cps'                   => $cpGroups,
                 'average'               => $average,
                 'description'           => $description,
                 'attendance_percentage' => $attendancePercentage,
-                'total_meetings'        => $totalMeetings
+                'total_meetings'        => $totalMeetings,
+                'has_remedial'          => $hasRemedial,
             ];
         })->values();
 

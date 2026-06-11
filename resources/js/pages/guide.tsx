@@ -85,9 +85,15 @@ function SectionCard({ section, defaultOpen }: { section: GuideSection; defaultO
                         <div className="flex-1">
                             <div className="flex items-center gap-2">
                                 <p className="text-sm font-bold text-foreground">{s.label}</p>
-                                <Link href={s.route} className="text-[10px] font-semibold text-primary hover:underline inline-flex items-center gap-0.5">
-                                    Buka <ArrowRight className="h-3 w-3" />
-                                </Link>
+                                {s.route.startsWith('http') ? (
+                                    <a href={s.route} target="_blank" rel="noopener noreferrer" className="text-[10px] font-semibold text-primary hover:underline inline-flex items-center gap-0.5">
+                                        Buka <ArrowRight className="h-3 w-3" />
+                                    </a>
+                                ) : (
+                                    <Link href={s.route} className="text-[10px] font-semibold text-primary hover:underline inline-flex items-center gap-0.5">
+                                        Buka <ArrowRight className="h-3 w-3" />
+                                    </Link>
+                                )}
                             </div>
                             <p className="text-xs text-muted-foreground mt-0.5">{s.desc}</p>
                         </div>
@@ -103,6 +109,8 @@ const roleLabels: Record<string, string> = { teacher: 'Guru', student: 'Siswa', 
 const tipsMap: Record<string, { icon: any; text: string }[]> = {
     teacher: [
         { icon: Lightbulb, text: 'Ikuti alur Perencanaan → Penilaian → Diagnostik → Monitoring untuk hasil maksimal.' },
+        { icon: Lightbulb, text: 'Asesmen Sumatif (seperti Penilaian Proyek & Produk) otomatis terkunci setelah dikirim oleh siswa. Anda bisa membuka akses remedial langsung dari detail pengumpulan tugas siswa atau lewat menu Remedial.' },
+        { icon: Lightbulb, text: 'Pemberian nilai remedial otomatis memperbarui status record remedial siswa menjadi completed dan menyinkronkan nilai akhir di laporan nilai.' },
         { icon: Lightbulb, text: 'Gunakan Early Warning untuk deteksi dini siswa bermasalah.' },
         { icon: Lightbulb, text: 'Deskripsi rapor dibuat otomatis — periksa sebelum cetak.' },
         { icon: Lightbulb, text: 'Sesuai Panduan Pembelajaran dan Asesmen 2025: utamakan asesmen formatif berkelanjutan, fokus pada umpan balik kualitatif, bukan hanya hasil akhir.' },
@@ -110,6 +118,8 @@ const tipsMap: Record<string, { icon: any; text: string }[]> = {
     ],
     student: [
         { icon: Lightbulb, text: 'Cek tugas terbaru di halaman Asesmen.' },
+        { icon: Lightbulb, text: 'Asesmen Sumatif otomatis terkunci setelah Anda mengirimkan jawaban. Anda tidak bisa mengirim ulang kecuali guru membuka program remedial untuk tugas tersebut.' },
+        { icon: Lightbulb, text: 'Buka menu Nilai Saya untuk melihat daftar mata pelajaran secara rapi dan memantau tugas yang masih dalam program remedial (ditandai dengan indikator Remedial oranye).' },
         { icon: Lightbulb, text: 'Gunakan Diagnostik Adaptif untuk latihan sesuai kemampuanmu.' },
     ],
     parent: [
