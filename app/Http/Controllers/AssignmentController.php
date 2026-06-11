@@ -565,6 +565,10 @@ class AssignmentController extends Controller
             ->where('student_id', $student->id)
             ->first();
 
+        if ($assignment->assessment_type === 'summative' && $submission && !$submission->is_remedial_open) {
+            return back()->withErrors(['content' => 'Anda tidak dapat memperbarui jawaban asesmen sumatif yang sudah dikirim kecuali remedial dibuka oleh guru.']);
+        }
+
         $score = $request->score;
 
         // Auto-grade quizzes if score is not provided
@@ -642,6 +646,12 @@ class AssignmentController extends Controller
                     'score' => $submission->score,
                     'submitted_at' => $submission->submitted_at ? $submission->submitted_at->toDateTimeString() : now()->toDateTimeString(),
                 ];
+
+                \App\Models\LmsRemedialRecord::where([
+                    'assignment_id' => $assignment->id,
+                    'student_id'    => $student->id,
+                    'status'        => 'assigned',
+                ])->update(['status' => 'in_progress']);
             }
 
             $submission->update([
@@ -719,6 +729,17 @@ class AssignmentController extends Controller
             ]
         );
 
+        // Sync with LmsRemedialRecord if exists
+        \App\Models\LmsRemedialRecord::where([
+            'assignment_id' => $validated['assignment_id'],
+            'student_id'    => $validated['student_id'],
+        ])
+        ->whereIn('status', ['assigned', 'in_progress'])
+        ->update([
+            'remedial_score' => $validated['score'],
+            'status'         => 'completed',
+        ]);
+
         // Auto-analyze diagnostic results for initial assessments
         $assignment = \App\Models\LmsAssignment::find($validated['assignment_id']);
         if ($assignment && $assignment->assessment_type === 'initial') {
@@ -743,6 +764,21 @@ class AssignmentController extends Controller
             $submission->update([
                 'is_remedial_open' => true,
             ]);
+
+            $assignment = LmsAssignment::find($validated['assignment_id']);
+            \App\Models\LmsRemedialRecord::updateOrCreate(
+                [
+                    'assignment_id' => $validated['assignment_id'],
+                    'student_id'    => $validated['student_id'],
+                    'teacher_id'    => $assignment->teacher_id,
+                ],
+                [
+                    'subject_id'    => $assignment->subject_id,
+                    'type'          => 'remedial',
+                    'initial_score' => $submission->score,
+                    'status'        => 'assigned',
+                ]
+            );
         }
 
         return back()->with('success', 'Remedial berhasil dibuka untuk siswa ini.');

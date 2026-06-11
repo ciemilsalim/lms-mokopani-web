@@ -606,6 +606,7 @@ interface ShowAssignmentProps {
 
 export default function ShowAssignment({ assignment, students, my_submission, my_reflection, comments, user_role, auth_id, available_peers = [] }: ShowAssignmentProps) {
     const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
+    const isSummativeLocked = assignment.assessment_type === 'summative' && my_submission && !my_submission.is_remedial_open;
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
     const [emojiFilter, setEmojiFilter] = useState<'all' | 'paham' | 'ragu' | 'bingung'>('all');
     const [conceptRubric, setConceptRubric] = useState({
@@ -1856,7 +1857,13 @@ export default function ShowAssignment({ assignment, students, my_submission, my
             },
             onError: (errors) => {
                 console.error(errors);
-                setSubmitError('Gagal mengirim jawaban. Silakan periksa kembali isian Anda.');
+                if (errors.content) {
+                    setSubmitError(errors.content);
+                } else if (errors.file) {
+                    setSubmitError(errors.file);
+                } else {
+                    setSubmitError('Gagal mengirim jawaban. Silakan periksa kembali isian Anda.');
+                }
                 setIsSubmitting(false);
             },
             onFinish: () => setIsSubmitting(false)
@@ -2648,6 +2655,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                 )}
 
                                 <form onSubmit={handleSubmitAssignment} className="space-y-10">
+                                    <fieldset disabled={isSummativeLocked} className="space-y-10 m-0 p-0 border-0 min-w-0">
                                     {assignment.instrument_type === 'peer_assessment' ? (
                                         <div className="space-y-10">
                                             {/* Identity Section (Selalu Tampil) */}
@@ -3110,12 +3118,13 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                                     <button 
                                                                                         key={opt.id}
                                                                                         type="button"
+                                                                                        disabled={isSummativeLocked}
                                                                                         onClick={() => {
                                                                                             // Prevent changing formative quiz answers to support active instant study
                                                                                             if (assignment.instrument_type === 'formative_quiz' && isAnswered) return;
                                                                                             studentForm.setData('answers', { ...studentForm.data.answers, [q.id]: opt.id });
                                                                                         }}
-                                                                                        className={`flex items-center gap-3 p-3.5 rounded-[8px] border transition-all text-left group/opt ${btnStyle}`}
+                                                                                        className={`flex items-center gap-3 p-3.5 rounded-[8px] border transition-all text-left group/opt ${btnStyle} ${isSummativeLocked ? 'opacity-55 cursor-not-allowed' : ''}`}
                                                                                     >
                                                                                         <div className={`h-6 w-6 rounded-full border flex items-center justify-center flex-shrink-0 font-semibold text-[11px] font-mono transition-all ${badgeStyle}`}>
                                                                                             {String.fromCharCode(65 + optIdx)}
@@ -3133,7 +3142,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                                 <input 
                                                                                     type="text"
                                                                                     value={studentForm.data.answers[q.id] || ''}
-                                                                                    disabled={assignment.instrument_type === 'formative_quiz' && isAnswered}
+                                                                                    disabled={(assignment.instrument_type === 'formative_quiz' && isAnswered) || isSummativeLocked}
                                                                                     onChange={(e) => studentForm.setData('answers', { ...studentForm.data.answers, [q.id]: e.target.value })}
                                                                                     placeholder="Ketik jawaban singkat Anda..."
                                                                                     className={`w-full rounded-[6px] border bg-white dark:bg-[#101014] px-4 py-3 text-xs font-medium focus:ring-1 focus:ring-[#5E6AD2]/15 transition-all text-slate-800 dark:text-[#F1F1F4] placeholder-slate-450 dark:placeholder-[#8A8F98] ${
@@ -3168,9 +3177,10 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                             <textarea 
                                                                                 rows={4}
                                                                                 value={studentForm.data.answers[q.id] || ''}
+                                                                                disabled={isSummativeLocked}
                                                                                 onChange={(e) => studentForm.setData('answers', { ...studentForm.data.answers, [q.id]: e.target.value })}
                                                                                 placeholder="Tuliskan uraian atau penjelasan lengkap Anda..."
-                                                                                className="w-full rounded-[6px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#101014] px-4 py-3 text-xs font-medium focus:border-[#5E6AD2] focus:ring-1 focus:ring-[#5E6AD2]/15 transition-all text-slate-800 dark:text-[#F1F1F4] placeholder-slate-450 dark:placeholder-[#8A8F98] resize-none leading-relaxed"
+                                                                                className="w-full rounded-[6px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#101014] px-4 py-3 text-xs font-medium focus:border-[#5E6AD2] focus:ring-1 focus:ring-[#5E6AD2]/15 transition-all text-slate-800 dark:text-[#F1F1F4] placeholder-slate-450 dark:placeholder-[#8A8F98] resize-none leading-relaxed disabled:opacity-75 disabled:bg-slate-100 dark:disabled:bg-slate-900/50"
                                                                             />
                                                                             <FileText className="absolute right-4 top-4 h-4 w-4 text-slate-400" />
                                                                         </div>
@@ -3211,13 +3221,14 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                 rows={4}
                                                                 placeholder="Tuliskan jawaban esai Anda..."
                                                                 value={studentForm.data.answers[q.id] || ''}
+                                                                disabled={isSummativeLocked}
                                                                 onChange={(e) => studentForm.setData('answers', { ...studentForm.data.answers, [q.id]: e.target.value })}
-                                                                className="w-full rounded-2xl border border-slate-100 bg-slate-50/50 px-5 py-4 text-sm font-medium outline-none focus:border-sky-400 focus:bg-white focus:ring-4 focus:ring-sky-50 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-200 transition-all shadow-sm"
+                                                                className="w-full rounded-2xl border border-slate-100 bg-slate-50/50 px-5 py-4 text-sm font-medium outline-none focus:border-sky-400 focus:bg-white focus:ring-4 focus:ring-sky-50 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-200 transition-all shadow-sm disabled:opacity-75 disabled:cursor-not-allowed"
                                                             ></textarea>
                                                         ) : q.type === 'multiple_choice' ? (
                                                             <div className="grid gap-3">
                                                                 {(q.options || []).map((opt: any, optIdx: number) => (
-                                                                    <label key={opt.id} className={`flex items-center gap-4 p-4 rounded-2xl border transition-all cursor-pointer group shadow-sm ${studentForm.data.answers[q.id] === opt.id.toString() ? 'border-sky-500 bg-sky-50/50 dark:bg-sky-950/20' : 'border-slate-50 bg-white dark:bg-slate-900 dark:border-slate-800 hover:border-sky-200'}`}>
+                                                                    <label key={opt.id} className={`flex items-center gap-4 p-4 rounded-2xl border transition-all group shadow-sm ${studentForm.data.answers[q.id] === opt.id.toString() ? 'border-sky-500 bg-sky-50/50 dark:bg-sky-950/20' : 'border-slate-50 bg-white dark:bg-slate-900 dark:border-slate-800 hover:border-sky-200'} ${isSummativeLocked ? 'pointer-events-none opacity-60' : 'cursor-pointer'}`}>
                                                                         <div className={`h-5 w-5 rounded-full border-2 flex items-center justify-center transition-all ${studentForm.data.answers[q.id] === opt.id.toString() ? 'border-sky-500 bg-sky-500' : 'border-slate-200 group-hover:border-sky-300'}`}>
                                                                             {studentForm.data.answers[q.id] === opt.id.toString() && <div className="h-2 w-2 rounded-full bg-white" />}
                                                                         </div>
@@ -3225,6 +3236,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                             type="radio" 
                                                                             name={`q-${q.id}`} 
                                                                             checked={studentForm.data.answers[q.id] === opt.id.toString()}
+                                                                            disabled={isSummativeLocked}
                                                                             onChange={() => studentForm.setData('answers', { ...studentForm.data.answers, [q.id]: opt.id.toString() })}
                                                                             className="sr-only"
                                                                         />
@@ -3244,8 +3256,9 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                 type="text" 
                                                                 placeholder="Ketik jawaban singkat..."
                                                                 value={studentForm.data.answers[q.id] || ''}
+                                                                disabled={isSummativeLocked}
                                                                 onChange={(e) => studentForm.setData('answers', { ...studentForm.data.answers, [q.id]: e.target.value })}
-                                                                className="w-full rounded-2xl border border-slate-100 bg-slate-50/50 px-5 py-4 text-sm font-bold outline-none focus:border-sky-400 focus:bg-white focus:ring-4 focus:ring-sky-50 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-200 transition-all shadow-sm"
+                                                                className="w-full rounded-2xl border border-slate-100 bg-slate-50/50 px-5 py-4 text-sm font-bold outline-none focus:border-sky-400 focus:bg-white focus:ring-4 focus:ring-sky-50 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-200 transition-all shadow-sm disabled:opacity-75 disabled:cursor-not-allowed"
                                                             />
                                                         )}
                                                     </div>
@@ -3355,8 +3368,9 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                 <button
                                                                     key={item.id}
                                                                     type="button"
+                                                                    disabled={isSummativeLocked}
                                                                     onClick={() => studentForm.setData('answers', { ...studentForm.data.answers, emoji: item.id })}
-                                                                    className={`flex flex-col items-center justify-center p-5 rounded-[8px] border-2 transition-all duration-300 hover:scale-[1.03] active:scale-95 text-center ${
+                                                                    className={`flex flex-col items-center justify-center p-5 rounded-[8px] border-2 transition-all duration-300 ${isSummativeLocked ? 'opacity-55 cursor-not-allowed pointer-events-none' : 'hover:scale-[1.03] active:scale-95'} text-center ${
                                                                         isSelected 
                                                                             ? item.color + ' border-current shadow-lg shadow-slate-100 dark:shadow-none' 
                                                                             : 'border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#101014] hover:border-[#5E6AD2]/50'
@@ -3423,9 +3437,10 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                 rows={4}
                                                                 maxLength={280}
                                                                 value={studentForm.data.answers.reflection || ''}
+                                                                disabled={isSummativeLocked}
                                                                 onChange={(e) => studentForm.setData('answers', { ...studentForm.data.answers, reflection: e.target.value })}
                                                                 placeholder="Apa yang paling menantang dari materi hari ini? Apa yang ingin kamu tanyakan lebih lanjut? (Maksimal 280 karakter)"
-                                                                className="w-full rounded-[6px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#101014] px-4 py-3 text-xs font-medium focus:border-[#5E6AD2] focus:ring-1 focus:ring-[#5E6AD2]/15 transition-all text-slate-800 dark:text-[#F1F1F4] placeholder-slate-450 dark:placeholder-[#8A8F98] resize-none leading-relaxed"
+                                                                className="w-full rounded-[6px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#101014] px-4 py-3 text-xs font-medium focus:border-[#5E6AD2] focus:ring-1 focus:ring-[#5E6AD2]/15 transition-all text-slate-800 dark:text-[#F1F1F4] placeholder-slate-450 dark:placeholder-[#8A8F98] resize-none leading-relaxed disabled:opacity-75 disabled:bg-slate-100 dark:disabled:bg-slate-900/50"
                                                             />
                                                             <div className="absolute right-4 bottom-4 flex items-center gap-2">
                                                                 <span className={`text-[10px] font-mono font-bold ${
@@ -3525,9 +3540,10 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                 <textarea
                                                     rows={8}
                                                     value={structuredAssignmentData.answer_text}
+                                                    disabled={isSummativeLocked}
                                                     onChange={(e) => setStructuredAssignmentData({ ...structuredAssignmentData, answer_text: e.target.value })}
                                                     placeholder="Tuliskan jawaban atau hasil kerja Anda di sini..."
-                                                    className="w-full rounded-[8px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#101014] px-4 py-3 text-xs font-medium focus:border-[#5E6AD2] focus:ring-1 focus:ring-[#5E6AD2]/15 transition-all text-slate-800 dark:text-[#F1F1F4] placeholder-slate-400 resize-none leading-relaxed"
+                                                    className="w-full rounded-[8px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#101014] px-4 py-3 text-xs font-medium focus:border-[#5E6AD2] focus:ring-1 focus:ring-[#5E6AD2]/15 transition-all text-slate-800 dark:text-[#F1F1F4] placeholder-slate-400 resize-none leading-relaxed disabled:opacity-75 disabled:bg-slate-100 dark:disabled:bg-slate-900/50"
                                                 />
                                             </div>
 
@@ -3557,6 +3573,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                 <input
                                                     type="file"
                                                     accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
+                                                    disabled={isSummativeLocked}
                                                     onChange={(e) => {
                                                         const file = e.target.files?.[0] || null;
                                                         setStructuredAssignmentData({ ...structuredAssignmentData, file });
@@ -3623,9 +3640,10 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                 <textarea
                                                     rows={6}
                                                     value={projectData.description}
+                                                    disabled={isSummativeLocked}
                                                     onChange={(e) => setProjectData({ ...projectData, description: e.target.value })}
                                                     placeholder="Jelaskan proyek yang Anda kerjakan: apa yang dibuat, bagaimana prosesnya, dan hasil akhirnya..."
-                                                    className="w-full rounded-[8px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#101014] px-4 py-3 text-xs font-medium focus:border-[#5E6AD2] focus:ring-1 focus:ring-[#5E6AD2]/15 transition-all text-slate-800 dark:text-[#F1F1F4] placeholder-slate-400 resize-none leading-relaxed"
+                                                    className="w-full rounded-[8px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#101014] px-4 py-3 text-xs font-medium focus:border-[#5E6AD2] focus:ring-1 focus:ring-[#5E6AD2]/15 transition-all text-slate-800 dark:text-[#F1F1F4] placeholder-slate-400 resize-none leading-relaxed disabled:opacity-75 disabled:bg-slate-100 dark:disabled:bg-slate-900/50"
                                                 />
                                             </div>
 
@@ -3655,6 +3673,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                 <input
                                                     type="file"
                                                     accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.mp4"
+                                                    disabled={isSummativeLocked}
                                                     onChange={(e) => {
                                                         const file = e.target.files?.[0] || null;
                                                         setProjectData({ ...projectData, file });
@@ -3672,9 +3691,10 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                 <textarea
                                                     rows={4}
                                                     value={projectData.process_notes}
+                                                    disabled={isSummativeLocked}
                                                     onChange={(e) => setProjectData({ ...projectData, process_notes: e.target.value })}
                                                     placeholder="Tantangan: ..., Solusi: ..., Pembelajaran: ..."
-                                                    className="w-full rounded-[8px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#101014] px-4 py-3 text-xs font-medium focus:border-[#5E6AD2] focus:ring-1 focus:ring-[#5E6AD2]/15 transition-all text-slate-800 dark:text-[#F1F1F4] placeholder-slate-400 resize-none leading-relaxed"
+                                                    className="w-full rounded-[8px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#101014] px-4 py-3 text-xs font-medium focus:border-[#5E6AD2] focus:ring-1 focus:ring-[#5E6AD2]/15 transition-all text-slate-800 dark:text-[#F1F1F4] placeholder-slate-400 resize-none leading-relaxed disabled:opacity-75 disabled:bg-slate-100 dark:disabled:bg-slate-900/50"
                                                 />
                                             </div>
                                         </div>
@@ -3727,6 +3747,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                     type="file"
                                                     accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
                                                     multiple
+                                                    disabled={isSummativeLocked}
                                                     onChange={(e) => {
                                                         const file = e.target.files?.[0] || null;
                                                         setPortfolioFile(file);
@@ -3749,6 +3770,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                         <textarea
                                                             rows={3}
                                                             value={portfolioReflections[idx]?.answer || ''}
+                                                            disabled={isSummativeLocked}
                                                             onChange={(e) => {
                                                                 const newReflections = [...portfolioReflections];
                                                                 if (!newReflections[idx]) newReflections[idx] = { question: prompt, answer: '' };
@@ -3756,7 +3778,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                 setPortfolioReflections(newReflections);
                                                             }}
                                                             placeholder="Tuliskan refleksimu di sini..."
-                                                            className="w-full rounded-[8px] border border-slate-200 dark:border-[#2C2C3A] bg-slate-50/30 dark:bg-[#101014] px-4 py-3 text-xs font-medium focus:border-[#5E6AD2] focus:ring-1 focus:ring-[#5E6AD2]/15 transition-all text-slate-800 dark:text-[#F1F1F4] placeholder-slate-400 resize-none leading-relaxed"
+                                                            className="w-full rounded-[8px] border border-slate-200 dark:border-[#2C2C3A] bg-slate-50/30 dark:bg-[#101014] px-4 py-3 text-xs font-medium focus:border-[#5E6AD2] focus:ring-1 focus:ring-[#5E6AD2]/15 transition-all text-slate-800 dark:text-[#F1F1F4] placeholder-slate-400 resize-none leading-relaxed disabled:opacity-75 disabled:bg-slate-150 dark:disabled:bg-slate-900/50"
                                                         />
                                                     </div>
                                                 ))}
@@ -3789,9 +3811,10 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                 <textarea
                                                     rows={8}
                                                     value={assignmentData.report_text}
+                                                    disabled={isSummativeLocked}
                                                     onChange={(e) => setAssignmentData({ ...assignmentData, report_text: e.target.value })}
                                                     placeholder="Susun laporan analisis studi kasus: Identifikasi Masalah, Analisis, Solusi, dan Kesimpulan..."
-                                                    className="w-full rounded-[8px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#101014] px-4 py-3 text-xs font-medium focus:border-[#5E6AD2] focus:ring-1 focus:ring-[#5E6AD2]/15 transition-all text-slate-800 dark:text-[#F1F1F4] placeholder-slate-400 resize-none leading-relaxed"
+                                                    className="w-full rounded-[8px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#101014] px-4 py-3 text-xs font-medium focus:border-[#5E6AD2] focus:ring-1 focus:ring-[#5E6AD2]/15 transition-all text-slate-800 dark:text-[#F1F1F4] placeholder-slate-400 resize-none leading-relaxed disabled:opacity-75 disabled:bg-slate-100 dark:disabled:bg-slate-900/50"
                                                 />
                                             </div>
 
@@ -3821,6 +3844,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                 <input
                                                     type="file"
                                                     accept=".pdf,.doc,.docx"
+                                                    disabled={isSummativeLocked}
                                                     onChange={(e) => {
                                                         const file = e.target.files?.[0] || null;
                                                         setAssignmentData({ ...assignmentData, file });
@@ -3838,9 +3862,10 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                 <textarea
                                                     rows={4}
                                                     value={assignmentData.analysis_notes}
+                                                    disabled={isSummativeLocked}
                                                     onChange={(e) => setAssignmentData({ ...assignmentData, analysis_notes: e.target.value })}
                                                     placeholder="Langkah analisis: 1. Identifikasi..., 2. Analisis..., 3. Solusi..."
-                                                    className="w-full rounded-[8px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#101014] px-4 py-3 text-xs font-medium focus:border-[#5E6AD2] focus:ring-1 focus:ring-[#5E6AD2]/15 transition-all text-slate-800 dark:text-[#F1F1F4] placeholder-slate-400 resize-none leading-relaxed"
+                                                    className="w-full rounded-[8px] border border-slate-200 dark:border-[#2C2C3A] bg-white dark:bg-[#101014] px-4 py-3 text-xs font-medium focus:border-[#5E6AD2] focus:ring-1 focus:ring-[#5E6AD2]/15 transition-all text-slate-800 dark:text-[#F1F1F4] placeholder-slate-400 resize-none leading-relaxed disabled:opacity-75 disabled:bg-slate-100 dark:disabled:bg-slate-900/50"
                                                 />
                                             </div>
                                         </div>
@@ -3937,6 +3962,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                         <textarea
                                                             rows={4}
                                                             value={journalAnswers[idx]?.answer || ''}
+                                                            disabled={isSummativeLocked}
                                                             onChange={(e) => {
                                                                 const newAnswers = [...journalAnswers];
                                                                 if (!newAnswers[idx]) newAnswers[idx] = { question: q.text, answer: '' };
@@ -3944,7 +3970,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                 setJournalAnswers(newAnswers);
                                                             }}
                                                             placeholder="Tuliskan refleksimu di sini..."
-                                                            className="w-full rounded-[8px] border border-slate-200 dark:border-[#2C2C3A] bg-slate-50/30 dark:bg-[#101014] px-4 py-3 text-xs font-medium focus:border-[#5E6AD2] focus:ring-1 focus:ring-[#5E6AD2]/15 transition-all text-slate-800 dark:text-[#F1F1F4] placeholder-slate-400 resize-none leading-relaxed"
+                                                            className="w-full rounded-[8px] border border-slate-200 dark:border-[#2C2C3A] bg-slate-50/30 dark:bg-[#101014] px-4 py-3 text-xs font-medium focus:border-[#5E6AD2] focus:ring-1 focus:ring-[#5E6AD2]/15 transition-all text-slate-800 dark:text-[#F1F1F4] placeholder-slate-400 resize-none leading-relaxed disabled:opacity-75 disabled:bg-slate-150 dark:disabled:bg-slate-900/50"
                                                         />
                                                     </div>
                                                 ))}
@@ -3958,9 +3984,10 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                     rows={8}
                                                     placeholder="Tuliskan jawaban, penjelasan, atau laporan Anda di sini secara lengkap..."
                                                     value={studentForm.data.content}
+                                                    disabled={isSummativeLocked}
                                                     onChange={(e) => studentForm.setData('content', e.target.value)}
-                                                    className="w-full rounded-[2.5rem] border border-slate-100 bg-slate-50/30 px-8 py-6 text-sm font-medium outline-none focus:border-sky-400 focus:bg-white focus:ring-4 focus:ring-sky-50 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-200 transition-all shadow-sm"
-                                                ></textarea>
+                                                    className="w-full rounded-[2.5rem] border border-slate-100 bg-slate-50/30 px-8 py-6 text-sm font-medium outline-none focus:border-sky-400 focus:bg-white focus:ring-4 focus:ring-sky-50 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-200 transition-all shadow-sm disabled:opacity-75 disabled:cursor-not-allowed"
+                                                />
                                             </div>
                                         </div>
                                     )}
@@ -4003,7 +4030,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                         </a>
                                                     </div>
                                                 )}
-                                                <div className="w-full rounded-[2.5rem] border-2 border-dashed border-border bg-slate-50/20 px-8 py-12 text-center transition-all group-hover:border-sky-400 group-hover:bg-sky-50/10 cursor-pointer">
+                                                <div className={`w-full rounded-[2.5rem] border-2 border-dashed border-border bg-slate-50/20 px-8 py-12 text-center transition-all ${isSummativeLocked ? 'pointer-events-none opacity-60' : 'group-hover:border-sky-400 group-hover:bg-sky-50/10 cursor-pointer'}`}>
                                                     <div className="h-12 w-12 rounded-2xl bg-white dark:bg-slate-900 border border-border flex items-center justify-center mx-auto mb-4 text-muted-foreground group-hover:text-primary transition-colors shadow-sm">
                                                         <Upload className="h-6 w-6" />
                                                     </div>
@@ -4013,6 +4040,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                     <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-2">Maks. 10MB (PDF, DOC, Gambar)</p>
                                                     <input 
                                                         type="file"
+                                                        disabled={isSummativeLocked}
                                                         onChange={(e) => studentForm.setData('file', e.target.files ? e.target.files[0] : null)}
                                                         className="absolute inset-0 opacity-0 cursor-pointer"
                                                     />
@@ -4023,7 +4051,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
 
                                     <button 
                                         type="submit"
-                                        disabled={isSubmitting}
+                                        disabled={isSubmitting || isSummativeLocked}
                                         className={`w-full ${
                                             (assignment.instrument_type === 'formative_quiz' || assignment.instrument_type === 'exit_ticket')
                                                 ? 'rounded-[6px] bg-[#5E6AD2] hover:bg-[#4E5BBF] shadow-none py-4 text-xs font-semibold'
@@ -4032,6 +4060,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                     >
                                         {my_submission ? (my_submission.is_remedial_open ? 'Kirim Jawaban Remedial' : 'Perbarui Jawaban') : 'Kirim Jawaban Sekarang'}
                                     </button>
+                                    </fieldset>
                                 </form>
                             </div>
                         </div>

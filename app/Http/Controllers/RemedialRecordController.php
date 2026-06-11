@@ -163,7 +163,7 @@ class RemedialRecordController extends Controller
 
         $created = [];
         foreach ($validated['records'] as $record) {
-            $created[] = LmsRemedialRecord::create([
+            $remedialRecord = LmsRemedialRecord::create([
                 'student_id'    => $record['student_id'],
                 'assignment_id' => $record['assignment_id'],
                 'subject_id'    => $record['subject_id'],
@@ -174,6 +174,20 @@ class RemedialRecordController extends Controller
                 'due_date'      => $record['due_date'] ?? null,
                 'status'        => 'assigned',
             ]);
+
+            if ($record['type'] === 'remedial') {
+                \App\Models\LmsSubmission::updateOrCreate(
+                    [
+                        'assignment_id' => $record['assignment_id'],
+                        'student_id'    => $record['student_id'],
+                    ],
+                    [
+                        'is_remedial_open' => true,
+                    ]
+                );
+            }
+
+            $created[] = $remedialRecord;
         }
 
         $firstRecord = reset($created);
@@ -203,6 +217,25 @@ class RemedialRecordController extends Controller
         ]);
 
         $remedial->update($validated);
+
+        if ($remedial->type === 'remedial') {
+            if ($remedial->status === 'completed' && $remedial->remedial_score !== null) {
+                \App\Models\LmsSubmission::where([
+                    'assignment_id' => $remedial->assignment_id,
+                    'student_id'    => $remedial->student_id,
+                ])->update([
+                    'score'            => $remedial->remedial_score,
+                    'is_remedial_open' => false,
+                ]);
+            } elseif ($remedial->status === 'assigned' || $remedial->status === 'in_progress') {
+                \App\Models\LmsSubmission::where([
+                    'assignment_id' => $remedial->assignment_id,
+                    'student_id'    => $remedial->student_id,
+                ])->update([
+                    'is_remedial_open' => true,
+                ]);
+            }
+        }
 
         $typeName = $remedial->type === 'remedial' ? 'Remedial' : 'Pengayaan';
         return redirect()->route('remedial.index')
