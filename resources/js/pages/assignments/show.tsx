@@ -6972,8 +6972,10 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                 open={showDeleteConfirm}
                 onOpenChange={setShowDeleteConfirm}
                 title="Hapus Asesmen"
-                message="Apakah Anda yakin ingin menghapus asesmen ini? Semua data pengumpulan akan ikut terhapus."
+                message="Peringatan! Menghapus data ini akan ikut MENGHAPUS SEMUA data terkait (misal: pengumpulan siswa, nilai, remedial, dll) secara permanen."
                 onConfirm={handleDelete}
+                requireInput="DELETE"
+                inputPlaceholder="Ketik DELETE untuk konfirmasi"
             />
 
             <Dialog open={submitSuccess} onOpenChange={setSubmitSuccess}>

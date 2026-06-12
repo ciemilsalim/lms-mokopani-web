@@ -1962,8 +1962,10 @@ export default function ShowMaterial({
                 open={showDeleteConfirm}
                 onOpenChange={setShowDeleteConfirm}
                 title="Hapus Materi"
-                message="Apakah Anda yakin ingin menghapus materi ini? Semua data terkait materi ini juga akan hilang."
+                message="Peringatan! Menghapus data ini akan ikut MENGHAPUS SEMUA data terkait (misal: pengumpulan siswa, komentar, dll) secara permanen."
                 onConfirm={handleDelete}
+                requireInput="DELETE"
+                inputPlaceholder="Ketik DELETE untuk konfirmasi"
             />
         </AppLayout>
     );

@@ -607,9 +607,11 @@ export default function LearningObjectiveIndex({ objectives, subjects, cpList }:
                 open={deleteId !== null}
                 onOpenChange={(open) => { if (!open) setDeleteId(null); }}
                 title="Hapus Tujuan Pembelajaran"
-                message="Hapus Tujuan Pembelajaran ini? PERHATIAN: Semua materi dan asesmen yang terkait dengan TP ini akan ikut terhapus secara permanen."
+                message="Peringatan! Menghapus Tujuan Pembelajaran (TP) ini akan ikut MENGHAPUS SEMUA Materi, Asesmen, Pengumpulan Siswa, Nilai, Remedial, dan Revisi Guru yang terikat secara permanen."
                 confirmLabel="Hapus Permanen"
                 onConfirm={handleDelete}
+                requireInput="DELETE"
+                inputPlaceholder="Ketik DELETE untuk konfirmasi"
             />
         </AppLayout>
     );

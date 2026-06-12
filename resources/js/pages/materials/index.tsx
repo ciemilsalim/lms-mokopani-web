@@ -258,8 +258,10 @@ function TeacherGroupedView({ groups, search }: { groups: TeacherClassGroup[]; s
                 open={deleteId !== null}
                 onOpenChange={(open) => { if (!open) setDeleteId(null); }}
                 title="Hapus Materi"
-                message="Apakah Anda yakin ingin menghapus materi ini?"
+                message="Peringatan! Menghapus data ini akan ikut MENGHAPUS SEMUA data terkait (misal: pengumpulan siswa, komentar, dll) secara permanen."
                 onConfirm={handleDelete}
+                requireInput="DELETE"
+                inputPlaceholder="Ketik DELETE untuk konfirmasi"
             />
         </>
     );

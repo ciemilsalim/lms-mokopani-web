@@ -3,6 +3,7 @@ import { type BreadcrumbItem } from '@/types';
 import { Head, router, usePage } from '@inertiajs/react';
 import { BookOpen, ClipboardList, Clock, Plus, Search, Info, Target, GraduationCap, ChevronDown, ChevronRight, Pencil, Trash2, CheckCircle2, Users } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { ConfirmDialog } from '@/components/confirm-dialog';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: '/dashboard' },
@@ -100,13 +101,14 @@ function AssignmentCard({ asgn, isTeacher = false }: { asgn: Assignment; isTeach
     const TypeIcon = style?.icon || ClipboardList;
     const isAccessible = asgn.is_accessible !== false; // default true if undefined
 
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
     const handleEdit = (e: React.MouseEvent) => {
         e.stopPropagation();
         router.visit(`/assignments/${asgn.id}/edit`);
     };
 
-    const handleDelete = (e: React.MouseEvent) => {
-        e.stopPropagation();
+    const handleDelete = () => {
         router.visit(`/assignments/${asgn.id}`, { method: 'delete' });
     };
 
@@ -153,7 +155,10 @@ function AssignmentCard({ asgn, isTeacher = false }: { asgn: Assignment; isTeach
                                     <Pencil className="h-3.5 w-3.5" />
                                 </button>
                                 <button
-                                    onClick={handleDelete}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setShowDeleteConfirm(true);
+                                    }}
                                     className="rounded-lg p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition cursor-pointer"
                                     title="Hapus asesmen"
                                 >
@@ -163,6 +168,16 @@ function AssignmentCard({ asgn, isTeacher = false }: { asgn: Assignment; isTeach
                         )}
                     </div>
                 </div>
+
+                <ConfirmDialog
+                    open={showDeleteConfirm}
+                    onOpenChange={setShowDeleteConfirm}
+                    title="Hapus Asesmen"
+                    message="Peringatan! Menghapus data ini akan ikut MENGHAPUS SEMUA data terkait (misal: pengumpulan siswa, nilai, remedial, dll) secara permanen."
+                    onConfirm={handleDelete}
+                    requireInput="DELETE"
+                    inputPlaceholder="Ketik DELETE untuk konfirmasi"
+                />
 
                 {/* Card Title & Description */}
                 <h3 className="mt-3 text-[14px] font-bold text-foreground group-hover:text-primary transition-colors leading-snug line-clamp-2">
