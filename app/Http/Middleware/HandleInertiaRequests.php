@@ -42,6 +42,8 @@ class HandleInertiaRequests extends Middleware
 
         return array_merge(parent::share($request), [
             'name' => config('app.name'),
+            'school_name' => school_setting('app_name', 'Nama Sekolah'),
+            'school_logo' => school_logo_url(),
             'quote' => ['message' => trim($message), 'author' => trim($author)],
             'auth' => [
                 'user' => $user,

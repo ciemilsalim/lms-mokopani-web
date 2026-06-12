@@ -24,6 +24,8 @@ export interface NavItem {
 
 export interface SharedData {
     name: string;
+    school_name: string;
+    school_logo: string | null;
     quote: { message: string; author: string };
     auth: Auth;
     user_role: 'admin' | 'teacher' | 'student' | 'parent' | 'user' | 'guest';

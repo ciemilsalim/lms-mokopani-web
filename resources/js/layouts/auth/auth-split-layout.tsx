@@ -9,48 +9,37 @@ interface AuthLayoutProps {
 }
 
 export default function AuthSplitLayout({ children, title, description }: AuthLayoutProps) {
-    const { name } = usePage<SharedData>().props;
+    const { name, school_name, school_logo } = usePage<SharedData>().props;
 
     return (
         <div className="authentication-wrapper authentication-cover flex min-h-svh">
-            <Link href={route('home')} className="app-brand auth-cover-brand fixed left-6 top-5 z-50 flex items-center gap-2 font-medium">
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary shadow-sm">
-                    <AppLogoIcon className="size-5 fill-current text-primary-foreground" />
+            <Link href={route('home')} className="app-brand auth-cover-brand fixed left-6 top-5 z-50 flex items-center gap-2 font-medium group">
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg shadow-sm overflow-hidden border border-white/20 bg-white/10 backdrop-blur-sm transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3">
+                    <AppLogoIcon className="size-full object-cover" />
                 </div>
-                <span className="text-base font-semibold text-foreground hidden sm:inline">{name}</span>
+                <span className="text-base font-semibold text-white drop-shadow-md hidden sm:inline transition-colors duration-300">{name}</span>
             </Link>
 
-            <div className="flex w-full">
+            <div className="flex w-full h-svh">
                 {/* Left: Illustration */}
-                <div className="hidden xl:flex xl:w-[62%] items-center justify-center bg-sidebar p-8 relative overflow-hidden">
-                    <div className="absolute inset-0 bg-gradient-to-br from-sidebar/80 via-sidebar to-sidebar-accent/30" />
-                    <div className="relative z-10 flex flex-col items-center text-center max-w-lg">
-                        <svg viewBox="0 0 320 260" fill="none" className="w-full max-w-sm" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M160 20L280 80V200L160 260L40 200V80L160 20Z" fill="url(#grad1)" fillOpacity="0.2" />
-                            <path d="M160 40L260 90V190L160 240L60 190V90L160 40Z" stroke="url(#grad1)" strokeWidth="1.5" fill="none" />
-                            <path d="M160 60L240 100V180L160 220L80 180V100L160 60Z" fill="url(#grad1)" fillOpacity="0.15" />
-                            <circle cx="160" cy="140" r="45" fill="url(#grad1)" fillOpacity="0.25" />
-                            <circle cx="160" cy="140" r="28" fill="url(#grad1)" fillOpacity="0.35" />
-                            <path d="M160 100V140L185 155" stroke="url(#grad1)" strokeWidth="3" strokeLinecap="round" />
-                            <circle cx="160" cy="140" r="50" stroke="url(#grad1)" strokeWidth="1" strokeDasharray="4 4" fill="none" />
-                            <defs>
-                                <linearGradient id="grad1" x1="80" y1="20" x2="240" y2="260" gradientUnits="userSpaceOnUse">
-                                    <stop stopColor="#7367f0" />
-                                    <stop offset="1" stopColor="#9e95f5" />
-                                </linearGradient>
-                            </defs>
-                        </svg>
-                        <h2 className="mt-6 text-xl font-semibold text-sidebar-primary-foreground">
-                            Sistem Manajemen Pembelajaran
+                <div className="hidden lg:flex flex-col lg:w-[50%] xl:w-[60%] relative overflow-hidden group">
+                    <img src="/login-bg.png?v=4" alt="Siswa SMP Belajar di Taman" className="absolute inset-0 h-full w-full object-cover object-center transition-transform duration-[20s] ease-linear group-hover:scale-110" />
+                    {/* Gradient Overlay for Text Visibility (Dark at top & bottom, clear in middle) */}
+                    <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-transparent to-black/80 pointer-events-none" />
+                    
+                    {/* Bottom: Slogan */}
+                    <div className="relative z-10 flex flex-1 flex-col justify-end p-10 pb-16 text-left animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-300">
+                        <h2 className="text-3xl font-bold text-white drop-shadow-lg">
+                            LMS (Learning Management Sistem) Mokopani
                         </h2>
-                        <p className="mt-2 text-sm text-sidebar-foreground max-w-sm">
+                        <p className="mt-3 text-base text-white/90 max-w-lg drop-shadow-md">
                             Platform digital untuk mendukung proses belajar mengajar yang lebih efektif, terstruktur, dan terukur.
                         </p>
                     </div>
                 </div>
 
                 {/* Right: Form */}
-                <div className="flex w-full xl:w-[38%] items-center justify-center bg-background p-6 sm:p-12">
+                <div className="flex w-full lg:w-[50%] xl:w-[40%] items-center justify-center bg-background p-8 sm:p-12">
                     <div className="flex h-full w-full max-w-sm mx-auto flex-col">
                         <div className="flex-1">
                             {title && (
