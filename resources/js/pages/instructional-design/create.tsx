@@ -103,7 +103,7 @@ const cleanPlainText = (text: string | null | undefined): string => {
 const getErrorLabel = (key: string): string => {
     switch (key) {
         case 'subject_id': return 'Mata Pelajaran';
-        case 'school_class_id': return 'Kelas';
+        case 'school_classes': return 'Kelas';
         case 'learning_objective_id': return 'Tujuan Pembelajaran (TP)';
         case 'material.title': return 'Judul Materi Ajar';
         case 'initial.title': return 'Judul Asesmen Awal';
@@ -162,7 +162,7 @@ export default function InstructionalDesignCreate({
     // Inertia form definition matching original structure
     const { data, setData, post, processing, errors, transform } = useForm({
         subject_id: '',
-        school_class_id: '',
+        school_classes: [] as number[],
         learning_objective_id: '',
         teaching_id: '',
 
@@ -251,8 +251,8 @@ export default function InstructionalDesignCreate({
             if (!data.subject_id) {
                 stepErrors.subject_id = 'Mata Pelajaran wajib dipilih.';
             }
-            if (!data.school_class_id) {
-                stepErrors.school_class_id = 'Kelas wajib dipilih.';
+            if (!data.school_classes || data.school_classes.length === 0) {
+                stepErrors.school_classes = 'Kelas wajib dipilih minimal 1.';
             }
             if (!data.learning_objective_id) {
                 stepErrors.learning_objective_id = 'Tujuan Pembelajaran (TP) wajib dipilih.';
@@ -363,7 +363,7 @@ export default function InstructionalDesignCreate({
         // Transform flat keys to nested structure that controller expects
         transform((currentData) => ({
             subject_id: currentData.subject_id,
-            school_class_id: currentData.school_class_id,
+            school_classes: currentData.school_classes,
             learning_objective_id: currentData.learning_objective_id,
             teaching_id: currentData.teaching_id,
 
@@ -678,7 +678,7 @@ export default function InstructionalDesignCreate({
 
         router.post(route('learning-objectives.store'), {
             subject_id: data.subject_id,
-            school_class_id: data.school_class_id,
+            school_class_id: data.school_classes[0],
             code: tpForm.code,
             description: tpForm.description,
             cp_id: tpForm.cp_id,

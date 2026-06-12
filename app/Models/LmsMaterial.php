@@ -14,7 +14,6 @@ class LmsMaterial extends Model
     protected $fillable = [
         'subject_id',
         'teacher_id',
-        'school_class_id',
         'academic_year_id',
         'semester_id',
         'learning_objective_id',
@@ -44,9 +43,9 @@ class LmsMaterial extends Model
         return $this->belongsTo(Teacher::class);
     }
 
-    public function schoolClass()
+    public function schoolClasses()
     {
-        return $this->belongsTo(SchoolClass::class, 'school_class_id');
+        return $this->belongsToMany(SchoolClass::class, 'lms_material_school_class', 'material_id', 'school_class_id');
     }
 
     public function academicYear()

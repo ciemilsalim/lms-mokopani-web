@@ -22,7 +22,7 @@ interface EditMaterialProps {
         content: string | null;
         thumbnail: string | null;
         subject_id: number;
-        school_class_id: number;
+        school_classes: number[];
         learning_objective_id: number | null;
         resources: Array<{
             id: number;
@@ -40,7 +40,7 @@ export default function EditMaterial({ material, teachings, objectives }: EditMa
     const { data, setData, post, processing, errors } = useForm({
         _method: 'post', // Required for sending files via inertia post instead of put
         subject_id: material.subject_id.toString(),
-        school_class_id: material.school_class_id.toString(),
+        school_classes: material.school_classes,
         learning_objective_id: material.learning_objective_id ? material.learning_objective_id.toString() : '',
         title: material.title,
         content: material.content || '',

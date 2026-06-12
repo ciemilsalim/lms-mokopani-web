@@ -97,7 +97,8 @@ class InstructionalDesignController extends Controller
 
         $validated = $request->validate([
             'subject_id'            => 'required|exists:mysql_absensi.subjects,id',
-            'school_class_id'       => 'required|exists:mysql_absensi.school_classes,id',
+            'school_classes'        => 'required|array|min:1',
+            'school_classes.*'      => 'exists:mysql_absensi.school_classes,id',
             'learning_objective_id' => 'required|exists:lms_learning_objectives,id',
             
             // Material & Activities
@@ -153,7 +154,6 @@ class InstructionalDesignController extends Controller
             $material = LmsMaterial::create([
                 'teacher_id'             => $teacher->id,
                 'subject_id'             => $request->subject_id,
-                'school_class_id'        => $request->school_class_id,
                 'learning_objective_id'  => $request->learning_objective_id,
                 'academic_year_id'       => $activeYear?->id,
                 'semester_id'            => $activeSemester?->id,
@@ -168,6 +168,8 @@ class InstructionalDesignController extends Controller
                 'lkpd'                   => $materialData['lkpd'] ?? null,
                 'thumbnail'              => $thumbnailPath,
             ]);
+
+            $material->schoolClasses()->sync($request->school_classes);
 
             // 1b. Create Resources
             if (!empty($materialData['resources'])) {
@@ -213,10 +215,9 @@ class InstructionalDesignController extends Controller
                 $instrumentType = $initialData['instrument_type'];
                 $config['diagnostic_category'] = 'cognitive';
 
-                LmsAssignment::create([
+                $initialAsm = LmsAssignment::create([
                     'teacher_id'            => $teacher->id,
                     'subject_id'            => $request->subject_id,
-                    'school_class_id'       => $request->school_class_id,
                     'learning_objective_id' => $request->learning_objective_id,
                     'academic_year_id'      => $activeYear?->id,
                     'semester_id'           => $activeSemester?->id,
@@ -230,6 +231,7 @@ class InstructionalDesignController extends Controller
                     'due_date'              => $initialData['due_date'],
                     'max_points'            => 100,
                 ]);
+                $initialAsm->schoolClasses()->sync($request->school_classes);
             }
 
             // Formative & Summative: multiple instruments
@@ -237,10 +239,9 @@ class InstructionalDesignController extends Controller
                 $assessmentData = $request->input($type);
                 if ($assessmentData['enabled'] && !empty($assessmentData['instruments'])) {
                     foreach ($assessmentData['instruments'] as $inst) {
-                        LmsAssignment::create([
+                        $otherAsm = LmsAssignment::create([
                             'teacher_id'            => $teacher->id,
                             'subject_id'            => $request->subject_id,
-                            'school_class_id'       => $request->school_class_id,
                             'learning_objective_id' => $request->learning_objective_id,
                             'academic_year_id'      => $activeYear?->id,
                             'semester_id'           => $activeSemester?->id,
@@ -254,6 +255,7 @@ class InstructionalDesignController extends Controller
                             'due_date'              => $inst['due_date'],
                             'max_points'            => 100,
                         ]);
+                        $otherAsm->schoolClasses()->sync($request->school_classes);
                     }
                 }
             }

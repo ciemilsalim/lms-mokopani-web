@@ -20,7 +20,6 @@ class LmsAssignment extends Model
         'subject_id',
         'teacher_id',
         'learning_objective_id',
-        'school_class_id',
         'academic_year_id',
         'semester_id',
         'title',
@@ -47,9 +46,9 @@ class LmsAssignment extends Model
         return $this->belongsTo(Teacher::class);
     }
 
-    public function schoolClass()
+    public function schoolClasses()
     {
-        return $this->belongsTo(SchoolClass::class, 'school_class_id');
+        return $this->belongsToMany(SchoolClass::class, 'lms_assignment_school_class', 'assignment_id', 'school_class_id');
     }
 
     public function academicYear()

@@ -32,26 +32,14 @@ export default function StepMaterial({
 }: StepMaterialProps) {
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const handleTeachingChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        const teachingId = e.target.value;
-        const selected = teachings.find(t => t.id.toString() === teachingId);
-        if (selected) {
-            setData({
-                ...data,
-                teaching_id: teachingId,
-                subject_id: selected.subject_id.toString(),
-                school_class_id: selected.school_class_id.toString(),
-                learning_objective_id: '', // Reset TP
-            });
-        } else {
-            setData({
-                ...data,
-                teaching_id: '',
-                subject_id: '',
-                school_class_id: '',
-                learning_objective_id: '',
-            });
-        }
+    const handleSubjectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const subjectId = e.target.value;
+        setData({
+            ...data,
+            subject_id: subjectId,
+            school_classes: [],
+            learning_objective_id: '',
+        });
     };
 
     const handleObjectiveChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -99,10 +87,17 @@ export default function StepMaterial({
         }
     };
 
-    // Filter TP based on subject & class
+    // Get unique subjects from teachings
+    const uniqueSubjects = Array.from(
+        new Map(teachings.map(t => [t.subject_id, { id: t.subject_id, name: t.subject_name }])).values()
+    );
+
+    // Get classes for the selected subject
+    const classesForSubject = teachings.filter(t => t.subject_id.toString() === data.subject_id);
+
+    // Filter TP based on subject
     const filteredObjectives = objectives.filter(obj => 
-        obj.subject_id.toString() === data.subject_id && 
-        (!obj.school_class_id || obj.school_class_id.toString() === data.school_class_id)
+        obj.subject_id.toString() === data.subject_id
     );
 
     return (
@@ -115,24 +110,53 @@ export default function StepMaterial({
                         Pilih Kelas & Mata Pelajaran
                     </h3>
 
-                    {/* Pembelajaran Select */}
+                    {/* Mapel Select */}
                     <div className="space-y-1.5">
                         <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.05em] ml-1">
-                            Mata Pelajaran (Kelas)
+                            Mata Pelajaran
                         </label>
                         <select
-                            value={data.teaching_id}
-                            onChange={handleTeachingChange}
-                            className={`w-full h-10 rounded-lg border bg-popover text-foreground px-4 text-[13px] font-semibold outline-none transition ${(localErrors?.subject_id || localErrors?.school_class_id) ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500/20' : 'border-border focus:border-primary'}`}
+                            value={data.subject_id}
+                            onChange={handleSubjectChange}
+                            className={`w-full h-10 rounded-lg border bg-popover text-foreground px-4 text-[13px] font-semibold outline-none transition ${localErrors?.subject_id ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500/20' : 'border-border focus:border-primary'}`}
                         >
-                            <option value="">-- Pilih Mapel & Kelas --</option>
-                            {teachings.map((t) => (
-                                <option key={t.id} value={t.id}>
-                                    {t.subject_name} - Kelas {t.class_name}
+                            <option value="">-- Pilih Mapel --</option>
+                            {uniqueSubjects.map((s) => (
+                                <option key={s.id} value={s.id}>
+                                    {s.name}
                                 </option>
                             ))}
                         </select>
                     </div>
+
+                    {/* Class Checkboxes */}
+                    {data.subject_id && (
+                        <div className="space-y-1.5 pt-2 border-t border-border">
+                            <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.05em] ml-1">
+                                Pilih Kelas
+                            </label>
+                            <div className="grid grid-cols-2 gap-2 mt-2">
+                                {classesForSubject.map(t => (
+                                    <label key={t.class_id} className="flex items-center gap-2 text-sm border p-2 rounded-lg cursor-pointer hover:bg-muted/50 border-border bg-popover">
+                                        <input
+                                            type="checkbox"
+                                            checked={data.school_classes.includes(t.class_id)}
+                                            onChange={(e) => {
+                                                const id = t.class_id;
+                                                setData('school_classes', e.target.checked 
+                                                    ? [...data.school_classes, id]
+                                                    : data.school_classes.filter((c: number) => c !== id)
+                                                );
+                                            }}
+                                            className="rounded border-input text-primary focus:ring-primary"
+                                        />
+                                        <span className="font-semibold text-foreground">{t.class_name}</span>
+                                    </label>
+                                ))}
+                            </div>
+                            {localErrors?.school_classes && <p className="text-xs text-destructive mt-1">{localErrors.school_classes}</p>}
+                        </div>
+                    )}
 
                     {/* TP Select */}
                     <div className="space-y-1.5 pt-2 border-t border-border">
@@ -154,7 +178,7 @@ export default function StepMaterial({
                         <select
                             value={data.learning_objective_id}
                             onChange={handleObjectiveChange}
-                            disabled={!data.teaching_id}
+                            disabled={!data.subject_id}
                             className={`w-full h-10 rounded-lg border bg-popover text-foreground px-4 text-[13px] font-semibold outline-none transition disabled:opacity-50 ${localErrors?.learning_objective_id ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500/20' : 'border-border focus:border-primary'}`}
                         >
                             <option value="">-- Pilih Tujuan Pembelajaran --</option>

@@ -155,7 +155,7 @@ export default function CreateMaterial({ teachings, objectives }: CreateMaterial
 
     const { data, setData, post, processing, errors } = useForm({
         subject_id: '',
-        school_class_id: '',
+        school_classes: [] as number[],
         learning_objective_id: '',
         title: '',
         content: '',
@@ -283,7 +283,7 @@ export default function CreateMaterial({ teachings, objectives }: CreateMaterial
                                         value={data.subject_id}
                                         onChange={(e) => {
                                             setData('subject_id', e.target.value);
-                                            setData('school_class_id', '');
+                                            setData('school_classes', []);
                                             setData('learning_objective_id', '');
                                         }}
                                         className="w-full rounded-lg border border-input bg-background px-4 py-2.5 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring transition"
@@ -296,24 +296,34 @@ export default function CreateMaterial({ teachings, objectives }: CreateMaterial
                                     {errors.subject_id && <p className="text-xs text-destructive">{errors.subject_id}</p>}
                                 </div>
 
-                                {/* Class Select */}
                                 <div className="space-y-2">
                                     <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                                         <Users className="h-3.5 w-3.5 text-muted-foreground" />
                                         Kelas
                                     </label>
-                                    <select 
-                                        value={data.school_class_id}
-                                        onChange={(e) => setData('school_class_id', e.target.value)}
-                                        disabled={!data.subject_id}
-                                        className="w-full rounded-lg border border-input bg-background px-4 py-2.5 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring transition disabled:opacity-50"
-                                    >
-                                        <option value="">Pilih Kelas</option>
+                                    <div className="grid grid-cols-2 gap-2 mt-2">
+                                        {classesForSubject.length === 0 && (
+                                            <p className="text-xs text-muted-foreground italic col-span-2">Pilih mata pelajaran terlebih dahulu</p>
+                                        )}
                                         {classesForSubject.map(t => (
-                                            <option key={t.school_class_id} value={t.school_class_id}>{t.school_class?.name}</option>
+                                            <label key={t.school_class_id} className="flex items-center gap-2 text-sm border p-2 rounded-lg cursor-pointer hover:bg-muted/50">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={data.school_classes.includes(t.school_class_id)}
+                                                    onChange={(e) => {
+                                                        const id = t.school_class_id;
+                                                        setData('school_classes', e.target.checked 
+                                                            ? [...data.school_classes, id]
+                                                            : data.school_classes.filter(c => c !== id)
+                                                        );
+                                                    }}
+                                                    className="rounded border-input text-primary focus:ring-primary"
+                                                />
+                                                {t.school_class?.name}
+                                            </label>
                                         ))}
-                                    </select>
-                                    {errors.school_class_id && <p className="text-xs text-destructive">{errors.school_class_id}</p>}
+                                    </div>
+                                    {errors.school_classes && <p className="text-xs text-destructive">{errors.school_classes}</p>}
                                 </div>
                             </div>
 

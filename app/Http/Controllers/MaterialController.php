@@ -22,29 +22,43 @@ class MaterialController extends Controller
         $activeYear = AcademicYear::getActive();
         $activeSemester = Semester::getActive();
 
-        $query = LmsMaterial::with(['subject', 'teacher', 'schoolClass'])
+        $query = LmsMaterial::with(['subject', 'teacher', 'schoolClasses'])
             ->where('academic_year_id', $activeYear?->id)
             ->where('semester_id', $activeSemester?->id);
 
         if ($user->teacher) {
             $query->where('teacher_id', $user->teacher->id);
         } elseif ($user->student) {
-            $query->where('school_class_id', $user->student->school_class_id);
+            $query->whereHas('schoolClasses', function ($q) use ($user) {
+                $q->where('school_classes.id', $user->student->school_class_id);
+            });
         }
 
         $models = $query->latest()->get();
 
         // ── Teacher: group by class → subject ────────────────────────
         if ($user->teacher) {
-            $teacherGrouped = $models->groupBy('school_class_id')->map(function ($classItems, $classId) {
-                $first = $classItems->first();
-                $subjectGroups = $classItems->groupBy('subject_id');
+            $classMaterials = [];
+            foreach ($models as $m) {
+                foreach ($m->schoolClasses as $c) {
+                    if (!isset($classMaterials[$c->id])) {
+                        $classMaterials[$c->id] = [
+                            'class' => $c,
+                            'materials' => []
+                        ];
+                    }
+                    $classMaterials[$c->id]['materials'][] = $m;
+                }
+            }
+
+            $teacherGrouped = collect($classMaterials)->map(function ($item, $classId) {
+                $subjectGroups = collect($item['materials'])->groupBy('subject_id');
                 $subjects = $subjectGroups->map(function ($items, $subjectId) {
-                    $firstItem = $items->first();
+                    $firstItem = collect($items)->first();
                     return [
                         'subject_id'   => (int) $subjectId,
                         'subject_name' => $firstItem->subject?->name ?? '-',
-                        'materials'    => $items->map(fn ($m) => [
+                        'materials'    => collect($items)->map(fn ($m) => [
                             'id'           => $m->id,
                             'title'        => $m->title,
                             'subject_name' => $m->subject?->name ?? '-',
@@ -57,7 +71,7 @@ class MaterialController extends Controller
 
                 return [
                     'class_id'   => (int) $classId,
-                    'class_name' => $first->schoolClass?->name ?? 'Kelas',
+                    'class_name' => $item['class']->name ?? 'Kelas',
                     'subjects'   => $subjects,
                 ];
             })->values();
@@ -133,7 +147,8 @@ class MaterialController extends Controller
 
         $validated = $request->validate([
             'subject_id'            => 'required|exists:mysql_absensi.subjects,id',
-            'school_class_id'       => 'required|exists:mysql_absensi.school_classes,id',
+            'school_classes'        => 'required|array|min:1',
+            'school_classes.*'      => 'exists:mysql_absensi.school_classes,id',
             'learning_objective_id' => 'nullable|exists:lms_learning_objectives,id',
             'title'                 => 'required|string|max:255',
             'content'               => 'nullable|string',
@@ -148,10 +163,9 @@ class MaterialController extends Controller
             $fileType = $request->file('file')->getClientOriginalExtension();
         }
 
-        \App\Models\LmsMaterial::create([
+        $material = \App\Models\LmsMaterial::create([
             'teacher_id'            => $teacher->id,
             'subject_id'            => $validated['subject_id'],
-            'school_class_id'       => $validated['school_class_id'],
             'learning_objective_id' => $validated['learning_objective_id'] ?? null,
             'academic_year_id'      => $activeYear?->id,
             'semester_id'           => $activeSemester?->id,
@@ -162,13 +176,15 @@ class MaterialController extends Controller
             'file_type'             => $fileType,
         ]);
 
+        $material->schoolClasses()->sync($validated['school_classes']);
+
         return redirect()->route('materials.index')->with('success', 'Materi berhasil diterbitkan.');
     }
 
     public function show(LmsMaterial $material)
     {
         $user = Auth::user();
-        $material->load(['subject', 'teacher', 'learningObjective', 'resources', 'schoolClass', 'semester', 'academicYear']);
+        $material->load(['subject', 'teacher', 'learningObjective', 'resources', 'schoolClasses', 'semester', 'academicYear']);
 
         $readinessStatus = [
             'status' => 'ready', // ready, needs_intervention, not_taken
@@ -265,10 +281,22 @@ class MaterialController extends Controller
         }
 
         // Ambil semua asesmen terkait materi ini (initial, formative, summative)
-        $assignments = \App\Models\LmsAssignment::where('subject_id', $material->subject_id)
-            ->where('school_class_id', $material->school_class_id)
-            ->where('learning_objective_id', $material->learning_objective_id)
-            ->get()
+        $classId = $user->student ? $user->student->school_class_id : null;
+        $assignmentsQuery = \App\Models\LmsAssignment::where('subject_id', $material->subject_id)
+            ->where('learning_objective_id', $material->learning_objective_id);
+
+        if ($classId) {
+            $assignmentsQuery->whereHas('schoolClasses', function($q) use ($classId) {
+                $q->where('school_classes.id', $classId);
+            });
+        } else {
+            $materialClassIds = $material->schoolClasses->pluck('id')->toArray();
+            $assignmentsQuery->whereHas('schoolClasses', function($q) use ($materialClassIds) {
+                $q->whereIn('school_classes.id', $materialClassIds);
+            });
+        }
+
+        $assignments = $assignmentsQuery->get()
             ->map(fn($a) => [
                 'id'                => $a->id,
                 'assessment_type'   => $a->assessment_type,
@@ -304,7 +332,7 @@ class MaterialController extends Controller
                 'teacher_name'           => $material->teacher?->name,
                 'teacher_id'             => $material->teacher_id,
                 'teacher_nip'            => $material->teacher?->nip,
-                'school_class_name'      => $material->schoolClass?->name,
+                'school_classes'         => $material->schoolClasses->map(fn($c) => ['id' => $c->id, 'name' => $c->name]),
                 'fase'                   => $material->subject?->fase,
                 'semester_name'          => $material->semester?->name,
                 'academic_year_name'     => $material->academicYear?->name,
@@ -372,7 +400,7 @@ class MaterialController extends Controller
                 'content' => $material->content,
                 'thumbnail' => $material->thumbnail ? asset('storage/' . $material->thumbnail) : null,
                 'subject_id' => $material->subject_id,
-                'school_class_id' => $material->school_class_id,
+                'school_classes' => $material->schoolClasses->pluck('id'),
                 'learning_objective_id' => $material->learning_objective_id,
                 'resources' => $material->resources->map(fn($r) => [
                     'id' => $r->id,
@@ -397,7 +425,8 @@ class MaterialController extends Controller
 
         $validated = $request->validate([
             'subject_id'            => 'required|exists:mysql_absensi.subjects,id',
-            'school_class_id'       => 'required|exists:mysql_absensi.school_classes,id',
+            'school_classes'        => 'required|array|min:1',
+            'school_classes.*'      => 'exists:mysql_absensi.school_classes,id',
             'learning_objective_id' => 'nullable|exists:lms_learning_objectives,id',
             'title'                 => 'required|string|max:255',
             'content'               => 'nullable|string',
@@ -408,7 +437,6 @@ class MaterialController extends Controller
 
         $updateData = [
             'subject_id'            => $validated['subject_id'],
-            'school_class_id'       => $validated['school_class_id'],
             'learning_objective_id' => $validated['learning_objective_id'] ?? null,
             'title'                 => $validated['title'],
             'content'               => $validated['content'] ?? null,
@@ -422,6 +450,7 @@ class MaterialController extends Controller
         }
 
         $material->update($updateData);
+        $material->schoolClasses()->sync($validated['school_classes']);
 
         // Handle resources to delete
         if (!empty($validated['resources_to_delete'])) {

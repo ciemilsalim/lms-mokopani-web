@@ -19,7 +19,7 @@ class AssignmentController extends Controller
         $activeYear = \App\Models\AcademicYear::getActive();
         $activeSemester = \App\Models\Semester::getActive();
 
-        $query = LmsAssignment::with(['subject', 'schoolClass', 'learningObjective'])
+        $query = LmsAssignment::with(['subject', 'schoolClasses', 'learningObjective'])
             ->where('academic_year_id', $activeYear?->id)
             ->where('semester_id', $activeSemester?->id);
 
@@ -28,7 +28,9 @@ class AssignmentController extends Controller
         } elseif ($user->teacher) {
             $query->where('teacher_id', $user->teacher->id);
         } elseif ($user->student) {
-            $query->where('school_class_id', $user->student->school_class_id)
+            $query->whereHas('schoolClasses', function ($q) use ($user) {
+                $q->where('school_classes.id', $user->student->school_class_id);
+            })
                 ->where('instrument_type', '!=', 'performance_observation')
                 ->where('instrument_type', '!=', 'performance')
                 ->where('instrument_type', '!=', 'oral_test')
@@ -56,7 +58,21 @@ class AssignmentController extends Controller
         }
 
         if ($user->teacher) {
-            $teacherGrouped = $models->groupBy('school_class_id')->map(function ($classItems, $classId) {
+            $classAssignments = [];
+            foreach ($models as $a) {
+                foreach ($a->schoolClasses as $c) {
+                    if (!isset($classAssignments[$c->id])) {
+                        $classAssignments[$c->id] = [
+                            'class' => $c,
+                            'assignments' => []
+                        ];
+                    }
+                    $classAssignments[$c->id]['assignments'][] = $a;
+                }
+            }
+
+            $teacherGrouped = collect($classAssignments)->map(function ($item, $classId) {
+                $classItems = collect($item['assignments']);
                 $firstClassItem = $classItems->first();
                 
                 $subjectGroups = $classItems->groupBy('subject_id')->map(function ($subjectItems, $subjectId) {
@@ -97,7 +113,7 @@ class AssignmentController extends Controller
 
                 return [
                     'class_id'   => (int) $classId,
-                    'class_name' => $firstClassItem->schoolClass?->name ?? 'Kelas',
+                    'class_name' => $item['class']->name ?? 'Kelas',
                     'subjects'   => $subjectGroups,
                 ];
             })->values();
@@ -288,7 +304,8 @@ class AssignmentController extends Controller
             'scoring_tool_config'   => 'nullable|array',
             'subject_id'            => 'required|exists:mysql_absensi.subjects,id',
             'learning_objective_id' => 'nullable|exists:lms_learning_objectives,id',
-            'school_class_id'       => 'required|exists:mysql_absensi.school_classes,id',
+            'school_classes'        => 'required|array|min:1',
+            'school_classes.*'      => 'exists:mysql_absensi.school_classes,id',
             'title'                 => 'required|string|max:255',
             'description'           => 'required|string',
             'due_date'              => 'required|date',
@@ -300,10 +317,11 @@ class AssignmentController extends Controller
         $validated['semester_id'] = $activeSemester?->id;
 
         $assignment = LmsAssignment::create($validated);
+        $assignment->schoolClasses()->sync($validated['school_classes']);
 
         // Kirim notifikasi ke semua siswa di kelas ini
         $subject = \App\Models\Subject::find($validated['subject_id']);
-        $students = \App\Models\Student::where('school_class_id', $validated['school_class_id'])->pluck('user_id')->filter();
+        $students = \App\Models\Student::whereIn('school_class_id', $validated['school_classes'])->pluck('user_id')->filter();
 
         $assessmentLabels = [
             'initial' => 'Asesmen Awal',
@@ -384,7 +402,7 @@ class AssignmentController extends Controller
 
         $students = [];
         if ($user->teacher) {
-            $students = \App\Models\Student::where('school_class_id', $assignment->school_class_id)
+            $students = \App\Models\Student::whereIn('school_class_id', $assignment->schoolClasses->pluck('id'))
                 ->orderBy('name')
                 ->get()
                 ->map(fn($s) => [
@@ -396,8 +414,8 @@ class AssignmentController extends Controller
 
         // Available peers for peer assessment (student viewing)
         $availablePeers = [];
-        if ($user->student && $assignment->instrument_type === 'peer_assessment' && $assignment->school_class_id) {
-            $classmates = \App\Models\Student::where('school_class_id', $assignment->school_class_id)
+        if ($user->student && $assignment->instrument_type === 'peer_assessment' && $assignment->schoolClasses->count() > 0) {
+            $classmates = \App\Models\Student::whereIn('school_class_id', $assignment->schoolClasses->pluck('id'))
                 ->where('id', '!=', $user->student->id)
                 ->orderBy('name')
                 ->get();
@@ -494,7 +512,7 @@ class AssignmentController extends Controller
                 'title'             => $assignment->title,
                 'description'       => $assignment->description,
                 'subject'           => $assignment->subject?->name,
-                'school_class_id'   => $assignment->school_class_id,
+                'school_classes'    => $assignment->schoolClasses->map(fn($c) => ['id' => $c->id, 'name' => $c->name]),
                 'due_date'          => $assignment->due_date?->format('d M Y, H:i'),
                 'max_points'        => $assignment->max_points,
                 'passing_grade'     => $assignment->passing_grade,
@@ -825,7 +843,7 @@ class AssignmentController extends Controller
                 'title'               => $assignment->title,
                 'description'         => $assignment->description,
                 'subject_id'          => $assignment->subject_id,
-                'school_class_id'     => $assignment->school_class_id,
+                'school_classes'      => $assignment->schoolClasses->pluck('id'),
                 'learning_objective_id' => $assignment->learning_objective_id,
                 'assessment_type'     => $assignment->assessment_type,
                 'instrument_type'     => $assignment->instrument_type,
@@ -896,7 +914,8 @@ class AssignmentController extends Controller
             'scoring_tool_config'   => 'nullable|array',
             'subject_id'            => 'required|exists:mysql_absensi.subjects,id',
             'learning_objective_id' => 'nullable|exists:lms_learning_objectives,id',
-            'school_class_id'       => 'required|exists:mysql_absensi.school_classes,id',
+            'school_classes'        => 'required|array|min:1',
+            'school_classes.*'      => 'exists:mysql_absensi.school_classes,id',
             'title'                 => 'required|string|max:255',
             'description'           => 'required|string',
             'due_date'              => 'required|date',
@@ -905,6 +924,7 @@ class AssignmentController extends Controller
         ]);
 
         $assignment->update($validated);
+        $assignment->schoolClasses()->sync($validated['school_classes']);
 
         return redirect()->route('assignments.show', $assignment->id)->with('success', 'Tugas berhasil diperbarui.');
     }

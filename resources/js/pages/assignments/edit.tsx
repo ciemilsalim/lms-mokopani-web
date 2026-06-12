@@ -60,7 +60,7 @@ interface EditAssignmentProps {
         title: string;
         description: string;
         subject_id: number;
-        school_class_id: number;
+        school_classes: number[];
         learning_objective_id: number | null;
         assessment_type: string;
         instrument_type: string;
@@ -113,7 +113,7 @@ export default function EditAssignment({ assignment, teachings, objectives, asse
         scoring_tool_config: assignment.scoring_tool_config ?? {} as any,
         subject_id: assignment.subject_id.toString(),
         learning_objective_id: assignment.learning_objective_id?.toString() ?? '',
-        school_class_id: assignment.school_class_id.toString(),
+        school_classes: assignment.school_classes || [],
         title: assignment.title,
         description: assignment.description,
         due_date: assignment.due_date,
@@ -1103,7 +1103,7 @@ export default function EditAssignment({ assignment, teachings, objectives, asse
                                                 onChange={(e) => {
                                                     setData('subject_id', e.target.value);
                                                     setData('learning_objective_id', '');
-                                                    setData('school_class_id', '');
+                                                    setData('school_classes', []);
                                                 }}
                                                 className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 dark:bg-popover transition"
                                             >
@@ -1121,21 +1121,32 @@ export default function EditAssignment({ assignment, teachings, objectives, asse
                                                 <Users className="h-4 w-4 text-primary" />
                                                 Kelas
                                             </label>
-                                            <select
-                                                value={data.school_class_id}
-                                                onChange={(e) => setData('school_class_id', e.target.value)}
-                                                disabled={!data.subject_id}
-                                                className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 dark:bg-popover disabled:opacity-50 transition"
-                                            >
-                                                <option value="">Pilih Kelas</option>
+                                            <div className="grid grid-cols-2 gap-2 mt-2">
+                                                {teachings.filter(t => t.subject_id === parseInt(data.subject_id)).length === 0 && (
+                                                    <p className="text-xs text-muted-foreground italic col-span-2">Pilih mata pelajaran terlebih dahulu</p>
+                                                )}
                                                 {teachings
                                                     .filter(t => t.subject_id === parseInt(data.subject_id))
                                                     .map(t => (
-                                                        <option key={t.class_id} value={t.class_id}>{t.class_name}</option>
+                                                        <label key={t.class_id} className="flex items-center gap-2 text-sm border p-2 rounded-lg cursor-pointer hover:bg-muted/50">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={data.school_classes.includes(t.class_id)}
+                                                                onChange={(e) => {
+                                                                    const id = t.class_id;
+                                                                    setData('school_classes', e.target.checked 
+                                                                        ? [...data.school_classes, id]
+                                                                        : data.school_classes.filter((c: number) => c !== id)
+                                                                    );
+                                                                }}
+                                                                className="rounded border-input text-primary focus:ring-primary"
+                                                            />
+                                                            {t.class_name}
+                                                        </label>
                                                     ))
                                                 }
-                                            </select>
-                                            {errors.school_class_id && <p className="text-xs text-destructive">{errors.school_class_id}</p>}
+                                            </div>
+                                            {errors.school_classes && <p className="text-xs text-destructive">{errors.school_classes}</p>}
                                         </div>
 
                                         <div className="md:col-span-2 space-y-2">

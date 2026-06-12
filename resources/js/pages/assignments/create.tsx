@@ -99,7 +99,7 @@ export default function CreateAssignment({ teachings, objectives, assessment_typ
         scoring_tool_config: {} as any,
         subject_id: '',
         learning_objective_id: '',
-        school_class_id: '',
+        school_classes: [] as number[],
         title: '',
         description: '',
         due_date: '',
@@ -471,7 +471,7 @@ export default function CreateAssignment({ teachings, objectives, assessment_typ
                                                             ...prev,
                                                             subject_id: e.target.value,
                                                             learning_objective_id: '',
-                                                            school_class_id: ''
+                                                            school_classes: []
                                                         }));
                                                     }}
                                                     className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary/25 dark:bg-popover transition"
@@ -1075,7 +1075,7 @@ export default function CreateAssignment({ teachings, objectives, assessment_typ
                                                 onChange={(e) => {
                                                     setData('subject_id', e.target.value);
                                                     setData('learning_objective_id', '');
-                                                    setData('school_class_id', '');
+                                                    setData('school_classes', []);
                                                 }}
                                                 className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 dark:bg-popover transition"
                                             >
@@ -1093,21 +1093,32 @@ export default function CreateAssignment({ teachings, objectives, assessment_typ
                                                 <Users className="h-3.5 w-3.5 text-muted-foreground" />
                                                 Kelas
                                             </label>
-                                            <select 
-                                                value={data.school_class_id}
-                                                onChange={(e) => setData('school_class_id', e.target.value)}
-                                                disabled={!data.subject_id}
-                                                className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 dark:bg-popover transition disabled:opacity-50"
-                                            >
-                                                <option value="">Pilih Kelas</option>
+                                            <div className="grid grid-cols-2 gap-2 mt-2">
+                                                {teachings.filter(t => t.subject_id === parseInt(data.subject_id)).length === 0 && (
+                                                    <p className="text-xs text-muted-foreground italic col-span-2">Pilih mata pelajaran terlebih dahulu</p>
+                                                )}
                                                 {teachings
                                                     .filter(t => t.subject_id === parseInt(data.subject_id))
                                                     .map(t => (
-                                                        <option key={t.class_id} value={t.class_id}>{t.class_name}</option>
+                                                        <label key={t.class_id} className="flex items-center gap-2 text-sm border p-2 rounded-lg cursor-pointer hover:bg-muted/50">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={data.school_classes.includes(t.class_id)}
+                                                                onChange={(e) => {
+                                                                    const id = t.class_id;
+                                                                    setData('school_classes', e.target.checked 
+                                                                        ? [...data.school_classes, id]
+                                                                        : data.school_classes.filter((c: number) => c !== id)
+                                                                    );
+                                                                }}
+                                                                className="rounded border-input text-primary focus:ring-primary"
+                                                            />
+                                                            {t.class_name}
+                                                        </label>
                                                     ))
                                                 }
-                                            </select>
-                                            {errors.school_class_id && <p className="text-xs text-destructive">{errors.school_class_id}</p>}
+                                            </div>
+                                            {errors.school_classes && <p className="text-xs text-destructive">{errors.school_classes}</p>}
                                         </div>
 
                                         <div className="md:col-span-2 space-y-2">
