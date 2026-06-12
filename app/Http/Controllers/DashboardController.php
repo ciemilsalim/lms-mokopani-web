@@ -158,11 +158,11 @@ class DashboardController extends Controller
         $activeYear = AcademicYear::getActive();
         $activeSemester = Semester::getActive();
 
-        $myMaterials = LmsMaterial::where('school_class_id', $student->school_class_id)
+        $myMaterials = LmsMaterial::whereHas('schoolClasses', function ($q) use ($student) { $q->where('school_classes.id', $student->school_class_id); })
             ->where('academic_year_id', $activeYear?->id)
             ->where('semester_id', $activeSemester?->id);
 
-        $myAssignments = LmsAssignment::where('school_class_id', $student->school_class_id)
+        $myAssignments = LmsAssignment::whereHas('schoolClasses', function ($q) use ($student) { $q->where('school_classes.id', $student->school_class_id); })
             ->where('academic_year_id', $activeYear?->id)
             ->where('semester_id', $activeSemester?->id);
 
@@ -248,7 +248,7 @@ class DashboardController extends Controller
             $query->whereIn('id', LmsMaterial::where('teacher_id', $teacher->id)
                 ->select('subject_id')->distinct());
         } elseif ($student) {
-            $query->whereIn('id', LmsMaterial::where('school_class_id', $student->school_class_id)
+            $query->whereIn('id', LmsMaterial::whereHas('schoolClasses', function ($q) use ($student) { $q->where('school_classes.id', $student->school_class_id); })
                 ->select('subject_id')->distinct());
         }
 
@@ -319,8 +319,7 @@ class DashboardController extends Controller
             })->get();
 
             return $subjects->map(function ($subject) use ($student) {
-                $assignmentIds = LmsAssignment::where('subject_id', $subject->id)
-                    ->where('school_class_id', $student->school_class_id)
+                $assignmentIds = LmsAssignment::where('subject_id', $subject->id)->whereHas('schoolClasses', function ($q) use ($student) { $q->where('school_classes.id', $student->school_class_id); })
                     ->pluck('id');
                 $total = $assignmentIds->count();
                 $completed = LmsSubmission::where('student_id', $student->id)

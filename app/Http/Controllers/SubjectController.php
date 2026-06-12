@@ -25,12 +25,12 @@ class SubjectController extends Controller
         $subjects = $query->withCount([
             'materials' => function($q) use ($user) {
                 if ($user && $user->role === 'student' && $user->student) {
-                    $q->where('school_class_id', $user->student->school_class_id);
+                    $q->whereHas('schoolClasses', function ($query) use ($user) { $query->where('school_classes.id', $user->student->school_class_id); });
                 }
             },
             'assignments' => function($q) use ($user) {
                 if ($user && $user->role === 'student' && $user->student) {
-                    $q->where('school_class_id', $user->student->school_class_id);
+                    $q->whereHas('schoolClasses', function ($query) use ($user) { $query->where('school_classes.id', $user->student->school_class_id); });
                 }
             }
         ])->with(['teachingAssignments' => function($q) use ($user) {
@@ -77,8 +77,8 @@ class SubjectController extends Controller
 
         // Filter berdasarkan kelas siswa
         if ($studentClassId) {
-            $assignmentQuery->where('school_class_id', $studentClassId);
-            $materialQuery->where('school_class_id', $studentClassId);
+            $assignmentQuery->whereHas('schoolClasses', function ($q) use ($studentClassId) { $q->where('school_classes.id', $studentClassId); });
+            $materialQuery->whereHas('schoolClasses', function ($q) use ($studentClassId) { $q->where('school_classes.id', $studentClassId); });
         }
 
         $allAssignments = $assignmentQuery->orderBy('order')

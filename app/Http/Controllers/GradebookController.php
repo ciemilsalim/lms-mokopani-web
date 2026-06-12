@@ -63,7 +63,7 @@ class GradebookController extends Controller
 
         // 2. Ambil semua tugas untuk kelas & mapel ini
         $allAssignments = LmsAssignment::with('learningObjective')
-            ->where('school_class_id', $classId)
+            ->whereHas('schoolClasses', function ($q) use ($classId) { $q->where('school_classes.id', $classId); })
             ->where('subject_id', $subjectId)
             ->where('academic_year_id', $activeYear?->id)
             ->where('semester_id', $activeSemester?->id)
@@ -180,7 +180,7 @@ class GradebookController extends Controller
             ->get();
 
         // Ambil semua tugas sumatif
-        $assignments = LmsAssignment::where('school_class_id', $classId)
+        $assignments = LmsAssignment::whereHas('schoolClasses', function ($q) use ($classId) { $q->where('school_classes.id', $classId); })
             ->where('subject_id', $subjectId)
             ->where('assessment_type', 'summative')
             ->where('academic_year_id', $activeYear?->id)
@@ -258,7 +258,7 @@ class GradebookController extends Controller
 
         // Ambil semua tugas untuk kelas siswa ini di periode aktif
         $assignments = LmsAssignment::with('subject')
-            ->where('school_class_id', $student->school_class_id)
+            ->whereHas('schoolClasses', function ($q) use ($student) { $q->where('school_classes.id', $student->school_class_id); })
             ->where('academic_year_id', $activeYear?->id)
             ->where('semester_id', $activeSemester?->id)
             ->get();
@@ -433,7 +433,7 @@ class GradebookController extends Controller
 
         $students = $class->students()->orderBy('name')->get();
         $assignments = LmsAssignment::where('subject_id', $subject_id)
-            ->where('school_class_id', $class_id)
+            ->whereHas('schoolClasses', function ($q) use ($class_id) { $q->where('school_classes.id', $class_id); })
             ->where('assessment_type', 'summative')
             ->whereIn('learning_objective_id', $tps->pluck('id'))
             ->get();

@@ -68,7 +68,7 @@ class RaporController extends Controller
 
         $tps = LmsLearningObjective::where('subject_id', $subjectId)->orderBy('code')->get();
 
-        $assignments = LmsAssignment::where('school_class_id', $classId)
+        $assignments = LmsAssignment::whereHas('schoolClasses', function ($q) use ($classId) { $q->where('school_classes.id', $classId); })
             ->where('subject_id', $subjectId)
             ->where('academic_year_id', $activeYear?->id)
             ->where('semester_id', $activeSemester?->id)

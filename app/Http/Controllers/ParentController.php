@@ -23,7 +23,7 @@ class ParentController extends Controller
         $activeSemester = Semester::getActive();
 
         $childrenData = $children->map(function ($child) use ($activeYear, $activeSemester) {
-            $assignments = LmsAssignment::where('school_class_id', $child->school_class_id)
+            $assignments = LmsAssignment::whereHas('schoolClasses', function ($q) use ($child) { $q->where('school_classes.id', $child->school_class_id); })
                 ->where('academic_year_id', $activeYear?->id)
                 ->where('semester_id', $activeSemester?->id)
                 ->get();

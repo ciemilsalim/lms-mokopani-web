@@ -608,11 +608,11 @@ class AdaptiveLearningService
         $tpIds = $tpsBySubject->flatten()->pluck('id');
         
         $assignments = \App\Models\LmsAssignment::whereIn('learning_objective_id', $tpIds)
-            ->where('school_class_id', $schoolClassId)
+            ->whereHas('schoolClasses', function ($q) use ($schoolClassId) { $q->where('school_classes.id', $schoolClassId); })
             ->get()->groupBy('learning_objective_id');
             
         $materials = \App\Models\LmsMaterial::whereIn('learning_objective_id', $tpIds)
-            ->where('school_class_id', $schoolClassId)
+            ->whereHas('schoolClasses', function ($q) use ($schoolClassId) { $q->where('school_classes.id', $schoolClassId); })
             ->get()->groupBy('learning_objective_id');
 
         $submissions = \App\Models\LmsSubmission::whereIn('assignment_id', $assignments->flatten()->pluck('id'))

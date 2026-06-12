@@ -96,11 +96,13 @@ export default function Subjects({ subjects }: SubjectsProps) {
                                 <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-muted text-muted-foreground shadow-sm">
                                     <BookOpen className="h-6 w-6 text-muted-foreground" />
                                 </div>
-                                <p className="text-xs font-semibold uppercase tracking-wider text-primary">{subject.code}</p>
+                                {subject.code && subject.code.toLowerCase() !== subject.name.toLowerCase() && (
+                                    <p className="text-xs font-semibold uppercase tracking-wider text-primary">{subject.code}</p>
+                                )}
                                 <h3 className="mt-1 font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-2">
                                     {subject.name}
                                 </h3>
-                                {subject.description && (
+                                {subject.description && subject.description.toLowerCase() !== subject.name.toLowerCase() && subject.description.toLowerCase() !== subject.code?.toLowerCase() && (
                                     <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{subject.description}</p>
                                 )}
 
