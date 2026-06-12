@@ -433,36 +433,21 @@ export default function LearningObjectiveIndex({ objectives, subjects, cpList }:
                         </div>
 
                         <form onSubmit={handleSubmit} className="space-y-6">
-                            <div className="grid grid-cols-2 gap-6">
-                                <div className="space-y-2">
-                                    <label className="text-xs font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-                                        <BookOpen className="h-3.5 w-3.5 text-primary" />
-                                        Mata Pelajaran
-                                    </label>
-                                    <select 
-                                        value={data.subject_id}
-                                        onChange={(e) => setData('subject_id', e.target.value)}
-                                        disabled={!!editingId}
-                                        className="w-full rounded-[1.25rem] border border-border bg-muted/30 px-5 py-3.5 text-sm font-bold outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition"
-                                    >
-                                        <option value="">Pilih Mapel</option>
-                                        {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                                    </select>
-                                    {errors.subject_id && <p className="text-[10px] text-destructive font-bold">{errors.subject_id}</p>}
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-xs font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-                                        <Hash className="h-3.5 w-3.5 text-warning" />
-                                        Kode (Opsional)
-                                    </label>
-                                    <input 
-                                        type="text"
-                                        placeholder="Contoh: TP 1.1"
-                                        value={data.code}
-                                        onChange={(e) => setData('code', e.target.value)}
-                                        className="w-full rounded-[1.25rem] border border-border bg-muted/30 px-5 py-3.5 text-sm font-bold outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition"
-                                    />
-                                </div>
+                            <div className="space-y-2">
+                                <label className="text-xs font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+                                    <BookOpen className="h-3.5 w-3.5 text-primary" />
+                                    Mata Pelajaran
+                                </label>
+                                <select 
+                                    value={data.subject_id}
+                                    onChange={(e) => setData('subject_id', e.target.value)}
+                                    disabled={!!editingId}
+                                    className="w-full rounded-[1.25rem] border border-border bg-muted/30 px-5 py-3.5 text-sm font-bold outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition"
+                                >
+                                    <option value="">Pilih Mapel</option>
+                                    {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                </select>
+                                {errors.subject_id && <p className="text-[10px] text-destructive font-bold">{errors.subject_id}</p>}
                             </div>
 
                             {activeTab === 'cross_element' ? (

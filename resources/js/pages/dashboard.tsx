@@ -304,22 +304,16 @@ export default function Dashboard({ stats, identity, subjects, recentActivities,
                         const Icon = card.icon;
                         const c = colorMap[card.color] || colorMap.primary;
                         return (
-                            <Card key={card.key} className="border border-border/80 card-hover shadow-sm bg-card overflow-hidden">
+                            <Card key={card.key} className="border border-border/50 card-hover shadow-sm bg-card overflow-hidden">
                                 <CardContent className="p-5">
-                                    <div className="flex items-start justify-between">
+                                    <div className="flex items-center justify-between">
                                         <div>
-                                            <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">{card.label}</p>
-                                            <p className="text-2xl font-black text-foreground mt-1.5 leading-tight">{card.value}</p>
+                                            <p className="text-[11px] text-muted-foreground font-semibold uppercase tracking-wider">{card.label}</p>
+                                            <p className="text-3xl font-black text-foreground mt-1 leading-tight">{card.value}</p>
                                         </div>
-                                        <div className={`w-10 h-10 rounded-xl ${c.bg} flex items-center justify-center flex-shrink-0 shadow-sm`}>
-                                            <Icon className={`h-5 w-5 ${c.text}`} />
+                                        <div className={`w-12 h-12 rounded-2xl ${c.bg} flex items-center justify-center flex-shrink-0 shadow-sm transition-transform group-hover:scale-110`}>
+                                            <Icon className={`h-6 w-6 ${c.text}`} strokeWidth={2.5} />
                                         </div>
-                                    </div>
-                                    <div className="flex items-center gap-1 mt-3.5 text-[10px] font-bold">
-                                        <span className={`inline-flex items-center gap-0.5 ${c.trendText}`}>
-                                            <TrendingUp className="h-3 w-3" /> +8.4%
-                                        </span>
-                                        <span className="text-muted-foreground/60 font-medium">vs bln lalu</span>
                                     </div>
                                 </CardContent>
                             </Card>
