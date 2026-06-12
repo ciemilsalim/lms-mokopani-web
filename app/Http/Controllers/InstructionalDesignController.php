@@ -179,7 +179,7 @@ class InstructionalDesignController extends Controller
                     $path = null;
                     $fileType = null;
 
-                    if ($type === 'link') {
+                    if ($type === 'link' || $type === 'youtube') {
                         $path = $resData['value'];
                     } else if ($type === 'file') {
                         if ($request->hasFile("material.resources.{$index}.file")) {

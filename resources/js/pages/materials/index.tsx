@@ -35,17 +35,24 @@ interface Material {
     is_accessible?: boolean;
 }
 
+interface TpGroup {
+    tp_id: number | null;
+    tp_code: string;
+    tp_description: string;
+    materials: Material[];
+}
+
 interface SubjectGroup {
     subject_id: number;
     subject_name: string;
-    materials: Material[];
+    tps: TpGroup[];
     total: number;
 }
 
 interface TeacherSubjectGroup {
     subject_id: number;
     subject_name: string;
-    materials: Material[];
+    tps: TpGroup[];
 }
 
 interface TeacherClassGroup {
@@ -170,12 +177,15 @@ function TeacherGroupedView({ groups, search }: { groups: TeacherClassGroup[]; s
             subjects: cls.subjects
                 .map(subj => ({
                     ...subj,
-                    materials: subj.materials.filter(m => {
-                        const matchSearch = m.title.toLowerCase().includes(search.toLowerCase()) || m.subject_name.toLowerCase().includes(search.toLowerCase());
-                        return matchSearch;
-                    }),
+                    tps: subj.tps.map(tp => ({
+                        ...tp,
+                        materials: tp.materials.filter(m => {
+                            const matchSearch = m.title.toLowerCase().includes(search.toLowerCase()) || m.subject_name.toLowerCase().includes(search.toLowerCase());
+                            return matchSearch;
+                        }),
+                    })).filter(tp => tp.materials.length > 0)
                 }))
-                .filter(subj => subj.materials.length > 0),
+                .filter(subj => subj.tps.length > 0),
         }))
         .filter(cls => cls.subjects.length > 0);
 
@@ -207,7 +217,7 @@ function TeacherGroupedView({ groups, search }: { groups: TeacherClassGroup[]; s
                                     <div>
                                         <h3 className="text-lg font-bold text-foreground">{cls.class_name}</h3>
                                         <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight">
-                                            {cls.subjects.length} mapel • {cls.subjects.reduce((sum, s) => sum + s.materials.length, 0)} materi
+                                            {cls.subjects.length} mapel • {cls.subjects.reduce((sum, s) => sum + s.tps.reduce((s2, tp) => s2 + tp.materials.length, 0), 0)} materi
                                         </p>
                                     </div>
                                 </div>
@@ -231,17 +241,29 @@ function TeacherGroupedView({ groups, search }: { groups: TeacherClassGroup[]; s
                                                         <p className="text-xs font-bold text-foreground truncate">{subj.subject_name}</p>
                                                     </div>
                                                     <div className="flex items-center gap-3 shrink-0 ml-3">
-                                                        <span className="text-[10px] font-medium text-muted-foreground whitespace-nowrap">{subj.materials.length} materi</span>
+                                                        <span className="text-[10px] font-medium text-muted-foreground whitespace-nowrap">{subj.tps.reduce((sum, tp) => sum + tp.materials.length, 0)} materi</span>
                                                         {isSubjOpen ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
                                                     </div>
                                                 </button>
                                                 {isSubjOpen && (
-                                                    <div className="px-5 pb-5 pt-3">
-                                                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                                                            {subj.materials.map(m => (
-                                                                <MaterialCard key={m.id} m={m} onDelete={setDeleteId} />
-                                                            ))}
-                                                        </div>
+                                                    <div className="px-5 pb-5 pt-3 space-y-6">
+                                                        {subj.tps.map(tp => (
+                                                            <div key={tp.tp_id || 'no-tp'} className="space-y-3">
+                                                                <div className="flex items-center gap-2 pb-1 border-b border-border/50">
+                                                                    <div className="bg-primary/10 text-primary text-[9px] px-1.5 py-0.5 rounded font-black tracking-wider uppercase">
+                                                                        {tp.tp_code}
+                                                                    </div>
+                                                                    <h4 className="text-xs font-bold text-foreground/80 truncate">
+                                                                        {tp.tp_description}
+                                                                    </h4>
+                                                                </div>
+                                                                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                                                                    {tp.materials.map(m => (
+                                                                        <MaterialCard key={m.id} m={m} onDelete={setDeleteId} />
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        ))}
                                                     </div>
                                                 )}
                                             </div>
@@ -273,12 +295,15 @@ function StudentGroupedView({ groups, search }: { groups: SubjectGroup[]; search
     const visible = groups
         .map(g => ({
             ...g,
-            materials: g.materials.filter(m => {
-                const matchSearch = m.title.toLowerCase().includes(search.toLowerCase());
-                return matchSearch;
-            }),
+            tps: g.tps.map(tp => ({
+                ...tp,
+                materials: tp.materials.filter(m => {
+                    const matchSearch = m.title.toLowerCase().includes(search.toLowerCase());
+                    return matchSearch;
+                }),
+            })).filter(tp => tp.materials.length > 0)
         }))
-        .filter(g => g.materials.length > 0);
+        .filter(g => g.tps.length > 0);
 
     if (visible.length === 0) {
         return (
@@ -306,7 +331,7 @@ function StudentGroupedView({ groups, search }: { groups: SubjectGroup[]; search
                                 <div>
                                     <h3 className="text-lg font-bold text-foreground">{group.subject_name}</h3>
                                     <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight">
-                                        {group.materials.length} materi
+                                        {group.tps.reduce((sum, tp) => sum + tp.materials.length, 0)} materi
                                     </p>
                                 </div>
                             </div>
@@ -318,12 +343,24 @@ function StudentGroupedView({ groups, search }: { groups: SubjectGroup[]; search
                             </div>
                         </button>
                         {isOpen && (
-                            <div className="p-6">
-                                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                                    {group.materials.map(m => (
-                                        <MaterialCard key={m.id} m={m} />
-                                    ))}
-                                </div>
+                            <div className="p-6 space-y-6">
+                                {group.tps.map(tp => (
+                                    <div key={tp.tp_id || 'no-tp'} className="space-y-4">
+                                        <div className="flex items-center gap-2 pb-2 border-b border-border/60">
+                                            <div className="bg-primary/10 text-primary text-[10px] px-2 py-0.5 rounded font-black tracking-wider uppercase">
+                                                {tp.tp_code}
+                                            </div>
+                                            <h4 className="text-[13px] font-bold text-foreground/80 leading-snug">
+                                                {tp.tp_description}
+                                            </h4>
+                                        </div>
+                                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                                            {tp.materials.map(m => (
+                                                <MaterialCard key={m.id} m={m} />
+                                            ))}
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
                         )}
                     </div>

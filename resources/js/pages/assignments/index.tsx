@@ -486,7 +486,7 @@ function TeacherGroupedView({ groups, search, filterType }: { groups: TeacherCla
                                                                                 className="flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border bg-transparent px-6 py-3 text-sm font-bold text-muted-foreground hover:border-primary hover:text-primary hover:bg-primary/5 transition-all cursor-pointer"
                                                                             >
                                                                                 <Plus className="h-4 w-4" />
-                                                                                Tambah Asesmen Formatif
+                                                                                Tambah Asesmen
                                                                             </button>
                                                                         </div>
                                                                     </div>

@@ -88,9 +88,10 @@ const sanitizeAiHtml = (text: string | null | undefined): string => {
 /**
  * Clean plain text: strip all HTML/Markdown for fields like titles, question text, etc.
  */
-const cleanPlainText = (text: string | null | undefined): string => {
+const cleanPlainText = (text: any): string => {
     if (!text) return '';
-    let cleaned = text
+    let strText = typeof text === 'string' ? text : String(text);
+    let cleaned = strText
         .replace(/<[^>]*>/g, '')
         .replace(/(\*\*|__)(.*?)\1/g, '$2')
         .replace(/(\*|_)(.*?)\1/g, '$2')

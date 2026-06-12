@@ -56,7 +56,7 @@ interface Material {
     subject_kktp?: number;
     resources: Array<{
         id: number;
-        type: 'file' | 'link';
+        type: 'file' | 'link' | 'youtube';
         title: string | null;
         path: string;
         file_type: string | null;
@@ -442,46 +442,53 @@ const renderAssessmentDetails = (assignments: Assignment[]) => {
 const formatDocumentLayout = (html: string | null) => {
     if (!html) return '';
 
+    // Replace non-breaking spaces with normal spaces to prevent infinite stretching
+    // and arbitrary word-breaking.
+    html = html.replace(/&nbsp;|\u00A0|&#160;/g, ' ');
+
     // If the content already has proper HTML structure (from ReactQuill/AI),
     // only apply light formatting fixes without breaking the structure
-    const hasSemanticHtml = /<(h[1-6]|ul|ol|li|blockquote|table)\b/i.test(html);
+    const hasSemanticHtml = /<(h[1-6]|ul|ol|li|blockquote|table|p)\b/i.test(html);
     
     if (hasSemanticHtml) {
         // Light fix: fix commas without spaces
         let cleaned = html.replace(/,([a-zA-Z])/g, ', $1');
         // Clean newlines between tags (e.g. </h2>\n<p> or </li>\n<li>) to prevent duplicate spacing in whitespace-pre-wrap
         cleaned = cleaned.replace(/>\s*\n\s*</g, '><');
+        
+        // Auto-join words that are broken by a hyphen and newline (e.g., "sehari-\nhari" -> "sehari-hari")
+        cleaned = cleaned.replace(/-\s*\n\s*/g, '-');
+        
         return cleaned;
     }
 
     // Legacy fallback for plain-text content (old data without HTML formatting)
-    const parts = html.split(/(<[^>]+>)/g);
+    // First, join hyphenated breaks
+    let text = html.replace(/-\s*\n\s*/g, '-');
     
-    for (let i = 0; i < parts.length; i++) {
-        if (i % 2 === 0 && parts[i].trim() !== '') {
-            let text = parts[i];
+    // Split by double newlines into paragraphs
+    const paragraphs = text.split(/\n\s*\n/);
+    
+    return paragraphs.map(p => {
+        let pText = p;
+        const exceptions = ['WhatsApp', 'MacBook', 'PowerPoint', 'JavaScript', 'YouTube', 'LinkedIn', 'FACT'];
+        exceptions.forEach((ex, j) => {
+            pText = pText.replace(new RegExp(ex, 'g'), `__EX${j}__`);
+        });
 
-            const exceptions = ['WhatsApp', 'MacBook', 'PowerPoint', 'JavaScript', 'YouTube', 'LinkedIn', 'FACT'];
-            exceptions.forEach((ex, j) => {
-                text = text.replace(new RegExp(ex, 'g'), `__EX${j}__`);
-            });
+        pText = pText.replace(/([a-z])([A-Z])/g, '$1<br/><br/>$2');
+        pText = pText.replace(/([a-zA-Z]')([A-Z])/g, '$1<br/><br/>$2');
+        pText = pText.replace(/\s*•\s*/g, '<br/><br/>• ');
+        pText = pText.replace(/([a-z\.])\s+(\d+\.)\s+/gi, '$1<br/><br/>$2 ');
+        pText = pText.replace(/(?<!Dr|Mr|Ms|Prof)\.\s+([A-Z])/g, '.<br/><br/>$1');
+        pText = pText.replace(/,([a-zA-Z])/g, ', $1');
 
-            text = text.replace(/([a-z])([A-Z])/g, '$1<br/><br/>$2');
-            text = text.replace(/([a-zA-Z]')([A-Z])/g, '$1<br/><br/>$2');
-            text = text.replace(/\s*•\s*/g, '<br/><br/>• ');
-            text = text.replace(/([a-z\.])\s+(\d+\.)\s+/gi, '$1<br/><br/>$2 ');
-            text = text.replace(/(?<!Dr|Mr|Ms|Prof)\.\s+([A-Z])/g, '.<br/><br/>$1');
-            text = text.replace(/,([a-zA-Z])/g, ', $1');
+        exceptions.forEach((ex, j) => {
+            pText = pText.replace(new RegExp(`__EX${j}__`, 'g'), ex);
+        });
 
-            exceptions.forEach((ex, j) => {
-                text = text.replace(new RegExp(`__EX${j}__`, 'g'), ex);
-            });
-
-            parts[i] = text;
-        }
-    }
-
-    return parts.join('');
+        return `<p>${pText}</p>`;
+    }).join('');
 };
 
 export default function ShowMaterial({ 
@@ -1631,18 +1638,18 @@ export default function ShowMaterial({
                                 prose-p:text-[#3f3f46] dark:prose-p:text-[#D1D5DB] prose-p:leading-relaxed prose-p:text-[1.05rem]
                                 prose-headings:font-black prose-headings:tracking-tight prose-headings:text-[#1B1B25] dark:prose-headings:text-[#F1F1F4] 
                                 prose-h1:text-3xl prose-h2:text-2xl prose-h3:text-xl
-                                prose-a:font-bold prose-a:text-[#5E6AD2] prose-a:no-underline hover:prose-a:text-[#5E6AD2]/80 hover:prose-a:underline
+                                prose-a:font-bold prose-a:text-[#5E6AD2] prose-a:no-underline hover:prose-a:text-[#5E6AD2]/80 hover:prose-a:underline prose-a:break-all
                                 prose-strong:font-bold prose-strong:text-[#1B1B25] dark:prose-strong:text-[#F1F1F4]
                                 prose-ul:text-[#3f3f46] dark:prose-ul:text-[#D1D5DB] prose-ul:leading-relaxed prose-li:marker:text-[#5E6AD2]
                                 prose-ol:text-[#3f3f46] dark:prose-ol:text-[#D1D5DB] prose-ol:leading-relaxed
                                 prose-blockquote:border-l-4 prose-blockquote:border-[#5E6AD2] prose-blockquote:bg-[#5E6AD2]/5 prose-blockquote:py-3 prose-blockquote:px-6 prose-blockquote:rounded-r-2xl prose-blockquote:text-[#2C2C3A] dark:prose-blockquote:text-[#F1F1F4] prose-blockquote:not-italic prose-blockquote:font-medium
                                 prose-img:rounded-3xl prose-img:shadow-lg prose-img:border prose-img:border-[#2C2C3A]/10 dark:prose-img:border-[#2C2C3A]/50
                                 prose-hr:border-[#2C2C3A]/10 dark:prose-hr:border-[#2C2C3A]/50
-                                prose-code:text-[#5E6AD2] prose-code:bg-[#5E6AD2]/10 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded-md prose-code:before:content-none prose-code:after:content-none
+                                prose-code:text-[#5E6AD2] prose-code:bg-[#5E6AD2]/10 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded-md prose-code:before:content-none prose-code:after:content-none prose-code:break-words
                                 prose-pre:bg-[#1B1B25] prose-pre:border prose-pre:border-[#2C2C3A]/30 prose-pre:rounded-2xl
-                                break-words">
+                                break-normal">
                                 <div 
-                                    className="leading-relaxed whitespace-pre-wrap"
+                                    className="leading-relaxed"
                                     dangerouslySetInnerHTML={{ __html: formatDocumentLayout(material.content) }} 
                                 />
                             </div>
@@ -1651,12 +1658,12 @@ export default function ShowMaterial({
                             {material.resources && material.resources.length > 0 && (
                                 <div className="mt-12 space-y-8">
                                     {material.resources.map((res, idx) => {
-                                        if (res.type === 'link') {
+                                        if (res.type === 'link' || res.type === 'youtube') {
                                             // YouTube Preview
-                                            if (res.path.includes('youtube.com') || res.path.includes('youtu.be')) {
+                                            if (res.type === 'youtube' || res.path.includes('youtube.com') || res.path.includes('youtu.be')) {
                                                 let videoId = '';
-                                                if (res.path.includes('youtu.be/')) videoId = res.path.split('youtu.be/')[1].split('?')[0];
-                                                else if (res.path.includes('v=')) videoId = new URL(res.path).searchParams.get('v') || '';
+                                                const match = res.path.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/);
+                                                if (match && match[1]) videoId = match[1];
                                                 
                                                 if (videoId) {
                                                     return (
@@ -1681,6 +1688,25 @@ export default function ShowMaterial({
                                                     </div>
                                                 );
                                             }
+                                            
+                                            // Fallback for Generic Links
+                                            return (
+                                                <div key={idx} className="space-y-2">
+                                                    <h4 className="text-sm font-bold text-[#8A8F98]">{res.title || 'Tautan Eksternal'}</h4>
+                                                    <a href={res.path} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-4 rounded-2xl border border-[#2C2C3A]/20 dark:border-[#2C2C3A] bg-[#F1F1F4]/5 dark:bg-[#1B1B25] hover:bg-[#F1F1F4]/10 transition group">
+                                                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#5E6AD2]/10 text-[#5E6AD2]">
+                                                            <Globe className="h-5 w-5" />
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className="text-sm font-bold text-[#1B1B25] dark:text-[#F1F1F4] truncate group-hover:text-[#5E6AD2] transition">
+                                                                {res.title || res.path}
+                                                            </p>
+                                                            <p className="text-xs text-[#8A8F98] truncate mt-0.5">{res.path}</p>
+                                                        </div>
+                                                        <ExternalLink className="h-4 w-4 text-[#8A8F98] shrink-0 group-hover:text-[#5E6AD2] transition" />
+                                                    </a>
+                                                </div>
+                                            );
                                         } else {
                                             const ext = res.file_type?.toLowerCase() || res.path.split('.').pop()?.toLowerCase() || '';
                                             
@@ -1731,8 +1757,21 @@ export default function ShowMaterial({
                                                     </div>
                                                 );
                                             }
+                                            
+                                            // Fallback Generic File Download
+                                            return (
+                                                <div key={idx} className="space-y-2">
+                                                    <h4 className="text-sm font-bold text-[#8A8F98]">{res.title || 'Dokumen Lampiran'}</h4>
+                                                    <div className="w-full rounded-3xl overflow-hidden border border-[#2C2C3A]/20 dark:border-[#2C2C3A] shadow-sm bg-[#F1F1F4]/10 dark:bg-[#1B1B25] flex flex-col items-center justify-center relative group p-8 text-center">
+                                                        <FileText className="h-12 w-12 text-[#8A8F98]/40 mb-4" />
+                                                        <p className="text-sm text-[#8A8F98] mb-2 font-medium">Berkas Lampiran ({ext ? ext.toUpperCase() : 'File'})</p>
+                                                        <a href={`/storage/${res.path}`} download className="px-4 py-2 bg-[#5E6AD2]/10 text-[#5E6AD2] dark:bg-[#5E6AD2]/10 rounded-xl text-xs font-bold hover:bg-[#5E6AD2]/15 transition flex items-center gap-2 mt-2">
+                                                            <Download className="h-4 w-4" /> Download Dokumen
+                                                        </a>
+                                                    </div>
+                                                </div>
+                                            );
                                         }
-                                        return null;
                                     })}
                                 </div>
                             )}
@@ -1859,7 +1898,7 @@ export default function ShowMaterial({
                             <div className="space-y-3">
                                 {material.resources && material.resources.length > 0 ? (
                                     material.resources.map((res) => (
-                                        res.type === 'link' ? (
+                                        (res.type === 'link' || res.type === 'youtube') ? (
                                             <a 
                                                 key={res.id}
                                                 href={res.path} 

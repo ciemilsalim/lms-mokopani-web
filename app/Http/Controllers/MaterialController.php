@@ -22,7 +22,7 @@ class MaterialController extends Controller
         $activeYear = AcademicYear::getActive();
         $activeSemester = Semester::getActive();
 
-        $query = LmsMaterial::with(['subject', 'teacher', 'schoolClasses'])
+        $query = LmsMaterial::with(['subject', 'teacher', 'schoolClasses', 'learningObjective'])
             ->where('academic_year_id', $activeYear?->id)
             ->where('semester_id', $activeSemester?->id);
 
@@ -55,17 +55,30 @@ class MaterialController extends Controller
                 $subjectGroups = collect($item['materials'])->groupBy('subject_id');
                 $subjects = $subjectGroups->map(function ($items, $subjectId) {
                     $firstItem = collect($items)->first();
+                    
+                    $tpGroups = collect($items)->groupBy('learning_objective_id');
+                    $tps = $tpGroups->map(function ($tpItems, $tpId) {
+                        $firstTpItem = collect($tpItems)->first();
+                        $tp = $firstTpItem->learningObjective;
+                        return [
+                            'tp_id'          => $tp ? $tp->id : null,
+                            'tp_code'        => $tp ? $tp->code : '-',
+                            'tp_description' => $tp ? $tp->description : 'Tanpa Tujuan Pembelajaran',
+                            'materials'      => collect($tpItems)->map(fn ($m) => [
+                                'id'           => $m->id,
+                                'title'        => $m->title,
+                                'subject_name' => $m->subject?->name ?? '-',
+                                'teacher_name' => $m->teacher?->name ?? '-',
+                                'file_type'    => $m->file_type,
+                                'created_at'   => $m->created_at->format('d M Y'),
+                            ])->values(),
+                        ];
+                    })->values();
+
                     return [
                         'subject_id'   => (int) $subjectId,
                         'subject_name' => $firstItem->subject?->name ?? '-',
-                        'materials'    => collect($items)->map(fn ($m) => [
-                            'id'           => $m->id,
-                            'title'        => $m->title,
-                            'subject_name' => $m->subject?->name ?? '-',
-                            'teacher_name' => $m->teacher?->name ?? '-',
-                            'file_type'    => $m->file_type,
-                            'created_at'   => $m->created_at->format('d M Y'),
-                        ])->values(),
+                        'tps'          => $tps,
                     ];
                 })->values();
 
@@ -92,19 +105,32 @@ class MaterialController extends Controller
 
         $grouped = $models->groupBy('subject_id')->map(function ($items, $subjectId) use ($accessibleTpIds, $user) {
             $first = $items->first();
+            
+            $tpGroups = $items->groupBy('learning_objective_id');
+            $tps = $tpGroups->map(function ($tpItems, $tpId) use ($accessibleTpIds, $user) {
+                $firstTpItem = collect($tpItems)->first();
+                $tp = $firstTpItem->learningObjective;
+                return [
+                    'tp_id'          => $tp ? $tp->id : null,
+                    'tp_code'        => $tp ? $tp->code : '-',
+                    'tp_description' => $tp ? $tp->description : 'Tanpa Tujuan Pembelajaran',
+                    'materials'      => collect($tpItems)->map(fn ($m) => [
+                        'id'           => $m->id,
+                        'title'        => $m->title,
+                        'subject_name' => $m->subject?->name ?? '-',
+                        'teacher_name' => $m->teacher?->name ?? '-',
+                        'file_type'    => $m->file_type,
+                        'created_at'   => $m->created_at->format('d M Y'),
+                        'is_accessible'=> $user->role === 'admin' || !$m->learning_objective_id || in_array($m->learning_objective_id, $accessibleTpIds),
+                    ])->values(),
+                ];
+            })->values();
+
             return [
                 'subject_id'   => (int) $subjectId,
                 'subject_name' => $first->subject?->name ?? '-',
-                'materials'    => $items->map(fn ($m) => [
-                    'id'           => $m->id,
-                    'title'        => $m->title,
-                    'subject_name' => $m->subject?->name ?? '-',
-                    'teacher_name' => $m->teacher?->name ?? '-',
-                    'file_type'    => $m->file_type,
-                    'created_at'   => $m->created_at->format('d M Y'),
-                    'is_accessible'=> $user->role === 'admin' || !$m->learning_objective_id || in_array($m->learning_objective_id, $accessibleTpIds),
-                ])->values(),
-                'total' => $items->count(),
+                'tps'          => $tps,
+                'total'        => $items->count(),
             ];
         })->values();
 
@@ -472,7 +498,7 @@ class MaterialController extends Controller
                 $path = null;
                 $fileType = null;
 
-                if ($type === 'link') {
+                if ($type === 'link' || $type === 'youtube') {
                     $path = $resData['value'] ?? null;
                 } else if ($type === 'file') {
                     if ($request->hasFile("resources.{$index}.file")) {

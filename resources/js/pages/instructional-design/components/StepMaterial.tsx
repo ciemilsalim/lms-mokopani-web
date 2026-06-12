@@ -136,13 +136,13 @@ export default function StepMaterial({
                                 Pilih Kelas
                             </label>
                             <div className="grid grid-cols-2 gap-2 mt-2">
-                                {classesForSubject.map(t => (
-                                    <label key={t.class_id} className="flex items-center gap-2 text-sm border p-2 rounded-lg cursor-pointer hover:bg-muted/50 border-border bg-popover">
+                                {classesForSubject.map((t, idx) => (
+                                    <label key={`${t.school_class_id}-${idx}`} className="flex items-center gap-2 text-sm border p-2 rounded-lg cursor-pointer hover:bg-muted/50 border-border bg-popover">
                                         <input
                                             type="checkbox"
-                                            checked={data.school_classes.includes(t.class_id)}
+                                            checked={data.school_classes.includes(t.school_class_id)}
                                             onChange={(e) => {
-                                                const id = t.class_id;
+                                                const id = t.school_class_id;
                                                 setData('school_classes', e.target.checked 
                                                     ? [...data.school_classes, id]
                                                     : data.school_classes.filter((c: number) => c !== id)
