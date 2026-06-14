@@ -16,7 +16,7 @@ const teacherGuide: GuideSection[] = [
         { label: 'Panduan Pembelajaran & Asesmen 2025', desc: 'Acuan utama perencanaan dan pelaksanaan pembelajaran mendalam dari BSKAP Kemendikdasmen.', route: 'https://guru.kemendikdasmen.go.id/dokumen/P3J9R5eDYQ' },
         { label: 'Capaian Pembelajaran (CP)', desc: 'Kelola CP sebagai acuan pembelajaran.', route: '/cp' },
         { label: 'Tujuan Pembelajaran (TP)', desc: 'Rumuskan TP untuk setiap lingkup materi.', route: '/learning-objectives' },
-        { label: 'Rancang Pembelajaran', desc: 'Susun ATP dan Modul Ajar — Asesmen Formatif dapat dibuat lebih dari satu per TP.', route: '/instructional-design/create' },
+        { label: 'Pembelajaran', desc: 'Susun Modul Ajar dan RPP PPA 2026 secara lengkap berbasis AI.', route: '/lesson-plans' },
         { label: 'Materi', desc: 'Unggah materi ajar.', route: '/materials' },
         { label: 'Asesmen', desc: 'Buat tugas dan soal penilaian.', route: '/assignments' },
         { label: 'Projek P5', desc: 'Rencanakan projek profil Pancasila.', route: '/p5' },

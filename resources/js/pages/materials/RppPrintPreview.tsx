@@ -477,6 +477,51 @@ export default function RppPrintPreview({ material, assignments = [], school_nam
     const [kepalaSekolahName, setKepalaSekolahName] = useState('Dr. H. Ahmad Yani, M.Pd.');
     const [kepalaSekolahNip, setKepalaSekolahNip] = useState('19720815 199803 1 002');
 
+    const exportToWord = () => {
+        const printArea = document.getElementById('rpp-print-area');
+        if (!printArea) return;
+
+        const clone = printArea.cloneNode(true) as HTMLElement;
+        
+        const style = `
+            <style>
+                table { border-collapse: collapse; width: 100%; margin-bottom: 15px; font-family: sans-serif; }
+                th, td { border: 1px solid black; padding: 8px 12px; text-align: left; vertical-align: top; }
+                th { background-color: #f2f2f2; font-weight: bold; }
+                h2 { text-align: center; font-size: 16pt; margin-bottom: 5px; font-family: sans-serif; }
+                h3 { text-align: center; font-size: 12pt; margin-bottom: 15px; font-family: sans-serif; color: #555555; }
+                h4 { font-size: 12pt; font-weight: bold; border-bottom: 1px solid black; margin-top: 15px; margin-bottom: 10px; font-family: sans-serif; }
+                .font-bold { font-weight: bold; }
+                .italic { font-style: italic; }
+                .text-center { text-align: center; }
+                body { font-family: sans-serif; }
+            </style>
+        `;
+
+        const content = `
+            <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+            <head>
+                <meta charset='utf-8'>
+                <title>RPP Modul Ajar</title>
+                ${style}
+            </head>
+            <body>
+                ${clone.outerHTML}
+            </body>
+            </html>
+        `;
+
+        const blob = new Blob(['\ufeff', content], { type: 'application/msword' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `RPP_${material?.title || 'Modul_Ajar'}.doc`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    };
+
     return (
         <div className="flex h-full flex-1 flex-col gap-6 p-6">
             <Head title={`Cetak RPP: ${material.title} – LMS Mokopani`} />
@@ -519,14 +564,8 @@ export default function RppPrintPreview({ material, assignments = [], school_nam
                         color: #000000 !important;
                         font-size: 10.5pt !important;
                         line-height: 1.5 !important;
-                        word-break: normal !important;
+                        word-wrap: break-word !important;
                         overflow-wrap: break-word !important;
-                        white-space: normal !important;
-                    }
-                    .print-table td * {
-                        word-break: normal !important;
-                        overflow-wrap: break-word !important;
-                        white-space: normal !important;
                     }
                     .print-table th {
                         background-color: #f2f2f2 !important;
@@ -579,12 +618,20 @@ export default function RppPrintPreview({ material, assignments = [], school_nam
                     </button>
                     <h1 className="text-2xl font-black text-[#1B1B25] dark:text-[#F1F1F4] mt-2">Pratinjau RPP Pembelajaran Mendalam</h1>
                 </div>
-                <button
-                    onClick={() => window.print()}
-                    className="flex items-center gap-2 rounded-2xl bg-[#3DD68C] px-6 py-3.5 text-sm font-black text-white hover:bg-[#3DD68C]/90 transition hover:shadow-lg active:scale-95 shadow-md shadow-[#3DD68C]/20 shrink-0 self-start sm:self-center"
-                >
-                    <Printer className="h-4.5 w-4.5" /> Cetak RPP / Simpan PDF
-                </button>
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={() => window.print()}
+                        className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-bold text-gray-700 transition hover:bg-gray-50 active:scale-95 shadow-sm shrink-0"
+                    >
+                        <Printer className="h-4.5 w-4.5" /> Ekspor PDF
+                    </button>
+                    <button
+                        onClick={exportToWord}
+                        className="flex items-center gap-2 rounded-xl bg-[#3DD68C] px-5 py-2.5 text-sm font-bold text-white transition hover:shadow-lg active:scale-95 shadow-md shadow-[#3DD68C]/20 shrink-0"
+                    >
+                        <FileText className="h-4.5 w-4.5" /> Ekspor Docs
+                    </button>
+                </div>
             </div>
 
             {/* Split Screen Layout on Web, Full screen on Print */}
@@ -938,9 +985,9 @@ export default function RppPrintPreview({ material, assignments = [], school_nam
                                             MEMAHAMI <br/>
                                             <span className="text-[9pt] font-normal italic text-gray-600">(Understanding)</span>
                                         </td>
-                                        <td style={{ border: '1px solid black', padding: '8px 12px', fontSize: '10.5pt' }}>
+                                        <td style={{ border: '1px solid black', padding: '8px 12px' }}>
                                             <div 
-                                                className="leading-relaxed text-black font-medium"
+                                                className="leading-relaxed text-black font-normal text-left"
                                                 style={{ whiteSpace: 'pre-wrap' }}
                                             >
                                                 {understandingActivity}
@@ -952,9 +999,9 @@ export default function RppPrintPreview({ material, assignments = [], school_nam
                                             MENGAPLIKASI <br/>
                                             <span className="text-[9pt] font-normal italic text-gray-600">(Applying)</span>
                                         </td>
-                                        <td style={{ border: '1px solid black', padding: '8px 12px', fontSize: '10.5pt' }}>
+                                        <td style={{ border: '1px solid black', padding: '8px 12px' }}>
                                             <div 
-                                                className="leading-relaxed text-black font-medium"
+                                                className="leading-relaxed text-black font-normal text-left"
                                                 style={{ whiteSpace: 'pre-wrap' }}
                                             >
                                                 {applicationActivity}
@@ -966,9 +1013,9 @@ export default function RppPrintPreview({ material, assignments = [], school_nam
                                             MEREFLEKSI <br/>
                                             <span className="text-[9pt] font-normal italic text-gray-600">(Reflecting)</span>
                                         </td>
-                                        <td style={{ border: '1px solid black', padding: '8px 12px', fontSize: '10.5pt' }}>
+                                        <td style={{ border: '1px solid black', padding: '8px 12px' }}>
                                             <div 
-                                                className="leading-relaxed text-black font-medium"
+                                                className="leading-relaxed text-black font-normal text-left"
                                                 style={{ whiteSpace: 'pre-wrap' }}
                                             >
                                                 {reflectionActivity}
@@ -1125,15 +1172,15 @@ export default function RppPrintPreview({ material, assignments = [], school_nam
                                 <div className="space-y-4 text-[11pt]">
                                     <div>
                                         <strong className="block font-bold mb-1 text-black">A. Bahan Pengamatan / Stimulus Data:</strong>
-                                        <div className="p-3 bg-white border border-gray-300 rounded font-mono text-[10pt] tracking-tight leading-relaxed">
-                                            {lkpdStimulus}
+                                        <div className="p-3 bg-white border border-gray-300 rounded font-mono text-[10pt] tracking-tight leading-relaxed whitespace-pre-wrap break-words">
+                                            {lkpdStimulus?.replace(/\u00A0/g, ' ')}
                                         </div>
                                     </div>
 
                                     <div>
                                         <strong className="block font-bold mb-1 text-black">B. Pertanyaan Pemantik Diskusi:</strong>
-                                        <div className="pl-4 italic text-gray-800 whitespace-pre-line leading-relaxed">
-                                            {lkpdPemantik}
+                                        <div className="pl-4 italic text-gray-800 whitespace-pre-line leading-relaxed break-words">
+                                            {lkpdPemantik?.replace(/\u00A0/g, ' ')}
                                         </div>
                                     </div>
 
@@ -1143,8 +1190,8 @@ export default function RppPrintPreview({ material, assignments = [], school_nam
                                             {parseLkpdLangkah(lkpdLangkah).map((item, idx) => {
                                                 if (item.type === 'sub') {
                                                     return (
-                                                        <div key={idx} className="pl-8 pr-4 py-2.5 my-1.5 border-l-2 border-black bg-gray-50/70 text-[9.5pt] text-gray-800 italic leading-relaxed whitespace-pre-wrap rounded-r-md">
-                                                            {item.content}
+                                                        <div key={idx} className="pl-8 pr-4 py-2.5 my-1.5 border-l-2 border-black bg-gray-50/70 text-[9.5pt] text-gray-800 italic leading-relaxed whitespace-pre-wrap rounded-r-md break-words">
+                                                            {item.content?.replace(/\u00A0/g, ' ')}
                                                         </div>
                                                     );
                                                 }
@@ -1157,7 +1204,7 @@ export default function RppPrintPreview({ material, assignments = [], school_nam
                                                         ) : (
                                                             <span className="h-1.5 w-1.5 rounded-full bg-black shrink-0 mt-2.5 ml-2" />
                                                         )}
-                                                        <span className="flex-1 font-medium whitespace-pre-wrap">{item.content}</span>
+                                                        <span className="flex-1 font-medium whitespace-pre-wrap break-words">{item.content?.replace(/\u00A0/g, ' ')}</span>
                                                     </div>
                                                 );
                                             })}

@@ -2,7 +2,7 @@
 
 use App\Http\Controllers\AssignmentController;
 use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\InstructionalDesignController;
+use App\Http\Controllers\LmsModulAjarController;
 use App\Http\Controllers\MaterialController;
 use App\Http\Controllers\StudentController;
 use App\Http\Controllers\SubjectController;
@@ -67,13 +67,20 @@ Route::middleware(['auth'])->group(function () {
 
     // ── Teacher-only ────────────────────────────────────────────────
     Route::middleware(['role:admin,teacher'])->group(function () {
-        // Rancang Pembelajaran (Unified Workflow)
-        Route::get('instructional-design/create', [InstructionalDesignController::class, 'create'])->name('instructional-design.create');
-        Route::post('instructional-design', [InstructionalDesignController::class, 'store'])->name('instructional-design.store');
-        Route::post('instructional-design/auto-suggest', [InstructionalDesignController::class, 'autoSuggest'])->name('instructional-design.auto-suggest');
-        Route::get('instructional-design/prompts', [InstructionalDesignController::class, 'getPrompts'])->name('instructional-design.prompts.get');
-        Route::post('instructional-design/prompts', [InstructionalDesignController::class, 'savePrompt'])->name('instructional-design.prompts.save');
-        Route::post('instructional-design/prompts/reset', [InstructionalDesignController::class, 'resetPrompt'])->name('instructional-design.prompts.reset');
+        // Pembelajaran (Modul Ajar / RPP PPA 2026)
+        Route::get('lesson-plans', [LmsModulAjarController::class, 'index'])->name('lesson-plans.index');
+        Route::get('lesson-plans/create', [LmsModulAjarController::class, 'create'])->name('lesson-plans.create');
+        Route::post('lesson-plans', [LmsModulAjarController::class, 'store'])->name('lesson-plans.store');
+        Route::get('lesson-plans/{lesson_plan}', [LmsModulAjarController::class, 'show'])->name('lesson-plans.show');
+        Route::get('lesson-plans/{lesson_plan}/edit', [LmsModulAjarController::class, 'edit'])->name('lesson-plans.edit');
+        Route::put('lesson-plans/{lesson_plan}', [LmsModulAjarController::class, 'update'])->name('lesson-plans.update');
+        Route::delete('lesson-plans/{lesson_plan}', [LmsModulAjarController::class, 'destroy'])->name('lesson-plans.destroy');
+        Route::post('lesson-plans/generate', [LmsModulAjarController::class, 'generate'])->name('lesson-plans.generate');
+        Route::post('lesson-plans/get-assessments', [LmsModulAjarController::class, 'getAssessments'])->name('lesson-plans.get-assessments');
+        Route::post('instructional-design/auto-suggest', [LmsModulAjarController::class, 'autoSuggest'])->name('instructional-design.auto-suggest');
+        Route::get('lesson-plans/prompts/all', [LmsModulAjarController::class, 'getPrompts'])->name('lesson-plans.prompts.get');
+        Route::post('lesson-plans/prompts/save', [LmsModulAjarController::class, 'savePrompt'])->name('lesson-plans.prompts.save');
+        Route::post('lesson-plans/prompts/reset', [LmsModulAjarController::class, 'resetPrompt'])->name('lesson-plans.prompts.reset');
 
         // Materi CRUD (create/delete)
         Route::post('materials', [MaterialController::class, 'store'])->name('materials.store');

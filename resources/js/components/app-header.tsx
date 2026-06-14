@@ -22,10 +22,10 @@ const mainNavItems: NavItem[] = [
 // Teacher-specific mobile nav items
 const teacherMobileNavItems: NavItem[] = [
     { title: 'Dashboard', url: '/dashboard', icon: LayoutGrid },
-    { title: 'Rancang Pembelajaran', url: '/instructional-design/create', icon: Compass },
     { title: 'Tujuan Pembelajaran', url: '/learning-objectives', icon: Target },
     { title: 'Materi', url: '/materials', icon: Library },
     { title: 'Asesmen', url: '/assignments', icon: ClipboardList },
+    { title: 'Pembelajaran', url: '/lesson-plans', icon: BookOpen },
     { title: 'Laporan Nilai', url: '/gradebook', icon: FileBarChart },
     { title: 'Analitik', url: '/analytics', icon: BarChart3 },
     { title: 'Pengumuman', url: '/announcements', icon: Bell },

@@ -1,132 +1,95 @@
 import AppLayout from '@/layouts/app-layout';
-import { Head, Link, useForm, router } from '@inertiajs/react';
-import { 
-    ChevronLeft, 
-    Download, 
-    FileText, 
-    MessageSquare, 
-    User,
-    Calendar,
-    BookOpen,
-    Target,
-    ArrowRight,
-    Youtube,
-    Globe,
-    FolderOpen,
-    ExternalLink,
-    Pencil,
-    Trash2,
-    CheckCircle2,
-    Star,
-    Printer,
-    Lock,
-    AlertTriangle
-} from 'lucide-react';
-
-import { ConfirmDialog } from '@/components/confirm-dialog';
+import { Head, router, usePage, useForm } from '@inertiajs/react';
 import { useState } from 'react';
-import CommentSection from '@/components/CommentSection';
-import ReflectionForm from '@/components/ReflectionForm';
+import { ChevronLeft, Printer, Settings, Eye, CheckCircle2, AlertCircle, ArrowRight, Save, Loader2, Download, ExternalLink, Globe, FileText, Star, Target, Calendar, User, Youtube, FolderOpen } from 'lucide-react';
 
-interface Material {
-    id: number;
-    title: string;
-    content: string | null;
-    thumbnail: string | null;
-    file_path: string | null;
-    file_type: string | null;
-    external_link: string | null;
-    subject_name: string;
-    teacher_name: string;
-    teacher_id: number;
-    teacher_nip: string | null;
-    school_class_name: string | null;
-    fase: string | null;
-    semester_name: string | null;
-    academic_year_name: string | null;
-    pedagogical_model: string | null;
-    learning_environment: string | null;
-    understanding_activity: string | null;
-    application_activity: string | null;
-    reflection_activity: string | null;
-    image_prompt: string | null;
-    lkpd: string | null;
-    tp_code: string | null;
-    tp_desc: string | null;
-    subject_kktp?: number;
-    resources: Array<{
-        id: number;
-        type: 'file' | 'link' | 'youtube';
-        title: string | null;
-        path: string;
-        file_type: string | null;
-    }>;
-    created_at: string;
-}
+const stripHtml = (html: string) => {
+    if (typeof window !== 'undefined') {
+        const tmp = document.createElement('DIV');
+        tmp.innerHTML = html || '';
+        return tmp.textContent || tmp.innerText || '';
+    }
+    return html?.replace(/<[^>]*>?/gm, '') || '';
+};
+
+const cleanActivityText = (text: string, prefixRegex: RegExp) => {
+    if (!text) return '';
+    let cleaned = stripHtml(text);
+    cleaned = cleaned.replace(prefixRegex, '').trim();
+    // Replace single newlines with space to fix hard-wrapping, preserve double newlines
+    cleaned = cleaned.replace(/([^\n])\n([^\n])/g, '$1 $2');
+    return cleaned;
+};
+
+
 
 interface Assignment {
     id: number;
+    title: string;
+    description: string;
     assessment_type: 'initial' | 'formative' | 'summative';
     instrument_type: string;
-    instrument_config: any;
-    title: string;
-    description: string | null;
-    due_date: string | null;
-    max_points: number;
-    passing_grade: number | null;
+    rubric_content: any;
+    score_intervals: any;
+    questions: any;
 }
 
-interface ShowMaterialProps {
-    material: Material;
-    comments: any[];
-    my_reflection: any;
-    all_reflections: any[];
-    is_completed: boolean;
-    user_role: string;
-    auth_id: number;
+interface ModulAjarProps {
+    modulAjar: {
+        id: number;
+        subject_id: number;
+        school_class_id: number;
+        learning_objective_id: number;
+        material_id: number;
+        subject_name: string;
+        class_name: string;
+        tp_code: string;
+        tp_desc: string;
+        material_title: string;
+        pedagogical_model: string;
+        general_info: string; // JSON
+        learning_resources: string;
+        material_resources: any[];
+        material_external_link: string;
+        material_file_path: string;
+        understanding_activity: string;
+        application_activity: string;
+        reflection_activity: string;
+        image_prompt: string;
+        teacher_name: string;
+        teacher_nip: string;
+        school_name: string;
+        headmaster_name: string;
+        headmaster_nip: string;
+        created_at: string;
+        subject_kktp: number;
+    };
     assignments: Assignment[];
-    school_name: string;
-    headmaster_name?: string;
-    headmaster_nip?: string;
-    readiness_status?: {
-        status: 'ready' | 'needs_intervention' | 'not_taken';
-        assessment_id?: number | null;
-        diagnostic_result?: any;
-    } | null;
 }
 
-const stripHtml = (html: string | null): string => {
-    if (!html) return '';
+
+
+const getDynamicLkpdLangkah = (material: any): string => {
+    const appText = stripHtml(material.application_activity);
+    const refText = stripHtml(material.reflection_activity);
     
-    // Convert paragraph and break tags into newlines to preserve formatting
-    let text = html
-        .replace(/<\/p>/gi, '\n\n')
-        .replace(/<\/div>/gi, '\n')
-        .replace(/<br\s*\/?>/gi, '\n');
-        
-    // Strip remaining HTML tags
-    text = text.replace(/<[^>]*>/g, '');
-    
-    // Decode common HTML entities
-    text = text
-        .replace(/&nbsp;/g, ' ')
-        .replace(/&amp;/g, '&')
-        .replace(/&lt;/g, '<')
-        .replace(/&gt;/g, '>')
-        .replace(/&quot;/g, '"')
-        .replace(/&#39;/g, "'")
-        .replace(/&apos;/g, "'")
-        .replace(/&ldquo;/g, '"')
-        .replace(/&rdquo;/g, '"')
-        .replace(/&lsquo;/g, "'")
-        .replace(/&rsquo;/g, "'");
-        
-    // Clean up excessive newlines
-    return text.replace(/\n{3,}/g, '\n\n').trim();
+    return `1. Diskusikan konsep utama bersama anggota kelompok Anda untuk menyamakan persepsi.\n` +
+           `2. **Langkah Aplikasi (Mengaplikasi):** Sesuai skenario rencana pelaksanaan pembelajaran (Mengaplikasi), lakukan aktivitas berikut secara kolaboratif:\n   > ${appText || 'Terapkan konsep pembelajaran untuk memecahkan studi kasus/pertanyaan pemantik di atas.'}\n` +
+           `3. Susunlah hasil pengerjaan/laporan kelompok secara rapi, sistematis, dan diskusikan solusi bersama.\n` +
+           `4. **Langkah Refleksi (Merefleksi):** Lakukan aktivitas refleksi, presentasi hasil, dan umpan balik kelompok berikut:\n   > ${refText || 'Siapkan materi untuk presentasi di kelas dan berikan tanggapan konstruktif pada kelompok lain.'}\n` +
+           `5. Tarik kesimpulan bersama mengenai pembelajaran hari ini, lakukan evaluasi diri/peer-assessment, dan kumpulkan hasil karya kelompok kepada guru.`;
 };
+
+const ASSESSMENT_TYPE_MAP: Record<string, string> = {
+    initial: 'Awal (Diagnostik)',
+    formative: 'Formatif (Proses)',
+    summative: 'Sumatif (Akhir)'
+};
+
 const parseLkpdLangkah = (text: string) => {
     if (!text) return [];
     return text
+        .replace(/\*\*/g, '')
         .split('\n')
         .map(line => line.trim())
         .filter(line => line.length > 0)
@@ -152,23 +115,6 @@ const parseLkpdLangkah = (text: string) => {
                 content: line
             };
         });
-};
-
-const getDynamicLkpdLangkah = (material: Material): string => {
-    const appText = stripHtml(material.application_activity);
-    const refText = stripHtml(material.reflection_activity);
-    
-    return `1. Diskusikan konsep utama bersama anggota kelompok Anda untuk menyamakan persepsi.\n` +
-           `2. **Langkah Aplikasi (Mengaplikasi):** Sesuai skenario rencana pelaksanaan pembelajaran (Mengaplikasi), lakukan aktivitas berikut secara kolaboratif:\n   > ${appText || 'Terapkan konsep pembelajaran untuk memecahkan studi kasus/pertanyaan pemantik di atas.'}\n` +
-           `3. Susunlah hasil pengerjaan/laporan kelompok secara rapi, sistematis, dan diskusikan solusi bersama.\n` +
-           `4. **Langkah Refleksi (Merefleksi):** Lakukan aktivitas refleksi, presentasi hasil, dan umpan balik kelompok berikut:\n   > ${refText || 'Siapkan materi untuk presentasi di kelas dan berikan tanggapan konstruktif pada kelompok lain.'}\n` +
-           `5. Tarik kesimpulan bersama mengenai pembelajaran hari ini, lakukan evaluasi diri/peer-assessment, dan kumpulkan hasil karya kelompok kepada guru.`;
-};
-
-const ASSESSMENT_TYPE_MAP: Record<string, string> = {
-    initial: 'Awal (Diagnostik)',
-    formative: 'Formatif (Proses)',
-    summative: 'Sumatif (Akhir)'
 };
 
 const INSTRUMENT_MAP: Record<string, string> = {
@@ -438,76 +384,41 @@ const renderAssessmentDetails = (assignments: Assignment[]) => {
     );
 };
 
-// Helper untuk memformat teks yang bertumpuk (misal akibat copy-paste dari PDF)
-const formatDocumentLayout = (html: string | null) => {
-    if (!html) return '';
-
-    // Replace non-breaking spaces with normal spaces to prevent infinite stretching
-    // and arbitrary word-breaking.
-    html = html.replace(/&nbsp;|\u00A0|&#160;/g, ' ');
-
-    // If the content already has proper HTML structure (from ReactQuill/AI),
-    // only apply light formatting fixes without breaking the structure
-    const hasSemanticHtml = /<(h[1-6]|ul|ol|li|blockquote|table|p)\b/i.test(html);
+export default function Show({ modulAjar, assignments }: ModulAjarProps) {
+    const material = {
+        id: modulAjar.material_id,
+        title: modulAjar.material_title,
+        content: '',
+        tp_desc: modulAjar.tp_desc,
+        tp_code: modulAjar.tp_code,
+        teacher_name: modulAjar.teacher_name,
+        teacher_nip: modulAjar.teacher_nip,
+        understanding_activity: modulAjar.understanding_activity,
+        application_activity: modulAjar.application_activity,
+        reflection_activity: modulAjar.reflection_activity,
+        image_prompt: modulAjar.image_prompt,
+        resources: modulAjar.material_resources,
+        external_link: modulAjar.material_external_link,
+        file_path: modulAjar.material_file_path,
+        subject_kktp: modulAjar.subject_kktp,
+        subject_name: modulAjar.subject_name,
+        school_class_name: modulAjar.class_name,
+        semester_name: modulAjar.semester_name,
+        academic_year_name: modulAjar.academic_year_name,
+    };
     
-    if (hasSemanticHtml) {
-        // Light fix: fix commas without spaces
-        let cleaned = html.replace(/,([a-zA-Z])/g, ', $1');
-        // Clean newlines between tags (e.g. </h2>\n<p> or </li>\n<li>) to prevent duplicate spacing in whitespace-pre-wrap
-        cleaned = cleaned.replace(/>\s*\n\s*</g, '><');
-        
-        // Auto-join words that are broken by a hyphen and newline (e.g., "sehari-\nhari" -> "sehari-hari")
-        cleaned = cleaned.replace(/-\s*\n\s*/g, '-');
-        
-        return cleaned;
-    }
-
-    // Legacy fallback for plain-text content (old data without HTML formatting)
-    // First, join hyphenated breaks
-    let text = html.replace(/-\s*\n\s*/g, '-');
+    // Parse saved customization
+    let savedConfig: any = {};
+    try {
+        savedConfig = JSON.parse(modulAjar.general_info || '{}');
+    } catch(e) {}
     
-    // Split by double newlines into paragraphs
-    const paragraphs = text.split(/\n\s*\n/);
+    const school_name = savedConfig.rppSchoolName || modulAjar.school_name || 'SMA Negeri 1 Mokopani';
+    const headmaster_name = savedConfig.kepalaSekolahName || modulAjar.headmaster_name || 'Nama Kepala Sekolah';
+    const headmaster_nip = savedConfig.kepalaSekolahNip || modulAjar.headmaster_nip || '-';
+
     
-    return paragraphs.map(p => {
-        let pText = p;
-        const exceptions = ['WhatsApp', 'MacBook', 'PowerPoint', 'JavaScript', 'YouTube', 'LinkedIn', 'FACT'];
-        exceptions.forEach((ex, j) => {
-            pText = pText.replace(new RegExp(ex, 'g'), `__EX${j}__`);
-        });
-
-        pText = pText.replace(/([a-z])([A-Z])/g, '$1<br/><br/>$2');
-        pText = pText.replace(/([a-zA-Z]')([A-Z])/g, '$1<br/><br/>$2');
-        pText = pText.replace(/\s*•\s*/g, '<br/><br/>• ');
-        pText = pText.replace(/([a-z\.])\s+(\d+\.)\s+/gi, '$1<br/><br/>$2 ');
-        pText = pText.replace(/(?<!Dr|Mr|Ms|Prof)\.\s+([A-Z])/g, '.<br/><br/>$1');
-        pText = pText.replace(/,([a-zA-Z])/g, ', $1');
-
-        exceptions.forEach((ex, j) => {
-            pText = pText.replace(new RegExp(`__EX${j}__`, 'g'), ex);
-        });
-
-        return `<p>${pText}</p>`;
-    }).join('');
-};
-
-export default function ShowMaterial({ 
-    material, 
-    comments, 
-    my_reflection, 
-    all_reflections, 
-    is_completed, 
-    user_role, 
-    auth_id,
-    assignments = [],
-    school_name,
-    headmaster_name = 'Marlinda, S.Pd',
-    headmaster_nip = '19791116 200604 2 016',
-    readiness_status = null
-}: ShowMaterialProps) {
-    const { delete: destroy } = useForm();
-    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-    const [isRppMode, setIsRppMode] = useState(false);
+    
     
     // Auto-detect if this is the Informatika structured data example to load the exact content from the user request
     const isStructuredDataMaterial = 
@@ -548,13 +459,13 @@ export default function ShowMaterial({
     );
     
     const [understandingActivity, setUnderstandingActivity] = useState(
-        stripHtml(material.understanding_activity) || 'Murid disajikan gambar berupa data acak, lalu pendidik memantik diskusi dengan pertanyaan guna memicu rasa ingin tahu.'
+        cleanActivityText(savedConfig.understandingActivity || material.understanding_activity, /^(?:Tahap\s+)?Memahami\s*\(?Understanding\)?\s*[:\-]*\s*/i) || 'Murid disajikan gambar berupa data acak, lalu pendidik memantik diskusi dengan pertanyaan guna memicu rasa ingin tahu.'
     );
     const [applicationActivity, setApplicationActivity] = useState(
-        stripHtml(material.application_activity) || 'Murid berkolaborasi untuk menyusun data acak tersebut menjadi tabel terstruktur, lalu menyajikannya ke dalam bentuk infografis digital.'
+        cleanActivityText(savedConfig.applicationActivity || material.application_activity, /^(?:Tahap\s+)?Mengaplikasi\s*\(?Application\)?\s*[:\-]*\s*/i) || 'Murid berkolaborasi untuk menyusun data acak tersebut menjadi tabel terstruktur, lalu menyajikannya ke dalam bentuk infografis digital.'
     );
     const [reflectionActivity, setReflectionActivity] = useState(
-        stripHtml(material.reflection_activity) || 'Murid mempresentasikan hasilnya melalui kegiatan gallery walk dan saling memberikan umpan balik (evaluasi teman sejawat).'
+        cleanActivityText(savedConfig.reflectionActivity || material.reflection_activity, /^(?:Tahap\s+)?Merefleksi\s*\(?Reflecting\)?\s*[:\-]*\s*/i) || 'Murid mempresentasikan hasilnya melalui kegiatan gallery walk dan saling memberikan umpan balik (evaluasi teman sejawat).'
     );
     
     // LKPD Customization States
@@ -639,6 +550,36 @@ export default function ShowMaterial({
         return 'text-[#3DD68C] bg-[#3DD68C]/10 dark:bg-[#3DD68C]/10';
     };
 
+    const [isSaving, setIsSaving] = useState(false);
+    
+    const handleSaveConfig = () => {
+        setIsSaving(true);
+        const config = {
+            rppSchoolName, rppAlokasiWaktu, rppProfilLulusan,
+            rppKemitraan, rppDigital, rppRemedial, rppPengayaan,
+            kepalaSekolahName, kepalaSekolahNip,
+            understandingActivity, applicationActivity, reflectionActivity,
+            lkpdTitle, lkpdStimulus, lkpdPemantik, lkpdLangkah
+        };
+        
+        router.put(route('lesson-plans.update', modulAjar.id), {
+            subject_id: modulAjar.subject_id,
+            school_class_id: modulAjar.school_class_id,
+            learning_objective_id: modulAjar.learning_objective_id,
+            material_id: modulAjar.material_id,
+            pedagogical_model: modulAjar.pedagogical_model,
+            general_info: JSON.stringify(config),
+            learning_design: null,
+            learning_steps: null,
+            assessment_plan: null,
+            kktp_details: null,
+            lkpd: null,
+            learning_resources: null
+        }, {
+            onFinish: () => setIsSaving(false)
+        });
+    };
+
     const exportToWord = () => {
         const printArea = document.getElementById('rpp-print-area');
         if (!printArea) return;
@@ -684,8 +625,7 @@ export default function ShowMaterial({
         URL.revokeObjectURL(url);
     };
 
-    if (isRppMode) {
-        return (
+return (
             <AppLayout breadcrumbs={[
                 { title: 'Dashboard', href: '/dashboard' },
                 { title: 'Materi', href: '/materials' },
@@ -784,11 +724,11 @@ export default function ShowMaterial({
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 no-print border-b border-[#2C2C3A]/10 dark:border-[#2C2C3A] pb-6">
                         <div>
                             <button 
-                                onClick={() => setIsRppMode(false)}
+                                onClick={() => router.get('/lesson-plans')}
                                 className="flex items-center gap-2 text-sm font-medium text-[#8A8F98] hover:text-[#5E6AD2] transition"
                             >
                                 <ChevronLeft className="h-4 w-4" />
-                                Kembali ke Detail Materi
+                                Kembali ke Daftar Modul Ajar
                             </button>
                             <h1 className="text-2xl font-black text-[#1B1B25] dark:text-[#F1F1F4] mt-2">Pratinjau RPP Pembelajaran Mendalam</h1>
                         </div>
@@ -1022,7 +962,7 @@ export default function ShowMaterial({
                         <div className="lg:col-span-8 flex flex-col items-center">
                             <div 
                                 id="rpp-print-area"
-                                className="w-full max-w-[210mm] min-h-[297mm] bg-white text-black p-8 sm:p-12 shadow-xl border border-gray-200 rounded-[2rem] print:rounded-none print:shadow-none print:border-none leading-relaxed font-sans"
+                                className="w-full max-w-[210mm] min-h-[297mm] bg-white text-black p-8 sm:p-12 shadow-xl border border-gray-200 rounded-[2rem] print:rounded-none print:shadow-none print:border-none leading-relaxed font-sans overflow-hidden"
                                 style={{ color: '#000000', backgroundColor: '#FFFFFF' }}
                             >
                                 {/* Kop / Title */}
@@ -1500,550 +1440,5 @@ export default function ShowMaterial({
                 </div>
             </AppLayout>
         );
-    }
-
-    return (
-        <AppLayout breadcrumbs={[
-            { title: 'Dashboard', href: '/dashboard' },
-            { title: 'Materi', href: '/materials' },
-            { title: material.title, href: '#' },
-        ]}>
-            <Head title={`${material.title} – LMS Mokopani`} />
-
-            <div className="flex h-full flex-1 flex-col gap-6 p-6">
-                <div className="flex items-center justify-between">
-                    <button 
-                        onClick={() => window.history.back()}
-                        className="flex items-center gap-2 text-sm font-medium text-[#8A8F98] hover:text-[#5E6AD2] transition"
-                    >
-                        <ChevronLeft className="h-4 w-4" />
-                        Kembali
-                    </button>
-                    {(user_role === 'teacher' || user_role === 'admin') && (
-                        <div className="flex items-center gap-3">
-                            <button
-                                onClick={() => setIsRppMode(true)}
-                                className="flex items-center gap-2 rounded-xl bg-[#3DD68C]/10 px-4 py-2 text-xs font-bold text-[#3DD68C] transition hover:bg-[#3DD68C]/20 dark:bg-[#3DD68C]/10 dark:text-[#3DD68C]"
-                            >
-                                <Printer className="h-3.5 w-3.5" /> Pratinjau / Cetak RPP
-                            </button>
-                            <Link
-                                href={route('materials.edit', material.id)}
-                                className="flex items-center gap-2 rounded-xl bg-[#5E6AD2]/10 px-4 py-2 text-xs font-bold text-[#5E6AD2] transition hover:bg-[#5E6AD2]/20 dark:bg-[#5E6AD2]/10 dark:text-[#5E6AD2]"
-                            >
-                                <Pencil className="h-3.5 w-3.5" /> Edit Materi
-                            </Link>
-                            <button
-                                onClick={() => setShowDeleteConfirm(true)}
-                                className="flex items-center gap-2 rounded-xl bg-[#EB5757]/10 px-4 py-2 text-xs font-bold text-[#EB5757] transition hover:bg-[#EB5757]/20 dark:bg-[#EB5757]/10 dark:text-[#EB5757]"
-                            >
-                                <Trash2 className="h-3.5 w-3.5" /> Hapus
-                            </button>
-                        </div>
-                    )}
-                </div>
-
-                <div className="grid gap-6 lg:grid-cols-3">
-                    {/* Main Content */}
-                    <div className="lg:col-span-2 space-y-6">
-                        {readiness_status && readiness_status.status !== 'ready' ? (
-                            <div className="rounded-[2.5rem] border border-rose-500/10 dark:border-rose-500/5 bg-rose-500/[0.02] dark:bg-rose-950/[0.02] p-12 text-center space-y-8 shadow-2xl shadow-slate-100/50 dark:shadow-none flex flex-col items-center justify-center py-20 min-h-[450px] animate-in fade-in duration-700">
-                                <div className="h-20 w-20 rounded-[2rem] bg-rose-500/10 dark:bg-rose-500/5 text-rose-500 flex items-center justify-center animate-bounce shadow-inner border border-rose-500/20">
-                                    <Lock className="h-10 w-10" />
-                                </div>
-                                <div className="space-y-3 max-w-md">
-                                    <h2 className="text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight">
-                                        {readiness_status.status === 'not_taken' ? 'Materi Belum Terbuka 🔒' : 'Butuh Pendampingan Guru 🔒'}
-                                    </h2>
-                                    <p className="text-xs text-muted-foreground leading-relaxed font-semibold">
-                                        {readiness_status.status === 'not_taken' 
-                                            ? 'Kamu perlu menyelesaikan Asesmen Awal (Diagnostik) terlebih dahulu sebelum bisa mengakses materi pembelajaran ini.'
-                                            : 'Status Kesiapan Belajar kamu saat ini adalah Belum Siap. Untuk membuka materi ini, kamu perlu menyelesaikan latihan prasyarat bersama Guru Anda atau menunggu persetujuan/intervensi dari Guru.'}
-                                    </p>
-                                </div>
-
-                                {readiness_status.status === 'not_taken' && readiness_status.assessment_id && (
-                                    <Link
-                                        href={route('assignments.show', readiness_status.assessment_id)}
-                                        className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-rose-500 to-indigo-600 px-6 py-3 text-xs font-black uppercase tracking-widest text-white transition hover:opacity-90 shadow-lg shadow-rose-250 dark:shadow-none hover:scale-[1.02] active:scale-95"
-                                    >
-                                        <ArrowRight className="h-4 w-4 animate-pulse" /> Mulai Asesmen Awal
-                                    </Link>
-                                )}
-
-                                {readiness_status.status === 'needs_intervention' && (
-                                    <div className="w-full bg-white dark:bg-[#101014] border border-rose-500/20 dark:border-rose-500/10 rounded-3xl p-6 text-left space-y-4 max-w-lg mt-4 shadow-sm">
-                                        <div className="flex items-center gap-2 text-rose-500 font-black text-[10px] uppercase tracking-widest">
-                                            <AlertTriangle className="h-4 w-4 shrink-0" />
-                                            <span>Rekomendasi Strategi Belajar:</span>
-                                        </div>
-                                        <div className="grid gap-3">
-                                            {readiness_status.diagnostic_result?.recommendations?.map((rec: any, idx: number) => (
-                                                <div key={idx} className="flex items-start gap-2 text-xs font-semibold text-slate-700 dark:text-slate-350">
-                                                    <span className="text-rose-500 shrink-0">•</span>
-                                                    <span>{rec.message}</span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                        <p className="text-[10px] text-rose-500 font-bold text-center pt-2 italic">
-                                            Silakan hubungi Guru Anda untuk mendapatkan bimbingan atau persetujuan agar materi ini dapat dibuka.
-                                        </p>
-                                    </div>
-                                )}
-                            </div>
-                        ) : (
-                            <>
-                                <div className="rounded-3xl border border-[#2C2C3A]/20 dark:border-[#2C2C3A] bg-white dark:bg-[#1B1B25] p-8 shadow-sm">
-                            <div className="space-y-4">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                    <span className="rounded-full bg-[#5E6AD2]/10 dark:bg-[#5E6AD2]/10 px-3 py-1 text-[10px] font-bold text-[#5E6AD2] uppercase tracking-widest">
-                                        {material.subject_name}
-                                    </span>
-                                    {material.tp_code && (
-                                        <span className="inline-flex items-center gap-1 rounded-full bg-[#5E6AD2]/10 dark:bg-[#5E6AD2]/10 px-3 py-1 text-[10px] font-bold text-[#5E6AD2] uppercase tracking-widest">
-                                            <Target className="h-3 w-3" />
-                                            {material.tp_code}
-                                        </span>
-                                    )}
-                                    {user_role === 'student' && is_completed && (
-                                        <span className="inline-flex items-center gap-1 rounded-full bg-[#3DD68C]/10 px-3 py-1 text-[10px] font-black text-[#3DD68C] uppercase tracking-widest">
-                                            <CheckCircle2 className="h-3 w-3" />
-                                            Selesai
-                                        </span>
-                                    )}
-                                </div>
-                                <h1 className="text-3xl font-black text-[#1B1B25] dark:text-[#F1F1F4] leading-tight">
-                                    {material.title}
-                                </h1>
-                                <div className="flex items-center gap-4 text-sm text-[#8A8F98]">
-                                    <div className="flex items-center gap-1.5">
-                                        <User className="h-4 w-4" />
-                                        {material.teacher_name}
-                                    </div>
-                                    <div className="flex items-center gap-1.5">
-                                        <Calendar className="h-4 w-4" />
-                                        {material.created_at}
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            {material.thumbnail && (
-                                <div className="mt-8 rounded-3xl overflow-hidden border border-[#2C2C3A]/20 dark:border-[#2C2C3A] shadow-sm">
-                                    <img 
-                                        src={material.thumbnail} 
-                                        alt={material.title}
-                                        className="w-full h-auto max-h-[500px] object-cover"
-                                    />
-                                </div>
-                            )}
-
-                            {!material.thumbnail && material.image_prompt && (
-                                <div className="mt-8 rounded-3xl border border-[#2C2C3A]/20 dark:border-[#2C2C3A] bg-gradient-to-br from-indigo-500/5 via-violet-500/5 to-pink-500/5 p-6 shadow-sm space-y-4">
-                                    <div className="flex items-center gap-2 text-violet-600 dark:text-violet-400">
-                                        <Star className="h-4 w-4 animate-pulse" />
-                                        <span className="text-xs font-bold uppercase tracking-widest">Gambar Ilustrasi AI</span>
-                                    </div>
-                                    <div className="h-56 w-full rounded-2xl bg-gradient-to-br from-indigo-500/20 via-[#5E6AD2]/10 to-pink-500/20 border border-[#2C2C3A]/10 flex flex-col items-center justify-center text-center p-6 relative overflow-hidden">
-                                        {/* Abstract background graphics */}
-                                        <div className="absolute -right-10 -bottom-10 h-40 w-40 rounded-full bg-indigo-500/10 blur-xl"></div>
-                                        <div className="absolute -left-10 -top-10 h-40 w-40 rounded-full bg-pink-500/10 blur-xl"></div>
-                                        
-                                        <div className="z-10 bg-white/80 dark:bg-[#1B1B25]/80 backdrop-blur-md p-4 rounded-2xl shadow-sm border border-[#2C2C3A]/10 max-w-lg">
-                                            <p className="text-xs font-semibold text-[#1B1B25] dark:text-[#F1F1F4] italic leading-relaxed">
-                                                "{material.image_prompt}"
-                                            </p>
-                                        </div>
-                                        <span className="text-[9px] font-mono tracking-widest text-[#8A8F98]/80 uppercase mt-4 z-10 flex items-center gap-1">
-                                            <Star className="h-3 w-3" /> Ilustrasi Visual Guru Rancang Cerdas
-                                        </span>
-                                    </div>
-                                </div>
-                            )}
-
-                            {material.tp_desc && (
-                                <div className="mt-8 rounded-2xl bg-[#F1F1F4]/10 dark:bg-[#2C2C3A]/50 p-6 border-l-4 border-[#5E6AD2]">
-                                    <div className="flex items-center gap-2 mb-2 text-[#5E6AD2]">
-                                        <Target className="h-4 w-4" />
-                                        <span className="text-xs font-bold uppercase tracking-widest">Tujuan Pembelajaran</span>
-                                    </div>
-                                    <p className="text-sm text-[#8A8F98] leading-relaxed italic">
-                                        {material.tp_desc}
-                                    </p>
-                                </div>
-                            )}
-
-                            <div className="mt-10 prose prose-neutral dark:prose-invert max-w-none 
-                                prose-p:text-[#3f3f46] dark:prose-p:text-[#D1D5DB] prose-p:leading-relaxed prose-p:text-[1.05rem]
-                                prose-headings:font-black prose-headings:tracking-tight prose-headings:text-[#1B1B25] dark:prose-headings:text-[#F1F1F4] 
-                                prose-h1:text-3xl prose-h2:text-2xl prose-h3:text-xl
-                                prose-a:font-bold prose-a:text-[#5E6AD2] prose-a:no-underline hover:prose-a:text-[#5E6AD2]/80 hover:prose-a:underline prose-a:break-all
-                                prose-strong:font-bold prose-strong:text-[#1B1B25] dark:prose-strong:text-[#F1F1F4]
-                                prose-ul:text-[#3f3f46] dark:prose-ul:text-[#D1D5DB] prose-ul:leading-relaxed prose-li:marker:text-[#5E6AD2]
-                                prose-ol:text-[#3f3f46] dark:prose-ol:text-[#D1D5DB] prose-ol:leading-relaxed
-                                prose-blockquote:border-l-4 prose-blockquote:border-[#5E6AD2] prose-blockquote:bg-[#5E6AD2]/5 prose-blockquote:py-3 prose-blockquote:px-6 prose-blockquote:rounded-r-2xl prose-blockquote:text-[#2C2C3A] dark:prose-blockquote:text-[#F1F1F4] prose-blockquote:not-italic prose-blockquote:font-medium
-                                prose-img:rounded-3xl prose-img:shadow-lg prose-img:border prose-img:border-[#2C2C3A]/10 dark:prose-img:border-[#2C2C3A]/50
-                                prose-hr:border-[#2C2C3A]/10 dark:prose-hr:border-[#2C2C3A]/50
-                                prose-code:text-[#5E6AD2] prose-code:bg-[#5E6AD2]/10 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded-md prose-code:before:content-none prose-code:after:content-none prose-code:break-words
-                                prose-pre:bg-[#1B1B25] prose-pre:border prose-pre:border-[#2C2C3A]/30 prose-pre:rounded-2xl
-                                break-normal">
-                                <div 
-                                    className="leading-relaxed"
-                                    dangerouslySetInnerHTML={{ __html: formatDocumentLayout(material.content) }} 
-                                />
-                            </div>
-
-                            {/* Resource Previews */}
-                            {material.resources && material.resources.length > 0 && (
-                                <div className="mt-12 space-y-8">
-                                    {material.resources.map((res, idx) => {
-                                        if (res.type === 'link' || res.type === 'youtube') {
-                                            // YouTube Preview
-                                            if (res.type === 'youtube' || res.path.includes('youtube.com') || res.path.includes('youtu.be')) {
-                                                let videoId = '';
-                                                const match = res.path.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/);
-                                                if (match && match[1]) videoId = match[1];
-                                                
-                                                if (videoId) {
-                                                    return (
-                                                        <div key={idx} className="space-y-2">
-                                                            <h4 className="text-sm font-bold text-[#8A8F98]">{res.title || 'Video Pembelajaran'}</h4>
-                                                            <div className="aspect-video w-full rounded-3xl overflow-hidden border border-[#2C2C3A]/20 dark:border-[#2C2C3A] shadow-sm">
-                                                                <iframe width="100%" height="100%" src={`https://www.youtube.com/embed/${videoId}`} title={res.title || "YouTube video"} frameBorder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen></iframe>
-                                                            </div>
-                                                        </div>
-                                                    );
-                                                }
-                                            }
-                                            // Google Slides / Docs Preview
-                                            if (res.path.includes('docs.google.com/presentation') || res.path.includes('docs.google.com/document')) {
-                                                const embedUrl = res.path.replace(/\/edit.*$/, '/preview');
-                                                return (
-                                                    <div key={idx} className="space-y-2">
-                                                        <h4 className="text-sm font-bold text-[#8A8F98]">{res.title || 'Dokumen Presentasi'}</h4>
-                                                        <div className="aspect-video w-full rounded-3xl overflow-hidden border border-[#2C2C3A]/20 dark:border-[#2C2C3A] shadow-sm">
-                                                            <iframe src={embedUrl} width="100%" height="100%" frameBorder="0" allowFullScreen></iframe>
-                                                        </div>
-                                                    </div>
-                                                );
-                                            }
-                                            
-                                            // Fallback for Generic Links
-                                            return (
-                                                <div key={idx} className="space-y-2">
-                                                    <h4 className="text-sm font-bold text-[#8A8F98]">{res.title || 'Tautan Eksternal'}</h4>
-                                                    <a href={res.path} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-4 rounded-2xl border border-[#2C2C3A]/20 dark:border-[#2C2C3A] bg-[#F1F1F4]/5 dark:bg-[#1B1B25] hover:bg-[#F1F1F4]/10 transition group">
-                                                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#5E6AD2]/10 text-[#5E6AD2]">
-                                                            <Globe className="h-5 w-5" />
-                                                        </div>
-                                                        <div className="flex-1 min-w-0">
-                                                            <p className="text-sm font-bold text-[#1B1B25] dark:text-[#F1F1F4] truncate group-hover:text-[#5E6AD2] transition">
-                                                                {res.title || res.path}
-                                                            </p>
-                                                            <p className="text-xs text-[#8A8F98] truncate mt-0.5">{res.path}</p>
-                                                        </div>
-                                                        <ExternalLink className="h-4 w-4 text-[#8A8F98] shrink-0 group-hover:text-[#5E6AD2] transition" />
-                                                    </a>
-                                                </div>
-                                            );
-                                        } else {
-                                            const ext = res.file_type?.toLowerCase() || res.path.split('.').pop()?.toLowerCase() || '';
-                                            
-                                            // Local Video Preview
-                                            if (['mp4', 'webm', 'ogg'].includes(ext)) {
-                                                return (
-                                                    <div key={idx} className="space-y-2">
-                                                        <h4 className="text-sm font-bold text-[#8A8F98]">{res.title || 'Video Terlampir'}</h4>
-                                                        <div className="aspect-video w-full rounded-3xl overflow-hidden border border-[#2C2C3A]/20 dark:border-[#2C2C3A] shadow-sm bg-black">
-                                                            <video controls className="w-full h-full object-contain">
-                                                                <source src={`/storage/${res.path}`} type={`video/${ext}`} />
-                                                                Browser Anda tidak mendukung pemutaran video ini.
-                                                            </video>
-                                                        </div>
-                                                    </div>
-                                                );
-                                            }
-                                            
-                                            // PDF Preview
-                                            if (ext === 'pdf') {
-                                                return (
-                                                    <div key={idx} className="space-y-2">
-                                                        <h4 className="text-sm font-bold text-[#8A8F98]">{res.title || 'Dokumen PDF'}</h4>
-                                                        <div className="w-full h-[600px] rounded-3xl overflow-hidden border border-[#2C2C3A]/20 dark:border-[#2C2C3A] shadow-sm">
-                                                            <iframe src={`/storage/${res.path}`} width="100%" height="100%" frameBorder="0"></iframe>
-                                                        </div>
-                                                    </div>
-                                                );
-                                            }
-                                            
-                                            // Office Docs Preview (Word, PPT, Excel) via Office Web Viewer
-                                            if (['doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx'].includes(ext)) {
-                                                return (
-                                                    <div key={idx} className="space-y-2">
-                                                        <h4 className="text-sm font-bold text-[#8A8F98]">{res.title || 'Dokumen Office'}</h4>
-                                                        <div className="w-full h-[500px] rounded-3xl overflow-hidden border border-[#2C2C3A]/20 dark:border-[#2C2C3A] shadow-sm bg-[#F1F1F4]/10 dark:bg-[#1B1B25] flex flex-col items-center justify-center relative group">
-                                                            <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center z-10">
-                                                                <FileText className="h-12 w-12 text-[#8A8F98]/40 mb-4" />
-                                                                <p className="text-sm text-[#8A8F98] mb-2 font-medium">Pratinjau dokumen Office ({ext.toUpperCase()})</p>
-                                                                <p className="text-xs text-[#8A8F98] mb-4 max-w-sm">Jika dokumen tidak tampil, pastikan aplikasi ini dapat diakses secara publik (bukan localhost) atau klik tombol Download di bawah.</p>
-                                                                <a href={`/storage/${res.path}`} download className="px-4 py-2 bg-[#5E6AD2]/10 text-[#5E6AD2] dark:bg-[#5E6AD2]/10 rounded-xl text-xs font-bold hover:bg-[#5E6AD2]/15 transition flex items-center gap-2">
-                                                                    <Download className="h-4 w-4" /> Download Dokumen
-                                                                </a>
-                                                            </div>
-                                                            {/* Attempt to load office viewer, will fail gracefully or show gray screen if on localhost */}
-                                                            <iframe className="absolute inset-0 w-full h-full z-0 opacity-10" onLoad={(e) => (e.target as HTMLIFrameElement).style.opacity = '1'} src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(typeof window !== 'undefined' ? window.location.origin + '/storage/' + res.path : '')}`} frameBorder="0"></iframe>
-                                                        </div>
-                                                    </div>
-                                                );
-                                            }
-                                            
-                                            // Fallback Generic File Download
-                                            return (
-                                                <div key={idx} className="space-y-2">
-                                                    <h4 className="text-sm font-bold text-[#8A8F98]">{res.title || 'Dokumen Lampiran'}</h4>
-                                                    <div className="w-full rounded-3xl overflow-hidden border border-[#2C2C3A]/20 dark:border-[#2C2C3A] shadow-sm bg-[#F1F1F4]/10 dark:bg-[#1B1B25] flex flex-col items-center justify-center relative group p-8 text-center">
-                                                        <FileText className="h-12 w-12 text-[#8A8F98]/40 mb-4" />
-                                                        <p className="text-sm text-[#8A8F98] mb-2 font-medium">Berkas Lampiran ({ext ? ext.toUpperCase() : 'File'})</p>
-                                                        <a href={`/storage/${res.path}`} download className="px-4 py-2 bg-[#5E6AD2]/10 text-[#5E6AD2] dark:bg-[#5E6AD2]/10 rounded-xl text-xs font-bold hover:bg-[#5E6AD2]/15 transition flex items-center gap-2 mt-2">
-                                                            <Download className="h-4 w-4" /> Download Dokumen
-                                                        </a>
-                                                    </div>
-                                                </div>
-                                            );
-                                        }
-                                    })}
-                                </div>
-                            )}
-                        </div>
-                        {/* Reflection Section (Student Only) */}
-                        {user_role === 'student' && (
-                            <ReflectionForm 
-                                materialId={material.id} 
-                                existingReflection={my_reflection} 
-                            />
-                        )}
-
-                        {/* Tandai Selesai Button (Student Only, if not yet completed & no reflection) */}
-                        {user_role === 'student' && !is_completed && (
-                            <div className="rounded-3xl border border-[#2C2C3A]/20 dark:border-[#2C2C3A] bg-white dark:bg-[#1B1B25] p-6 shadow-sm">
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <p className="text-sm font-bold text-[#1B1B25] dark:text-[#F1F1F4]">Belum ingin menulis jurnal refleksi?</p>
-                                        <p className="text-xs text-[#8A8F98] mt-1">Tandai materi ini sebagai selesai agar tercatat di progress belajar Anda.</p>
-                                    </div>
-                                    <button
-                                        id="btn-mark-complete"
-                                        onClick={() => router.post(`/materials/${material.id}/complete`)}
-                                        className="flex items-center gap-2 rounded-xl bg-[#3DD68C]/10 hover:bg-[#3DD68C]/20 px-5 py-2.5 text-xs font-black text-[#3DD68C] transition-all cursor-pointer"
-                                    >
-                                        <CheckCircle2 className="h-4 w-4" />
-                                        Tandai Selesai
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Completion Badge (Student, already completed) */}
-                        {user_role === 'student' && is_completed && !my_reflection && (
-                            <div className="rounded-3xl border border-[#3DD68C]/30 bg-[#3DD68C]/5 dark:bg-[#3DD68C]/10 p-6 shadow-sm">
-                                <div className="flex items-center gap-3">
-                                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#3DD68C]/20">
-                                        <CheckCircle2 className="h-5 w-5 text-[#3DD68C]" />
-                                    </div>
-                                    <div>
-                                        <p className="text-sm font-black text-[#3DD68C]">Materi Telah Selesai</p>
-                                        <p className="text-xs text-[#8A8F98] mt-0.5">Anda sudah menandai materi ini sebagai selesai.</p>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Reflections List (Teacher Only) */}
-                        {user_role === 'teacher' && all_reflections && all_reflections.length > 0 && (
-                            <div className="rounded-3xl border border-[#2C2C3A]/20 dark:border-[#2C2C3A] bg-white dark:bg-[#1B1B25] p-8 shadow-sm space-y-6">
-                                <div className="flex items-center justify-between border-b border-[#2C2C3A]/10 dark:border-[#2C2C3A] pb-6">
-                                    <div>
-                                        <h3 className="text-lg font-black text-[#1B1B25] dark:text-[#F1F1F4]">Jurnal Refleksi Siswa</h3>
-                                        <p className="text-xs text-[#8A8F98] font-bold uppercase tracking-widest mt-1">Evaluasi pemahaman siswa terhadap materi</p>
-                                    </div>
-                                    <div className="bg-[#5E6AD2]/10 dark:bg-[#5E6AD2]/10 px-4 py-2 rounded-2xl">
-                                        <span className="text-xs font-black text-[#5E6AD2]">{all_reflections.length} Refleksi</span>
-                                    </div>
-                                </div>
-
-                                <div className="grid gap-6">
-                                    {all_reflections.map((ref) => (
-                                        <div key={ref.id} className="p-6 rounded-[2rem] bg-[#F1F1F4]/5 dark:bg-[#2C2C3A]/30 border border-[#2C2C3A]/20 dark:border-[#2C2C3A] space-y-4">
-                                            <div className="flex items-center justify-between">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="h-10 w-10 rounded-2xl bg-white dark:bg-[#1B1B25] border border-[#2C2C3A]/20 dark:border-[#2C2C3A] overflow-hidden shadow-sm">
-                                                        {ref.student_photo ? (
-                                                            <img src={ref.student_photo} className="h-full w-full object-cover" alt={ref.student_name} />
-                                                        ) : (
-                                                            <div className="h-full w-full flex items-center justify-center bg-[#5E6AD2]/10 text-[#5E6AD2] font-black text-xs uppercase">
-                                                                {ref.student_name.substring(0, 2)}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-sm font-black text-[#1B1B25] dark:text-[#F1F1F4]">{ref.student_name}</p>
-                                                        <p className="text-[10px] text-[#8A8F98] font-bold uppercase tracking-widest">{ref.created_at}</p>
-                                                    </div>
-                                                </div>
-                                                <div className="flex gap-1">
-                                                    {[1, 2, 3, 4, 5].map((star) => (
-                                                        <Star 
-                                                            key={star} 
-                                                            className={`h-3 w-3 ${star <= ref.understanding_level ? 'fill-[#F0C000] text-[#F0C000]' : 'text-[#2C2C3A]/20 dark:text-[#2C2C3A]'}`} 
-                                                        />
-                                                    ))}
-                                                </div>
-                                            </div>
-
-                                            <div className="grid md:grid-cols-2 gap-4">
-                                                <div className="space-y-1.5">
-                                                    <p className="text-[10px] font-black text-[#5E6AD2] uppercase tracking-widest">Paling Menarik:</p>
-                                                    <p className="text-xs text-[#8A8F98] leading-relaxed font-medium italic">"{ref.interesting_thing || '-'}"</p>
-                                                </div>
-                                                <div className="space-y-1.5">
-                                                    <p className="text-[10px] font-black text-[#EB5757] uppercase tracking-widest">Kendala:</p>
-                                                    <p className="text-xs text-[#8A8F98] leading-relaxed font-medium italic">"{ref.difficulty || '-'}"</p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Comment Section */}
-                        <div className="rounded-3xl border border-[#2C2C3A]/20 dark:border-[#2C2C3A] bg-white dark:bg-[#1B1B25] p-8 shadow-sm">
-                            <CommentSection 
-                                materialId={material.id} 
-                                comments={comments} 
-                                authId={auth_id} 
-                                userRole={user_role} 
-                            />
-                        </div>
-                        </>
-                        )}
-                    </div>
-
-                    {/* Sidebar / Resources */}
-                    <div className="space-y-6">
-                        <div className="rounded-3xl border border-[#2C2C3A]/20 dark:border-[#2C2C3A] bg-white dark:bg-[#1B1B25] p-6 shadow-sm">
-                            <h3 className="mb-4 text-xs font-bold text-[#8A8F98] uppercase tracking-widest">Sumber Belajar & Lampiran</h3>
-                            
-                            <div className="space-y-3">
-                                {material.resources && material.resources.length > 0 ? (
-                                    material.resources.map((res) => (
-                                        (res.type === 'link' || res.type === 'youtube') ? (
-                                            <a 
-                                                key={res.id}
-                                                href={res.path} 
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className={`flex items-center gap-4 rounded-2xl p-4 transition-all hover:scale-[1.02] active:scale-95 shadow-sm hover:shadow-md ${getLinkColor(res.path)}`}
-                                            >
-                                                <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-white shadow-sm dark:bg-[#1B1B25]">
-                                                    {getLinkIcon(res.path)}
-                                                </div>
-                                                <div className="flex-1 min-w-0 overflow-hidden">
-                                                    <p className="text-[10px] font-black uppercase tracking-tight truncate">{res.title || 'Buka Link'}</p>
-                                                    <p className="text-[9px] opacity-70 truncate">{res.path}</p>
-                                                </div>
-                                                <ExternalLink className="h-3 w-3 flex-shrink-0 opacity-50" />
-                                            </a>
-                                        ) : (
-                                            <a 
-                                                key={res.id}
-                                                href={`/storage/${res.path}`} 
-                                                target="_blank"
-                                                className="flex items-center gap-3 rounded-2xl border border-[#2C2C3A]/10 dark:border-[#2C2C3A] p-4 transition-all hover:bg-[#F1F1F4]/10 dark:hover:bg-[#2C2C3A]/50 hover:shadow-sm"
-                                            >
-                                                <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-[#5E6AD2]/10 dark:bg-[#5E6AD2]/10 text-[#5E6AD2]">
-                                                    <FileText className="h-5 w-5" />
-                                                </div>
-                                                <div className="flex-1 min-w-0 overflow-hidden">
-                                                    <p className="truncate text-[10px] font-bold text-[#8A8F98]">{res.title || 'Download Dokumen'}</p>
-                                                    <p className="text-[8px] text-[#8A8F98] uppercase font-black truncate">{res.file_type}</p>
-                                                </div>
-                                                <Download className="h-3 w-3 flex-shrink-0 text-[#8A8F98]/40" />
-                                            </a>
-                                        )
-                                    ))
-                                ) : (
-                                    <div className="py-6 text-center border-2 border-dashed border-[#2C2C3A]/10 dark:border-[#2C2C3A] rounded-2xl">
-                                        <p className="text-xs text-[#8A8F98]/40 italic font-medium">Tidak ada sumber tambahan</p>
-                                    </div>
-                                )}
-
-                                {/* Fallback for legacy fields (if any) */}
-                                {!material.resources?.length && (material.external_link || material.file_path) && (
-                                    <>
-                                        {material.external_link && (
-                                            <a 
-                                                href={material.external_link} 
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className={`flex items-center gap-4 rounded-2xl p-4 transition-all hover:scale-[1.02] shadow-sm ${getLinkColor(material.external_link)}`}
-                                            >
-                                                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white shadow-sm dark:bg-[#1B1B25]">
-                                                    {getLinkIcon(material.external_link)}
-                                                </div>
-                                                <div className="flex-1 overflow-hidden">
-                                                    <p className="text-[10px] font-black uppercase tracking-tight truncate">Buka Link</p>
-                                                    <p className="text-[9px] opacity-70 truncate">{material.external_link}</p>
-                                                </div>
-                                            </a>
-                                        )}
-                                        {material.file_path && (
-                                            <a 
-                                                href={`/storage/${material.file_path}`} 
-                                                target="_blank"
-                                                className="flex items-center gap-3 rounded-2xl border border-[#2C2C3A]/10 dark:border-[#2C2C3A] p-4 transition-all hover:bg-[#F1F1F4]/10 dark:hover:bg-[#2C2C3A]/50"
-                                            >
-                                                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#5E6AD2]/10 dark:bg-[#5E6AD2]/10 text-[#5E6AD2]">
-                                                    <FileText className="h-5 w-5" />
-                                                </div>
-                                                <div className="flex-1 overflow-hidden">
-                                                    <p className="truncate text-xs font-bold text-[#8A8F98]">Download Dokumen</p>
-                                                    <p className="text-[10px] text-[#8A8F98] uppercase font-black">{material.file_type}</p>
-                                                </div>
-                                            </a>
-                                        )}
-                                    </>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Next Steps */}
-                        <div className="rounded-3xl bg-gradient-to-br from-[#5E6AD2] to-[#4B55A8] p-8 text-white shadow-xl">
-                            <h3 className="text-xs font-black uppercase tracking-widest mb-4 opacity-80">Langkah Selanjutnya</h3>
-                            <p className="text-xs text-white/80 mb-8 leading-relaxed font-medium">
-                                {user_role === 'teacher'
-                                    ? 'Lihat daftar asesmen yang sudah dibuat atau rancang asesmen baru untuk materi ini.'
-                                    : 'Setelah memahami materi ini, silakan kerjakan asesmen yang relevan untuk menguji pemahaman Anda.'}
-                            </p>
-                            <Link 
-                                href="/assignments" 
-                                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-white py-4 text-sm font-black text-[#5E6AD2] transition hover:bg-[#5E6AD2]/5 hover:shadow-lg active:scale-95"
-                            >
-                                Lihat Daftar Asesmen
-                                <ArrowRight className="h-4 w-4" />
-                            </Link>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <ConfirmDialog
-                open={showDeleteConfirm}
-                onOpenChange={setShowDeleteConfirm}
-                title="Hapus Materi"
-                message="Peringatan! Menghapus data ini akan ikut MENGHAPUS SEMUA data terkait (misal: pengumpulan siswa, komentar, dll) secara permanen."
-                onConfirm={handleDelete}
-                requireInput="DELETE"
-                inputPlaceholder="Ketik DELETE untuk konfirmasi"
-            />
-        </AppLayout>
-    );
+    
 }

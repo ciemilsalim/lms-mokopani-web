@@ -424,7 +424,7 @@ export default function Materials({ materials, grouped_materials, teacher_groupe
                                     Tambah
                                 </Link>
                                 <Link
-                                    href={route('instructional-design.create')}
+                                    href={route('lesson-plans.create')}
                                     className="inline-flex items-center justify-center gap-2 rounded-xl bg-white/10 backdrop-blur-md px-5 py-2.5 text-sm font-bold text-white shadow-lg transition hover:bg-white/20"
                                 >
                                     <Plus className="h-4 w-4" />

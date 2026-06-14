@@ -175,7 +175,29 @@ Sintesiskan CP-CP di atas menjadi satu kalimat Tujuan Pembelajaran (TP) yang hol
 Kalimat TP harus berorientasi pada murid (misal: \"Peserta didik mampu mengintegrasikan...\").
 
 PENTING:
-- Kembalikan HANYA berupa string kalimat Tujuan Pembelajaran (TP) tersebut secara langsung tanpa format JSON, tanpa penjelasan pembuka atau penutup."
+- Kembalikan HANYA berupa string kalimat Tujuan Pembelajaran (TP) tersebut secara langsung tanpa format JSON, tanpa penjelasan pembuka atau penutup.",
+            
+            'modul_ajar' => "Kamu adalah asisten cerdas dan pakar Kurikulum Merdeka (standar Panduan Pembelajaran dan Asesmen / PPA 2026) tingkat SMP di Indonesia.
+Tugasmu adalah menyusun Modul Ajar / RPP secara sangat lengkap dan mendalam untuk mata pelajaran {subject}, kelas {class}, Tujuan Pembelajaran (TP) \"{tp}\", dengan fokus materi \"{material}\", dan menggunakan model pembelajaran \"{pedagogical_model}\".
+
+Gunakan data Asesmen yang sudah ditentukan sebagai referensi:
+- Asesmen Awal: {initial_assessments}
+- Asesmen Formatif: {formative_assessments}
+- Asesmen Sumatif: {summative_assessments}
+
+Format output harus berupa JSON valid tanpa code fence (```json ... ```), mengandung key:
+- general_info: Berisi bagian \"IDENTIFIKASI & INFORMASI UMUM\" lengkap (Identitas Sekolah, Kompetensi Awal/Prasyarat, Profil Pelajar Pancasila, Sarana dan Prasarana, Target Peserta Didik). Gunakan format HTML semantik (<h2>, <p>, <ul>, <li>, dst) dengan desain premium dan rapi.
+- learning_design: Berisi bagian \"DESAIN PEMBELAJARAN\" (Tujuan Pembelajaran, Pemahaman Bermakna, Pertanyaan Pemantik, Media Pembelajaran). Gunakan format HTML semantik.
+- learning_steps: Berisi bagian \"LANGKAH-LANGKAH PEMBELAJARAN (PENGALAMAN BELAJAR)\" yang sangat operasional menggunakan model pembelajaran {pedagogical_model} (Kegiatan Pendahuluan, Kegiatan Inti, Kegiatan Penutup). Gunakan format HTML semantik.
+- assessment_plan: Berisi bagian \"ASESMEN DAN RENCANA TINDAK LANJUT\" (Rencana Asesmen Awal, Formatif, Sumatif, tindak lanjut berupa remedial, pengayaan, dan penyesuaian/diferensiasi). Gunakan format HTML semantik.
+- kktp_details: Berisi bagian \"DETAIL INSTRUMEN ASESMEN & KRITERIA KETUNTASAN (KKTP)\" (rubrik penilaian detail, interval nilai, kriteria ketuntasan). Gunakan format HTML semantik.
+- lkpd: Berisi bagian \"LEMBAR KERJA PESERTA DIDIK (LKPD)\" lengkap dengan petunjuk belajar, aktivitas kelompok/individu, pertanyaan pemantik diskusi, dan lembar kerja. Gunakan format HTML semantik.
+- learning_resources: Berisi bagian \"SUMBER BELAJAR\" (buku cetak, link video pembelajaran, artikel, atau sarana digital lainnya). Gunakan format HTML semantik.
+
+PENTING:
+- Gunakan bahasa Indonesia yang baku, profesional, tetapi komunikatif bagi guru dan murid.
+- Tulis narasi secara lengkap, detail, dan komprehensif (hindari placeholder seperti \"Tuliskan di sini...\").
+- Output harus berupa objek JSON valid dengan 7 key di atas. Pastikan format JSON tidak rusak."
         ];
 
         return $fallbacks[$key] ?? "Buatkan rancangan untuk {tp} pada mata pelajaran {subject}.";

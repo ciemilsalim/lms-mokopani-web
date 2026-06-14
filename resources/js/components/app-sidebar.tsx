@@ -27,9 +27,9 @@ const teacherNavSections: NavSection[] = [
         items: [
             { title: 'Capaian Pembelajaran',  url: '/cp',                     icon: Target },
             { title: 'Tujuan Pembelajaran',   url: '/learning-objectives',    icon: GraduationCap },
-            { title: 'Rancang Pembelajaran',  url: '/instructional-design/create', icon: Compass },
             { title: 'Materi',                url: '/materials',              icon: Library },
             { title: 'Asesmen',               url: '/assignments',            icon: ClipboardList },
+            { title: 'Pembelajaran',          url: '/lesson-plans',           icon: BookOpen },
             { title: 'Projek P5',             url: '/p5',                     icon: Heart },
         ],
     },
@@ -99,9 +99,9 @@ const adminNavSections: NavSection[] = [
         items: [
             { title: 'Capaian Pembelajaran', url: '/cp',                  icon: Target },
             { title: 'Tujuan Pembelajaran',  url: '/learning-objectives', icon: GraduationCap },
-            { title: 'Rancang Pembelajaran', url: '/instructional-design/create', icon: Compass },
             { title: 'Materi',               url: '/materials',           icon: Library },
             { title: 'Asesmen',              url: '/assignments',         icon: ClipboardList },
+            { title: 'Pembelajaran',         url: '/lesson-plans',        icon: BookOpen },
             { title: 'Projek P5',            url: '/p5',                  icon: Heart },
         ],
     },

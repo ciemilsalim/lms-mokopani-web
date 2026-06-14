@@ -581,11 +581,11 @@ export default function Assignments({ assignments, grouped_assignments, teacher_
                         {user_role === 'teacher' && (
                             <button
                                 id="btn-add-assignment"
-                                onClick={() => router.visit('/instructional-design/create')}
-                                className="inline-flex items-center justify-center gap-2 rounded-xl bg-white/10 backdrop-blur-md px-5 py-2.5 text-sm font-bold text-white shadow-lg transition hover:bg-white/20 cursor-pointer"
+                                onClick={() => router.visit('/assignments/create')}
+                                className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-5 py-2.5 text-sm font-bold text-primary shadow-lg transition hover:bg-white/90 cursor-pointer"
                             >
                                 <Plus className="h-4 w-4" />
-                                Rancang Pembelajaran
+                                Tambah Asesmen
                             </button>
                         )}
                     </div>

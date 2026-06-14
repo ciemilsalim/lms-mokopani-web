@@ -33,7 +33,7 @@ export default function PromptSettingsModal({ isOpen, onClose }: PromptSettingsM
     const fetchPrompts = async () => {
         setIsLoading(true);
         try {
-            const response = await axios.get(route('instructional-design.prompts.get'));
+            const response = await axios.get(route('lesson-plans.prompts.get'));
             setPrompts(response.data);
             if (response.data.length > 0) {
                 // Keep active tab if already selected, otherwise pick first
@@ -100,7 +100,7 @@ export default function PromptSettingsModal({ isOpen, onClose }: PromptSettingsM
         if (!activeKey) return;
         setIsSaving(true);
         try {
-            const response = await axios.post(route('instructional-design.prompts.save'), {
+            const response = await axios.post(route('lesson-plans.prompts.save'), {
                 key: activeKey,
                 prompt_text: editedText,
             });
@@ -125,7 +125,7 @@ export default function PromptSettingsModal({ isOpen, onClose }: PromptSettingsM
         
         setIsResetting(true);
         try {
-            const response = await axios.post(route('instructional-design.prompts.reset'), {
+            const response = await axios.post(route('lesson-plans.prompts.reset'), {
                 key: activeKey,
             });
 

@@ -781,4 +781,209 @@ class InstructionalSmartService
 
         return [];
     }
+
+    /**
+     * Generate detailed Modul Ajar (RPP PPA 2026) in one call.
+     */
+    public function generateDetailedModulAjar(
+        int $tpId,
+        int $materialId,
+        ?string $model = null,
+        ?string $customPrompt = null,
+        bool $regenerate = false
+    ): array {
+        $this->isLastRequestOnline = false;
+        
+        $tp = LmsLearningObjective::with(['subject', 'schoolClass'])->find($tpId);
+        $material = \App\Models\LmsMaterial::find($materialId);
+        
+        if (!$tp || !$material) {
+            return [];
+        }
+
+        $subjectName = $tp->subject?->name ?? 'Mata Pelajaran';
+        $className = $tp->schoolClass?->name ?? 'Kelas X';
+        $tpDescription = $tp->description ?? 'Tujuan Pembelajaran';
+        $materialTitle = $material->title ?? 'Materi Inti';
+        $materialContent = strip_tags($material->content ?? 'Materi Inti');
+        $pedModel = $model ?? 'Umum/Direct';
+        
+        // Fetch all assessments associated with this TP
+        $teacher = \Illuminate\Support\Facades\Auth::user()->teacher;
+        $allAssessments = \App\Models\LmsAssignment::where('learning_objective_id', $tpId)
+            ->where('subject_id', $tp->subject_id)
+            ->where('teacher_id', $teacher->id)
+            ->get();
+            
+        $initialAsms = $allAssessments->where('assessment_type', 'initial')->pluck('title')->implode(', ');
+        $formativeAsms = $allAssessments->where('assessment_type', 'formative')->pluck('title')->implode(', ');
+        $summativeAsms = $allAssessments->where('assessment_type', 'summative')->pluck('title')->implode(', ');
+        
+        if (empty($initialAsms)) {
+            $initialAsms = 'Belum didefinisikan (akan ditentukan lewat proses belajar)';
+        }
+        if (empty($formativeAsms)) {
+            $formativeAsms = 'Belum didefinisikan (akan ditentukan lewat proses belajar)';
+        }
+        if (empty($summativeAsms)) {
+            $summativeAsms = 'Belum didefinisikan (akan ditentukan lewat proses belajar)';
+        }
+
+        $hash = md5('modul_ajar_' . $tpId . '_' . $materialId . '_' . $pedModel . '_' . md5($customPrompt ?? ''));
+
+        if (!$regenerate) {
+            $cached = \App\Models\LmsAiCache::getCache($hash);
+            if ($cached) {
+                return json_decode($cached, true) ?? [];
+            }
+        }
+
+        // 1. Try AI via Manager
+        $aiManager = app(AiManager::class);
+        $ai = $aiManager->getActiveProvider();
+
+        if ($ai->isConfigured()) {
+            try {
+                // If customPrompt is provided, use it directly. Otherwise, load from database/fallback.
+                $template = $customPrompt;
+                if (empty($template)) {
+                    $template = \App\Models\LmsAiPrompt::getPromptFor('modul_ajar', $teacher->id);
+                }
+
+                $prompt = str_replace([
+                    '{subject}',
+                    '{class}',
+                    '{tp}',
+                    '{material}',
+                    '{pedagogical_model}',
+                    '{initial_assessments}',
+                    '{formative_assessments}',
+                    '{summative_assessments}'
+                ], [
+                    $subjectName,
+                    $className,
+                    $tpDescription,
+                    $materialTitle . ': ' . $materialContent,
+                    $pedModel,
+                    $initialAsms,
+                    $formativeAsms,
+                    $summativeAsms
+                ], $template);
+
+                $prompt .= "\n\nPENTING: Susunlah RPP Modul Ajar ini dengan menggunakan PENDEKATAN PEMBELAJARAN MENDALAM (DEEP LEARNING) sesuai panduan PPA 2026. Pastikan setiap langkah relevan, mendalam, dan terstruktur sesuai standar tersebut.";
+
+                $response = $ai->generateContent($prompt);
+
+                if (!empty($response)) {
+                    // Parse JSON response
+                    $response = preg_replace('/^```(?:json)?\s*/i', '', $response);
+                    $response = preg_replace('/\s*```$/i', '', $response);
+                    $response = trim($response);
+                    
+                    $result = json_decode($response, true);
+                    if (json_last_error() === JSON_ERROR_NONE && is_array($result)) {
+                        $this->isLastRequestOnline = true;
+                        
+                        // Set cache
+                        \App\Models\LmsAiCache::setCache($hash, 'modul_ajar', [
+                            'tp_id' => $tpId,
+                            'material_id' => $materialId,
+                            'pedagogical_model' => $pedModel
+                        ], json_encode($result));
+                        
+                        return $result;
+                    } else {
+                        \Illuminate\Support\Facades\Log::warning('InstructionalSmartService JSON parse error: ' . json_last_error_msg() . ' Raw: ' . substr($response, 0, 500));
+                    }
+                }
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error('InstructionalSmartService Detailed Modul Ajar AI Error: ' . $e->getMessage());
+            }
+        }
+
+        // 2. Offline Fallback (Comprehensive & Premium standard PPA 2026)
+        $result = [
+            'general_info' => "<h2>Identifikasi & Informasi Umum</h2>" .
+                "<p><strong>Nama Sekolah:</strong> Sekolah Menengah Pertama Mokopani</p>" .
+                "<p><strong>Mata Pelajaran:</strong> " . htmlspecialchars($subjectName) . "</p>" .
+                "<p><strong>Kelas/Fase:</strong> " . htmlspecialchars($className) . "</p>" .
+                "<p><strong>Kompetensi Prasyarat:</strong> Murid memiliki pengetahuan awal yang mendasar terkait " . htmlspecialchars($materialTitle) . ".</p>" .
+                "<p><strong>Profil Pelajar Pancasila:</strong> Beriman, bertakwa kepada Tuhan YME, berakhlak mulia, Mandiri, Bernalar Kritis, dan Kreatif.</p>" .
+                "<p><strong>Sarana & Prasarana:</strong> Ruang kelas, proyektor, papan tulis, buku penuntun, LKPD, internet.</p>" .
+                "<p><strong>Target Peserta Didik:</strong> Peserta didik reguler/tipikal umum (tanpa kesulitan belajar).</p>",
+                
+            'learning_design' => "<h2>Desain Pembelajaran</h2>" .
+                "<p><strong>Tujuan Pembelajaran (TP):</strong> " . htmlspecialchars($tpDescription) . "</p>" .
+                "<p><strong>Pemahaman Bermakna:</strong> Pembelajaran materi " . htmlspecialchars($materialTitle) . " ini membekali murid untuk mengidentifikasi, mengolah, dan menyelesaikan masalah nyata terkait dengan konsep tersebut.</p>" .
+                "<p><strong>Pertanyaan Pemantik:</strong> " .
+                "<blockquote>Bagaimana konsep " . htmlspecialchars($materialTitle) . " dapat mempermudah aktivitas kita sehari-hari? Sebutkan contoh nyata yang kalian temui!</blockquote></p>" .
+                "<p><strong>Media Pembelajaran:</strong> Slide presentasi, lembar observasi, alat peraga visual.</p>",
+                
+            'learning_steps' => "<h2>Langkah-Langkah Pembelajaran (Model: " . htmlspecialchars($pedModel) . ")</h2>" .
+                "<h3>1. Kegiatan Pendahuluan (10 Menit)</h3>" .
+                "<ul>" .
+                "<li>Guru mengucapkan salam, berdoa, dan memeriksa kehadiran siswa.</li>" .
+                "<li>Guru menyampaikan tujuan pembelajaran hari ini dan mengaitkannya dengan apersepsi.</li>" .
+                "<li>Guru mengajukan pertanyaan pemantik lisan untuk menstimulasi pemikiran kritis siswa.</li>" .
+                "</ul>" .
+                "<h3>2. Kegiatan Inti (60 Menit)</h3>" .
+                "<p>Langkah-langkah di bawah mengacu pada model <strong>" . htmlspecialchars($pedModel) . "</strong>:</p>" .
+                "<ul>" .
+                "<li><strong>Orientasi Masalah:</strong> Guru menyajikan ilustrasi kontekstual mengenai " . htmlspecialchars($materialTitle) . " (misal dari kasus sehari-hari).</li>" .
+                "<li><strong>Pengorganisasian Belajar:</strong> Siswa dibagi menjadi kelompok-kelompok kecil (4-5 orang) untuk menganalisis masalah tersebut.</li>" .
+                "<li><strong>Penyelidikan Mandiri/Kelompok:</strong> Siswa berkolaborasi mengumpulkan data dan mencari solusi pemecahan masalah dengan dipandu LKPD.</li>" .
+                "<li><strong>Penyajian Hasil:</strong> Perwakilan kelompok mempresentasikan hasil analisis mereka di depan kelas.</li>" .
+                "<li><strong>Evaluasi & Konfirmasi:</strong> Guru memberikan umpan balik konstruktif dan penjelasan konseptual untuk meluruskan miskonsepsi.</li>" .
+                "</ul>" .
+                "<h3>3. Kegiatan Penutup (10 Menit)</h3>" .
+                "<ul>" .
+                "<li>Siswa bersama guru menyimpulkan inti pembelajaran hari ini.</li>" .
+                "<li>Guru melakukan refleksi singkat bersama murid (misalnya: apa hal menarik hari ini?).</li>" .
+                "<li>Guru menyampaikan materi/aktivitas pertemuan berikutnya, berdoa, dan menutup kelas.</li>" .
+                "</ul>",
+                
+            'assessment_plan' => "<h2>Asesmen & Rencana Tindak Lanjut</h2>" .
+                "<p><strong>Asesmen Awal (Diagnostik):</strong> " . htmlspecialchars($initialAsms) . "</p>" .
+                "<p><strong>Asesmen Formatif:</strong> " . htmlspecialchars($formativeAsms) . "</p>" .
+                "<p><strong>Asesmen Sumatif:</strong> " . htmlspecialchars($summativeAsms) . "</p>" .
+                "<h3>Rencana Tindak Lanjut (Diferensiasi & Remedial/Pengayaan):</h3>" .
+                "<ul>" .
+                "<li><strong>Remedial (Perlu Bimbingan):</strong> Siswa yang belum mencapai kriteria ketuntasan diberikan bimbingan khusus atau tutor sebaya pada bagian konsep dasar " . htmlspecialchars($materialTitle) . ".</li>" .
+                "<li><strong>Pengayaan (Sangat Baik):</strong> Siswa yang sudah tuntas dengan sangat baik diberikan tantangan ekstra berupa studi kasus lanjutan atau projek mandiri.</li>" .
+                "</ul>",
+                
+            'kktp_details' => "<h2>Detail Instrumen Asesmen & Kriteria Ketuntasan (KKTP)</h2>" .
+                "<p>Kriteria Ketuntasan Tujuan Pembelajaran (KKTP) disusun menggunakan pendekatan <strong>Rubrik Deskriptif</strong>:</p>" .
+                "<table border='1' cellpadding='5' style='border-collapse: collapse; width:100%;'>" .
+                "<thead><tr style='background-color:#f2f2f2;'><th>Kriteria</th><th>Perlu Bimbingan</th><th>Cukup</th><th>Baik</th><th>Sangat Baik</th></tr></thead>" .
+                "<tbody>" .
+                "<tr><td><strong>Pemahaman Konsep</strong></td><td>Belum memahami konsep dasar</td><td>Memahami sebagian konsep inti</td><td>Memahami seluruh konsep inti</td><td>Memahami konsep mendalam & mampu memberi contoh kompleks</td></tr>" .
+                "<tr><td><strong>Aplikasi Masalah</strong></td><td>Belum mampu menerapkan dalam soal/studi kasus</td><td>Mampu menerapkan dengan panduan guru</td><td>Mampu menerapkan secara mandiri</td><td>Mampu memformulasikan solusi inovatif dari masalah baru</td></tr>" .
+                "</tbody></table>" .
+                "<p>Siswa dinyatakan mencapai ketuntasan jika minimal memperoleh kualifikasi <strong>Baik</strong> pada kriteria Pemahaman Konsep.</p>",
+                
+            'lkpd' => "<h2>Lembar Kerja Peserta Didik (LKPD)</h2>" .
+                "<h3>Langkah Kegiatan Kelompok:</h3>" .
+                "<p><strong>Nama Anggota Kelompok:</strong> ____________________________________</p>" .
+                "<p><strong>Tujuan Aktivitas:</strong> Menyelidiki aplikasi nyata dari " . htmlspecialchars($materialTitle) . " secara kolaboratif.</p>" .
+                "<h4>Tugas & Instruksi:</h4>" .
+                "<ol>" .
+                "<li>Cermati kasus pemicu yang dibagikan oleh guru di papan tulis.</li>" .
+                "<li>Diskusikan bersama kelompokmu: Apa penyebab utama masalah tersebut dan kaitannya dengan " . htmlspecialchars($materialTitle) . "?</li>" .
+                "<li>Tuliskan 3 alternatif solusi logis di kolom di bawah ini.</li>" .
+                "<li>Persiapkan bahan presentasi singkat (maksimal 3 slide / lembar kertas karton).</li>" .
+                "</ol>" .
+                "<h4>Lembar Jawab Diskusi:</h4>" .
+                "<p style='border:1px solid #ccc; height:150px; padding:10px;'>Tulis jawaban kelompok di sini...</p>",
+                
+            'learning_resources' => "<h2>Sumber Belajar</h2>" .
+                "<ul>" .
+                "<li>Buku Paket Mata Pelajaran " . htmlspecialchars($subjectName) . " SMP Kelas Kurikulum Merdeka.</li>" .
+                "<li>Artikel dan modul digital pendukung pembelajaran " . htmlspecialchars($materialTitle) . ".</li>" .
+                "<li>Video edukasi relevan di platform Youtube/LMS.</li>" .
+                "</ul>"
+        ];
+
+        return $result;
+    }
 }

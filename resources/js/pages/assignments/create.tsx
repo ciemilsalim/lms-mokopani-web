@@ -34,7 +34,7 @@ import {
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import PromptSettingsModal from '../instructional-design/components/PromptSettingsModal';
+import PromptSettingsModal from '@/components/PromptSettingsModal';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: '/dashboard' },
