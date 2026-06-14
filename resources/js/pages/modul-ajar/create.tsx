@@ -2,7 +2,8 @@ import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router } from '@inertiajs/react';
 import { useState, useEffect } from 'react';
-import { ChevronLeft, Layers, Save, Loader2, Info } from 'lucide-react';
+import { ChevronLeft, Layers, Save, Loader2, Info, Settings } from 'lucide-react';
+import PromptSettingsModal from '@/components/PromptSettingsModal';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: '/dashboard' },
@@ -45,6 +46,7 @@ export default function Create({ teachings, objectives, materials, period }: Cre
     const [selectedMaterialId, setSelectedMaterialId] = useState<string>('');
     
     const [isSaving, setIsSaving] = useState(false);
+    const [isPromptModalOpen, setIsPromptModalOpen] = useState(false);
 
     // Get current teaching info
     const currentTeaching = teachings.find(t => t.id === parseInt(selectedTeaching));
@@ -102,10 +104,20 @@ export default function Create({ teachings, objectives, materials, period }: Cre
 
                 <div className="max-w-3xl mx-auto w-full space-y-6">
                     <div className="rounded-xl border border-border bg-card p-6 space-y-5 shadow-sm">
-                        <h2 className="text-sm font-bold text-foreground flex items-center gap-2 border-b border-border pb-3">
-                            <Layers className="h-4.5 w-4.5 text-primary" />
-                            Pilih Sumber Data Pembelajaran
-                        </h2>
+                        <div className="flex items-center justify-between border-b border-border pb-3">
+                            <h2 className="text-sm font-bold text-foreground flex items-center gap-2">
+                                <Layers className="h-4.5 w-4.5 text-primary" />
+                                Pilih Sumber Data Pembelajaran
+                            </h2>
+                            <button
+                                type="button"
+                                onClick={() => setIsPromptModalOpen(true)}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-card text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-muted transition-all"
+                            >
+                                <Settings className="h-3.5 w-3.5" />
+                                Kelola Prompt AI
+                            </button>
+                        </div>
 
                         <div className="space-y-4">
                             {/* Teaching Assignment Selector */}
@@ -200,6 +212,11 @@ export default function Create({ teachings, objectives, materials, period }: Cre
                     )}
                 </div>
             </div>
+
+            <PromptSettingsModal
+                isOpen={isPromptModalOpen}
+                onClose={() => setIsPromptModalOpen(false)}
+            />
         </AppLayout>
     );
 }

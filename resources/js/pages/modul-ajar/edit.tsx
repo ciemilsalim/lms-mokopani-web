@@ -9,7 +9,6 @@ import {
 } from 'lucide-react';
 import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
-import PromptSettingsModal from '@/components/PromptSettingsModal';
 
 const quillModules = {
     toolbar: [
@@ -82,7 +81,6 @@ export default function Edit({ modulAjar, teachings, objectives, materials, peri
 
     const [pedagogicalModel, setPedagogicalModel] = useState<string>(modulAjar.pedagogical_model || 'PBL');
     
-    const [isPromptModalOpen, setIsPromptModalOpen] = useState(false);
     const [customPrompt, setCustomPrompt] = useState<string>(modulAjar.ai_prompt_used || '');
     const [isPromptEditorVisible, setIsPromptEditorVisible] = useState(false);
     
@@ -371,13 +369,6 @@ export default function Edit({ modulAjar, teachings, objectives, materials, peri
                             <div className="rounded-xl border border-border bg-card p-5 space-y-3 shadow-sm animate-in fade-in slide-in-from-top-2 duration-300">
                                 <div className="flex items-center justify-between">
                                     <span className="text-xs font-bold text-foreground">Edit Prompt AI (Bisa Dimodifikasi)</span>
-                                    <button 
-                                        type="button"
-                                        onClick={() => setIsPromptModalOpen(true)}
-                                        className="text-[10px] font-bold text-primary hover:underline flex items-center gap-1"
-                                    >
-                                        Kelola Global <Settings className="h-3 w-3" />
-                                    </button>
                                 </div>
                                 <textarea
                                     value={customPrompt}
@@ -507,9 +498,6 @@ export default function Edit({ modulAjar, teachings, objectives, materials, peri
                     </div>
                 </div>
             </div>
-
-            {/* AI Prompts Settings Global Modal */}
-            <PromptSettingsModal isOpen={isPromptModalOpen} onClose={() => setIsPromptModalOpen(false)} />
         </AppLayout>
     );
 }

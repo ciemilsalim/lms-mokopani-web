@@ -14,6 +14,7 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\P5ProjectController;
 use App\Http\Controllers\RaporController;
 use App\Http\Controllers\CapaianPembelajaranController;
+use App\Http\Controllers\LmsPromptController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -78,9 +79,9 @@ Route::middleware(['auth'])->group(function () {
         Route::post('lesson-plans/generate', [LmsModulAjarController::class, 'generate'])->name('lesson-plans.generate');
         Route::post('lesson-plans/get-assessments', [LmsModulAjarController::class, 'getAssessments'])->name('lesson-plans.get-assessments');
         Route::post('instructional-design/auto-suggest', [LmsModulAjarController::class, 'autoSuggest'])->name('instructional-design.auto-suggest');
-        Route::get('lesson-plans/prompts/all', [LmsModulAjarController::class, 'getPrompts'])->name('lesson-plans.prompts.get');
-        Route::post('lesson-plans/prompts/save', [LmsModulAjarController::class, 'savePrompt'])->name('lesson-plans.prompts.save');
-        Route::post('lesson-plans/prompts/reset', [LmsModulAjarController::class, 'resetPrompt'])->name('lesson-plans.prompts.reset');
+        Route::get('lesson-plans/prompts/all', [LmsPromptController::class, 'index'])->name('lesson-plans.prompts.get');
+        Route::post('lesson-plans/prompts/save', [LmsPromptController::class, 'store'])->name('lesson-plans.prompts.save');
+        Route::post('lesson-plans/prompts/reset', [LmsPromptController::class, 'reset'])->name('lesson-plans.prompts.reset');
 
         // Materi CRUD (create/delete)
         Route::post('materials', [MaterialController::class, 'store'])->name('materials.store');

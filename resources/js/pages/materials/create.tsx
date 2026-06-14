@@ -25,6 +25,8 @@ import {
 import axios from 'axios';
 import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
+import PromptSettingsModal from '@/components/PromptSettingsModal';
+import { Settings } from 'lucide-react';
 
 const quillModules = {
     toolbar: [
@@ -152,6 +154,7 @@ export default function CreateMaterial({ teachings, objectives }: CreateMaterial
     const [isSuggesting, setIsSuggesting] = useState(false);
     const [aiNotification, setAiNotification] = useState<{ message: string; type: 'info' | 'warning' | 'error' } | null>(null);
     const [fullDraftClickCount, setFullDraftClickCount] = useState(0);
+    const [isPromptModalOpen, setIsPromptModalOpen] = useState(false);
 
     const { data, setData, post, processing, errors } = useForm({
         subject_id: '',
@@ -359,15 +362,25 @@ export default function CreateMaterial({ teachings, objectives }: CreateMaterial
                                             </h3>
                                             <p className="text-xs text-muted-foreground">Buat draf judul dan isi materi secara otomatis berdasarkan Tujuan Pembelajaran (TP).</p>
                                         </div>
-                                        <button
-                                            type="button"
-                                            onClick={handleSuggestAI}
-                                            disabled={isSuggesting}
-                                            className="shrink-0 rounded-lg bg-gradient-to-r from-violet-600 to-indigo-600 px-5 py-2.5 text-[12px] font-bold text-white shadow-lg shadow-violet-500/25 transition-all hover:brightness-110 active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50 disabled:scale-100"
-                                        >
-                                            <Sparkles className={`h-4 w-4 ${isSuggesting ? 'animate-pulse' : ''}`} />
-                                            {isSuggesting ? 'Merancang Materi...' : 'Rancang Cerdas dengan AI'}
-                                        </button>
+                                        <div className="flex items-center gap-2 shrink-0">
+                                            <button
+                                                type="button"
+                                                onClick={() => setIsPromptModalOpen(true)}
+                                                title="Pengaturan Prompt AI"
+                                                className="p-2.5 rounded-lg border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted transition-all"
+                                            >
+                                                <Settings className="h-4 w-4" />
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={handleSuggestAI}
+                                                disabled={isSuggesting}
+                                                className="shrink-0 rounded-lg bg-gradient-to-r from-violet-600 to-indigo-600 px-5 py-2.5 text-[12px] font-bold text-white shadow-lg shadow-violet-500/25 transition-all hover:brightness-110 active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50 disabled:scale-100"
+                                            >
+                                                <Sparkles className={`h-4 w-4 ${isSuggesting ? 'animate-pulse' : ''}`} />
+                                                {isSuggesting ? 'Merancang Materi...' : 'Rancang Cerdas dengan AI'}
+                                            </button>
+                                        </div>
                                     </div>
                                     
                                     {aiNotification && (
@@ -549,6 +562,11 @@ export default function CreateMaterial({ teachings, objectives }: CreateMaterial
                     </div>
                 </form>
             </div>
+
+            <PromptSettingsModal
+                isOpen={isPromptModalOpen}
+                onClose={() => setIsPromptModalOpen(false)}
+            />
         </AppLayout>
     );
 }
