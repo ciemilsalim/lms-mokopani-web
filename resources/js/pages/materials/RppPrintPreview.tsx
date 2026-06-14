@@ -951,11 +951,11 @@ export default function RppPrintPreview({ material, assignments = [], school_nam
                                                     <p className="italic text-gray-800 leading-relaxed font-serif">"{material.image_prompt}"</p>
                                                     <div className="mt-2.5 h-32 w-full rounded border border-dashed border-gray-400 bg-white flex flex-col items-center justify-center text-center p-2">
                                                         <span className="text-[7.5pt] font-mono tracking-wider text-gray-500 uppercase">✦ REPRESENTASI VISUAL / BAHAN AJAR ✦</span>
-                                                        <span className="text-[6.5pt] text-gray-400 mt-1 max-w-xs leading-normal">Gambar grafis konsep ajar dicetak terlampir atau dirender dinamis pada media digital</span>
+                                                        <span className="text-[6.5pt] text-gray-400 mt-1 max-w-xs leading-normal">Berisi ilustrasi hasil buatan AI atau gambar thumbnail yang di upload secara manual</span>
                                                     </div>
                                                 </div>
                                             ) : (
-                                                <span className="text-gray-500 italic">Tidak dikonfigurasi</span>
+                                                <span className="text-gray-500 italic text-[9.5pt]">Berisi ilustrasi hasil buatan AI atau gambar thumbnail yang di upload secara manual</span>
                                             )}
                                         </td>
                                     </tr>

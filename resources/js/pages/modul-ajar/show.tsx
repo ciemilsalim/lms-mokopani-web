@@ -56,6 +56,7 @@ interface ModulAjarProps {
         application_activity: string;
         reflection_activity: string;
         image_prompt: string;
+        thumbnail: string | null;
         teacher_name: string;
         teacher_nip: string;
         school_name: string;
@@ -397,6 +398,7 @@ export default function Show({ modulAjar, assignments }: ModulAjarProps) {
         application_activity: modulAjar.application_activity,
         reflection_activity: modulAjar.reflection_activity,
         image_prompt: modulAjar.image_prompt,
+        thumbnail: modulAjar.thumbnail,
         resources: modulAjar.material_resources,
         external_link: modulAjar.material_external_link,
         file_path: modulAjar.material_file_path,
@@ -1093,11 +1095,11 @@ return (
                                                             <p className="italic text-gray-800 leading-relaxed font-serif">"{material.image_prompt}"</p>
                                                             <div className="mt-2.5 h-32 w-full rounded border border-dashed border-gray-400 bg-white flex flex-col items-center justify-center text-center p-2">
                                                                 <span className="text-[7.5pt] font-mono tracking-wider text-gray-500 uppercase">✦ REPRESENTASI VISUAL / BAHAN AJAR ✦</span>
-                                                                <span className="text-[6.5pt] text-gray-400 mt-1 max-w-xs leading-normal">Gambar grafis konsep ajar dicetak terlampir atau dirender dinamis pada media digital</span>
+                                                                <span className="text-[6.5pt] text-gray-400 mt-1 max-w-xs leading-normal">Berisi ilustrasi hasil buatan AI atau gambar thumbnail yang di upload secara manual</span>
                                                             </div>
                                                         </div>
                                                     ) : (
-                                                        <span className="text-gray-500 italic">Tidak dikonfigurasi</span>
+                                                        <span className="text-gray-500 italic text-[9.5pt]">Berisi ilustrasi hasil buatan AI atau gambar thumbnail yang di upload secara manual</span>
                                                     )}
                                                 </td>
                                             </tr>

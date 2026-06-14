@@ -317,6 +317,7 @@ class LmsModulAjarController extends Controller
                 'application_activity' => $modulAjar->material?->application_activity,
                 'reflection_activity' => $modulAjar->material?->reflection_activity,
                 'image_prompt' => $modulAjar->material?->image_prompt,
+                'thumbnail' => $modulAjar->material?->thumbnail ? asset('storage/' . $modulAjar->material->thumbnail) : null,
                 
                 'teacher_name' => $teacher->name,
                 'teacher_nip' => $teacher->nip ?? '-',
