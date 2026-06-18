@@ -96,30 +96,16 @@ export default function Edit({ modulAjar, teachings, objectives, materials, peri
     const [isGenerating, setIsGenerating] = useState(false);
     const [aiNotification, setAiNotification] = useState<{ message: string; type: 'info' | 'warning' | 'error' } | null>(null);
 
-    // Parse JSON from general_info if possible
-    let parsedData: any = {};
-    try {
-        if (modulAjar.general_info && modulAjar.general_info.trim().startsWith('{')) {
-            parsedData = JSON.parse(modulAjar.general_info);
-        }
-    } catch (e) {
-        console.error("Failed to parse general_info JSON");
-    }
+    // 7 Sections states pre-populated
+    const [generalInfo, setGeneralInfo] = useState(modulAjar.general_info || '');
+    const [learningDesign, setLearningDesign] = useState(modulAjar.learning_design || '');
+    const [learningSteps, setLearningSteps] = useState(modulAjar.learning_steps || '');
+    const [assessmentPlan, setAssessmentPlan] = useState(modulAjar.assessment_plan || '');
+    const [kktpDetails, setKktpDetails] = useState(modulAjar.kktp_details || '');
+    const [lkpd, setLkpd] = useState(modulAjar.lkpd || '');
+    const [learningResources, setLearningResources] = useState(modulAjar.learning_resources || '');
 
-    const [alokasiWaktu, setAlokasiWaktu] = useState(parsedData.alokasi_waktu || '');
-    const [jumlahPertemuan, setJumlahPertemuan] = useState(parsedData.jumlah_pertemuan || '');
-    const [dimensiProfil, setDimensiProfil] = useState(parsedData.dimensi_profil || '');
-    const [lingkunganPembelajaran, setLingkunganPembelajaran] = useState(parsedData.lingkungan_pembelajaran || '');
-    const [kemitraanPembelajaran, setKemitraanPembelajaran] = useState(parsedData.kemitraan_pembelajaran || '');
-    const [pemanfaatanDigital, setPemanfaatanDigital] = useState(parsedData.pemanfaatan_digital || '');
-    const [mediaIlustrasi, setMediaIlustrasi] = useState(parsedData.media_ilustrasi || '');
-    
-    const [understanding, setUnderstanding] = useState(parsedData.understanding || '');
-    const [application, setApplication] = useState(parsedData.application || '');
-    const [reflection, setReflection] = useState(parsedData.reflection || '');
-    const [lkpd, setLkpd] = useState(parsedData.lkpd || modulAjar.lkpd || '');
-
-    const [activeTab, setActiveTab] = useState<string>('info');
+    const [activeTab, setActiveTab] = useState<string>('general_info');
     const [isSaving, setIsSaving] = useState(false);
 
     // Get current parameters
@@ -179,26 +165,22 @@ export default function Edit({ modulAjar, teachings, objectives, materials, peri
 
             const data = response.data;
             if (data) {
-                setAlokasiWaktu(data.alokasi_waktu || '');
-                setJumlahPertemuan(data.jumlah_pertemuan || '');
-                setDimensiProfil(data.dimensi_profil || '');
-                setLingkunganPembelajaran(data.lingkungan_pembelajaran || '');
-                setKemitraanPembelajaran(data.kemitraan_pembelajaran || '');
-                setPemanfaatanDigital(data.pemanfaatan_digital || '');
-                setMediaIlustrasi(data.media_ilustrasi || '');
-                setUnderstanding(data.understanding || '');
-                setApplication(data.application || '');
-                setReflection(data.reflection || '');
+                setGeneralInfo(data.general_info || '');
+                setLearningDesign(data.learning_design || '');
+                setLearningSteps(data.learning_steps || '');
+                setAssessmentPlan(data.assessment_plan || '');
+                setKktpDetails(data.kktp_details || '');
                 setLkpd(data.lkpd || '');
+                setLearningResources(data.learning_resources || '');
 
                 if (data.ai_active === false) {
                     setAiNotification({
-                        message: 'API key AI tidak aktif. Form tidak dapat diisi secara otomatis.',
+                        message: 'API key AI tidak aktif/limit habis. Sistem beralih ke generasi draf offline berstandar PPA 2026.',
                         type: 'warning'
                     });
                 } else {
                     setAiNotification({
-                        message: 'AI berhasil meregenerasi Modul Ajar lengkap sesuai data terbaru!',
+                        message: 'AI berhasil meregenerasi Modul Ajar lengkap sesuai PPA 2026!',
                         type: 'info'
                     });
                 }
@@ -224,25 +206,13 @@ export default function Edit({ modulAjar, teachings, objectives, materials, peri
             learning_objective_id: modulAjar.learning_objective_id,
             material_id: modulAjar.material_id,
             pedagogical_model: pedagogicalModel,
-            general_info: JSON.stringify({
-                alokasi_waktu: alokasiWaktu,
-                jumlah_pertemuan: jumlahPertemuan,
-                dimensi_profil: dimensiProfil,
-                lingkungan_pembelajaran: lingkunganPembelajaran,
-                kemitraan_pembelajaran: kemitraanPembelajaran,
-                pemanfaatan_digital: pemanfaatanDigital,
-                media_ilustrasi: mediaIlustrasi,
-                understanding: understanding,
-                application: application,
-                reflection: reflection,
-                lkpd: lkpd
-            }),
-            learning_design: '',
-            learning_steps: '',
-            assessment_plan: '',
-            kktp_details: '',
+            general_info: generalInfo,
+            learning_design: learningDesign,
+            learning_steps: learningSteps,
+            assessment_plan: assessmentPlan,
+            kktp_details: kktpDetails,
             lkpd: lkpd,
-            learning_resources: '',
+            learning_resources: learningResources,
             ai_prompt_used: customPrompt,
         };
 
@@ -252,9 +222,13 @@ export default function Edit({ modulAjar, teachings, objectives, materials, peri
     };
 
     const tabs = [
-        { id: 'info', label: '1. Info & Desain' },
-        { id: 'steps', label: '2. Langkah Pembelajaran' },
-        { id: 'lkpd', label: '3. LKPD' },
+        { id: 'general_info', label: '1. Info Umum' },
+        { id: 'learning_design', label: '2. Desain' },
+        { id: 'learning_steps', label: '3. Langkah Pembelajaran' },
+        { id: 'assessment_plan', label: '4. Rencana Asesmen' },
+        { id: 'kktp_details', label: '5. KKTP' },
+        { id: 'lkpd', label: '6. LKPD' },
+        { id: 'learning_resources', label: '7. Sumber Belajar' },
     ];
 
     return (
@@ -410,7 +384,7 @@ export default function Edit({ modulAjar, teachings, objectives, materials, peri
                         )}
                     </div>
 
-                    {/* Right Panel: Form Inputs */}
+                    {/* Right Panel: Tabs Rich Text Editor */}
                     <div className="lg:col-span-2 space-y-6">
                         {aiNotification && (
                             <div className={`p-4 rounded-xl border flex items-start gap-3 text-xs animate-in fade-in duration-200 ${
@@ -427,7 +401,7 @@ export default function Edit({ modulAjar, teachings, objectives, materials, peri
                             <div className="h-[450px] flex flex-col items-center justify-center gap-3 border border-dashed border-border bg-card rounded-2xl">
                                 <Loader2 className="h-10 w-10 animate-spin text-primary" />
                                 <p className="text-sm font-bold text-foreground">AI sedang menyusun ulang Modul Ajar...</p>
-                                <p className="text-xs text-muted-foreground">Proses ini membutuhkan waktu 10-30 detik karena merangkai secara rinci.</p>
+                                <p className="text-xs text-muted-foreground">Proses ini membutuhkan waktu 10-30 detik karena merangkai 7 bagian secara rinci.</p>
                             </div>
                         ) : (
                             <div className="flex flex-col rounded-2xl border border-border bg-card overflow-hidden shadow-sm">
@@ -449,99 +423,53 @@ export default function Edit({ modulAjar, teachings, objectives, materials, peri
                                     ))}
                                 </div>
 
-                                {/* Form Box */}
+                                {/* Rich Text Editor Box */}
                                 <div className="p-6">
-                                    {activeTab === 'info' && (
-                                        <div className="space-y-4 animate-in fade-in duration-200">
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div className="space-y-1">
-                                                    <label className="text-xs font-bold text-foreground block">Alokasi Waktu</label>
-                                                    <input 
-                                                        value={alokasiWaktu} 
-                                                        onChange={e => setAlokasiWaktu(e.target.value)} 
-                                                        className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary/20"
-                                                    />
-                                                </div>
-                                                <div className="space-y-1">
-                                                    <label className="text-xs font-bold text-foreground block">Jumlah Pertemuan</label>
-                                                    <input 
-                                                        value={jumlahPertemuan} 
-                                                        onChange={e => setJumlahPertemuan(e.target.value)} 
-                                                        className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary/20"
-                                                    />
-                                                </div>
-                                            </div>
-                                            <div className="space-y-1">
-                                                <label className="text-xs font-bold text-foreground block">Dimensi Profil Pelajar Pancasila</label>
-                                                <input 
-                                                    value={dimensiProfil} 
-                                                    onChange={e => setDimensiProfil(e.target.value)} 
-                                                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary/20"
-                                                />
-                                            </div>
-                                            <div className="space-y-1">
-                                                <label className="text-xs font-bold text-foreground block">Lingkungan Pembelajaran</label>
-                                                <input 
-                                                    value={lingkunganPembelajaran} 
-                                                    onChange={e => setLingkunganPembelajaran(e.target.value)} 
-                                                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary/20"
-                                                />
-                                            </div>
-                                            <div className="space-y-1">
-                                                <label className="text-xs font-bold text-foreground block">Kemitraan Pembelajaran</label>
-                                                <input 
-                                                    value={kemitraanPembelajaran} 
-                                                    onChange={e => setKemitraanPembelajaran(e.target.value)} 
-                                                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary/20"
-                                                />
-                                            </div>
-                                            <div className="space-y-1">
-                                                <label className="text-xs font-bold text-foreground block">Pemanfaatan Digital</label>
-                                                <input 
-                                                    value={pemanfaatanDigital} 
-                                                    onChange={e => setPemanfaatanDigital(e.target.value)} 
-                                                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary/20"
-                                                />
-                                            </div>
-                                            <div className="space-y-1">
-                                                <label className="text-xs font-bold text-foreground block">Media / Ilustrasi (Prompt Gambar)</label>
-                                                <textarea 
-                                                    value={mediaIlustrasi} 
-                                                    onChange={e => setMediaIlustrasi(e.target.value)} 
-                                                    rows={2}
-                                                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary/20"
-                                                />
-                                            </div>
+                                    {activeTab === 'general_info' && (
+                                        <div className="space-y-2 animate-in fade-in duration-200">
+                                            <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">1. IDENTIFIKASI & INFORMASI UMUM</label>
+                                            <ReactQuill theme="snow" modules={quillModules} value={generalInfo} onChange={setGeneralInfo} className="h-[350px]" />
                                         </div>
                                     )}
-
-                                    {activeTab === 'steps' && (
-                                        <div className="space-y-6 animate-in fade-in duration-200">
-                                            <div className="space-y-2">
-                                                <label className="text-xs font-bold text-foreground block">1. Memahami (Understanding)</label>
-                                                <ReactQuill theme="snow" modules={quillModules} value={understanding} onChange={setUnderstanding} className="h-[200px]" />
-                                            </div>
-                                            <div className="h-10" />
-                                            <div className="space-y-2">
-                                                <label className="text-xs font-bold text-foreground block">2. Mengaplikasikan (Application)</label>
-                                                <ReactQuill theme="snow" modules={quillModules} value={application} onChange={setApplication} className="h-[200px]" />
-                                            </div>
-                                            <div className="h-10" />
-                                            <div className="space-y-2">
-                                                <label className="text-xs font-bold text-foreground block">3. Merefleksikan (Reflection)</label>
-                                                <ReactQuill theme="snow" modules={quillModules} value={reflection} onChange={setReflection} className="h-[200px]" />
-                                            </div>
-                                            <div className="h-12" />
+                                    {activeTab === 'learning_design' && (
+                                        <div className="space-y-2 animate-in fade-in duration-200">
+                                            <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">2. DESAIN PEMBELAJARAN</label>
+                                            <ReactQuill theme="snow" modules={quillModules} value={learningDesign} onChange={setLearningDesign} className="h-[350px]" />
                                         </div>
                                     )}
-
+                                    {activeTab === 'learning_steps' && (
+                                        <div className="space-y-2 animate-in fade-in duration-200">
+                                            <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">3. LANGKAH-LANGKAH PEMBELAJARAN (PENGALAMAN BELAJAR)</label>
+                                            <ReactQuill theme="snow" modules={quillModules} value={learningSteps} onChange={setLearningSteps} className="h-[350px]" />
+                                        </div>
+                                    )}
+                                    {activeTab === 'assessment_plan' && (
+                                        <div className="space-y-2 animate-in fade-in duration-200">
+                                            <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">4. ASESMEN DAN RENCANA TINDAK LANJUT</label>
+                                            <ReactQuill theme="snow" modules={quillModules} value={assessmentPlan} onChange={setAssessmentPlan} className="h-[350px]" />
+                                        </div>
+                                    )}
+                                    {activeTab === 'kktp_details' && (
+                                        <div className="space-y-2 animate-in fade-in duration-200">
+                                            <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">5. DETAIL INSTRUMEN ASESMEN & KRITERIA KETUNTASAN (KKTP)</label>
+                                            <ReactQuill theme="snow" modules={quillModules} value={kktpDetails} onChange={setKktpDetails} className="h-[350px]" />
+                                        </div>
+                                    )}
                                     {activeTab === 'lkpd' && (
                                         <div className="space-y-2 animate-in fade-in duration-200">
-                                            <label className="text-xs font-bold text-foreground block">Lembar Kerja Peserta Didik (LKPD)</label>
-                                            <ReactQuill theme="snow" modules={quillModules} value={lkpd} onChange={setLkpd} className="h-[400px]" />
-                                            <div className="h-12" />
+                                            <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">6. LEMBAR KERJA PESERTA DIDIK (LKPD)</label>
+                                            <ReactQuill theme="snow" modules={quillModules} value={lkpd} onChange={setLkpd} className="h-[350px]" />
                                         </div>
                                     )}
+                                    {activeTab === 'learning_resources' && (
+                                        <div className="space-y-2 animate-in fade-in duration-200">
+                                            <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">7. SUMBER BELAJAR</label>
+                                            <ReactQuill theme="snow" modules={quillModules} value={learningResources} onChange={setLearningResources} className="h-[350px]" />
+                                        </div>
+                                    )}
+                                    
+                                    {/* Offset padding for absolute toolbar Quill */}
+                                    <div className="h-12" />
                                 </div>
 
                                 {/* Save Button */}

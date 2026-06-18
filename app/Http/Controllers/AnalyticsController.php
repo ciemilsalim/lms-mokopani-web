@@ -72,7 +72,9 @@ class AnalyticsController extends Controller
 
         // Question difficulty for last few objective-type assignments
         $assignments = LmsAssignment::where('subject_id', $subjectId)
-            ->where('school_class_id', $classId)
+            ->whereHas('schoolClasses', function ($q) use ($classId) {
+                $q->where('school_classes.id', $classId);
+            })
             ->whereIn('instrument_type', ['quiz_survey', 'written_test'])
             ->orderByDesc('id')
             ->take(5)

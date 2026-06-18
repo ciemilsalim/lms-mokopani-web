@@ -78,7 +78,9 @@ class EarlyWarningService
         // ── 3. Understanding/Reflection risk ──
         $studentModel = Student::find($student['id']);
         $materialIds = LmsMaterial::where('subject_id', $subjectId)
-            ->where('school_class_id', $studentModel?->school_class_id)
+            ->whereHas('schoolClasses', function ($q) use ($studentModel) {
+                $q->where('school_classes.id', $studentModel?->school_class_id);
+            })
             ->where('academic_year_id', $activeYear?->id)
             ->where('semester_id', $activeSemester?->id)
             ->pluck('id');

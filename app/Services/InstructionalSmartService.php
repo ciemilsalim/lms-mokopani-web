@@ -75,10 +75,6 @@ class InstructionalSmartService
             'title' => $title,
             'content' => $materialContent,
             'image_prompt' => "Minimalist educational vector illustration representing " . $content . " in clean, harmonious colors.",
-            'understanding' => $understanding,
-            'application' => $application,
-            'reflection' => $reflection,
-            'lkpd' => $lkpd,
             'initial' => [
                 'instrument_type' => 'quiz_survey',
                 'title' => "Asesmen Diagnostik Awal: " . $content,
@@ -903,65 +899,16 @@ class InstructionalSmartService
 
         // 2. Offline Fallback (Comprehensive & Premium standard PPA 2026)
         $result = [
-            'general_info' => "<h2>Identifikasi & Informasi Umum</h2>" .
-                "<p><strong>Nama Sekolah:</strong> Sekolah Menengah Pertama Mokopani</p>" .
-                "<p><strong>Mata Pelajaran:</strong> " . htmlspecialchars($subjectName) . "</p>" .
-                "<p><strong>Kelas/Fase:</strong> " . htmlspecialchars($className) . "</p>" .
-                "<p><strong>Kompetensi Prasyarat:</strong> Murid memiliki pengetahuan awal yang mendasar terkait " . htmlspecialchars($materialTitle) . ".</p>" .
-                "<p><strong>Profil Pelajar Pancasila:</strong> Beriman, bertakwa kepada Tuhan YME, berakhlak mulia, Mandiri, Bernalar Kritis, dan Kreatif.</p>" .
-                "<p><strong>Sarana & Prasarana:</strong> Ruang kelas, proyektor, papan tulis, buku penuntun, LKPD, internet.</p>" .
-                "<p><strong>Target Peserta Didik:</strong> Peserta didik reguler/tipikal umum (tanpa kesulitan belajar).</p>",
-                
-            'learning_design' => "<h2>Desain Pembelajaran</h2>" .
-                "<p><strong>Tujuan Pembelajaran (TP):</strong> " . htmlspecialchars($tpDescription) . "</p>" .
-                "<p><strong>Pemahaman Bermakna:</strong> Pembelajaran materi " . htmlspecialchars($materialTitle) . " ini membekali murid untuk mengidentifikasi, mengolah, dan menyelesaikan masalah nyata terkait dengan konsep tersebut.</p>" .
-                "<p><strong>Pertanyaan Pemantik:</strong> " .
-                "<blockquote>Bagaimana konsep " . htmlspecialchars($materialTitle) . " dapat mempermudah aktivitas kita sehari-hari? Sebutkan contoh nyata yang kalian temui!</blockquote></p>" .
-                "<p><strong>Media Pembelajaran:</strong> Slide presentasi, lembar observasi, alat peraga visual.</p>",
-                
-            'learning_steps' => "<h2>Langkah-Langkah Pembelajaran (Model: " . htmlspecialchars($pedModel) . ")</h2>" .
-                "<h3>1. Kegiatan Pendahuluan (10 Menit)</h3>" .
-                "<ul>" .
-                "<li>Guru mengucapkan salam, berdoa, dan memeriksa kehadiran siswa.</li>" .
-                "<li>Guru menyampaikan tujuan pembelajaran hari ini dan mengaitkannya dengan apersepsi.</li>" .
-                "<li>Guru mengajukan pertanyaan pemantik lisan untuk menstimulasi pemikiran kritis siswa.</li>" .
-                "</ul>" .
-                "<h3>2. Kegiatan Inti (60 Menit)</h3>" .
-                "<p>Langkah-langkah di bawah mengacu pada model <strong>" . htmlspecialchars($pedModel) . "</strong>:</p>" .
-                "<ul>" .
-                "<li><strong>Orientasi Masalah:</strong> Guru menyajikan ilustrasi kontekstual mengenai " . htmlspecialchars($materialTitle) . " (misal dari kasus sehari-hari).</li>" .
-                "<li><strong>Pengorganisasian Belajar:</strong> Siswa dibagi menjadi kelompok-kelompok kecil (4-5 orang) untuk menganalisis masalah tersebut.</li>" .
-                "<li><strong>Penyelidikan Mandiri/Kelompok:</strong> Siswa berkolaborasi mengumpulkan data dan mencari solusi pemecahan masalah dengan dipandu LKPD.</li>" .
-                "<li><strong>Penyajian Hasil:</strong> Perwakilan kelompok mempresentasikan hasil analisis mereka di depan kelas.</li>" .
-                "<li><strong>Evaluasi & Konfirmasi:</strong> Guru memberikan umpan balik konstruktif dan penjelasan konseptual untuk meluruskan miskonsepsi.</li>" .
-                "</ul>" .
-                "<h3>3. Kegiatan Penutup (10 Menit)</h3>" .
-                "<ul>" .
-                "<li>Siswa bersama guru menyimpulkan inti pembelajaran hari ini.</li>" .
-                "<li>Guru melakukan refleksi singkat bersama murid (misalnya: apa hal menarik hari ini?).</li>" .
-                "<li>Guru menyampaikan materi/aktivitas pertemuan berikutnya, berdoa, dan menutup kelas.</li>" .
-                "</ul>",
-                
-            'assessment_plan' => "<h2>Asesmen & Rencana Tindak Lanjut</h2>" .
-                "<p><strong>Asesmen Awal (Diagnostik):</strong> " . htmlspecialchars($initialAsms) . "</p>" .
-                "<p><strong>Asesmen Formatif:</strong> " . htmlspecialchars($formativeAsms) . "</p>" .
-                "<p><strong>Asesmen Sumatif:</strong> " . htmlspecialchars($summativeAsms) . "</p>" .
-                "<h3>Rencana Tindak Lanjut (Diferensiasi & Remedial/Pengayaan):</h3>" .
-                "<ul>" .
-                "<li><strong>Remedial (Perlu Bimbingan):</strong> Siswa yang belum mencapai kriteria ketuntasan diberikan bimbingan khusus atau tutor sebaya pada bagian konsep dasar " . htmlspecialchars($materialTitle) . ".</li>" .
-                "<li><strong>Pengayaan (Sangat Baik):</strong> Siswa yang sudah tuntas dengan sangat baik diberikan tantangan ekstra berupa studi kasus lanjutan atau projek mandiri.</li>" .
-                "</ul>",
-                
-            'kktp_details' => "<h2>Detail Instrumen Asesmen & Kriteria Ketuntasan (KKTP)</h2>" .
-                "<p>Kriteria Ketuntasan Tujuan Pembelajaran (KKTP) disusun menggunakan pendekatan <strong>Rubrik Deskriptif</strong>:</p>" .
-                "<table border='1' cellpadding='5' style='border-collapse: collapse; width:100%;'>" .
-                "<thead><tr style='background-color:#f2f2f2;'><th>Kriteria</th><th>Perlu Bimbingan</th><th>Cukup</th><th>Baik</th><th>Sangat Baik</th></tr></thead>" .
-                "<tbody>" .
-                "<tr><td><strong>Pemahaman Konsep</strong></td><td>Belum memahami konsep dasar</td><td>Memahami sebagian konsep inti</td><td>Memahami seluruh konsep inti</td><td>Memahami konsep mendalam & mampu memberi contoh kompleks</td></tr>" .
-                "<tr><td><strong>Aplikasi Masalah</strong></td><td>Belum mampu menerapkan dalam soal/studi kasus</td><td>Mampu menerapkan dengan panduan guru</td><td>Mampu menerapkan secara mandiri</td><td>Mampu memformulasikan solusi inovatif dari masalah baru</td></tr>" .
-                "</tbody></table>" .
-                "<p>Siswa dinyatakan mencapai ketuntasan jika minimal memperoleh kualifikasi <strong>Baik</strong> pada kriteria Pemahaman Konsep.</p>",
-                
+            'alokasi_waktu' => '2 JP x 40 menit',
+            'jumlah_pertemuan' => '1 kali pertemuan',
+            'dimensi_profil' => 'Beriman, bertakwa kepada Tuhan YME, berakhlak mulia, Mandiri, Bernalar Kritis, dan Kreatif.',
+            'lingkungan_pembelajaran' => 'Ruang kelas / Laboratorium dengan koneksi internet.',
+            'kemitraan_pembelajaran' => 'Kolaborasi antarguru sejenis dan pendampingan orang tua.',
+            'pemanfaatan_digital' => 'Penggunaan LMS, presentasi digital, dan sumber belajar daring.',
+            'media_ilustrasi' => "Minimalist educational vector illustration representing " . strip_tags($materialTitle) . " in clean, harmonious colors.",
+            'understanding' => "<p><strong>Orientasi Masalah:</strong> Guru menyajikan ilustrasi kontekstual mengenai " . htmlspecialchars($materialTitle) . " (misal dari kasus sehari-hari).</p>",
+            'application' => "<p><strong>Penyelidikan Mandiri/Kelompok:</strong> Siswa berkolaborasi mengumpulkan data dan mencari solusi pemecahan masalah dengan dipandu LKPD.</p>",
+            'reflection' => "<p><strong>Penyajian Hasil & Evaluasi:</strong> Perwakilan kelompok mempresentasikan hasil analisis mereka di depan kelas. Guru memberikan umpan balik konstruktif.</p>",
             'lkpd' => "<h2>Lembar Kerja Peserta Didik (LKPD)</h2>" .
                 "<h3>Langkah Kegiatan Kelompok:</h3>" .
                 "<p><strong>Nama Anggota Kelompok:</strong> ____________________________________</p>" .
@@ -974,14 +921,7 @@ class InstructionalSmartService
                 "<li>Persiapkan bahan presentasi singkat (maksimal 3 slide / lembar kertas karton).</li>" .
                 "</ol>" .
                 "<h4>Lembar Jawab Diskusi:</h4>" .
-                "<p style='border:1px solid #ccc; height:150px; padding:10px;'>Tulis jawaban kelompok di sini...</p>",
-                
-            'learning_resources' => "<h2>Sumber Belajar</h2>" .
-                "<ul>" .
-                "<li>Buku Paket Mata Pelajaran " . htmlspecialchars($subjectName) . " SMP Kelas Kurikulum Merdeka.</li>" .
-                "<li>Artikel dan modul digital pendukung pembelajaran " . htmlspecialchars($materialTitle) . ".</li>" .
-                "<li>Video edukasi relevan di platform Youtube/LMS.</li>" .
-                "</ul>"
+                "<p style='border:1px solid #ccc; height:150px; padding:10px;'>Tulis jawaban kelompok di sini...</p>"
         ];
 
         return $result;

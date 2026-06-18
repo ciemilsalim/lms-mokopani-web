@@ -70,7 +70,8 @@ class GradebookController extends Controller
             ->get();
 
         $summativeAssignments = $allAssignments->where('assessment_type', 'summative');
-        $otherAssignments = $allAssignments->where('assessment_type', '!=', 'summative');
+        $initialAssignments = $allAssignments->where('assessment_type', 'initial');
+        $formativeAssignments = $allAssignments->where('assessment_type', 'formative');
 
         // 3. Ambil semua siswa di kelas ini
         $students = Student::where('school_class_id', $classId)->orderBy('name', 'asc')->get(['id', 'name', 'nis']);
@@ -87,7 +88,7 @@ class GradebookController extends Controller
             ->keyBy('student_id');
 
         // 6. Format data
-        $gradeData = $students->map(function ($student) use ($tps, $summativeAssignments, $otherAssignments, $submissions, $finalScores, $subjectId) {
+        $gradeData = $students->map(function ($student) use ($tps, $summativeAssignments, $initialAssignments, $formativeAssignments, $submissions, $finalScores, $subjectId) {
             // Map scores to TPs
             $summativeScores = $tps->map(function ($tp) use ($student, $summativeAssignments, $submissions) {
                 // Find summative assignment for this TP
@@ -106,8 +107,14 @@ class GradebookController extends Controller
                 ];
             });
 
-            // Formative scores (remain based on assignments for now)
-            $otherScores = $otherAssignments->values()->map(function ($a) use ($student, $submissions) {
+            // Initial assessment scores
+            $initialScores = $initialAssignments->values()->map(function ($a) use ($student, $submissions) {
+                $sub = $submissions->where('student_id', $student->id)->where('assignment_id', $a->id)->first();
+                return ['id' => $a->id, 'score' => $sub?->score ?? '-', 'type' => $a->assessment_type];
+            });
+
+            // Formative assessment scores
+            $formativeScores = $formativeAssignments->values()->map(function ($a) use ($student, $submissions) {
                 $sub = $submissions->where('student_id', $student->id)->where('assignment_id', $a->id)->first();
                 return ['id' => $a->id, 'score' => $sub?->score ?? '-', 'type' => $a->assessment_type];
             });
@@ -142,7 +149,8 @@ class GradebookController extends Controller
                 'student_name' => $student->name,
                 'student_nis'  => $student->nis,
                 'summative'    => $summativeScores,
-                'formative'    => $otherScores,
+                'initial'      => $initialScores,
+                'formative'    => $formativeScores,
                 'sumatif_akhir' => $finalScores->get($student->id)?->score ?? 0, 
                 'average'      => $average,
                 'description'  => $description,
@@ -156,7 +164,8 @@ class GradebookController extends Controller
                 'tp' => $tp->code ?: ('TP ' . ($index + 1)),
                 'tp_desc' => $tp->description,
             ]),
-            'other_headers'     => $otherAssignments->values()->map(fn($a) => ['id' => $a->id, 'title' => $a->title, 'type' => $a->assessment_type]),
+            'initial_headers'   => $initialAssignments->values()->map(fn($a) => ['id' => $a->id, 'title' => $a->title, 'type' => $a->assessment_type]),
+            'formative_headers' => $formativeAssignments->values()->map(fn($a) => ['id' => $a->id, 'title' => $a->title, 'type' => $a->assessment_type]),
             'gradeData'         => $gradeData,
             'period'            => $activeYear?->name . ' - ' . $activeSemester?->name,
         ]);

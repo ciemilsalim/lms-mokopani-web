@@ -2027,9 +2027,22 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                              assignment.instrument_type === 'guided_discussion' ? 'Lembar Observasi Diskusi' :
                                              'Rubrik Capaian Kinerja'}
                                         </h2>
-                                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">
-                                            Aspek: {assignment.instrument_config?.foundation_aspect || 'Umum'}
-                                        </p>
+                                        <div className="flex flex-wrap items-center gap-2 mt-1">
+                                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                                                Aspek: {assignment.instrument_config?.foundation_aspect || 'Umum'}
+                                            </p>
+                                            {assignment.instrument_config?.kktp?.approach && (
+                                                <p className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest border-l border-border pl-2">
+                                                    Pendekatan KKTP: {
+                                                        assignment.instrument_config.kktp.approach === 'criteria_description' ? 'Deskripsi Kriteria' :
+                                                        assignment.instrument_config.kktp.approach === 'rubric' ? 'Rubrik' :
+                                                        assignment.instrument_config.kktp.approach === 'score_interval' ? 'Interval Nilai' :
+                                                        assignment.instrument_config.kktp.approach === 'percentage' ? 'Persentase/Ceklis' : 
+                                                        assignment.instrument_config.kktp.approach
+                                                    }
+                                                </p>
+                                            )}
+                                        </div>
                                     </div>
                                     <div className="flex items-center gap-4 bg-white dark:bg-slate-900 border border-border px-5 py-3 rounded-2xl shadow-sm">
                                         <div className="text-right">
@@ -2070,6 +2083,9 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                             {students.map((student) => {
                                                 const sub = submissionMap[student.id];
                                                 let indicatorCount = (assignment.instrument_config?.indicators || []).length;
+                                                if (!indicatorCount && assignment.instrument_config?.criteria) {
+                                                    indicatorCount = assignment.instrument_config.criteria.length;
+                                                }
                                                 let munculCount = 0;
                                                 if (sub?.content) {
                                                     try {
@@ -2079,7 +2095,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                         } else if (assignment.instrument_type === 'oral_test') {
                                                             munculCount = sub.score || 0;
                                                         } else if (assignment.instrument_type === 'performance_observation') {
-                                                            munculCount = Object.values(p.observations || {}).filter(v => v === 'mulai' || v === 'konsisten').length;
+                                                            munculCount = Object.values(p.observations || {}).filter(v => v === true || v === 'mulai' || v === 'konsisten').length;
                                                         } else if (assignment.instrument_type === 'performance') {
                                                             const config = assignment.instrument_config;
                                                             if (config?.indicators && config.indicators.length > 0) {
@@ -2113,14 +2129,63 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                             </div>
                                                         </td>
                                                         <td className="px-8 py-6">
-                                                            <div className="flex items-center gap-3">
-                                                                <div className="flex-1 h-1.5 max-w-[100px] rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
-                                                                    <div 
-                                                                        className={`h-full rounded-full transition-all duration-500 ${assignment.instrument_type === 'rubric' ? 'bg-amber-500' : assignment.instrument_type === 'oral_test' ? 'bg-indigo-500' : 'bg-emerald-500'}`}
-                                                                        style={{ width: `${assignment.instrument_type === 'oral_test' ? (munculCount / assignment.max_points) * 100 : (indicatorCount > 0 ? (munculCount / indicatorCount) * 100 : 0)}%` }}
-                                                                    />
+                                                            <div className="flex flex-col gap-2">
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className="flex-1 h-1.5 max-w-[100px] rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                                                                        <div 
+                                                                            className={`h-full rounded-full transition-all duration-500 ${assignment.instrument_type === 'rubric' ? 'bg-amber-500' : assignment.instrument_type === 'oral_test' ? 'bg-indigo-500' : 'bg-emerald-500'}`}
+                                                                            style={{ width: `${assignment.instrument_type === 'oral_test' ? (munculCount / assignment.max_points) * 100 : (indicatorCount > 0 ? (munculCount / indicatorCount) * 100 : 0)}%` }}
+                                                                        />
+                                                                    </div>
+                                                                    <span className="text-[10px] font-black text-muted-foreground">{munculCount}{assignment.instrument_type === 'oral_test' ? '' : `/${indicatorCount}`}</span>
                                                                 </div>
-                                                                <span className="text-[10px] font-black text-muted-foreground">{munculCount}{assignment.instrument_type === 'oral_test' ? '' : `/${indicatorCount}`}</span>
+                                                                {sub && (assignment.instrument_type === 'observation_checklist' || assignment.instrument_type === 'performance_observation' || assignment.instrument_type === 'performance' || assignment.instrument_type === 'rubric' || assignment.instrument_type === 'guided_discussion') && assignment.instrument_config?.kktp && (
+                                                                    <div>
+                                                                        {(() => {
+                                                                            const kktp = assignment.instrument_config.kktp;
+                                                                            let isPassed = false;
+                                                                            
+                                                                            if (kktp.approach === 'percentage') {
+                                                                                const threshold = kktp.threshold || 75;
+                                                                                const percentage = indicatorCount > 0 ? (munculCount / indicatorCount) * 100 : 0;
+                                                                                isPassed = percentage >= threshold;
+                                                                            } else if (kktp.approach === 'criteria_description') {
+                                                                                const minCriteria = kktp.min_criteria ?? Math.max(1, Math.round(indicatorCount / 2));
+                                                                                isPassed = munculCount >= minCriteria;
+                                                                            } else if (kktp.approach === 'rubric') {
+                                                                                const minCriteria = kktp.min_criteria ?? Math.max(1, Math.round(indicatorCount / 2));
+                                                                                let metCount = 0;
+                                                                                const levels = assignment.instrument_config.levels || [];
+                                                                                const passingIdx = levels.findIndex((l: any) => l.name === kktp.passing_level);
+                                                                                try {
+                                                                                    const p = JSON.parse(sub.content);
+                                                                                    const scores = p.scores || {};
+                                                                                    Object.values(scores).forEach((levelId: any) => {
+                                                                                        const lvlIdx = levels.findIndex((l: any) => l.id === levelId);
+                                                                                        if (passingIdx > -1 && lvlIdx >= passingIdx) {
+                                                                                            metCount++;
+                                                                                        } else if (passingIdx === -1 && lvlIdx >= Math.floor(levels.length / 2)) {
+                                                                                            metCount++;
+                                                                                        }
+                                                                                    });
+                                                                                } catch(e) {}
+                                                                                isPassed = metCount >= minCriteria;
+                                                                            } else {
+                                                                                isPassed = indicatorCount > 0 ? (munculCount / indicatorCount) >= 0.75 : false;
+                                                                            }
+                                                                            
+                                                                            return isPassed ? (
+                                                                                <span className="inline-flex items-center gap-1 text-[8px] font-black text-emerald-600 bg-emerald-50 dark:bg-emerald-950/20 px-1.5 py-0.5 rounded uppercase tracking-wider border border-emerald-100 dark:border-emerald-900/30">
+                                                                                    <CheckCircle2 className="h-2.5 w-2.5" /> Tuntas
+                                                                                </span>
+                                                                            ) : (
+                                                                                <span className="inline-flex items-center gap-1 text-[8px] font-black text-rose-600 bg-rose-50 dark:bg-rose-950/20 px-1.5 py-0.5 rounded uppercase tracking-wider border border-rose-100 dark:border-rose-900/30">
+                                                                                    <AlertCircle className="h-2.5 w-2.5" /> Belum Tuntas
+                                                                                </span>
+                                                                            );
+                                                                        })()}
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                         </td>
                                                         <td className="px-8 py-6">
@@ -5333,6 +5398,51 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                         )}
                                     </div>
 
+                                    <div className="pt-4 border-t border-slate-50 dark:border-slate-800 flex items-center justify-between mb-4 mt-6">
+                                        <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Status KKTP:</span>
+                                        {(() => {
+                                            const kktp = assignment.instrument_config?.kktp;
+                                            if (!kktp) return <span className="text-[9px] font-black text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-md uppercase tracking-wider">Belum Diatur</span>;
+                                            
+                                            let total = (assignment.instrument_config?.indicators || []).length;
+                                            if (!total && assignment.instrument_config?.criteria) total = assignment.instrument_config.criteria.length;
+                                            
+                                            const isChecklist = assignment.instrument_config?.indicators && assignment.instrument_config.indicators.length > 0;
+                                            let metCount = 0;
+                                            if (isChecklist) {
+                                                metCount = Object.values(performanceData.scores).filter(v => v === true).length;
+                                            } else {
+                                                const levels = assignment.instrument_config?.levels || [];
+                                                const passingIdx = levels.findIndex((l: any) => l.name === kktp.passing_level);
+                                                Object.values(performanceData.scores).forEach((levelId: any) => {
+                                                    const lvlIdx = levels.findIndex((l: any) => l.id === levelId);
+                                                    if (passingIdx > -1 && lvlIdx >= passingIdx) {
+                                                        metCount++;
+                                                    } else if (passingIdx === -1 && lvlIdx >= Math.floor(levels.length / 2)) {
+                                                        metCount++;
+                                                    }
+                                                });
+                                            }
+                                            
+                                            let isPassed = false;
+                                            if (kktp.approach === 'percentage') {
+                                                const threshold = kktp.threshold || 75;
+                                                const percentage = total > 0 ? (metCount / total) * 100 : 0;
+                                                isPassed = percentage >= threshold;
+                                            } else if (kktp.approach === 'criteria_description' || kktp.approach === 'rubric') {
+                                                const minCriteria = kktp.min_criteria ?? Math.max(1, Math.round(total / 2));
+                                                isPassed = metCount >= minCriteria;
+                                            } else {
+                                                isPassed = total > 0 ? (metCount / total) >= 0.75 : false;
+                                            }
+                                            return isPassed ? (
+                                                <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 dark:bg-emerald-950/20 px-2 py-1 rounded-md uppercase tracking-wider">Tuntas ({metCount}/{total})</span>
+                                            ) : (
+                                                <span className="text-[9px] font-black text-rose-600 bg-rose-50 dark:bg-rose-950/20 px-2 py-1 rounded-md uppercase tracking-wider">Belum Tuntas ({metCount}/{total})</span>
+                                            );
+                                        })()}
+                                    </div>
+
                                     {/* Evidence & Notes */}
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-8 border-t border-border">
                                         <div className="space-y-4">
@@ -5852,6 +5962,35 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                     </div>
                                 </div>
 
+                                <div className="pt-4 border-t border-slate-50 dark:border-slate-800 flex items-center justify-between mb-4">
+                                    <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Status KKTP:</span>
+                                    {(() => {
+                                        const kktp = assignment.instrument_config?.kktp;
+                                        if (!kktp) return <span className="text-[9px] font-black text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-md uppercase tracking-wider">Belum Diatur</span>;
+                                        const total = (assignment.instrument_config?.indicators || []).length;
+                                        const checkedCount = Object.values(obsData.checklist).filter(v => v === true).length;
+                                        let isPassed = false;
+                                        if (kktp.approach === 'percentage') {
+                                            const threshold = kktp.threshold || 75;
+                                            const percentage = total > 0 ? (checkedCount / total) * 100 : 0;
+                                            isPassed = percentage >= threshold;
+                                        } else if (kktp.approach === 'criteria_description') {
+                                            const minCriteria = kktp.min_criteria ?? Math.max(1, Math.round(total / 2));
+                                            isPassed = checkedCount >= minCriteria;
+                                        } else if (kktp.approach === 'rubric') {
+                                            const minCriteria = kktp.min_criteria ?? Math.max(1, Math.round(total / 2));
+                                            isPassed = checkedCount >= minCriteria;
+                                        } else {
+                                            isPassed = total > 0 ? (checkedCount / total) >= 0.75 : false;
+                                        }
+                                        return isPassed ? (
+                                            <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 dark:bg-emerald-950/20 px-2 py-1 rounded-md uppercase tracking-wider">Tuntas ({checkedCount}/{total})</span>
+                                        ) : (
+                                            <span className="text-[9px] font-black text-rose-600 bg-rose-50 dark:bg-rose-950/20 px-2 py-1 rounded-md uppercase tracking-wider">Belum Tuntas ({checkedCount}/{total})</span>
+                                        );
+                                    })()}
+                                </div>
+
                                 {/* Qualitative Notes */}
                                 <div className="grid md:grid-cols-2 gap-6">
                                     <div className="space-y-3">
@@ -5956,7 +6095,36 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                     </div>
                                 </div>
 
-                                <div className="space-y-3 pt-6 border-t border-slate-50 dark:border-slate-800">
+                                <div className="pt-4 border-t border-slate-50 dark:border-slate-800 flex items-center justify-between mb-4 mt-6">
+                                    <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Status KKTP:</span>
+                                    {(() => {
+                                        const kktp = assignment.instrument_config?.kktp;
+                                        if (!kktp) return <span className="text-[9px] font-black text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-md uppercase tracking-wider">Belum Diatur</span>;
+                                        const total = (assignment.instrument_config?.indicators || []).length;
+                                        const checkedCount = Object.values(performanceObsData.observations).filter(v => v === true || v === 'mulai' || v === 'konsisten').length;
+                                        let isPassed = false;
+                                        if (kktp.approach === 'percentage') {
+                                            const threshold = kktp.threshold || 75;
+                                            const percentage = total > 0 ? (checkedCount / total) * 100 : 0;
+                                            isPassed = percentage >= threshold;
+                                        } else if (kktp.approach === 'criteria_description') {
+                                            const minCriteria = kktp.min_criteria ?? Math.max(1, Math.round(total / 2));
+                                            isPassed = checkedCount >= minCriteria;
+                                        } else if (kktp.approach === 'rubric') {
+                                            const minCriteria = kktp.min_criteria ?? Math.max(1, Math.round(total / 2));
+                                            isPassed = checkedCount >= minCriteria;
+                                        } else {
+                                            isPassed = total > 0 ? (checkedCount / total) >= 0.75 : false;
+                                        }
+                                        return isPassed ? (
+                                            <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 dark:bg-emerald-950/20 px-2 py-1 rounded-md uppercase tracking-wider">Tuntas ({checkedCount}/{total})</span>
+                                        ) : (
+                                            <span className="text-[9px] font-black text-rose-600 bg-rose-50 dark:bg-rose-950/20 px-2 py-1 rounded-md uppercase tracking-wider">Belum Tuntas ({checkedCount}/{total})</span>
+                                        );
+                                    })()}
+                                </div>
+
+                                <div className="space-y-3 border-t border-slate-50 dark:border-slate-800 pt-4">
                                     <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-4">Catatan Pengamatan & Umpan Balik</label>
                                     <textarea 
                                         rows={4}

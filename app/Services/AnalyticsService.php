@@ -18,7 +18,9 @@ class AnalyticsService
         $activeSemester = Semester::getActive();
 
         $assignments = LmsAssignment::where('subject_id', $subjectId)
-            ->where('school_class_id', $classId)
+            ->whereHas('schoolClasses', function ($q) use ($classId) {
+                $q->where('school_classes.id', $classId);
+            })
             ->where('academic_year_id', $activeYear?->id)
             ->where('semester_id', $activeSemester?->id)
             ->orderBy('id')
@@ -91,7 +93,9 @@ class AnalyticsService
         $activeSemester = Semester::getActive();
 
         $assignments = LmsAssignment::where('subject_id', $subjectId)
-            ->where('school_class_id', $classId)
+            ->whereHas('schoolClasses', function ($q) use ($classId) {
+                $q->where('school_classes.id', $classId);
+            })
             ->where('academic_year_id', $activeYear?->id)
             ->where('semester_id', $activeSemester?->id)
             ->orderBy('id')

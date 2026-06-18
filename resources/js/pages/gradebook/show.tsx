@@ -10,7 +10,8 @@ import {
     GraduationCap,
     Info,
     CheckCircle2,
-    FileText
+    FileText,
+    ClipboardCheck
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -34,6 +35,7 @@ interface StudentGrade {
     student_name: string;
     student_nis?: string;
     summative: { tp_id: number; score: any; tp_code: string }[];
+    initial: { id: number; score: any; type: string }[];
     formative: { id: number; score: any; type: string }[];
     sumatif_akhir: number;
     average: number;
@@ -42,14 +44,15 @@ interface StudentGrade {
 
 interface GradebookShowProps {
     summative_headers: Header[];
-    other_headers: Header[];
+    initial_headers: Header[];
+    formative_headers: Header[];
     gradeData: StudentGrade[];
     period: string;
 }
 
-export default function GradebookShow({ summative_headers, other_headers, gradeData, period }: GradebookShowProps) {
+export default function GradebookShow({ summative_headers, initial_headers, formative_headers, gradeData, period }: GradebookShowProps) {
     const [search, setSearch] = useState('');
-    const [viewMode, setViewMode] = useState<'summative' | 'formative'>('summative');
+    const [viewMode, setViewMode] = useState<'summative' | 'formative' | 'initial'>('summative');
     const [localScores, setLocalScores] = useState<Record<number, number>>(() => {
         const init: Record<number, number> = {};
         gradeData.forEach(d => { if (d.sumatif_akhir) init[d.student_id] = d.sumatif_akhir; });
@@ -80,6 +83,24 @@ export default function GradebookShow({ summative_headers, other_headers, gradeD
 
     const classId = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('class_id') : '';
     const subjectId = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('subject_id') : '';
+
+    // Get headers and data for current viewMode
+    const getCurrentHeaders = () => {
+        if (viewMode === 'summative') return summative_headers;
+        if (viewMode === 'initial') return initial_headers;
+        return formative_headers;
+    };
+
+    const getCurrentScores = (d: StudentGrade) => {
+        if (viewMode === 'initial') return d.initial;
+        return d.formative;
+    };
+
+    const tabs = [
+        { key: 'summative' as const, label: 'Asesmen Sumatif', icon: GraduationCap, activeColor: 'text-primary', count: summative_headers.length },
+        { key: 'formative' as const, label: 'Asesmen Formatif', icon: Target, activeColor: 'text-warning', count: formative_headers.length },
+        { key: 'initial' as const, label: 'Asesmen Awal', icon: ClipboardCheck, activeColor: 'text-emerald-600 dark:text-emerald-400', count: initial_headers.length },
+    ];
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -120,20 +141,25 @@ export default function GradebookShow({ summative_headers, other_headers, gradeD
                 {/* View Switcher & Search */}
                 <div className="flex flex-col gap-4 md:flex-row md:items-center justify-between">
                     <div className="flex p-1 bg-muted rounded-2xl w-fit">
-                        <button 
-                            onClick={() => setViewMode('summative')}
-                            className={`flex items-center gap-2 px-6 py-2 rounded-xl text-sm font-bold transition ${viewMode === 'summative' ? 'bg-white text-primary shadow-sm dark:bg-popover' : 'text-muted-foreground'}`}
-                        >
-                            <GraduationCap className="h-4 w-4" />
-                            Asesmen Sumatif
-                        </button>
-                        <button 
-                            onClick={() => setViewMode('formative')}
-                            className={`flex items-center gap-2 px-6 py-2 rounded-xl text-sm font-bold transition ${viewMode === 'formative' ? 'bg-white text-warning shadow-sm dark:bg-popover' : 'text-muted-foreground'}`}
-                        >
-                            <Target className="h-4 w-4" />
-                            Formatif & Awal
-                        </button>
+                        {tabs.map(tab => {
+                            const Icon = tab.icon;
+                            const isActive = viewMode === tab.key;
+                            return (
+                                <button
+                                    key={tab.key}
+                                    onClick={() => setViewMode(tab.key)}
+                                    className={`flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-bold transition ${isActive ? `bg-white ${tab.activeColor} shadow-sm dark:bg-popover` : 'text-muted-foreground'}`}
+                                >
+                                    <Icon className="h-4 w-4" />
+                                    <span className="hidden sm:inline">{tab.label}</span>
+                                    {tab.count > 0 && (
+                                        <span className={`ml-1 text-[10px] font-bold rounded-full px-1.5 py-0.5 ${isActive ? 'bg-current/10' : 'bg-muted-foreground/10'}`}>
+                                            {tab.count}
+                                        </span>
+                                    )}
+                                </button>
+                            );
+                        })}
                     </div>
                     
                     <div className="relative flex-1 md:max-w-xs">
@@ -169,12 +195,12 @@ export default function GradebookShow({ summative_headers, other_headers, gradeD
                                             </th>
                                         ))
                                     ) : (
-                                        other_headers.map(h => (
+                                        getCurrentHeaders().map(h => (
                                             <th key={h.id} className="px-5 py-4 min-w-[140px] text-center border-l border-border">
                                                 <div className="flex flex-col gap-0.5">
                                                     <span className="truncate max-w-[120px] mx-auto text-[11px] font-bold text-foreground">{h.title}</span>
-                                                    <span className={`text-[10px] font-bold uppercase tracking-wider ${h.type === 'initial' ? 'text-primary' : 'text-warning'}`}>
-                                                        {h.type}
+                                                    <span className={`text-[10px] font-bold uppercase tracking-wider ${viewMode === 'initial' ? 'text-emerald-600 dark:text-emerald-400' : 'text-warning'}`}>
+                                                        {viewMode === 'initial' ? 'Awal' : 'Formatif'}
                                                     </span>
                                                 </div>
                                             </th>
@@ -194,7 +220,11 @@ export default function GradebookShow({ summative_headers, other_headers, gradeD
                                 {filteredData.length === 0 ? (
                                     <tr>
                                         <td colSpan={100} className="px-6 py-16 text-center text-muted-foreground text-sm italic">
-                                            Belum ada data siswa atau tugas untuk ditampilkan.
+                                            {viewMode === 'initial' && initial_headers.length === 0
+                                                ? 'Belum ada asesmen awal untuk mata pelajaran ini.'
+                                                : viewMode === 'formative' && formative_headers.length === 0
+                                                ? 'Belum ada asesmen formatif untuk mata pelajaran ini.'
+                                                : 'Belum ada data siswa atau tugas untuk ditampilkan.'}
                                         </td>
                                     </tr>
                                 ) : (
@@ -221,7 +251,7 @@ export default function GradebookShow({ summative_headers, other_headers, gradeD
                                                     </td>
                                                 ))
                                             ) : (
-                                                d.formative.map((s, idx) => (
+                                                getCurrentScores(d).map((s, idx) => (
                                                     <td key={idx} className="px-6 py-4 text-center border-l border-border">
                                                         <span className={`text-sm font-bold ${s.score === '-' ? 'text-muted-foreground/30' : 'text-foreground'}`}>
                                                             {s.score}
@@ -263,13 +293,32 @@ export default function GradebookShow({ summative_headers, other_headers, gradeD
                     </div>
                 </div>
 
+                {/* Empty state for non-summative tabs with no data */}
+                {viewMode !== 'summative' && getCurrentHeaders().length === 0 && (
+                    <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/30 py-16 px-6">
+                        {viewMode === 'initial' ? (
+                            <>
+                                <ClipboardCheck className="h-12 w-12 text-emerald-400/50 mb-4" />
+                                <p className="text-sm font-bold text-muted-foreground">Belum Ada Asesmen Awal</p>
+                                <p className="text-xs text-muted-foreground/70 mt-1">Asesmen awal digunakan untuk memetakan kesiapan belajar siswa sebelum materi dimulai.</p>
+                            </>
+                        ) : (
+                            <>
+                                <Target className="h-12 w-12 text-warning/50 mb-4" />
+                                <p className="text-sm font-bold text-muted-foreground">Belum Ada Asesmen Formatif</p>
+                                <p className="text-xs text-muted-foreground/70 mt-1">Asesmen formatif digunakan untuk memantau proses belajar siswa secara berkelanjutan.</p>
+                            </>
+                        )}
+                    </div>
+                )}
+
                 {/* Legend */}
                 <div className="grid gap-6 md:grid-cols-4">
-                    <div className="flex items-start gap-4 rounded-2xl bg-primary/5 p-4">
-                        <Info className="h-5 w-5 text-primary mt-1" />
+                    <div className="flex items-start gap-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 p-4">
+                        <ClipboardCheck className="h-5 w-5 text-emerald-600 dark:text-emerald-400 mt-1" />
                         <div>
-                            <p className="text-xs font-bold text-primary uppercase">Asesmen Awal</p>
-                            <p className="text-[10px] text-primary/70">Digunakan untuk melihat kesiapan belajar siswa sebelum materi dimulai.</p>
+                            <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400 uppercase">Asesmen Awal</p>
+                            <p className="text-[10px] text-emerald-600/70 dark:text-emerald-500/70">Digunakan untuk melihat kesiapan belajar siswa sebelum materi dimulai.</p>
                         </div>
                     </div>
                     <div className="flex items-start gap-4 rounded-2xl bg-warning/10 p-4">

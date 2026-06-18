@@ -1,7 +1,7 @@
 import AppLayout from '@/layouts/app-layout';
-import { Head, router, usePage, useForm } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import { useState } from 'react';
-import { ChevronLeft, Printer, Settings, Eye, CheckCircle2, AlertCircle, ArrowRight, Save, Loader2, Download, ExternalLink, Globe, FileText, Star, Target, Calendar, User, Youtube, FolderOpen } from 'lucide-react';
+import { ChevronLeft, Printer, AlertCircle, Edit, Download, ExternalLink, Globe, FileText, Target, CheckCircle2 } from 'lucide-react';
 
 const stripHtml = (html: string) => {
     if (typeof window !== 'undefined') {
@@ -12,1435 +12,677 @@ const stripHtml = (html: string) => {
     return html?.replace(/<[^>]*>?/gm, '') || '';
 };
 
-const cleanActivityText = (text: string, prefixRegex: RegExp) => {
-    if (!text) return '';
-    let cleaned = stripHtml(text);
-    cleaned = cleaned.replace(prefixRegex, '').trim();
-    // Replace single newlines with space to fix hard-wrapping, preserve double newlines
-    cleaned = cleaned.replace(/([^\n])\n([^\n])/g, '$1 $2');
-    return cleaned;
+const HtmlContent = ({ html }: { html: string }) => {
+    if (!html || html === '-' || html.trim() === '') return <span>-</span>;
+    const cleanHtml = html.replace(/&nbsp;/g, ' ');
+    return <div dangerouslySetInnerHTML={{ __html: cleanHtml }} className="prose prose-sm max-w-none prose-p:my-1 prose-ul:my-1 prose-ol:my-1 overflow-x-auto" />;
 };
 
-
-
-interface Assignment {
-    id: number;
-    title: string;
-    description: string;
-    assessment_type: 'initial' | 'formative' | 'summative';
-    instrument_type: string;
-    rubric_content: any;
-    score_intervals: any;
-    questions: any;
-}
-
-interface ModulAjarProps {
-    modulAjar: {
-        id: number;
-        subject_id: number;
-        school_class_id: number;
-        learning_objective_id: number;
-        material_id: number;
-        subject_name: string;
-        class_name: string;
-        tp_code: string;
-        tp_desc: string;
-        material_title: string;
-        pedagogical_model: string;
-        general_info: string; // JSON
-        learning_resources: string;
-        material_resources: any[];
-        material_external_link: string;
-        material_file_path: string;
-        understanding_activity: string;
-        application_activity: string;
-        reflection_activity: string;
-        image_prompt: string;
-        thumbnail: string | null;
-        teacher_name: string;
-        teacher_nip: string;
-        school_name: string;
-        headmaster_name: string;
-        headmaster_nip: string;
-        created_at: string;
-        subject_kktp: number;
-    };
-    assignments: Assignment[];
-}
-
-
-
-const getDynamicLkpdLangkah = (material: any): string => {
-    const appText = stripHtml(material.application_activity);
-    const refText = stripHtml(material.reflection_activity);
-    
-    return `1. Diskusikan konsep utama bersama anggota kelompok Anda untuk menyamakan persepsi.\n` +
-           `2. **Langkah Aplikasi (Mengaplikasi):** Sesuai skenario rencana pelaksanaan pembelajaran (Mengaplikasi), lakukan aktivitas berikut secara kolaboratif:\n   > ${appText || 'Terapkan konsep pembelajaran untuk memecahkan studi kasus/pertanyaan pemantik di atas.'}\n` +
-           `3. Susunlah hasil pengerjaan/laporan kelompok secara rapi, sistematis, dan diskusikan solusi bersama.\n` +
-           `4. **Langkah Refleksi (Merefleksi):** Lakukan aktivitas refleksi, presentasi hasil, dan umpan balik kelompok berikut:\n   > ${refText || 'Siapkan materi untuk presentasi di kelas dan berikan tanggapan konstruktif pada kelompok lain.'}\n` +
-           `5. Tarik kesimpulan bersama mengenai pembelajaran hari ini, lakukan evaluasi diri/peer-assessment, dan kumpulkan hasil karya kelompok kepada guru.`;
-};
-
-const ASSESSMENT_TYPE_MAP: Record<string, string> = {
-    initial: 'Awal (Diagnostik)',
-    formative: 'Formatif (Proses)',
-    summative: 'Sumatif (Akhir)'
-};
-
-const parseLkpdLangkah = (text: string) => {
-    if (!text) return [];
-    return text
-        .replace(/\*\*/g, '')
-        .split('\n')
-        .map(line => line.trim())
-        .filter(line => line.length > 0)
-        .map(line => {
-            // Check if it's a blockquote / sub-description
-            if (line.startsWith('>')) {
-                return {
-                    type: 'sub',
-                    content: line.replace(/^>\s*/, '')
-                };
-            }
-            // Check if line starts with a number followed by dot
-            const match = line.match(/^(\d+)\.\s*(.*)/);
-            if (match) {
-                return {
-                    type: 'step',
-                    num: match[1],
-                    content: match[2]
-                };
-            }
-            return {
-                type: 'bullet',
-                content: line
-            };
-        });
-};
-
-const INSTRUMENT_MAP: Record<string, string> = {
-    written_test: 'Tes Tertulis',
-    quiz_survey: 'Kuis Singkat / Survei',
-    formative_quiz: 'Tes/Penugasan Singkat',
-    observation_checklist: 'Lembar Observasi & Ceklis (Ceklis)',
-    performance: 'Kinerja (Praktik/Projek/Produk)',
-    project: 'Penilaian Proyek',
-    exit_ticket: 'Exit Ticket',
-    reflective_journal: 'Jurnal Reflektif',
-    anecdotal_notes: 'Catatan Anekdotal',
-    rubric: 'Rubrik Penilaian',
-    oral_qa: 'Tanya Jawab Lisan',
-    self_assessment: 'Penilaian Diri',
-    peer_assessment: 'Penilaian Antarteman',
-    guided_discussion: 'Diskusi Terpandu',
-    structured_assignment: 'Penugasan Terstruktur (LKPD)',
-    concept_map: 'Peta Konsep',
-    performance_observation: 'Lembar Observasi',
-    oral_test: 'Tes Lisan',
-    portfolio: 'Penilaian Portofolio',
-    assignment: 'Penugasan (Laporan/Studi Kasus)'
-};
-
-const renderAssessmentDetails = (assignments: Assignment[]) => {
-    if (!assignments || assignments.length === 0) {
-        return (
-            <p className="text-xs italic text-gray-500">Tidak ada detail instrumen asesmen yang dikonfigurasi secara kustom.</p>
-        );
+const InstrumentRenderer = ({ config, type }: { config: any, type: string }) => {
+    if (!config) return null;
+    let parsedConfig = config;
+    if (typeof config === 'string') {
+        try { parsedConfig = JSON.parse(config); } catch (e) {}
     }
-
+    
     return (
-        <div className="space-y-6">
-            {assignments.map((asm, asmIdx) => {
-                const config = asm.instrument_config || {};
-                const kktp = config.kktp || {};
-                const questions = config.questions || [];
-                const indicators = config.indicators || [];
-                const levels = config.levels || [];
+        <div className="mt-2 space-y-3">
+            {/* Tampilkan Instruksi, Deskripsi, atau Stimulus jika ada */}
+            {(parsedConfig.instructions || parsedConfig.description || parsedConfig.stimulus) && (
+                <div className="text-xs bg-blue-50 border border-blue-200 p-2 rounded text-blue-900">
+                    {parsedConfig.instructions && <div dangerouslySetInnerHTML={{__html: parsedConfig.instructions}} className="mb-1" />}
+                    {parsedConfig.description && <div dangerouslySetInnerHTML={{__html: parsedConfig.description}} className="mb-1 italic" />}
+                    {parsedConfig.stimulus && <div dangerouslySetInnerHTML={{__html: parsedConfig.stimulus}} className="font-semibold" />}
+                </div>
+            )}
 
-                return (
-                    <div key={asm.id} className="border border-black p-4 rounded-md space-y-4 print-avoid-break bg-gray-50/10" style={{ color: '#000000', borderColor: '#000000' }}>
-                        {/* Title & Type block */}
-                        <div className="flex justify-between items-start border-b border-black pb-2" style={{ borderColor: '#000000' }}>
-                            <div>
-                                <h5 className="text-[10pt] font-bold text-black uppercase tracking-wide">
-                                    {asmIdx + 1}. {asm.title || 'Asesmen Tanpa Judul'}
-                                </h5>
-                                <p className="text-[8.5pt] font-bold text-gray-700 uppercase mt-0.5">
-                                    Jenis: Asesmen {ASSESSMENT_TYPE_MAP[asm.assessment_type] || asm.assessment_type} | Instrumen: {INSTRUMENT_MAP[asm.instrument_type] || asm.instrument_type}
-                                </p>
-                            </div>
-                            <div className="text-right">
-                                <span className="text-[8.5pt] font-bold border border-black px-2 py-0.5 rounded bg-white">
-                                    Maks: {asm.max_points || 100} Poin
-                                </span>
-                            </div>
-                        </div>
-
-                        {/* Description */}
-                        {asm.description && (
-                            <p className="text-[9.5pt] text-gray-800 italic leading-relaxed">
-                                <strong>Petunjuk Guru/Tugas:</strong> {asm.description}
-                            </p>
-                        )}
-
-                        {/* 1. Stimulus / Focus / Context if present */}
-                        {config.stimulus && (
-                            <div className="text-[9.5pt] text-gray-800 space-y-1">
-                                <strong className="font-bold text-black">Bahan Stimulus / Konteks Kasus:</strong>
-                                <p className="p-2.5 bg-white border border-gray-300 rounded whitespace-pre-wrap leading-relaxed">{config.stimulus}</p>
-                            </div>
-                        )}
-
-                        {/* 2. Instrument Questions / Indicators / Focus */}
-                        {/* Quiz & Written Test Questions */}
-                        {(asm.instrument_type === 'quiz_survey' || asm.instrument_type === 'written_test' || asm.instrument_type === 'formative_quiz') && questions.length > 0 && (
-                            <div className="space-y-3">
-                                <strong className="text-[9.5pt] font-bold text-black block">Daftar Pertanyaan & Kunci Jawaban:</strong>
-                                <div className="space-y-3 pl-2">
-                                    {questions.map((q: any, qIdx: number) => (
-                                        <div key={qIdx} className="text-[9.5pt] space-y-1">
-                                            <p className="font-bold text-black">{qIdx + 1}. {q.text}</p>
-                                            
-                                            {/* Render options for multiple choice */}
-                                            {(q.type === 'multiple_choice' || !q.type) && q.options && q.options.length > 0 && (
-                                                <div className="grid grid-cols-2 gap-2 pl-4 mt-1">
-                                                    {q.options.map((opt: any) => {
-                                                        const isCorrect = q.answer === opt.id;
-                                                        return (
-                                                            <div key={opt.id} className={`flex items-center gap-1.5 p-1 rounded border ${isCorrect ? 'border-emerald-500 bg-emerald-50/30' : 'border-transparent'}`}>
-                                                                <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[9px] font-bold uppercase shrink-0 ${isCorrect ? 'bg-emerald-500 text-white' : 'bg-gray-100 text-gray-600'}`}>
-                                                                    {opt.id}
-                                                                </span>
-                                                                <span className={`text-[9pt] ${isCorrect ? 'font-bold text-emerald-800' : 'text-gray-700'}`}>
-                                                                    {opt.text || `(Opsi ${opt.id.toUpperCase()})`}
-                                                                </span>
-                                                                {isCorrect && <span className="text-[8px] font-black text-emerald-600 uppercase ml-1">(Kunci)</span>}
-                                                            </div>
-                                                        );
-                                                    })}
-                                                </div>
-                                            )}
-
-                                            {/* Render short answer key */}
-                                            {q.type === 'short_answer' && (
-                                                <p className="pl-4 text-[9pt] text-gray-700 italic">
-                                                    Kunci Jawaban Singkat: <strong className="font-bold text-emerald-700">{q.answer || q.correct_answer || '-'}</strong>
-                                                </p>
-                                            )}
-
-                                            {/* Render essay info */}
-                                            {q.type === 'essay' && (
-                                                <div className="pl-4 text-[9pt] text-gray-700 space-y-1">
-                                                    <p className="italic">Jenis Soal: <strong className="font-bold text-gray-800">Uraian / Esai</strong> | Bobot Nilai: <strong className="font-bold text-gray-800">{q.points || 0} Poin</strong></p>
-                                                    {(q.answer || q.correct_answer) && (
-                                                        <p className="italic">Pedoman Penskoran / Kunci Jawaban: <span className="font-semibold text-emerald-700">{q.answer || q.correct_answer}</span></p>
-                                                    )}
-                                                </div>
-                                            )}
-                                        </div>
+            {/* Rubrik */}
+            {(parsedConfig.aspects || parsedConfig.rubrics) && (
+                <div className="text-xs overflow-x-auto">
+                    <table className="w-full border-collapse border border-gray-300">
+                        <thead>
+                            <tr className="bg-gray-100">
+                                <th className="border border-gray-300 p-1 text-left w-1/4">Aspek / Kriteria</th>
+                                {parsedConfig.levels?.map((lvl: any, i: number) => (
+                                    <th key={i} className="border border-gray-300 p-1 text-center">{lvl.name} ({lvl.score || '-'})</th>
+                                ))}
+                                {(!parsedConfig.levels && (parsedConfig.aspects || parsedConfig.rubrics)[0]?.criteria) && 
+                                    (parsedConfig.aspects || parsedConfig.rubrics)[0].criteria.map((_: any, i: number) => (
+                                        <th key={i} className="border border-gray-300 p-1 text-center">Level {i+1}</th>
+                                    ))
+                                }
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {(parsedConfig.aspects || parsedConfig.rubrics).map((asp: any, i: number) => (
+                                <tr key={i}>
+                                    <td className="border border-gray-300 p-1 font-semibold">{asp.name || asp.criteria_name || asp.title}</td>
+                                    {asp.criteria?.map((crit: any, j: number) => (
+                                        <td key={j} className="border border-gray-300 p-1 align-top">{crit.description || crit}</td>
                                     ))}
-                                </div>
-                            </div>
-                        )}
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            )}
 
-                        {/* Observation Checklist & Performance Indicators */}
-                        {(asm.instrument_type === 'observation_checklist' || asm.instrument_type === 'performance_observation' || asm.instrument_type === 'performance' || asm.instrument_type === 'self_assessment' || asm.instrument_type === 'peer_assessment' || asm.instrument_type === 'guided_discussion' || asm.instrument_type === 'structured_assignment' || asm.instrument_type === 'assignment' || asm.instrument_type === 'concept_map') && indicators.length > 0 && (
-                            <div className="space-y-2">
-                                <strong className="text-[9.5pt] font-bold text-black block font-sans">Indikator Yang Diamati:</strong>
-                                <table className="w-full border-collapse" style={{ borderCollapse: 'collapse', width: '100%' }}>
-                                    <thead>
-                                        <tr>
-                                            <th className="w-12 text-center" style={{ border: '1px solid black', padding: '6px', backgroundColor: '#f2f2f2', fontSize: '9pt', fontWeight: 'bold' }}>No</th>
-                                            <th className="" style={{ border: '1px solid black', padding: '6px', backgroundColor: '#f2f2f2', fontSize: '9pt', fontWeight: 'bold' }}>Indikator Perilaku / Kemampuan</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {indicators.map((ind: any, indIdx: number) => (
-                                            <tr key={indIdx}>
-                                                <td className="text-center font-mono text-[9pt]" style={{ border: '1px solid black', padding: '6px' }}>{indIdx + 1}</td>
-                                                <td className="text-[9pt] text-gray-800" style={{ border: '1px solid black', padding: '6px' }}>{ind.name || ind.text || 'Indikator Baru'}</td>
-                                            </tr>
+            {/* Indikator (seperti Checklist Observasi) */}
+            {parsedConfig.indicators && parsedConfig.indicators.length > 0 && (
+                <div className="text-xs">
+                    <p className="font-semibold mb-1 border-b border-gray-300 inline-block">Indikator yang Dinilai:</p>
+                    <ul className="list-disc pl-4 space-y-1">
+                        {parsedConfig.indicators.map((ind: any, i: number) => (
+                            <li key={i}>{ind.name || ind.description || ind}</li>
+                        ))}
+                    </ul>
+                </div>
+            )}
+            
+            {/* Soal / Pertanyaan */}
+            {parsedConfig.questions && parsedConfig.questions.length > 0 && (
+                <div className="text-xs bg-white p-2 border border-gray-200">
+                    <p className="font-semibold mb-2 border-b border-gray-200 pb-1">Daftar Pertanyaan / Soal:</p>
+                    <ol className="list-decimal pl-4 space-y-1">
+                        {parsedConfig.questions.map((q: any, i: number) => (
+                            <li key={i} className="mb-2">
+                                <div dangerouslySetInnerHTML={{__html: q.text}} className="inline" />
+                                {q.options && q.options.length > 0 && (
+                                    <ul className="list-[lower-alpha] pl-4 mt-1 space-y-0.5">
+                                        {q.options.map((opt: any, j: number) => (
+                                            <li key={j} className={q.answer === opt.id ? "font-bold text-green-700" : ""}>{opt.text}</li>
                                         ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
-
-                        {/* Exit Ticket / Reflective Journal / Oral QA questions */}
-                        {(asm.instrument_type === 'exit_ticket' || asm.instrument_type === 'reflective_journal' || asm.instrument_type === 'oral_test' || asm.instrument_type === 'oral_qa') && questions.length > 0 && (
-                            <div className="space-y-2">
-                                <strong className="text-[9.5pt] font-bold text-black block">Pertanyaan Refleksi / Tanya Jawab Siswa:</strong>
-                                <ul className="list-decimal pl-5 text-[9pt] text-gray-800 space-y-1">
-                                    {questions.map((q: any, qIdx: number) => (
-                                        <li key={qIdx} className="leading-relaxed">
-                                            <strong>{q.text}</strong>
-                                            {q.answer_guide && (
-                                                <span className="block text-[8.5pt] text-gray-600 italic mt-0.5">Panduan Jawaban: {q.answer_guide}</span>
-                                            )}
-                                            {q.correct_answer && (
-                                                <span className="block text-[8.5pt] text-gray-600 italic mt-0.5">Panduan Jawaban: {q.correct_answer}</span>
-                                            )}
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-                        )}
-
-                        {/* Anecdotal notes */}
-                        {asm.instrument_type === 'anecdotal_notes' && (
-                            <div className="grid grid-cols-2 gap-4 text-[9pt]">
-                                <div className="p-2.5 border border-gray-300 rounded bg-white">
-                                    <strong className="text-black text-[9.5pt] block">Fokus Pengamatan:</strong>
-                                    <p className="mt-1 text-gray-700 italic">{config.focus || 'Interaksi sosial & kemampuan motorik'}</p>
-                                </div>
-                                <div className="p-2.5 border border-gray-300 rounded bg-white">
-                                    <strong className="text-black text-[9.5pt] block">Konteks Kegiatan:</strong>
-                                    <p className="mt-1 text-gray-700 italic">{config.context || 'Bermain peran & diskusi kelompok'}</p>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* 3. KKTP Criteria Block */}
-                        <div className="pt-3 border-t border-dashed border-gray-300" style={{ borderTop: '1px dashed #cccccc' }}>
-                            <strong className="text-[9.5pt] font-bold text-black block mb-2">Kriteria Ketercapaian Tujuan Pembelajaran (KKTP):</strong>
-                            
-                            {/* Criteria Description */}
-                            {kktp.approach === 'criteria_description' && (
-                                <div className="text-[9pt] text-gray-800 bg-emerald-50/20 p-2.5 rounded border border-emerald-500/30">
-                                    <p className="font-bold text-emerald-950">Pendekatan: Deskripsi Kriteria</p>
-                                    <p className="mt-1 text-gray-700 leading-relaxed">
-                                        Murid dianggap mencapai tujuan pembelajaran apabila memenuhi kriteria minimal sebanyak <strong className="font-bold text-emerald-700">{kktp.min_criteria || 2} kriteria</strong> dari total kriteria penilaian yang ditetapkan.
-                                    </p>
-                                </div>
-                            )}
-
-                            {/* Rubric */}
-                            {kktp.approach === 'rubric' && (
-                                <div className="text-[9pt] text-gray-800 bg-amber-50/20 p-2.5 rounded border border-amber-500/30 space-y-2">
-                                    <p className="font-bold text-amber-950">Pendekatan: Rubrik Kriteria</p>
-                                    <p className="text-gray-700 leading-relaxed">
-                                        Ketuntasan diukur berdasarkan level capaian kriteria. Batas Tuntas Minimum ditetapkan pada kriteria level: <strong className="font-bold border border-amber-500 px-2 py-0.5 rounded bg-white text-amber-800 uppercase text-[8pt]">{kktp.passing_level || 'Baik'}</strong>.
-                                    </p>
-                                    {levels && levels.length > 0 && (
-                                        <div className="grid grid-cols-4 gap-2 mt-2">
-                                            {levels.map((lvl: any) => {
-                                                const isActive = kktp.passing_level === lvl.name;
-                                                return (
-                                                    <div key={lvl.name} className={`p-2 rounded border text-center ${isActive ? 'bg-amber-50/50 border-amber-500 shadow-sm' : 'bg-white border-gray-200'}`} style={{ border: '1px solid', borderColor: isActive ? '#f59e0b' : '#e5e7eb' }}>
-                                                        <span className="font-bold block text-[7.5pt] text-gray-900">{lvl.name}</span>
-                                                        <span className="text-[7pt] text-gray-500 block leading-tight mt-1 line-clamp-2" title={lvl.desc}>{lvl.desc || `Deskripsi level ${lvl.name.toLowerCase()}`}</span>
-                                                        {isActive && <span className="text-[6.5pt] font-black text-amber-700 uppercase mt-1 block">✓ Batas Tuntas</span>}
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-
-                            {/* Score Interval */}
-                            {kktp.approach === 'score_interval' && (
-                                <div className="text-[9pt] text-gray-800 bg-sky-50/20 p-2.5 rounded border border-sky-500/30 space-y-2">
-                                    <p className="font-bold text-sky-950">Pendekatan: Interval Nilai</p>
-                                    <p className="text-gray-700">Tingkat ketuntasan murid dikategorikan ke dalam rentang nilai persentase berikut:</p>
-                                    <div className="grid grid-cols-4 gap-2 text-center mt-1">
-                                        {(kktp.intervals || [
-                                            { min: 0, max: 40, label: 'Belum Mencapai', desc: 'Perlu remedial seluruhnya' },
-                                            { min: 41, max: 60, label: 'Hampir Mencapai', desc: 'Perlu remedial di bagian tertentu' },
-                                            { min: 61, max: 80, label: 'Sudah Mencapai', desc: 'Tuntas' },
-                                            { min: 81, max: 100, label: 'Sudah Mencapai', desc: 'Perlu pengayaan' }
-                                        ]).map((iv: any, ivIdx: number) => {
-                                            const isPassing = iv.min >= 61;
-                                            return (
-                                                <div key={ivIdx} className={`p-2 rounded border ${isPassing ? 'border-sky-300 bg-sky-50/20' : 'border-gray-200 bg-white'}`} style={{ border: '1px solid', borderColor: isPassing ? '#7dd3fc' : '#e5e7eb' }}>
-                                                    <span className="font-bold text-sky-900 block text-[8pt]">{iv.min}% - {iv.max}%</span>
-                                                    <span className="text-[7.5pt] text-gray-800 font-bold block mt-0.5">{iv.label}</span>
-                                                    <span className="text-[7pt] text-gray-500 block leading-tight mt-0.5">{iv.desc}</span>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Percentage */}
-                            {kktp.approach === 'percentage' && (
-                                <div className="text-[9pt] text-gray-800 bg-purple-50/20 p-2.5 rounded border border-purple-500/30">
-                                    <p className="font-bold text-purple-950">Pendekatan: Persentase Ketuntasan</p>
-                                    <p className="mt-1 text-gray-700 leading-relaxed">
-                                        Ketuntasan dihitung langsung menggunakan persentase nilai tes/tugas. Batas Kriteria Ketuntasan Minimum (KKM) ditetapkan sebesar <strong className="font-bold text-purple-700">{kktp.threshold || 75}%</strong>.
-                                    </p>
-                                </div>
-                            )}
-
-                            {/* Default fallback if approach is not specified */}
-                            {!kktp.approach && (
-                                <p className="text-[9pt] text-gray-600 italic">Menggunakan Kriteria Ketuntasan Tujuan Pembelajaran (KKTP) umum sekolah (KKM: {asm.passing_grade || 70}).</p>
-                            )}
-                        </div>
-                    </div>
-                );
-            })}
+                                    </ul>
+                                )}
+                                {q.answer_guide && <p className="text-gray-600 italic mt-0.5 border-l-2 border-gray-300 pl-2">Panduan Jawaban: {q.answer_guide}</p>}
+                                {q.correct_answer && <p className="text-green-700 italic mt-0.5 border-l-2 border-green-300 pl-2">Kunci Jawaban: {q.correct_answer}</p>}
+                            </li>
+                        ))}
+                    </ol>
+                </div>
+            )}
         </div>
     );
 };
 
-export default function Show({ modulAjar, assignments }: ModulAjarProps) {
-    const material = {
-        id: modulAjar.material_id,
-        title: modulAjar.material_title,
-        content: '',
-        tp_desc: modulAjar.tp_desc,
-        tp_code: modulAjar.tp_code,
-        teacher_name: modulAjar.teacher_name,
-        teacher_nip: modulAjar.teacher_nip,
-        understanding_activity: modulAjar.understanding_activity,
-        application_activity: modulAjar.application_activity,
-        reflection_activity: modulAjar.reflection_activity,
-        image_prompt: modulAjar.image_prompt,
-        thumbnail: modulAjar.thumbnail,
-        resources: modulAjar.material_resources,
-        external_link: modulAjar.material_external_link,
-        file_path: modulAjar.material_file_path,
-        subject_kktp: modulAjar.subject_kktp,
-        subject_name: modulAjar.subject_name,
-        school_class_name: modulAjar.class_name,
-        semester_name: modulAjar.semester_name,
-        academic_year_name: modulAjar.academic_year_name,
-    };
+const getKktpDescription = (asm: any) => {
+    let config = asm.instrument_config;
+    if (typeof config === 'string') {
+        try { config = JSON.parse(config); } catch (e) {}
+    }
+    const kktp = config?.kktp;
     
-    // Parse saved customization
-    let savedConfig: any = {};
+    if (kktp) {
+        if (kktp.approach === 'criteria_description') {
+            const total = config.rubrics?.length || config.questions?.length || 0;
+            const totalText = total > 0 ? ` dari ${total} indikator yang dinilai` : '';
+            return `Pendekatan Deskripsi Kriteria: Ketuntasan didasarkan pada jumlah indikator yang tercapai. Minimal mencapai ${kktp.min_criteria || 3}${totalText}.`;
+        }
+        if (kktp.approach === 'rubric') {
+            return `Pendekatan Rubrik: Peserta didik dianggap tuntas jika secara kualitatif minimal mencapai tingkat pencapaian "${kktp.passing_level || 'Baik'}" pada rubrik penilaian.`;
+        }
+        if (kktp.approach === 'score_interval') {
+            const intervals = kktp.intervals || [];
+            const passingInterval = intervals.find((i: any) => i.status && i.status.toLowerCase().includes('tuntas') && !i.status.toLowerCase().includes('belum'));
+            const minScore = passingInterval ? passingInterval.min : 75;
+            return `Pendekatan Interval Nilai: Peserta didik dinyatakan tuntas jika memperoleh skor masuk dalam interval ketuntasan (minimal skor ${minScore}).`;
+        }
+        if (kktp.approach === 'percentage') {
+            return `Pendekatan Persentase: Peserta didik dinyatakan tuntas jika persentase ketercapaian mencapai minimal ${kktp.threshold || 75}%.`;
+        }
+        
+        // Fallback for older data
+        if (kktp.approach === 'checklist' || kktp.approach === 'observation' || asm.instrument_type === 'observation_checklist' || asm.instrument_type === 'checklist') {
+            return `Peserta didik dianggap tuntas jika memenuhi minimal ${kktp.min_criteria || 3} kriteria/indikator dari total indikator yang dinilai.`;
+        }
+        if (kktp.approach === 'interval' || kktp.approach === 'score' || asm.instrument_type === 'multiple_choice' || asm.instrument_type === 'written_test') {
+            return `Peserta didik dinyatakan tuntas jika memperoleh nilai/skor minimal ${kktp.threshold || 75}.`;
+        }
+    }
+    
+    // Fallback based on instrument_type if no kktp object found
+    if (asm.instrument_type === 'observation_checklist' || asm.instrument_type === 'checklist' || asm.instrument_type === 'anecdotal_record') {
+        return `Untuk asesmen observasi, peserta didik dianggap tuntas jika memenuhi sebagian besar kriteria/indikator yang dinilai.`;
+    }
+    if (asm.instrument_type === 'rubric' || asm.instrument_type === 'essay' || asm.instrument_type === 'project' || asm.instrument_type === 'portfolio' || asm.instrument_type === 'oral_test') {
+        return `Peserta didik dianggap tuntas jika kriteria penilaian mencapai level yang diharapkan sesuai rubrik/panduan penilaian.`;
+    }
+    if (asm.instrument_type === 'multiple_choice' || asm.instrument_type === 'quiz_survey' || asm.instrument_type === 'written_test' || asm.instrument_type === 'formative_quiz') {
+        return `Tuntas jika memperoleh persentase skor/nilai minimal mengacu pada standar ketuntasan (KKM/Interval).`;
+    }
+    
+    return `Tuntas jika memenuhi kriteria minimal yang ditetapkan untuk instrumen ini.`;
+}
+
+const getFaseFromClass = (className: string) => {
+    if (!className) return '-';
+    const name = className.toUpperCase();
+    if (name.match(/\b(?:XI|XII|11|12)\b/)) return 'F';
+    if (name.match(/\b(?:X|10)\b/)) return 'E';
+    if (name.match(/\b(?:VII|VIII|IX|7|8|9)\b/)) return 'D';
+    if (name.match(/\b(?:V|VI|5|6)\b/)) return 'C';
+    if (name.match(/\b(?:III|IV|3|4)\b/)) return 'B';
+    if (name.match(/\b(?:I|II|1|2)\b/)) return 'A';
+    return '-';
+};
+
+export default function Show({ modulAjar, assignments }: any) {
+    const [isPrinting, setIsPrinting] = useState(false);
+    const [printMode, setPrintMode] = useState<'all'|'lkpd'>('all');
+
+    // Parse configuration from general_info JSON
+    let parsedData: any = {};
     try {
-        savedConfig = JSON.parse(modulAjar.general_info || '{}');
-    } catch(e) {}
-    
-    const school_name = savedConfig.rppSchoolName || modulAjar.school_name || 'SMA Negeri 1 Mokopani';
-    const headmaster_name = savedConfig.kepalaSekolahName || modulAjar.headmaster_name || 'Nama Kepala Sekolah';
-    const headmaster_nip = savedConfig.kepalaSekolahNip || modulAjar.headmaster_nip || '-';
+        if (modulAjar.general_info && modulAjar.general_info.trim().startsWith('{')) {
+            parsedData = JSON.parse(modulAjar.general_info);
+        }
+    } catch (e) {
+        console.error("Failed to parse general_info JSON");
+    }
 
-    
-    
-    
-    // Auto-detect if this is the Informatika structured data example to load the exact content from the user request
-    const isStructuredDataMaterial = 
-        material.title.toLowerCase().includes('data') || 
-        material.title.toLowerCase().includes('himpunan') || 
-        material.subject_name.toLowerCase().includes('informatika');
+    const alokasiWaktu = parsedData.alokasi_waktu || '-';
+    const jumlahPertemuan = parsedData.jumlah_pertemuan || '-';
+    const dimensiProfil = parsedData.dimensi_profil || '-';
+    const lingkunganPembelajaran = parsedData.lingkungan_pembelajaran || '-';
+    const kemitraanPembelajaran = parsedData.kemitraan_pembelajaran || '-';
+    const pemanfaatanDigital = parsedData.pemanfaatan_digital || '-';
+    const mediaIlustrasi = parsedData.media_ilustrasi || '-';
+    const understandingActivity = parsedData.understanding || modulAjar.understanding_activity || '-';
+    const applicationActivity = parsedData.application || modulAjar.application_activity || '-';
+    const reflectionActivity = parsedData.reflection || modulAjar.reflection_activity || '-';
+    const lkpdContent = parsedData.lkpd || modulAjar.lkpd || '-';
 
-    const hasSummativeAssignments = assignments && assignments.some(a => a.assessment_type === 'summative');
+    const schoolName = modulAjar.school_name || 'SMA Negeri 1 Mokopani';
+    const headmasterName = modulAjar.headmaster_name || 'Nama Kepala Sekolah';
+    const headmasterNip = modulAjar.headmaster_nip || '-';
 
-    // RPP Customization States
-    const [rppSchoolName, setRppSchoolName] = useState(school_name || 'SMA Negeri 1 Mokopani');
-    const [rppAlokasiWaktu, setRppAlokasiWaktu] = useState(
-        isStructuredDataMaterial 
-            ? '6 JP x 40 menit (2 pertemuan)' 
-            : '2 JP x 40 menit'
-    );
-    
-    const [rppProfilLulusan, setRppProfilLulusan] = useState({
-        penalaranKritis: true,
-        kreativitas: isStructuredDataMaterial,
-        kolaborasi: true,
-        kemandirian: true,
-        komunikasi: isStructuredDataMaterial,
-        kebinekaanGlobal: false,
-        berimanTakwa: false
-    });
-    
-    const [rppKemitraan, setRppKemitraan] = useState(
-        isStructuredDataMaterial
-            ? 'Kolaborasi antar guru mata pelajaran untuk integrasi konsep, serta melibatkan orang tua dalam mengawasi progres tugas mandiri siswa.'
-            : 'Kolaborasi antarguru sejenis dan pendampingan pengerjaan tugas mandiri/kelompok oleh orang tua di rumah.'
-    );
-    
-    const [rppDigital, setRppDigital] = useState(
-        isStructuredDataMaterial
-            ? 'Aplikasi pengolah data (Spreadsheet) dan aplikasi desain infografis digital (Canva / Piktochart).'
-            : 'Aplikasi pengolah kata, presentasi digital, dan peramban web untuk riset informasi.'
-    );
-    
-    const [understandingActivity, setUnderstandingActivity] = useState(
-        cleanActivityText(savedConfig.understandingActivity || material.understanding_activity, /^(?:Tahap\s+)?Memahami\s*\(?Understanding\)?\s*[:\-]*\s*/i) || 'Murid disajikan gambar berupa data acak, lalu pendidik memantik diskusi dengan pertanyaan guna memicu rasa ingin tahu.'
-    );
-    const [applicationActivity, setApplicationActivity] = useState(
-        cleanActivityText(savedConfig.applicationActivity || material.application_activity, /^(?:Tahap\s+)?Mengaplikasi\s*\(?Application\)?\s*[:\-]*\s*/i) || 'Murid berkolaborasi untuk menyusun data acak tersebut menjadi tabel terstruktur, lalu menyajikannya ke dalam bentuk infografis digital.'
-    );
-    const [reflectionActivity, setReflectionActivity] = useState(
-        cleanActivityText(savedConfig.reflectionActivity || material.reflection_activity, /^(?:Tahap\s+)?Merefleksi\s*\(?Reflecting\)?\s*[:\-]*\s*/i) || 'Murid mempresentasikan hasilnya melalui kegiatan gallery walk dan saling memberikan umpan balik (evaluasi teman sejawat).'
-    );
-    
-    // LKPD Customization States
-    const [lkpdTitle, setLkpdTitle] = useState(
-        isStructuredDataMaterial
-            ? 'Menyusun Data Acak Menjadi Informasi Bermakna'
-            : `Lembar Kerja Peserta Didik (LKPD) - Eksplorasi ${material.title}`
-    );
-    
-    const [lkpdStimulus, setLkpdStimulus] = useState(
-        isStructuredDataMaterial
-            ? 'Merah, Samsung, Poco, Biru, Oppo, Putih, Vivo, Android, Silver, iOS, Hitam, iPhone'
-            : `Konteks/Masalah: Berbagai data dan informasi kontekstual yang relevan dengan pokok bahasan ${material.title}`
-    );
-    
-    const [lkpdPemantik, setLkpdPemantik] = useState(
-        isStructuredDataMaterial
-            ? '1. Apakah sekumpulan kata di atas sudah memiliki arti yang jelas?\n2. Bagaimana caranya agar kumpulan kata tersebut menjadi informasi yang mudah dipahami?'
-            : `1. Mengapa konsep ${material.title} ini penting dalam kehidupan nyata?\n2. Hambatan apa yang paling sering muncul saat mempelajari tema ini?`
-    );
-    
-    const [lkpdLangkah, setLkpdLangkah] = useState(
-        isStructuredDataMaterial
-            ? '1. Amati sekumpulan kata acak di atas secara berkelompok.\n2. Diskusikan cara menyusun data tersebut agar memiliki makna.\n3. Buatlah tabel terstruktur menggunakan aplikasi spreadsheet (Excel/Google Sheets).\n4. Pindahkan tabel tersebut ke dalam infografis Canva agar menarik.\n5. Cetak/tampilkan hasil karya kelompok untuk dipresentasikan dalam gallery walk.'
-            : getDynamicLkpdLangkah(material)
-    );
-    
-    // Penandatangan
-    const [kepalaSekolahName, setKepalaSekolahName] = useState(headmaster_name);
-    const [kepalaSekolahNip, setKepalaSekolahNip] = useState(headmaster_nip);
+    const initialAssignments = assignments.filter((a: any) => a.assessment_type === 'initial');
+    const processAssignments = assignments.filter((a: any) => a.assessment_type === 'formative' || a.assessment_type === 'summative');
 
-    // RTL Remedial & Pengayaan (KKTP Synchronized)
-    const kktpValue = material.subject_kktp ?? 70;
-    const [rppRemedial, setRppRemedial] = useState(
-        `Pembimbingan ulang konsep terstruktur secara personal/kelompok bagi murid yang belum mencapai Kriteria Ketercapaian Tujuan Pembelajaran (KKTP < ${kktpValue}).`
-    );
-    const [rppPengayaan, setRppPengayaan] = useState(
-        `Pemberian tantangan analisis tingkat tinggi (studi kasus mendalam/tugas mandiri kreatif) bagi murid yang telah melampaui Kriteria Ketercapaian Tujuan Pembelajaran (KKTP >= ${kktpValue}).`
-    );
-
-    // Auto Phase & Curriculum detector
-    const getDetectedFase = (className: string | null): string => {
-        if (!className) return 'D';
-        const cleanName = className.trim().toLowerCase();
-        if (cleanName.includes('vii') || cleanName.includes('viii') || cleanName.includes('ix') || 
-            /\b(7|8|9)\b/.test(cleanName)) {
-            return 'D';
-        }
-        if ((cleanName.includes('x') && !cleanName.includes('xi') && !cleanName.includes('xii')) || 
-            /\b10\b/.test(cleanName)) {
-            return 'E';
-        }
-        if (cleanName.includes('xi') || cleanName.includes('xii') || 
-            /\b(11|12)\b/.test(cleanName)) {
-            return 'F';
-        }
-        if (cleanName.includes('iii') || cleanName.includes('iv') || /\b(3|4)\b/.test(cleanName)) {
-            return 'B';
-        }
-        if (cleanName.includes('v') || cleanName.includes('vi') || /\b(5|6)\b/.test(cleanName)) {
-            return 'C';
-        }
-        if (cleanName.includes('i') || cleanName.includes('ii') || /\b(1|2)\b/.test(cleanName)) {
-            return 'A';
-        }
-        return 'D'; // SMP standard fallback
-    };
-    
-    const handleDelete = () => {
-        destroy(route('materials.destroy', material.id));
+    const handlePrint = (mode: 'all' | 'lkpd' = 'all') => {
+        setPrintMode(mode);
+        setIsPrinting(true);
+        setTimeout(() => {
+            const originalTitle = document.title;
+            if (mode === 'lkpd') document.title = `LKPD - ${modulAjar.material_title}`;
+            window.print();
+            document.title = originalTitle;
+            setIsPrinting(false);
+            setPrintMode('all');
+        }, 300);
     };
 
-    const getLinkIcon = (url: string) => {
-        if (url.includes('youtube.com') || url.includes('youtu.be')) return <Youtube className="h-5 w-5" />;
-        if (url.includes('drive.google.com')) return <FolderOpen className="h-5 w-5" />;
-        return <Globe className="h-5 w-5" />;
-    };
-
-    const getLinkColor = (url: string) => {
-        if (url.includes('youtube.com') || url.includes('youtu.be')) return 'text-[#EB5757] bg-[#EB5757]/10 dark:bg-[#EB5757]/10';
-        if (url.includes('drive.google.com')) return 'text-[#5E6AD2] bg-[#5E6AD2]/10 dark:bg-[#5E6AD2]/10';
-        return 'text-[#3DD68C] bg-[#3DD68C]/10 dark:bg-[#3DD68C]/10';
-    };
-
-    const [isSaving, setIsSaving] = useState(false);
-    
-    const handleSaveConfig = () => {
-        setIsSaving(true);
-        const config = {
-            rppSchoolName, rppAlokasiWaktu, rppProfilLulusan,
-            rppKemitraan, rppDigital, rppRemedial, rppPengayaan,
-            kepalaSekolahName, kepalaSekolahNip,
-            understandingActivity, applicationActivity, reflectionActivity,
-            lkpdTitle, lkpdStimulus, lkpdPemantik, lkpdLangkah
-        };
+    const handleExportWord = () => {
+        const contentElement = document.getElementById('print-area-content');
+        if (!contentElement) return;
         
-        router.put(route('lesson-plans.update', modulAjar.id), {
-            subject_id: modulAjar.subject_id,
-            school_class_id: modulAjar.school_class_id,
-            learning_objective_id: modulAjar.learning_objective_id,
-            material_id: modulAjar.material_id,
-            pedagogical_model: modulAjar.pedagogical_model,
-            general_info: JSON.stringify(config),
-            learning_design: null,
-            learning_steps: null,
-            assessment_plan: null,
-            kktp_details: null,
-            lkpd: null,
-            learning_resources: null
-        }, {
-            onFinish: () => setIsSaving(false)
-        });
-    };
-
-    const exportToWord = () => {
-        const printArea = document.getElementById('rpp-print-area');
-        if (!printArea) return;
-
-        const clone = printArea.cloneNode(true) as HTMLElement;
-        
-        const style = `
+        const content = contentElement.innerHTML;
+        const html = `
+        <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+        <head>
+            <meta charset='utf-8'>
+            <title>Modul Ajar</title>
             <style>
-                table { border-collapse: collapse; width: 100%; margin-bottom: 15px; font-family: sans-serif; }
-                th, td { border: 1px solid black; padding: 8px 12px; text-align: left; vertical-align: top; }
-                th { background-color: #f2f2f2; font-weight: bold; }
-                h2 { text-align: center; font-size: 16pt; margin-bottom: 5px; font-family: sans-serif; }
-                h3 { text-align: center; font-size: 12pt; margin-bottom: 15px; font-family: sans-serif; color: #555555; }
-                h4 { font-size: 12pt; font-weight: bold; border-bottom: 1px solid black; margin-top: 15px; margin-bottom: 10px; font-family: sans-serif; }
-                .font-bold { font-weight: bold; }
-                .italic { font-style: italic; }
+                body { font-family: 'Times New Roman', serif; font-size: 12pt; }
+                table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
+                table, th, td { border: 1px solid black; }
+                th, td { padding: 8px; text-align: left; vertical-align: top; }
+                h1 { text-align: center; font-size: 16pt; font-weight: bold; }
+                h2 { text-align: center; font-size: 14pt; font-weight: bold; }
+                h3 { text-align: left; font-size: 12pt; font-weight: bold; border-bottom: 2px solid black; padding-bottom: 4px; margin-top: 15px; text-transform: uppercase; }
                 .text-center { text-align: center; }
-                body { font-family: sans-serif; }
+                .text-right { text-align: right; }
+                .font-bold { font-weight: bold; }
+                .font-semibold { font-weight: 600; }
+                .text-lg { font-size: 14pt; }
+                .text-xl { font-size: 16pt; }
+                .text-sm { font-size: 10pt; }
+                .text-xs { font-size: 8pt; }
+                .uppercase { text-transform: uppercase; }
+                .italic { font-style: italic; }
+                .underline { text-decoration: underline; }
+                .bg-gray-50 { background-color: #f9fafb !important; }
+                .bg-gray-200 { background-color: #e5e7eb !important; }
+                .w-full { width: 100%; }
+                .w-1\\/2 { width: 50%; }
+                .w-1\\/3 { width: 33.33%; }
+                .w-1\\/4 { width: 25%; }
+                .p-2 { padding: 8px; }
+                .p-4 { padding: 16px; }
+                .p-8 { padding: 32px; }
+                .pt-8 { padding-top: 32px; }
+                .pb-1 { padding-bottom: 4px; }
+                .pl-5 { padding-left: 20px; }
+                .mb-1 { margin-bottom: 4px; }
+                .mb-2 { margin-bottom: 8px; }
+                .mb-3 { margin-bottom: 12px; }
+                .mb-4 { margin-bottom: 16px; }
+                .mt-2 { margin-top: 8px; }
+                .mt-12 { margin-top: 48px; }
+                .border-b { border-bottom: 1px solid black; }
+                .border-b-2 { border-bottom: 2px solid black; }
+                .align-top { vertical-align: top; }
+                .hide-in-lkpd-print { display: block; }
+                .hide-in-word { display: none !important; }
+                .print-hidden { display: none !important; }
+                ul, ol { margin-top: 4px; margin-bottom: 4px; }
             </style>
+        </head>
+        <body>
+            ${content}
+        </body>
+        </html>
         `;
-
-        const content = `
-            <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
-            <head>
-                <meta charset='utf-8'>
-                <title>RPP Modul Ajar</title>
-                ${style}
-            </head>
-            <body>
-                ${clone.outerHTML}
-            </body>
-            </html>
-        `;
-
-        const blob = new Blob(['\ufeff', content], { type: 'application/msword' });
+        
+        const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
         const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `RPP_${material?.title || 'Modul_Ajar'}.doc`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Modul_Ajar_${modulAjar.subject_name.replace(/[^a-z0-9]/gi, '_')}_${modulAjar.class_name.replace(/[^a-z0-9]/gi, '_')}.doc`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => {
+            URL.revokeObjectURL(url);
+        }, 1000);
     };
 
-return (
-            <AppLayout breadcrumbs={[
-                { title: 'Dashboard', href: '/dashboard' },
-                { title: 'Materi', href: '/materials' },
-                { title: material.title, href: route('materials.show', material.id) },
-                { title: 'Cetak RPP', href: '#' },
-            ]}>
-                <Head title={`Cetak RPP: ${material.title} – LMS Mokopani`} />
+    return (
+        <AppLayout breadcrumbs={[
+            { title: 'Dashboard', href: '/dashboard' },
+            { title: 'Pembelajaran', href: '/lesson-plans' },
+            { title: `Modul Ajar #${modulAjar.id}`, href: `/lesson-plans/${modulAjar.id}` }
+        ]}>
+            <Head title={`Modul Ajar ${modulAjar.subject_name} – LMS Mokopani`}>
                 <style>{`
-                    /* Format tabel formal dinas (Berlaku untuk Layar & Cetak) */
-                    #rpp-print-area * {
-                        box-sizing: border-box !important;
-                    }
-                    .print-table {
-                        border-collapse: collapse !important;
-                        width: 100% !important;
-                        table-layout: fixed !important;
-                        margin-bottom: 1.5rem !important;
-                        color: #000000 !important;
-                    }
-                    .print-table th, .print-table td {
-                        border: 1px solid #000000 !important;
-                        padding: 8px 12px !important;
-                        text-align: left !important;
-                        color: #000000 !important;
-                        font-size: 10.5pt !important;
-                        line-height: 1.5 !important;
-                        word-wrap: break-word !important;
-                        overflow-wrap: break-word !important;
-                    }
-                    .print-table th {
-                        background-color: #f2f2f2 !important;
-                        font-weight: bold !important;
-                        -webkit-print-color-adjust: exact;
-                        print-color-adjust: exact;
-                    }
-                    .print-title {
-                        font-size: 14pt !important;
-                        font-weight: bold !important;
-                        text-align: center !important;
-                        margin-bottom: 2px !important;
-                        text-transform: uppercase !important;
-                        color: #000000 !important;
-                    }
-                    .print-subtitle {
-                        font-size: 11pt !important;
-                        text-align: center !important;
-                        margin-bottom: 15px !important;
-                        font-weight: bold !important;
-                        color: #555555 !important;
-                    }
-                    .print-hr {
-                        border: 0 !important;
-                        border-top: 3px double #000000 !important;
-                        margin-top: 10px !important;
-                        margin-bottom: 20px !important;
-                        opacity: 1 !important;
-                    }
-
                     @media print {
-                        /* Sembunyikan seluruh layout bawaan web */
-                        body * {
-                            visibility: hidden !important;
+                        body, html, #app {
+                            height: auto !important;
+                            overflow: visible !important;
+                            background-color: white !important;
                         }
-                        /* Tampilkan area RPP secara penuh */
-                        #rpp-print-area, #rpp-print-area * {
-                            visibility: visible !important;
-                        }
-                        #rpp-print-area {
-                            position: absolute !important;
-                            left: 0 !important;
-                            top: 0 !important;
-                            width: 100% !important;
-                            background: white !important;
-                            color: black !important;
-                            padding: 0 !important;
+                        .layout-page, main, .flex-1, .h-full, .max-w-5xl, .flex-col {
+                            height: auto !important;
+                            overflow: visible !important;
+                            display: block !important;
+                            max-width: 100% !important;
                             margin: 0 !important;
-                            box-shadow: none !important;
-                            border: none !important;
+                            padding: 0 !important;
                         }
-                        .no-print {
+                        header, aside, nav, footer, .print\\:hidden {
                             display: none !important;
                         }
-                        .print-avoid-break {
-                            page-break-inside: avoid !important;
-                            break-inside: avoid !important;
+                        #print-area-content {
+                            box-shadow: none !important;
+                            border: none !important;
+                            margin: 0 !important;
+                            padding: 0 !important;
+                            width: 100% !important;
                         }
-                        .print-page-break {
-                            page-break-before: always !important;
-                            break-before: page !important;
+                        .print-avoid-break {
+                            page-break-inside: avoid;
+                        }
+                        .print-footer {
+                            display: block !important;
+                            position: fixed !important;
+                            bottom: 0 !important;
+                            width: 100% !important;
+                            z-index: 9999 !important;
+                        }
+                        @page {
+                            margin-bottom: 20mm;
                         }
                     }
                 `}</style>
-                
-                <div className="flex h-full flex-1 flex-col gap-6 p-6">
-                    {/* Header Controls (no-print) */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 no-print border-b border-[#2C2C3A]/10 dark:border-[#2C2C3A] pb-6">
-                        <div>
-                            <button 
-                                onClick={() => router.get('/lesson-plans')}
-                                className="flex items-center gap-2 text-sm font-medium text-[#8A8F98] hover:text-[#5E6AD2] transition"
-                            >
-                                <ChevronLeft className="h-4 w-4" />
-                                Kembali ke Daftar Modul Ajar
-                            </button>
-                            <h1 className="text-2xl font-black text-[#1B1B25] dark:text-[#F1F1F4] mt-2">Pratinjau RPP Pembelajaran Mendalam</h1>
-                        </div>
-                        <div className="flex items-center gap-3">
-                            <button
-                                onClick={() => window.print()}
-                                className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-bold text-gray-700 transition hover:bg-gray-50 active:scale-95 shadow-sm shrink-0"
-                            >
-                                <Printer className="h-4.5 w-4.5" /> Ekspor PDF
-                            </button>
-                            <button
-                                onClick={exportToWord}
-                                className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#5E6AD2] to-[#4b55a8] px-5 py-2.5 text-sm font-bold text-white transition hover:shadow-lg active:scale-95 shadow-md shadow-[#5E6AD2]/20 shrink-0"
-                            >
-                                <FileText className="h-4.5 w-4.5" /> Ekspor Docs
-                            </button>
-                        </div>
+            </Head>
+
+            <div className="flex flex-col gap-6 p-6 h-full flex-1 max-w-5xl mx-auto w-full">
+                {/* Action Bar (Not printed) */}
+                <div className="flex items-center justify-between print:hidden">
+                    <button 
+                        onClick={() => window.history.back()}
+                        className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition"
+                    >
+                        <ChevronLeft className="h-4 w-4" /> Kembali
+                    </button>
+                    <div className="flex flex-wrap gap-3 justify-end">
+                        <button
+                            onClick={handleExportWord}
+                            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 text-white px-4 py-2 text-sm font-semibold shadow hover:bg-blue-700 transition"
+                        >
+                            <Download className="h-4 w-4" /> Ekspor Docs (Word)
+                        </button>
+                        <button
+                            onClick={() => router.get(route('lesson-plans.edit', modulAjar.id))}
+                            className="inline-flex items-center gap-2 rounded-lg bg-secondary text-secondary-foreground px-4 py-2 text-sm font-semibold hover:bg-secondary/80 transition"
+                        >
+                            <Edit className="h-4 w-4" /> Edit Modul Ajar
+                        </button>
+                        <button
+                            onClick={() => handlePrint('all')}
+                            className="inline-flex items-center gap-2 rounded-lg bg-primary text-primary-foreground px-4 py-2 text-sm font-semibold shadow hover:bg-primary/90 transition"
+                        >
+                            <Printer className="h-4 w-4" /> Cetak / PDF
+                        </button>
+                    </div>
+                </div>
+
+                {/* Print Area Container */}
+                <div id="print-area-content" style={{ WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }} className={`bg-white rounded-xl shadow-sm border border-border overflow-hidden print:overflow-visible print:border-none print:shadow-none ${printMode === 'lkpd' ? 'print-lkpd-mode' : ''} relative`}>
+                    
+                    {/* Header Document */}
+                    <div className="p-8 border-b border-border bg-muted/10 print:bg-white print:border-b-2 print:border-black text-center space-y-2 hide-in-lkpd-print">
+                        <h1 className="text-xl font-bold uppercase tracking-wider text-black">MODUL AJAR / RPP DEEP LEARNING</h1>
+                        <h2 className="text-lg font-bold text-black">{modulAjar.subject_name} - {modulAjar.class_name}</h2>
+                        <p className="text-sm text-gray-600">{modulAjar.material_title}</p>
                     </div>
 
-                    {/* Split Screen Layout on Web, Full screen on Print */}
-                    <div className="grid gap-6 lg:grid-cols-12 items-start">
-                        {/* Left Side: Customization panel (no-print) */}
-                        <div className="lg:col-span-4 space-y-6 no-print">
-                            <div className="rounded-3xl border border-[#2C2C3A]/20 dark:border-[#2C2C3A] bg-white dark:bg-[#1B1B25] p-6 shadow-sm space-y-5">
-                                <div>
-                                    <h3 className="text-sm font-black text-[#1B1B25] dark:text-[#F1F1F4] uppercase tracking-wider">Identifikasi Dokumen</h3>
-                                    <p className="text-[10px] text-[#8A8F98] font-bold uppercase tracking-widest mt-1">Sesuaikan informasi instansi & guru</p>
+                    <div className="p-8 space-y-10 bg-white text-black print:p-0 print:py-6">
+                        
+                        {/* I. Identifikasi Umum */}
+                        <section>
+                            <h3 className="font-bold text-lg mb-3 uppercase border-b-2 border-black pb-1">I. IDENTIFIKASI & INFORMASI UMUM</h3>
+                            <table className="w-full border-collapse border border-black text-sm">
+                                <tbody>
+                                    <tr>
+                                        <td className="border border-black p-2 font-bold w-1/3 bg-gray-50">Nama Sekolah</td>
+                                        <td className="border border-black p-2">{schoolName}</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="border border-black p-2 font-bold bg-gray-50">Mata Pelajaran</td>
+                                        <td className="border border-black p-2">{modulAjar.subject_name}</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="border border-black p-2 font-bold bg-gray-50">Kurikulum</td>
+                                        <td className="border border-black p-2">Kurikulum Nasional</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="border border-black p-2 font-bold bg-gray-50">Kelas / Fase</td>
+                                        <td className="border border-black p-2">{modulAjar.class_name} / Fase {getFaseFromClass(modulAjar.class_name)}</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="border border-black p-2 font-bold bg-gray-50">Tahun Ajaran</td>
+                                        <td className="border border-black p-2">{modulAjar.academic_year_name} ({modulAjar.semester_name})</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="border border-black p-2 font-bold bg-gray-50">Alokasi Waktu</td>
+                                        <td className="border border-black p-2">{alokasiWaktu}</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="border border-black p-2 font-bold bg-gray-50">Jumlah Pertemuan</td>
+                                        <td className="border border-black p-2">{jumlahPertemuan}</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="border border-black p-2 font-bold bg-gray-50">Nama Guru</td>
+                                        <td className="border border-black p-2">{modulAjar.teacher_name}</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="border border-black p-2 font-bold bg-gray-50">Dimensi Profil Lulusan</td>
+                                        <td className="border border-black p-2">{dimensiProfil}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </section>
+
+                        {/* II. Desain Pembelajaran */}
+                        <section>
+                            <h3 className="font-bold text-lg mb-3 uppercase border-b-2 border-black pb-1">II. DESAIN PEMBELAJARAN</h3>
+                            <table className="w-full border-collapse border border-black text-sm">
+                                <tbody>
+                                    <tr>
+                                        <td className="border border-black p-2 font-bold w-1/3 bg-gray-50">Tujuan Pembelajaran (TP)</td>
+                                        <td className="border border-black p-2"><strong className="mr-2">{modulAjar.tp_code}</strong> {modulAjar.tp_desc}</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="border border-black p-2 font-bold bg-gray-50">Praktik Pedagogis (Model)</td>
+                                        <td className="border border-black p-2">{modulAjar.pedagogical_model}</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="border border-black p-2 font-bold bg-gray-50">Lingkungan Pembelajaran</td>
+                                        <td className="border border-black p-2">{lingkunganPembelajaran}</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="border border-black p-2 font-bold bg-gray-50">Kemitraan Pembelajaran</td>
+                                        <td className="border border-black p-2">{kemitraanPembelajaran}</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="border border-black p-2 font-bold bg-gray-50">Pemanfaatan Digital</td>
+                                        <td className="border border-black p-2">{pemanfaatanDigital}</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="border border-black p-2 font-bold bg-gray-50">Media & Ilustrasi</td>
+                                        <td className="border border-black p-2">{mediaIlustrasi}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </section>
+
+                        {/* III. Langkah-langkah Pembelajaran */}
+                        <section className="print-avoid-break">
+                            <h3 style={{ pageBreakAfter: 'avoid', breakAfter: 'avoid' }} className="font-bold text-lg mb-3 uppercase border-b-2 border-black pb-1">III. LANGKAH-LANGKAH PEMBELAJARAN (DEEP LEARNING)</h3>
+                            <table className="w-full border-collapse border border-black text-sm">
+                                <tbody>
+                                    <tr>
+                                        <td className="border border-black p-4 font-bold w-1/4 bg-gray-50 align-top">1. Memahami<br/>(Understanding)</td>
+                                        <td className="border border-black p-4 align-top">
+                                            <HtmlContent html={understandingActivity} />
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td className="border border-black p-4 font-bold bg-gray-50 align-top">2. Mengaplikasikan<br/>(Application)</td>
+                                        <td className="border border-black p-4 align-top">
+                                            <HtmlContent html={applicationActivity} />
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td className="border border-black p-4 font-bold bg-gray-50 align-top">3. Merefleksikan<br/>(Reflection)</td>
+                                        <td className="border border-black p-4 align-top">
+                                            <HtmlContent html={reflectionActivity} />
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </section>
+
+                        {/* IV. Asesmen Awal */}
+                        <section className="print-avoid-break">
+                            <h3 className="font-bold text-lg mb-3 uppercase border-b-2 border-black pb-1">IV. PENILAIAN/ASESMEN AWAL (DIAGNOSTIK)</h3>
+                            {initialAssignments.length > 0 ? (
+                                <ul className="list-disc pl-5 text-sm space-y-2">
+                                    {initialAssignments.map((asm: any) => (
+                                        <li key={asm.id}>
+                                            <strong>{asm.title}</strong> - {asm.description || 'Asesmen awal untuk mengukur kesiapan murid.'}
+                                        </li>
+                                    ))}
+                                </ul>
+                            ) : (
+                                <p className="text-sm italic text-gray-500">Tidak ada asesmen awal yang didefinisikan secara eksplisit.</p>
+                            )}
+                        </section>
+
+                        {/* V. Asesmen Formatif / Sumatif */}
+                        <section className="print-avoid-break">
+                            <h3 className="font-bold text-lg mb-3 uppercase border-b-2 border-black pb-1">V. PENILAIAN/ASESMEN FORMATIF & SUMATIF</h3>
+                            {processAssignments.length > 0 ? (
+                                <ul className="list-disc pl-5 text-sm space-y-2">
+                                    {processAssignments.map((asm: any) => (
+                                        <li key={asm.id}>
+                                            <strong>{asm.title}</strong> <span className="uppercase text-xs font-semibold px-1 py-0.5 bg-gray-200 ml-1 rounded">({asm.assessment_type})</span><br/>
+                                            {asm.description || `Instrumen untuk mengukur ketercapaian secara ${asm.assessment_type === 'formative' ? 'proses' : 'akhir'}.`}
+                                        </li>
+                                    ))}
+                                </ul>
+                            ) : (
+                                <p className="text-sm italic text-gray-500">Tidak ada asesmen formatif/sumatif yang didefinisikan secara eksplisit.</p>
+                            )}
+                        </section>
+
+                        {/* VI. KKTP */}
+                        <section className="print-avoid-break">
+                            <h3 className="font-bold text-lg mb-3 uppercase border-b-2 border-black pb-1">VI. KRITERIA KETUNTASAN TUJUAN PEMBELAJARAN (KKTP)</h3>
+                            <div className="text-sm border border-black p-4 rounded bg-gray-50 hide-in-lkpd-print">
+                                <div className="mb-4">
+                                    <p className="mb-2">Pendekatan Kriteria Ketuntasan Tujuan Pembelajaran (KKTP) yang digunakan disesuaikan dengan jenis asesmen:</p>
+                                    <ul className="list-disc pl-5 space-y-1">
+                                        {processAssignments.length > 0 ? processAssignments.map((asm: any) => {
+                                            const formattedType = asm.instrument_type?.split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') || 'Instrumen';
+                                            const assessmentType = asm.assessment_type === 'formative' ? 'Formatif' : asm.assessment_type === 'summative' ? 'Sumatif' : asm.assessment_type;
+                                            return (
+                                                <li key={asm.id}>
+                                                    <strong>{asm.title} - {assessmentType} ({formattedType}):</strong> {getKktpDescription(asm)}
+                                                </li>
+                                            );
+                                        }) : (
+                                            <li>Pendekatan KKTP mengacu pada standar sekolah dengan kriteria ketuntasan (KKM): <strong className="text-lg">{modulAjar.subject_kktp || 70}</strong>.</li>
+                                        )}
+                                    </ul>
                                 </div>
                                 
-                                <div className="space-y-4">
-                                    <div className="space-y-1.5">
-                                        <label className="text-[10px] font-bold text-[#8A8F98] uppercase tracking-wider">Nama Sekolah</label>
-                                        <input 
-                                            type="text" 
-                                            value={rppSchoolName} 
-                                            onChange={(e) => setRppSchoolName(e.target.value)}
-                                            className="w-full h-10 rounded-xl border border-[#2C2C3A]/20 dark:border-[#2C2C3A] bg-[#F1F1F4]/10 dark:bg-[#2C2C3A]/30 text-sm font-medium px-4 text-[#1B1B25] dark:text-[#F1F1F4] focus:border-[#5E6AD2] outline-none"
-                                        />
-                                    </div>
-
-                                    <div className="space-y-1.5">
-                                        <label className="text-[10px] font-bold text-[#8A8F98] uppercase tracking-wider">Alokasi Waktu</label>
-                                        <input 
-                                            type="text" 
-                                            value={rppAlokasiWaktu} 
-                                            onChange={(e) => setRppAlokasiWaktu(e.target.value)}
-                                            className="w-full h-10 rounded-xl border border-[#2C2C3A]/20 dark:border-[#2C2C3A] bg-[#F1F1F4]/10 dark:bg-[#2C2C3A]/30 text-sm font-medium px-4 text-[#1B1B25] dark:text-[#F1F1F4] focus:border-[#5E6AD2] outline-none"
-                                        />
-                                    </div>
-
-                                    <div className="space-y-1.5">
-                                        <label className="text-[10px] font-bold text-[#8A8F98] uppercase tracking-wider">Dimensi Profil Lulusan</label>
-                                        <div className="grid grid-cols-1 gap-2 bg-[#F1F1F4]/5 dark:bg-[#2C2C3A]/10 p-3 rounded-2xl border border-[#2C2C3A]/10 dark:border-[#2C2C3A]">
-                                            {Object.keys(rppProfilLulusan).map((key) => {
-                                                const labelMap: any = {
-                                                    penalaranKritis: 'Penalaran Kritis',
-                                                    kreativitas: 'Kreativitas',
-                                                    kolaborasi: 'Kolaborasi',
-                                                    kemandirian: 'Kemandirian',
-                                                    komunikasi: 'Komunikasi',
-                                                    kebinekaanGlobal: 'Kebinekaan Global',
-                                                    berimanTakwa: 'Beriman & Bertakwa'
-                                                };
-                                                return (
-                                                    <label key={key} className="flex items-center gap-2 text-xs font-semibold text-[#8A8F98] cursor-pointer hover:text-[#1B1B25] dark:hover:text-[#F1F1F4]">
-                                                        <input 
-                                                            type="checkbox" 
-                                                            checked={(rppProfilLulusan as any)[key]} 
-                                                            onChange={(e) => setRppProfilLulusan({
-                                                                ...rppProfilLulusan,
-                                                                [key]: e.target.checked
-                                                            })}
-                                                            className="rounded border-[#2C2C3A]/30 text-[#5E6AD2] focus:ring-[#5E6AD2]"
-                                                        />
-                                                        {labelMap[key]}
-                                                    </label>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-
-                                    <div className="space-y-1.5">
-                                        <label className="text-[10px] font-bold text-[#8A8F98] uppercase tracking-wider">Kemitraan Pembelajaran</label>
-                                        <textarea 
-                                            value={rppKemitraan} 
-                                            onChange={(e) => setRppKemitraan(e.target.value)}
-                                            rows={3}
-                                            className="w-full rounded-xl border border-[#2C2C3A]/20 dark:border-[#2C2C3A] bg-[#F1F1F4]/10 dark:bg-[#2C2C3A]/30 text-sm font-medium p-3 text-[#1B1B25] dark:text-[#F1F1F4] focus:border-[#5E6AD2] outline-none resize-none leading-relaxed"
-                                        />
-                                    </div>
-
-                                    <div className="space-y-1.5">
-                                        <label className="text-[10px] font-bold text-[#8A8F98] uppercase tracking-wider">Pemanfaatan Digital</label>
-                                        <textarea 
-                                            value={rppDigital} 
-                                            onChange={(e) => setRppDigital(e.target.value)}
-                                            rows={2}
-                                            className="w-full rounded-xl border border-[#2C2C3A]/20 dark:border-[#2C2C3A] bg-[#F1F1F4]/10 dark:bg-[#2C2C3A]/30 text-sm font-medium p-3 text-[#1B1B25] dark:text-[#F1F1F4] focus:border-[#5E6AD2] outline-none resize-none leading-relaxed"
-                                        />
-                                    </div>
-
-                                    <div className="space-y-1.5 pt-3 border-t border-[#2C2C3A]/10 dark:border-[#2C2C3A]">
-                                        <h4 className="text-xs font-black text-[#1B1B25] dark:text-[#F1F1F4] uppercase mb-2">Penandatangan Dokumen</h4>
-                                        <div className="space-y-3">
-                                            <div className="space-y-1.5">
-                                                <label className="text-[9px] font-bold text-[#8A8F98] uppercase tracking-wider">Nama Kepala Sekolah</label>
-                                                <input 
-                                                    type="text" 
-                                                    value={kepalaSekolahName} 
-                                                    onChange={(e) => setKepalaSekolahName(e.target.value)}
-                                                    className="w-full h-8 rounded-lg border border-[#2C2C3A]/20 dark:border-[#2C2C3A] bg-[#F1F1F4]/10 dark:bg-[#2C2C3A]/30 text-xs px-3 text-[#1B1B25] dark:text-[#F1F1F4] focus:border-[#5E6AD2] outline-none"
-                                                />
+                                {processAssignments.length > 0 && (
+                                    <div className="mt-4 pt-4 border-t border-black">
+                                        <h4 className="font-bold mb-2">Instrumen Asesmen KKTP:</h4>
+                                        {processAssignments.map((asm: any) => (
+                                            <div key={asm.id} className="mb-4 bg-white p-3 border border-gray-300 rounded shadow-sm">
+                                                <p className="font-semibold text-base mb-2 border-b pb-1 border-gray-100">{asm.title} <span className="uppercase text-xs px-1 py-0.5 bg-gray-200 rounded font-bold ml-1">({asm.instrument_type})</span></p>
+                                                <InstrumentRenderer config={asm.instrument_config} type={asm.instrument_type} />
                                             </div>
-                                            <div className="space-y-1.5">
-                                                <label className="text-[9px] font-bold text-[#8A8F98] uppercase tracking-wider">NIP Kepala Sekolah</label>
-                                                <input 
-                                                    type="text" 
-                                                    value={kepalaSekolahNip} 
-                                                    onChange={(e) => setKepalaSekolahNip(e.target.value)}
-                                                    className="w-full h-8 rounded-lg border border-[#2C2C3A]/20 dark:border-[#2C2C3A] bg-[#F1F1F4]/10 dark:bg-[#2C2C3A]/30 text-xs px-3 text-[#1B1B25] dark:text-[#F1F1F4] focus:border-[#5E6AD2] outline-none"
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="space-y-1.5 pt-3 border-t border-[#2C2C3A]/10 dark:border-[#2C2C3A]">
-                                        <h4 className="text-xs font-black text-[#1B1B25] dark:text-[#F1F1F4] uppercase mb-2">Rencana Tindak Lanjut (RTL)</h4>
-                                        <div className="space-y-3">
-                                            <div className="space-y-1.5">
-                                                <label className="text-[9px] font-bold text-[#8A8F98] uppercase tracking-wider">Aktivitas Remedial</label>
-                                                <textarea 
-                                                    value={rppRemedial} 
-                                                    onChange={(e) => setRppRemedial(e.target.value)}
-                                                    rows={3}
-                                                    className="w-full rounded-xl border border-[#2C2C3A]/20 dark:border-[#2C2C3A] bg-[#F1F1F4]/10 dark:bg-[#2C2C3A]/30 text-xs p-3 text-[#1B1B25] dark:text-[#F1F1F4] focus:border-[#5E6AD2] outline-none resize-none leading-relaxed font-medium"
-                                                />
-                                            </div>
-                                            <div className="space-y-1.5">
-                                                <label className="text-[9px] font-bold text-[#8A8F98] uppercase tracking-wider">Aktivitas Pengayaan</label>
-                                                <textarea 
-                                                    value={rppPengayaan} 
-                                                    onChange={(e) => setRppPengayaan(e.target.value)}
-                                                    rows={3}
-                                                    className="w-full rounded-xl border border-[#2C2C3A]/20 dark:border-[#2C2C3A] bg-[#F1F1F4]/10 dark:bg-[#2C2C3A]/30 text-xs p-3 text-[#1B1B25] dark:text-[#F1F1F4] focus:border-[#5E6AD2] outline-none resize-none leading-relaxed font-medium"
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Kustomisasi Skenario Langkah RPP */}
-                            <div className="rounded-3xl border border-[#2C2C3A]/20 dark:border-[#2C2C3A] bg-white dark:bg-[#1B1B25] p-6 shadow-sm space-y-4">
-                                <h3 className="text-sm font-black text-[#1B1B25] dark:text-[#F1F1F4] uppercase tracking-wider">Kustomisasi Skenario RPP</h3>
-                                <div className="space-y-4">
-                                    <div className="space-y-1.5">
-                                        <label className="text-[10px] font-bold text-[#8A8F98] uppercase tracking-wider">Aktivitas Memahami (Understanding)</label>
-                                        <textarea 
-                                            value={understandingActivity} 
-                                            onChange={(e) => setUnderstandingActivity(e.target.value)}
-                                            rows={3}
-                                            className="w-full rounded-xl border border-[#2C2C3A]/20 dark:border-[#2C2C3A] bg-[#F1F1F4]/10 dark:bg-[#2C2C3A]/30 text-xs p-3 text-[#1B1B25] dark:text-[#F1F1F4] focus:border-[#5E6AD2] outline-none resize-none leading-relaxed font-medium"
-                                        />
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <label className="text-[10px] font-bold text-[#8A8F98] uppercase tracking-wider">Aktivitas Mengaplikasi (Applying)</label>
-                                        <textarea 
-                                            value={applicationActivity} 
-                                            onChange={(e) => setApplicationActivity(e.target.value)}
-                                            rows={3}
-                                            className="w-full rounded-xl border border-[#2C2C3A]/20 dark:border-[#2C2C3A] bg-[#F1F1F4]/10 dark:bg-[#2C2C3A]/30 text-xs p-3 text-[#1B1B25] dark:text-[#F1F1F4] focus:border-[#5E6AD2] outline-none resize-none leading-relaxed font-medium"
-                                        />
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <label className="text-[10px] font-bold text-[#8A8F98] uppercase tracking-wider">Aktivitas Merefleksi (Reflecting)</label>
-                                        <textarea 
-                                            value={reflectionActivity} 
-                                            onChange={(e) => setReflectionActivity(e.target.value)}
-                                            rows={3}
-                                            className="w-full rounded-xl border border-[#2C2C3A]/20 dark:border-[#2C2C3A] bg-[#F1F1F4]/10 dark:bg-[#2C2C3A]/30 text-xs p-3 text-[#1B1B25] dark:text-[#F1F1F4] focus:border-[#5E6AD2] outline-none resize-none leading-relaxed font-medium"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* LKPD Kustomisasi */}
-                            <div className="rounded-3xl border border-[#2C2C3A]/20 dark:border-[#2C2C3A] bg-white dark:bg-[#1B1B25] p-6 shadow-sm space-y-4">
-                                <h3 className="text-sm font-black text-[#1B1B25] dark:text-[#F1F1F4] uppercase tracking-wider">Kustomisasi LKPD</h3>
-                                <div className="space-y-3">
-                                    <div className="space-y-1.5">
-                                        <label className="text-[10px] font-bold text-[#8A8F98] uppercase tracking-wider">Judul LKPD</label>
-                                        <input 
-                                            type="text" 
-                                            value={lkpdTitle} 
-                                            onChange={(e) => setLkpdTitle(e.target.value)}
-                                            className="w-full h-10 rounded-xl border border-[#2C2C3A]/20 dark:border-[#2C2C3A] bg-[#F1F1F4]/10 dark:bg-[#2C2C3A]/30 text-sm font-medium px-4 text-[#1B1B25] dark:text-[#F1F1F4] focus:border-[#5E6AD2] outline-none"
-                                        />
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <label className="text-[10px] font-bold text-[#8A8F98] uppercase tracking-wider">Bahan / Data Stimulus</label>
-                                        <textarea 
-                                            value={lkpdStimulus} 
-                                            onChange={(e) => setLkpdStimulus(e.target.value)}
-                                            rows={3}
-                                            className="w-full rounded-xl border border-[#2C2C3A]/20 dark:border-[#2C2C3A] bg-[#F1F1F4]/10 dark:bg-[#2C2C3A]/30 text-sm font-medium p-3 text-[#1B1B25] dark:text-[#F1F1F4] focus:border-[#5E6AD2] outline-none resize-none leading-relaxed"
-                                        />
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <label className="text-[10px] font-bold text-[#8A8F98] uppercase tracking-wider">Pertanyaan Pemantik</label>
-                                        <textarea 
-                                            value={lkpdPemantik} 
-                                            onChange={(e) => setLkpdPemantik(e.target.value)}
-                                            rows={3}
-                                            className="w-full rounded-xl border border-[#2C2C3A]/20 dark:border-[#2C2C3A] bg-[#F1F1F4]/10 dark:bg-[#2C2C3A]/30 text-xs p-3 text-[#1B1B25] dark:text-[#F1F1F4] focus:border-[#5E6AD2] outline-none resize-none leading-relaxed"
-                                        />
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <label className="text-[10px] font-bold text-[#8A8F98] uppercase tracking-wider">Langkah Kerja LKPD</label>
-                                        <textarea 
-                                            value={lkpdLangkah} 
-                                            onChange={(e) => setLkpdLangkah(e.target.value)}
-                                            rows={5}
-                                            className="w-full rounded-xl border border-[#2C2C3A]/20 dark:border-[#2C2C3A] bg-[#F1F1F4]/10 dark:bg-[#2C2C3A]/30 text-xs p-3 text-[#1B1B25] dark:text-[#F1F1F4] focus:border-[#5E6AD2] outline-none resize-none leading-relaxed"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Right Side: RPP Whitepaper Document */}
-                        <div className="lg:col-span-8 flex flex-col items-center">
-                            <div 
-                                id="rpp-print-area"
-                                className="w-full max-w-[210mm] min-h-[297mm] bg-white text-black p-8 sm:p-12 shadow-xl border border-gray-200 rounded-[2rem] print:rounded-none print:shadow-none print:border-none leading-relaxed font-sans overflow-hidden"
-                                style={{ color: '#000000', backgroundColor: '#FFFFFF' }}
-                            >
-                                {/* Kop / Title */}
-                                <div className="text-center">
-                                    <h2 className="text-lg sm:text-xl font-bold uppercase tracking-wider text-black print-title">
-                                        RENCANA PELAKSANAAN PEMBELAJARAN (RPP)
-                                    </h2>
-                                    <h3 className="text-sm sm:text-md font-bold text-gray-700 tracking-wide mt-1 uppercase print-subtitle">
-                                        PENDEKATAN PEMBELAJARAN MENDALAM (DEEP LEARNING)
-                                    </h3>
-                                    <hr className="print-hr border-t-2 border-black double mt-4 mb-6" />
-                                </div>
-
-                                {/* 1. Identifikasi / Informasi Umum */}
-                                <div className="space-y-4 print-avoid-break mb-8">
-                                    <h4 className="text-md font-bold uppercase border-b border-black pb-1 mb-3 text-black">
-                                        I. IDENTIFIKASI & INFORMASI UMUM
-                                    </h4>
-                                    
-                                    <table className="print-table w-full border-collapse">
-                                        <tbody>
-                                            <tr>
-                                                <td className="w-1/3 font-semibold" style={{ border: '1px solid black', padding: '8px 12px' }}>Nama Sekolah</td>
-                                                <td className="w-2/3" style={{ border: '1px solid black', padding: '8px 12px' }}>{rppSchoolName}</td>
-                                            </tr>
-                                            <tr>
-                                                <td className="font-semibold" style={{ border: '1px solid black', padding: '8px 12px' }}>Mata Pelajaran</td>
-                                                <td style={{ border: '1px solid black', padding: '8px 12px' }}>{material.subject_name}</td>
-                                            </tr>
-                                            <tr>
-                                                <td className="font-semibold" style={{ border: '1px solid black', padding: '8px 12px' }}>Kurikulum</td>
-                                                <td style={{ border: '1px solid black', padding: '8px 12px' }}>Kurikulum Merdeka</td>
-                                            </tr>
-                                            <tr>
-                                                <td className="font-semibold" style={{ border: '1px solid black', padding: '8px 12px' }}>Kelas / Fase</td>
-                                                <td style={{ border: '1px solid black', padding: '8px 12px' }}>Kelas {material.school_class_name || '-'} / Fase {getDetectedFase(material.school_class_name)}</td>
-                                            </tr>
-                                            <tr>
-                                                <td className="font-semibold" style={{ border: '1px solid black', padding: '8px 12px' }}>Semester / Tahun Ajaran</td>
-                                                <td style={{ border: '1px solid black', padding: '8px 12px' }}>Semester {material.semester_name || '-'} / {material.academic_year_name || '-'}</td>
-                                            </tr>
-                                            <tr>
-                                                <td className="font-semibold" style={{ border: '1px solid black', padding: '8px 12px' }}>Alokasi Waktu</td>
-                                                <td style={{ border: '1px solid black', padding: '8px 12px' }}>{rppAlokasiWaktu}</td>
-                                            </tr>
-                                            <tr>
-                                                <td className="font-semibold" style={{ border: '1px solid black', padding: '8px 12px' }}>Guru Mata Pelajaran</td>
-                                                <td style={{ border: '1px solid black', padding: '8px 12px' }}>{material.teacher_name} {material.teacher_nip ? `(NIP: ${material.teacher_nip})` : ''}</td>
-                                            </tr>
-                                            <tr>
-                                                <td className="font-semibold" style={{ border: '1px solid black', padding: '8px 12px' }}>Dimensi Profil Lulusan</td>
-                                                <td style={{ border: '1px solid black', padding: '8px 12px' }}>
-                                                    <div className="flex flex-wrap gap-x-4 gap-y-1">
-                                                        {Object.entries(rppProfilLulusan)
-                                                            .filter(([_, checked]) => checked)
-                                                            .map(([key, _]) => {
-                                                                const labelMap: any = {
-                                                                    penalaranKritis: 'Penalaran Kritis',
-                                                                    kreativitas: 'Kreativitas',
-                                                                    kolaborasi: 'Kolaborasi',
-                                                                    kemandirian: 'Kemandirian',
-                                                                    komunikasi: 'Komunikasi',
-                                                                    kebinekaanGlobal: 'Kebinekaan Global',
-                                                                    berimanTakwa: 'Beriman & Bertakwa'
-                                                                };
-                                                                return (
-                                                                    <span key={key} className="inline-flex items-center gap-1 before:content-['✓'] before:text-black before:font-bold">
-                                                                        {labelMap[key]}
-                                                                    </span>
-                                                                );
-                                                            })}
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-
-                                {/* 2. Desain Pembelajaran */}
-                                <div className="space-y-4 print-avoid-break mb-8">
-                                    <h4 className="text-md font-bold uppercase border-b border-black pb-1 mb-3 text-black">
-                                        II. DESAIN PEMBELAJARAN
-                                    </h4>
-                                    
-                                    <table className="print-table w-full border-collapse">
-                                        <tbody>
-                                            <tr>
-                                                <td className="w-1/3 font-semibold" style={{ border: '1px solid black', padding: '8px 12px' }}>Tujuan Pembelajaran (TP)</td>
-                                                <td className="w-2/3" style={{ border: '1px solid black', padding: '8px 12px' }}>
-                                                    {material.tp_code ? <strong className="font-bold">[{material.tp_code}] </strong> : ''}
-                                                    {material.tp_desc || 'Siswa memahami konsep ajar.'}
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td className="font-semibold" style={{ border: '1px solid black', padding: '8px 12px' }}>Praktik Pedagogis (Model)</td>
-                                                <td style={{ border: '1px solid black', padding: '8px 12px' }}>
-                                                    {material.pedagogical_model === 'PBL' ? 'Problem-Based Learning (PBL)' : 
-                                                     material.pedagogical_model === 'PjBL' ? 'Project-Based Learning (PjBL)' : 
-                                                     material.pedagogical_model === 'Inquiry' ? 'Inquiry Learning' : 
-                                                     material.pedagogical_model === 'Discovery' ? 'Discovery Learning' : 
-                                                     material.pedagogical_model || 'Direct Instruction (Tatap Muka)'}
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td className="font-semibold" style={{ border: '1px solid black', padding: '8px 12px' }}>Lingkungan Pembelajaran</td>
-                                                <td style={{ border: '1px solid black', padding: '8px 12px' }}>{material.learning_environment || 'Ruang kelas yang diatur fleksibel untuk mendukung kolaborasi dan diskusi kelompok.'}</td>
-                                            </tr>
-                                            <tr>
-                                                <td className="font-semibold" style={{ border: '1px solid black', padding: '8px 12px' }}>Kemitraan Pembelajaran</td>
-                                                <td style={{ border: '1px solid black', padding: '8px 12px' }}>{rppKemitraan}</td>
-                                            </tr>
-                                            <tr>
-                                                <td className="font-semibold" style={{ border: '1px solid black', padding: '8px 12px' }}>Pemanfaatan Digital</td>
-                                                <td style={{ border: '1px solid black', padding: '8px 12px' }}>{rppDigital}</td>
-                                            </tr>
-                                            <tr>
-                                                <td className="font-semibold" style={{ border: '1px solid black', padding: '8px 12px' }}>Media & Ilustrasi Ajar (AI)</td>
-                                                <td style={{ border: '1px solid black', padding: '8px 12px' }}>
-                                                    {material.thumbnail ? (
-                                                        <div className="my-2 max-w-sm rounded border border-black p-1 bg-white">
-                                                            <img src={material.thumbnail} alt={material.title} className="w-full h-auto object-cover max-h-48" />
-                                                        </div>
-                                                    ) : material.image_prompt ? (
-                                                        <div className="my-2 max-w-md rounded border border-gray-400 p-3 bg-gray-50 text-[9.5pt]">
-                                                            <div className="flex items-center gap-1 text-violet-700 font-bold mb-1">
-                                                                <span className="text-[8pt] uppercase tracking-wider font-mono">✦ PROMPT VISUAL AI:</span>
-                                                            </div>
-                                                            <p className="italic text-gray-800 leading-relaxed font-serif">"{material.image_prompt}"</p>
-                                                            <div className="mt-2.5 h-32 w-full rounded border border-dashed border-gray-400 bg-white flex flex-col items-center justify-center text-center p-2">
-                                                                <span className="text-[7.5pt] font-mono tracking-wider text-gray-500 uppercase">✦ REPRESENTASI VISUAL / BAHAN AJAR ✦</span>
-                                                                <span className="text-[6.5pt] text-gray-400 mt-1 max-w-xs leading-normal">Berisi ilustrasi hasil buatan AI atau gambar thumbnail yang di upload secara manual</span>
-                                                            </div>
-                                                        </div>
-                                                    ) : (
-                                                        <span className="text-gray-500 italic text-[9.5pt]">Berisi ilustrasi hasil buatan AI atau gambar thumbnail yang di upload secara manual</span>
-                                                    )}
-                                                </td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-
-                                {/* 3. Langkah-Langkah Pembelajaran */}
-                                <div className="space-y-4 mb-8 print-avoid-break">
-                                    <h4 className="text-md font-bold uppercase border-b border-black pb-1 mb-3 text-black">
-                                        III. LANGKAH-LANGKAH PEMBELAJARAN (PENGALAMAN BELAJAR)
-                                    </h4>
-                                    <p className="text-xs italic text-gray-700 mb-2">
-                                        *Dilaksanakan dengan menerapkan prinsip Berkesadaran (Mindful), Bermakna (Meaningful), dan Menggembirakan (Joyful)
-                                    </p>
-                                    
-                                    <table className="print-table w-full border-collapse">
-                                        <thead>
-                                            <tr>
-                                                <th className="w-1/4" style={{ border: '1px solid black', padding: '8px 12px', backgroundColor: '#f2f2f2', fontWeight: 'bold' }}>Tahapan Aktivitas</th>
-                                                <th className="w-3/4" style={{ border: '1px solid black', padding: '8px 12px', backgroundColor: '#f2f2f2', fontWeight: 'bold' }}>Langkah Skenario Pengalaman Belajar</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <tr>
-                                                <td className="font-semibold" style={{ border: '1px solid black', padding: '8px 12px' }}>
-                                                    MEMAHAMI <br/>
-                                                    <span className="text-[9pt] font-normal italic text-gray-600">(Understanding)</span>
-                                                </td>
-                                                <td style={{ border: '1px solid black', padding: '8px 12px' }}>
-                                                    <div className="leading-relaxed text-black font-normal text-left" style={{ whiteSpace: 'pre-wrap', overflowWrap: 'break-word' }}>
-                                                        {understandingActivity?.replace(/\u00A0/g, ' ')}
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td className="font-semibold" style={{ border: '1px solid black', padding: '8px 12px' }}>
-                                                    MENGAPLIKASI <br/>
-                                                    <span className="text-[9pt] font-normal italic text-gray-600">(Applying)</span>
-                                                </td>
-                                                <td style={{ border: '1px solid black', padding: '8px 12px' }}>
-                                                    <div className="leading-relaxed text-black font-normal text-left" style={{ whiteSpace: 'pre-wrap', overflowWrap: 'break-word' }}>
-                                                        {applicationActivity?.replace(/\u00A0/g, ' ')}
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td className="font-semibold" style={{ border: '1px solid black', padding: '8px 12px' }}>
-                                                    MEREFLEKSI <br/>
-                                                    <span className="text-[9pt] font-normal italic text-gray-600">(Reflecting)</span>
-                                                </td>
-                                                <td style={{ border: '1px solid black', padding: '8px 12px' }}>
-                                                    <div className="leading-relaxed text-black font-normal text-left" style={{ whiteSpace: 'pre-wrap', overflowWrap: 'break-word' }}>
-                                                        {reflectionActivity?.replace(/\u00A0/g, ' ')}
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-
-                                {/* 4. Asesmen dan Tindak Lanjut */}
-                                <div className="space-y-4 print-avoid-break mb-8">
-                                    <h4 className="text-md font-bold uppercase border-b border-black pb-1 mb-3 text-black">
-                                        IV. ASESMEN DAN RENCANA TINDAK LANJUT
-                                    </h4>
-                                    
-                                    <table className="print-table w-full border-collapse">
-                                        <thead>
-                                            <tr>
-                                                <th className="w-1/4" style={{ border: '1px solid black', padding: '8px 12px', backgroundColor: '#f2f2f2', fontWeight: 'bold' }}>Jenis Asesmen</th>
-                                                <th className="w-2/4" style={{ border: '1px solid black', padding: '8px 12px', backgroundColor: '#f2f2f2', fontWeight: 'bold' }}>Metode & Instrumen</th>
-                                                <th className="w-1/4" style={{ border: '1px solid black', padding: '8px 12px', backgroundColor: '#f2f2f2', fontWeight: 'bold' }}>Waktu Pelaksanaan</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {/* Initial */}
-                                            <tr>
-                                                <td className="font-semibold" style={{ border: '1px solid black', padding: '8px 12px' }}>Asesmen Awal (Diagnostik)</td>
-                                                <td style={{ border: '1px solid black', padding: '8px 12px' }}>
-                                                    {assignments.filter(a => a.assessment_type === 'initial').map(a => `${a.title} (${INSTRUMENT_MAP[a.instrument_type] || a.instrument_type})`).join(', ') || 'Tanya Jawab Lisan / Kuis Diagnostik Singkat'}
-                                                </td>
-                                                <td style={{ border: '1px solid black', padding: '8px 12px' }}>Awal Pertemuan Pertama</td>
-                                            </tr>
-                                            {/* Formative */}
-                                            <tr>
-                                                <td className="font-semibold" style={{ border: '1px solid black', padding: '8px 12px' }}>Asesmen Formatif (Proses)</td>
-                                                <td style={{ border: '1px solid black', padding: '8px 12px' }}>
-                                                    {assignments.filter(a => a.assessment_type === 'formative').map(a => `${a.title} (${INSTRUMENT_MAP[a.instrument_type] || a.instrument_type})`).join(', ') || 'Observasi Keterlibatan Diskusi & Umpan Balik Langsung Saat Penyusunan Draf Tabel'}
-                                                </td>
-                                                <td style={{ border: '1px solid black', padding: '8px 12px' }}>Selama Proses Pembelajaran</td>
-                                            </tr>
-                                            {/* Summative */}
-                                            <tr>
-                                                <td className="font-semibold" style={{ border: '1px solid black', padding: '8px 12px' }}>Asesmen Sumatif (Akhir)</td>
-                                                <td style={{ border: '1px solid black', padding: '8px 12px' }}>
-                                                    {assignments.filter(a => a.assessment_type === 'summative').map(a => `${a.title} (${INSTRUMENT_MAP[a.instrument_type] || a.instrument_type})`).join(', ') || 'Penilaian Kinerja Presentasi Infografis Digital & Gallery Walk'}
-                                                </td>
-                                                <td style={{ border: '1px solid black', padding: '8px 12px' }}>Akhir Pertemuan Kedua / Projek</td>
-                                            </tr>
-                                            {/* RTL */}
-                                            <tr>
-                                                <td className="font-semibold" style={{ border: '1px solid black', padding: '8px 12px' }}>Rencana Tindak Lanjut (RTL)</td>
-                                                <td colSpan={2} style={{ border: '1px solid black', padding: '8px 12px' }}>
-                                                    <strong>Remedial:</strong> {rppRemedial}<br/>
-                                                    <strong className="block mt-2">Pengayaan:</strong> {rppPengayaan}
-                                                </td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-
-                                {/* 5. Detail Instrumen Asesmen & KKTP */}
-                                <div className="space-y-4 mb-8 print-page-break">
-                                    <h4 className="text-md font-bold uppercase border-b border-black pb-1 mb-3 text-black">
-                                        V. DETAIL INSTRUMEN ASESMEN & KRITERIA KETUNTASAN (KKTP)
-                                    </h4>
-                                    {renderAssessmentDetails(assignments)}
-                                </div>
-
-                                {/* 6. Rubrik Penilaian Kinerja */}
-                                {!hasSummativeAssignments && (
-                                    <div className="space-y-4 mb-8 print-page-break">
-                                        <h4 className="text-md font-bold uppercase border-b border-black pb-1 mb-3 text-black">
-                                            VI. RUBRIK PENILAIAN ASESMEN KINERJA (SUMATIF)
-                                        </h4>
-                                        
-                                        <table className="print-table w-full border-collapse">
-                                            <thead>
-                                                <tr>
-                                                    <th className="w-1/4" style={{ border: '1px solid black', padding: '8px 12px', backgroundColor: '#f2f2f2', fontWeight: 'bold' }}>Kriteria Penilaian</th>
-                                                    <th className="w-3/16" style={{ border: '1px solid black', padding: '8px 12px', backgroundColor: '#f2f2f2', fontWeight: 'bold' }}>Perlu Perbaikan (&lt; 60)</th>
-                                                    <th className="w-3/16" style={{ border: '1px solid black', padding: '8px 12px', backgroundColor: '#f2f2f2', fontWeight: 'bold' }}>Cukup (60 - 74)</th>
-                                                    <th className="w-3/16" style={{ border: '1px solid black', padding: '8px 12px', backgroundColor: '#f2f2f2', fontWeight: 'bold' }}>Baik (75 - 89)</th>
-                                                    <th className="w-3/16" style={{ border: '1px solid black', padding: '8px 12px', backgroundColor: '#f2f2f2', fontWeight: 'bold' }}>Sangat Baik (90 - 100)</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {isStructuredDataMaterial ? (
-                                                    <>
-                                                        <tr>
-                                                            <td className="font-semibold" style={{ border: '1px solid black', padding: '8px 12px' }}>Pemahaman Konsep Data & Informasi</td>
-                                                            <td style={{ border: '1px solid black', padding: '8px 12px', fontSize: '9pt', color: '#333333' }}>Belum mampu membedakan dan mendefinisikan apa itu data and informasi.</td>
-                                                            <td style={{ border: '1px solid black', padding: '8px 12px', fontSize: '9pt', color: '#333333' }}>Mampu menyebutkan definisi data dan informasi, namun belum bisa membedakannya dengan jelas.</td>
-                                                            <td style={{ border: '1px solid black', padding: '8px 12px', fontSize: '9pt', color: '#333333' }}>Mampu mendefinisikan dan membedakan data dan informasi secara tepat.</td>
-                                                            <td style={{ border: '1px solid black', padding: '8px 12px', fontSize: '9pt', color: '#333333' }}>Mampu mendefinisikan, membedakan, serta memberikan contoh lain dari data dan informasi di kehidupan sehari-hari dengan sangat tepat.</td>
-                                                        </tr>
-                                                        <tr>
-                                                            <td className="font-semibold" style={{ border: '1px solid black', padding: '8px 12px' }}>Pengelompokan Data (LKPD)</td>
-                                                            <td style={{ border: '1px solid black', padding: '8px 12px', fontSize: '9pt', color: '#333333' }}>Data acak belum berhasil dikelompokkan menjadi kategori yang tepat.</td>
-                                                            <td style={{ border: '1px solid black', padding: '8px 12px', fontSize: '9pt', color: '#333333' }}>Sebagian data acak berhasil dikelompokkan ke dalam kategori, namun masih banyak yang tidak tepat sasaran.</td>
-                                                            <td style={{ border: '1px solid black', padding: '8px 12px', fontSize: '9pt', color: '#333333' }}>Seluruh data acak berhasil dikelompokkan ke dalam kategori yang tepat dan bermakna.</td>
-                                                            <td style={{ border: '1px solid black', padding: '8px 12px', fontSize: '9pt', color: '#333333' }}>Seluruh data berhasil dikelompokkan dengan sangat terstruktur dan ditambahkan kategori turunan yang lebih spesifik secara mandiri.</td>
-                                                        </tr>
-                                                        <tr>
-                                                            <td className="font-semibold" style={{ border: '1px solid black', padding: '8px 12px' }}>Penyajian Visual (Infografis)</td>
-                                                            <td style={{ border: '1px solid black', padding: '8px 12px', fontSize: '9pt', color: '#333333' }}>Infografis belum selesai atau tidak relevan dengan data yang dikelompokkan.</td>
-                                                            <td style={{ border: '1px solid black', padding: '8px 12px', fontSize: '9pt', color: '#333333' }}>Infografis menyajikan data, tetapi visualisasinya kurang jelas or sulit dibaca.</td>
-                                                            <td style={{ border: '1px solid black', padding: '8px 12px', fontSize: '9pt', color: '#333333' }}>Infografis disajikan dengan rapi, jelas, dan memuat seluruh data yang telah terstruktur.</td>
-                                                            <td style={{ border: '1px solid black', padding: '8px 12px', fontSize: '9pt', color: '#333333' }}>Infografis sangat menarik, informatif, desain visualnya sangat mendukung kemudahan membaca data, dan sangat komunikatif.</td>
-                                                        </tr>
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <tr>
-                                                            <td className="font-semibold" style={{ border: '1px solid black', padding: '8px 12px' }}>Pemahaman Konsep Utama</td>
-                                                            <td style={{ border: '1px solid black', padding: '8px 12px', fontSize: '9pt', color: '#333333' }}>Menunjukkan sedikit atau tidak ada pemahaman terhadap konsep dasar.</td>
-                                                            <td style={{ border: '1px solid black', padding: '8px 12px', fontSize: '9pt', color: '#333333' }}>Memahami konsep dasar secara garis besar namun mengalami kesulitan dalam merinci.</td>
-                                                            <td style={{ border: '1px solid black', padding: '8px 12px', fontSize: '9pt', color: '#333333' }}>Memahami konsep utama dengan baik dan dapat menjelaskannya dengan logis.</td>
-                                                            <td style={{ border: '1px solid black', padding: '8px 12px', fontSize: '9pt', color: '#333333' }}>Memahami konsep secara mendalam dan mampu menghubungkannya dengan konsep lain secara luas.</td>
-                                                        </tr>
-                                                        <tr>
-                                                            <td className="font-semibold" style={{ border: '1px solid black', padding: '8px 12px' }}>Kemampuan Analisis & Aplikasi</td>
-                                                            <td style={{ border: '1px solid black', padding: '8px 12px', fontSize: '9pt', color: '#333333' }}>Belum mampu menerapkan konsep pada masalah sederhana.</td>
-                                                            <td style={{ border: '1px solid black', padding: '8px 12px', fontSize: '9pt', color: '#333333' }}>Mampu menerapkan konsep pada beberapa bagian masalah tetapi kurang sistematis.</td>
-                                                            <td style={{ border: '1px solid black', padding: '8px 12px', fontSize: '9pt', color: '#333333' }}>Mampu menerapkan konsep dengan tepat untuk memecahkan studi kasus.</td>
-                                                            <td style={{ border: '1px solid black', padding: '8px 12px', fontSize: '9pt', color: '#333333' }}>Mampu memecahkan masalah kompleks dengan solusi kreatif dan analisis yang matang.</td>
-                                                        </tr>
-                                                        <tr>
-                                                            <td className="font-semibold" style={{ border: '1px solid black', padding: '8px 12px' }}>Kualitas Presentasi & Laporan</td>
-                                                            <td style={{ border: '1px solid black', padding: '8px 12px', fontSize: '9pt', color: '#333333' }}>Penyajian tidak rapi, kurang jelas, atau tidak lengkap.</td>
-                                                            <td style={{ border: '1px solid black', padding: '8px 12px', fontSize: '9pt', color: '#333333' }}>Penyajian cukup terstruktur namun kurang komunikatif.</td>
-                                                            <td style={{ border: '1px solid black', padding: '8px 12px', fontSize: '9pt', color: '#333333' }}>Penyajian rapi, sistematis, jelas, dan memuat semua aspek materi.</td>
-                                                            <td style={{ border: '1px solid black', padding: '8px 12px', fontSize: '9pt', color: '#333333' }}>Penyajian sangat informatif, estetik, menarik, dan sangat komunikatif.</td>
-                                                        </tr>
-                                                    </>
-                                                )}
-                                            </tbody>
-                                        </table>
+                                        ))}
                                     </div>
                                 )}
-
-                                {/* 7. Lembar Kerja Peserta Didik (LKPD) */}
-                                <div className="space-y-4 mb-12 print-page-break">
-                                    <h4 className="text-md font-bold uppercase border-b border-black pb-1 mb-3 text-black">
-                                        {hasSummativeAssignments ? "VI. LEMBAR KERJA PESERTA DIDIK (LKPD)" : "VII. LEMBAR KERJA PESERTA DIDIK (LKPD)"}
-                                    </h4>
-                                    
-                                    <div className="border border-black p-6 rounded-lg bg-gray-50/50">
-                                        <div className="text-center mb-6">
-                                            <h5 className="text-sm font-bold uppercase tracking-wide text-black">{lkpdTitle}</h5>
-                                            <p className="text-[10pt] italic text-gray-700 mt-1">Aktivitas Kerja Kelompok Kolaboratif</p>
-                                        </div>
-
-                                        <div className="space-y-4 text-[11pt]">
-                                            <div>
-                                                <strong className="block font-bold mb-1 text-black">A. Bahan Pengamatan / Stimulus Data:</strong>
-                                                <div className="p-3 bg-white border border-gray-300 rounded font-mono text-[10pt] tracking-tight leading-relaxed whitespace-pre-wrap break-words">
-                                                    {lkpdStimulus?.replace(/\u00A0/g, ' ')}
-                                                </div>
-                                            </div>
-
-                                            <div>
-                                                <strong className="block font-bold mb-1 text-black">B. Pertanyaan Pemantik Diskusi:</strong>
-                                                <div className="pl-4 italic text-gray-800 whitespace-pre-line leading-relaxed break-words">
-                                                    {lkpdPemantik?.replace(/\u00A0/g, ' ')}
-                                                </div>
-                                            </div>
-
-                                            <div>
-                                                <strong className="block font-bold mb-1 text-black">C. Langkah-Langkah Kerja Kelompok:</strong>
-                                                <div className="space-y-3.5 mt-2.5">
-                                                    {parseLkpdLangkah(lkpdLangkah).map((item, idx) => {
-                                                        if (item.type === 'sub') {
-                                                            return (
-                                                                <div key={idx} className="pl-8 pr-4 py-2.5 my-1.5 border-l-2 border-black bg-gray-50/70 text-[9.5pt] text-gray-800 italic leading-relaxed whitespace-pre-wrap rounded-r-md break-words">
-                                                                    {item.content?.replace(/\u00A0/g, ' ')}
-                                                                </div>
-                                                            );
-                                                        }
-                                                        return (
-                                                            <div key={idx} className="flex items-start gap-3.5 text-[10pt] leading-relaxed text-black">
-                                                                {item.type === 'step' ? (
-                                                                    <span className="flex h-5.5 w-5.5 items-center justify-center rounded-full border border-black text-[9pt] font-black shrink-0 mt-0.5 bg-black text-white">
-                                                                        {item.num}
-                                                                    </span>
-                                                                ) : (
-                                                                    <span className="h-1.5 w-1.5 rounded-full bg-black shrink-0 mt-2.5 ml-2" />
-                                                                )}
-                                                                <span className="flex-1 font-medium whitespace-pre-wrap break-words">{item.content?.replace(/\u00A0/g, ' ')}</span>
-                                                            </div>
-                                                        );
-                                                    })}
-                                                </div>
-                                            </div>
-                                        </div>
+                                
+                                <div className="mt-4 grid grid-cols-2 gap-4 pt-4 border-t border-black">
+                                    <div>
+                                        <p className="font-bold border-b border-black pb-1 mb-1 text-red-700">Tindak Lanjut Remedial</p>
+                                        <p className="text-sm">Bagi peserta didik yang belum mencapai KKTP, diberikan pendampingan personal dan tugas tambahan terkait pemahaman konsep dasar.</p>
                                     </div>
-                                </div>
-
-                                {/* 8. Sumber Belajar */}
-                                <div className="space-y-4 mb-12 print-page-break">
-                                    <h4 className="text-md font-bold uppercase border-b border-black pb-1 mb-3 text-black">
-                                        {hasSummativeAssignments ? "VII. SUMBER BELAJAR" : "VIII. SUMBER BELAJAR"}
-                                    </h4>
-                                    
-                                    <div className="border border-black p-6 rounded-lg bg-gray-50/50">
-                                        <div className="space-y-3.5 text-[11pt]">
-                                            {((material.resources && material.resources.length > 0) || material.external_link || material.file_path) ? (
-                                                <div className="space-y-4">
-                                                    {material.resources && material.resources.map((res: any, idx: number) => (
-                                                        <div key={idx} className="flex items-start gap-3.5 text-[10pt] leading-relaxed text-black">
-                                                            <span className="flex h-5.5 w-5.5 items-center justify-center rounded-full border border-black text-[9pt] font-black shrink-0 bg-black text-white">
-                                                                {idx + 1}
-                                                            </span>
-                                                            <div className="flex-1">
-                                                                <strong className="font-bold">{res.title || 'Sumber Belajar'}</strong>
-                                                                <span className="text-gray-500 mx-2">|</span>
-                                                                <a href={res.type === 'link' ? res.path : `/storage/${res.path}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline font-mono break-all text-[9.5pt]">
-                                                                    {res.path}
-                                                                </a>
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                    
-                                                    {/* Legacy External Link fallback */}
-                                                    {!material.resources?.length && material.external_link && (
-                                                        <div className="flex items-start gap-3.5 text-[10pt] leading-relaxed text-black">
-                                                            <span className="flex h-5.5 w-5.5 items-center justify-center rounded-full border border-black text-[9pt] font-black shrink-0 bg-black text-white">
-                                                                1
-                                                            </span>
-                                                            <div className="flex-1">
-                                                                <strong className="font-bold">Referensi / Link Eksternal</strong>
-                                                                <span className="text-gray-500 mx-2">|</span>
-                                                                <a href={material.external_link} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline font-mono break-all text-[9.5pt]">
-                                                                    {material.external_link}
-                                                                </a>
-                                                            </div>
-                                                        </div>
-                                                    )}
-
-                                                    {/* Legacy File Path fallback */}
-                                                    {!material.resources?.length && material.file_path && (
-                                                        <div className="flex items-start gap-3.5 text-[10pt] leading-relaxed text-black">
-                                                            <span className="flex h-5.5 w-5.5 items-center justify-center rounded-full border border-black text-[9pt] font-black shrink-0 bg-black text-white">
-                                                                {material.external_link ? '2' : '1'}
-                                                            </span>
-                                                            <div className="flex-1">
-                                                                <strong className="font-bold">Dokumen Lampiran</strong>
-                                                                <span className="text-gray-500 mx-2">|</span>
-                                                                <a href={`/storage/${material.file_path}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline font-mono break-all text-[9.5pt]">
-                                                                    /storage/{material.file_path}
-                                                                </a>
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            ) : (
-                                                <p className="text-xs text-gray-500 italic">Tidak ada sumber belajar tambahan yang disematkan.</p>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* 7. Tanda Tangan (Signature block) */}
-                                <div className="print-avoid-break mt-12 grid grid-cols-2 gap-12 text-center text-[11pt] text-black">
-                                    <div className="space-y-20">
-                                        <div className="space-y-1">
-                                            <p>Mengetahui,</p>
-                                            <p className="font-semibold">Kepala Sekolah {rppSchoolName}</p>
-                                        </div>
-                                        <div className="space-y-0.5">
-                                            <p className="font-bold underline">{kepalaSekolahName}</p>
-                                            <p className="text-[9.5pt]">NIP. {kepalaSekolahNip}</p>
-                                        </div>
-                                    </div>
-                                    <div className="space-y-20">
-                                        <div className="space-y-1">
-                                            <p>Buol, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
-                                            <p className="font-semibold">Guru Mata Pelajaran</p>
-                                        </div>
-                                        <div className="space-y-0.5">
-                                            <p className="font-bold underline">{material.teacher_name}</p>
-                                            <p className="text-[9.5pt]">{material.teacher_nip ? `NIP. ${material.teacher_nip}` : 'NIP. -'}</p>
-                                        </div>
+                                    <div>
+                                        <p className="font-bold border-b border-black pb-1 mb-1 text-green-700">Tindak Lanjut Pengayaan</p>
+                                        <p className="text-sm">Bagi peserta didik yang telah mencapai/melampaui KKTP, diberikan tantangan analisis studi kasus atau perannya sebagai tutor sebaya.</p>
                                     </div>
                                 </div>
                             </div>
+                        </section>
+
+                        {/* VII. LKPD */}
+                        <section className="print-avoid-break lkpd-section">
+                            <h3 className="font-bold text-lg mb-3 uppercase border-b-2 border-black pb-1">VII. LEMBAR KERJA PESERTA DIDIK (LKPD)</h3>
+                            
+                            <table className="w-full border-collapse mb-4 bg-gray-50 print:bg-white print:border-none print:mb-6" style={{ border: '1px solid black' }}>
+                                <tbody>
+                                    <tr>
+                                        <td className="w-1/2 p-4 align-top" style={{ border: 'none' }}>
+                                            <div className="border border-black p-4 rounded print:border-2">
+                                                <p className="font-bold border-b border-black inline-block mb-2">Kelompok: ..............................................................</p>
+                                                <p className="font-semibold text-sm mb-1">Nama Anggota:</p>
+                                                <ol className="list-decimal pl-5 space-y-1 text-sm font-semibold">
+                                                    <li>........................................................................</li>
+                                                    <li>........................................................................</li>
+                                                    <li>........................................................................</li>
+                                                    <li>........................................................................</li>
+                                                    <li>........................................................................</li>
+                                                </ol>
+                                            </div>
+                                        </td>
+                                        <td className="w-1/2 p-4 align-bottom text-right print:hidden hide-in-word" style={{ border: 'none' }}>
+                                            <button 
+                                                onClick={() => handlePrint('lkpd')}
+                                                className="inline-flex items-center justify-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-lg shadow hover:bg-indigo-700 transition font-bold"
+                                            >
+                                                <Printer className="h-5 w-5" />
+                                                Cetak Khusus LKPD
+                                            </button>
+                                            <p className="text-xs text-gray-500 mt-2 text-right">Tombol ini hanya akan mencetak bagian LKPD saja untuk dibagikan ke siswa.</p>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            
+                            <div className="border border-black p-6 bg-white min-h-[300px]">
+                                <HtmlContent html={lkpdContent} />
+                            </div>
+                        </section>
+
+                        {/* VIII. Sumber Belajar */}
+                        <section className="print-avoid-break">
+                            <h3 className="font-bold text-lg mb-3 uppercase border-b-2 border-black pb-1">VIII. SUMBER BELAJAR</h3>
+                            {modulAjar.material_resources && modulAjar.material_resources.length > 0 ? (
+                                <ul className="list-decimal pl-5 text-sm space-y-2">
+                                    {modulAjar.material_resources.map((res: any) => (
+                                        <li key={res.id}>
+                                            <div className="flex items-center gap-2">
+                                                <span className="font-semibold">{res.title || 'Sumber Belajar'}</span>
+                                                {res.type === 'link' && <a href={res.path} target="_blank" className="text-blue-600 underline print:no-underline">[{res.path}]</a>}
+                                                {res.type === 'youtube' && <span className="text-red-600 font-semibold">[YouTube]</span>}
+                                                {res.type === 'file' && <span className="text-green-600 font-semibold">[Berkas Terlampir]</span>}
+                                            </div>
+                                        </li>
+                                    ))}
+                                </ul>
+                            ) : (
+                                <p className="text-sm">1. Buku Siswa / Buku Teks Pelajaran yang relevan.<br/>2. Modul ajar yang disediakan oleh guru melalui LMS.</p>
+                            )}
+                        </section>
+
+                        {/* Tanda Tangan */}
+                        <section className="mt-12 pt-8 print-avoid-break hide-in-lkpd-print">
+                            <table className="w-full border-0 text-sm" style={{ border: 'none' }}>
+                                <tbody>
+                                    <tr>
+                                        <td className="w-1/2 text-center align-top" style={{ border: 'none' }}>
+                                            <p>Mengetahui,</p>
+                                            <p className="font-bold">Kepala {schoolName}</p>
+                                            <br/><br/><br/><br/>
+                                            <p className="font-bold underline">{headmasterName}</p>
+                                            <p>NIP. {headmasterNip}</p>
+                                        </td>
+                                        <td className="w-1/2 text-center align-top" style={{ border: 'none' }}>
+                                            <p>Buol, {new Date(modulAjar.created_at).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                                            <p className="font-bold">Guru Mata Pelajaran</p>
+                                            <br/><br/><br/><br/>
+                                            <p className="font-bold underline">{modulAjar.teacher_name}</p>
+                                            <p>NIP. {modulAjar.teacher_nip || '-'}</p>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </section>
+
+                    </div>
+                    
+                    {/* Print Footer */}
+                    <div className="hidden print:block print-footer fixed bottom-0 left-0 w-full text-center text-[10px] text-black/50 pb-1 bg-white z-[9999]" style={{ position: 'fixed', bottom: 0, left: 0, width: '100%', zIndex: 9999 }}>
+                        <div className="border-t border-gray-300 pt-1">
+                            Modul Ajar/RPP di cetak melalui LMS-Mokopani
                         </div>
                     </div>
                 </div>
-            </AppLayout>
-        );
-    
+                
+                <style dangerouslySetInnerHTML={{__html: `
+                    table {
+                        width: 100% !important;
+                        table-layout: fixed !important;
+                    }
+                    td, th {
+                        word-wrap: break-word;
+                        overflow-wrap: anywhere;
+                        word-break: normal;
+                    }
+                    .prose img {
+                        max-width: 100% !important;
+                        height: auto !important;
+                    }
+                    @media print {
+                        body { background: white; }
+                        .print-lkpd-mode section:not(.lkpd-section) { display: none !important; }
+                        .print-lkpd-mode .hide-in-lkpd-print { display: none !important; }
+                        .print\\:hidden { display: none !important; }
+                        .print-avoid-break { page-break-inside: avoid; }
+                        table { page-break-inside: auto; }
+                        tr { page-break-inside: avoid; page-break-after: auto; }
+                        .prose { max-width: 100% !important; }
+                    }
+                `}} />
+            </div>
+        </AppLayout>
+    );
 }

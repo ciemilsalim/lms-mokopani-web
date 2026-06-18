@@ -37,14 +37,9 @@ Buatkan rancangan utuh dan mendalam yang terdiri dari:
      * *Tingkat Cukup/Baik*: Pemahaman standar/utama materi sesuai target TP.
      * *Tingkat Sangat Baik/Tantangan*: Materi pengayaan, eksplorasi tingkat lanjut, atau studi kasus kritis yang lebih menantang.
 3. **Ide Gambar Relevan**: Deskripsi detail (minimal 2 kalimat) ilustrasi visual atau infografis yang relevan untuk memvisualisasikan konsep abstrak tersebut agar lebih mudah dipahami murid. Dalam bentuk teks biasa.
-4. **Tahapan Kegiatan Pembelajaran (RPP)**: 
-   - Tahap Memahami (Understanding): Langkah operasional guru memicu rasa ingin tahu murid (stimulus/pertanyaan pemantik yang menantang tapi dikemas sederhana), eksplorasi mandiri murid, dan diskusi kelas terarah. Tulis secara detail berupa aktivitas nyata (minimal 4 kalimat detail).
-   - Tahap Mengaplikasi (Application): Skenario aktivitas praktis, studi kasus nyata, atau mini-projek kelompok yang ramah anak SMP di mana murid secara konkret mengimplementasikan konsep tersebut untuk memecahkan masalah. (minimal 4 kalimat detail).
-   - Tahap Merefleksi (Reflection): Aktivitas metakognisi terstruktur di mana murid menilai pemahaman mereka dengan bahasa sederhana, mendiskusikan miskonsepsi yang sempat terjadi, dan merumuskan kaitan materi ini dengan masa depan mereka (minimal 4 kalimat detail).
-5. **Lembar Kerja Peserta Didik (LKPD)**: Lembar aktivitas mandiri/kelompok yang memuat Petunjuk Belajar, Tugas/Kegiatan terperinci menggunakan bahasa sederhana, Pertanyaan Esensial, dan Kriteria Evaluasi sederhana.
 
 ===== ATURAN FORMAT HTML WAJIB =====
-Semua field yang berisi teks panjang (content, understanding, application, reflection, lkpd) WAJIB ditulis menggunakan HTML semantik yang bersih dan profesional. Gunakan tag berikut:
+Semua field yang berisi teks panjang (content) WAJIB ditulis menggunakan HTML semantik yang bersih dan profesional. Gunakan tag berikut:
 - <h2> untuk judul bab/seksi utama (contoh: Kemampuan Prasyarat, Materi Inti, Diferensiasi)
 - <h3> untuk sub-judul di dalam seksi
 - <p> untuk paragraf teks penjelasan
@@ -84,11 +79,7 @@ PENTING:
 {
   "title": "Judul materi (teks biasa tanpa HTML)...",
   "content": "HTML terformat profesional berisi prasyarat, konsep inti dari konkret ke abstrak, serta 3 tingkat diferensiasi pemahaman...",
-  "image_prompt": "Deskripsi gambar visual ilustrasi (teks biasa)...",
-  "understanding": "HTML terformat untuk kegiatan memahami...",
-  "application": "HTML terformat untuk kegiatan mengaplikasikan...",
-  "reflection": "HTML terformat untuk kegiatan merefleksikan...",
-  "lkpd": "HTML terformat rancangan LKPD yang rapi..."
+  "image_prompt": "Deskripsi gambar visual ilustrasi (teks biasa)..."
 }
 PROMPT
             ],
@@ -548,6 +539,53 @@ Kalimat TP harus berorientasi pada murid (misal: "Peserta didik mampu mengintegr
 
 PENTING:
 - Kembalikan HANYA berupa string kalimat Tujuan Pembelajaran (TP) tersebut secara langsung tanpa format JSON, tanpa penjelasan pembuka atau penutup.
+PROMPT
+            ],
+            [
+                'teacher_id' => null,
+                'key' => 'modul_ajar',
+                'name' => 'Perakit Modul Ajar Terintegrasi',
+                'description' => 'Prompt yang digunakan untuk merakit RPP, desain pembelajaran terstruktur, dan LKPD dalam format JSON terperinci.',
+                'placeholders' => ['{subject}', '{class}', '{tp}', '{material}', '{pedagogical_model}', '{initial_assessments}', '{formative_assessments}', '{summative_assessments}'],
+                'prompt_text' => <<<PROMPT
+Kamu adalah asisten cerdas dan pakar Kurikulum Merdeka dengan konsep Pembelajaran Mendalam (Deep Learning) tingkat SMP di Indonesia.
+Tugasmu adalah menyusun Modul Ajar / RPP secara sangat lengkap dan mendalam untuk mata pelajaran {subject}, kelas {class}, Tujuan Pembelajaran (TP) "{tp}", dengan fokus materi "{material}", dan menggunakan model pembelajaran "{pedagogical_model}".
+Modul Ajar ini harus komprehensif, kaya konten, sangat detail, tetapi dikemas dengan bahasa yang sederhana, komunikatif, mudah dimengerti siswa SMP (usia 12-15 tahun), dan tidak menggunakan istilah ilmiah/akademis yang terlalu tinggi. Jika harus menggunakan istilah ilmiah khusus, sertakan penjelasan singkat yang mudah dalam tanda kurung.
+
+Gunakan data Asesmen yang sudah ditentukan sebagai referensi:
+- Asesmen Awal: {initial_assessments}
+- Asesmen Formatif: {formative_assessments}
+- Asesmen Sumatif: {summative_assessments}
+
+Format output harus berupa JSON valid tanpa code fence (```json ... ```), mengandung key:
+- alokasi_waktu: Alokasi waktu pembelajaran (contoh: "2 x 40 menit"). Teks biasa.
+- jumlah_pertemuan: Perkiraan jumlah pertemuan (contoh: "1 Pertemuan"). Teks biasa.
+- dimensi_profil: Dimensi profil pelajar pancasila yang relevan (contoh: "Bernalar Kritis, Kreatif, Gotong Royong"). Teks biasa.
+- lingkungan_pembelajaran: Deskripsi lingkungan pembelajaran (contoh: "Ruang Kelas dan Perpustakaan"). Teks biasa.
+- kemitraan_pembelajaran: Bentuk kemitraan (contoh: "Diskusi kelompok antar teman sebaya"). Teks biasa.
+- pemanfaatan_digital: Penggunaan teknologi (contoh: "Penggunaan tablet untuk mencari referensi"). Teks biasa.
+- media_ilustrasi: Deskripsi gambar/media ilustrasi ajar (image prompt visual). Teks biasa.
+- understanding: Kegiatan memahami (Understanding). Langkah operasional guru memicu rasa ingin tahu murid. Gunakan format HTML semantik.
+- application: Kegiatan mengaplikasikan (Application). Skenario aktivitas praktis, studi kasus nyata. Gunakan format HTML semantik.
+- reflection: Kegiatan merefleksikan (Reflection). Aktivitas metakognisi murid menilai pemahaman. Gunakan format HTML semantik.
+- lkpd: Lembar Kerja Peserta Didik lengkap dengan petunjuk, tugas, pertanyaan eksploratif, refleksi, dan rubrik. Gunakan format HTML semantik.
+
+===== ATURAN FORMAT HTML WAJIB =====
+Field yang wajib menggunakan HTML (understanding, application, reflection, lkpd) harus ditulis menggunakan HTML semantik yang bersih dan profesional.
+- <h2> untuk judul utama
+- <h3> untuk sub-judul
+- <p> untuk paragraf teks penjelasan
+- <strong> untuk menebalkan kata/frasa penting
+- <ul> dan <li> untuk daftar tidak berurutan (bullet points)
+- <ol> dan <li> untuk daftar berurutan (numbered list)
+- <blockquote> untuk kutipan atau pertanyaan pemantik
+- <table>, <thead>, <tbody>, <tr>, <th>, <td> untuk tabel (sangat wajib untuk kriteria/rubrik di LKPD)
+JANGAN gunakan Markdown (###, **, -, dll). WAJIB gunakan HTML tags.
+=======================================
+
+PENTING:
+- Gunakan bahasa yang sederhana, komunikatif, dan mudah dimengerti anak SMP.
+- Output HANYA berupa objek JSON valid dengan tepat 11 key di atas tanpa markdown code fence.
 PROMPT
             ]
         ];
