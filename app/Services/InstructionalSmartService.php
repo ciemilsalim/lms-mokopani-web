@@ -289,6 +289,7 @@ class InstructionalSmartService
         
         if ($type === 'oral_test') {
             return [
+                'description' => "Guru akan mengajukan pertanyaan secara lisan. Jawablah dengan percaya diri menggunakan bahasamu sendiri!",
                 'stimulus' => "Tes lisan mengenai pemahaman materi {$content}. Guru mengajukan pertanyaan secara langsung dan menilai jawaban siswa.",
                 'questions' => [
                     ['text' => "Jelaskan konsep dasar {$content} dengan bahasamu sendiri!", 'answer_guide' => "Cari pemaparan yang mencakup definisi, fungsi, dan contoh penerapan {$content}."],
@@ -359,6 +360,7 @@ class InstructionalSmartService
             }
 
             return [
+                'description' => "Kerjakan soal-soal berikut dengan teliti untuk mengukur pemahamanmu terhadap materi ini.",
                 'quiz_mode' => $mode,
                 'questions' => $questions,
                 'levels' => [
@@ -376,6 +378,7 @@ class InstructionalSmartService
 
         if ($type === 'rubric' || $type === 'oral_qa') {
             return [
+                'description' => "Amati dua contoh yang diberikan guru, lalu jawablah pertanyaan pemantik dengan pendapatmu sendiri.",
                 'stimulus' => "Guru menyajikan dua contoh kontras terkait {$content} (misalnya: benar vs salah, fakta vs hoaks, atau efektif vs tidak efektif). Guru mengajukan pertanyaan pemantik: \"Menurut kalian mana yang lebih tepat? Mengapa? Bagaimana kalian membuktikannya?\"",
                 'criteria' => "Kemampuan Analisis Awal " . $content,
                 'levels' => [
@@ -393,6 +396,7 @@ class InstructionalSmartService
 
         if ($type === 'quiz_survey') {
             return [
+                'description' => "Jawablah beberapa pertanyaan berikut sesuai dengan pemahamanmu saat ini. Tidak perlu khawatir jika ada yang belum bisa — ini hanya untuk mengetahui sejauh mana pengetahuan awalku terkait materi ini.",
                 'questions' => [
                     [
                         'id' => 'q1',
@@ -437,6 +441,7 @@ class InstructionalSmartService
 
         if ($type === 'observation_checklist') {
             return [
+                'description' => "Lembar observasi untuk mengamati keterlibatan dan partisipasi siswa selama kegiatan pembelajaran.",
                 'indicators' => [
                     ['name' => "Murid dapat menjelaskan konsep dasar {$content} secara lisan."],
                     ['name' => "Murid mampu mengidentifikasi komponen utama dari {$content}."],
@@ -459,6 +464,7 @@ class InstructionalSmartService
 
         if ($type === 'performance_observation') {
             return [
+                'description' => "Lembar pengamatan untuk mencatat keterlibatan dan perilaku siswa selama proses pembelajaran.",
                 'observation_mode' => $observationMode ?? 'checklist',
                 'stimulus' => "Guru berkeliling mengamati keterlibatan dan perilaku murid (individu/kelompok) saat melakukan aktivitas terkait {$content}.",
                 'indicators' => [
@@ -483,6 +489,7 @@ class InstructionalSmartService
 
         if ($type === 'guided_discussion') {
             return [
+                'description' => "Panduan observasi untuk mengamati partisipasi siswa selama diskusi terpandu.",
                 'observation_mode' => $observationMode ?? 'checklist',
                 'stimulus' => "Amati dan catat keterlibatan siswa selama diskusi terpandu berlangsung mengenai {$content}.",
                 'indicators' => [
@@ -507,6 +514,7 @@ class InstructionalSmartService
 
         if ($type === 'exit_ticket') {
             return [
+                'description' => "Sebelum mengakhiri pembelajaran hari ini, jawablah beberapa pertanyaan refleksi singkat berikut dengan jujur ya!",
                 'assessment_mode' => 'default',
                 'stimulus' => "Sebelum mengakhiri sesi, silakan jawab beberapa pertanyaan refleksi singkat (Exit Ticket) berikut:",
                 'questions' => [
@@ -530,6 +538,7 @@ class InstructionalSmartService
 
         if ($type === 'self_assessment') {
             return [
+                'description' => "Nilai dirimu sendiri secara jujur dengan menandai pernyataan yang paling sesuai dengan kondisimu saat ini.",
                 'assessment_mode' => 'default',
                 'stimulus' => "Refleksikan pemahamanmu mengenai {$content}. Tandai setiap pernyataan yang paling menggambarkan kondisimu saat ini.",
                 'indicators' => [
@@ -554,6 +563,7 @@ class InstructionalSmartService
 
         if ($type === 'reflective_journal') {
             return [
+                'description' => "Tuliskan refleksi pribadimu menggunakan kerangka 4P (Peristiwa, Perasaan, Pembelajaran, Penerapan) dengan jujur dan mendalam.",
                 'stimulus' => "Tuliskan refleksi pribadimu mengenai perjalanan belajar {$content} hari ini menggunakan kerangka 4P:",
                 'questions' => [
                     ['text' => "Peristiwa: Ceritakan apa yang kamu lakukan dalam aktivitas hari ini."],
@@ -577,6 +587,7 @@ class InstructionalSmartService
 
         if ($type === 'peer_assessment') {
             return [
+                'description' => "Berikan penilaian dan apresiasi terhadap kontribusi teman kelompokmu secara objektif dan membangun.",
                 'assessment_mode' => 'default',
                 'stimulus' => "Berikan penilaian objektif dan apresiasi kepada rekan kelompokmu atas kolaborasi dalam materi {$content}.",
                 'indicators' => [
@@ -601,6 +612,7 @@ class InstructionalSmartService
 
         if ($type === 'structured_assignment') {
             return [
+                'description' => "Kerjakan LKPD berikut sesuai petunjuk yang diberikan dengan teliti dan bertanggung jawab.",
                 'stimulus' => "Deskripsikan tugas LKPD (Lembar Kerja Peserta Didik) yang harus dikerjakan siswa terkait {$content}. Sertakan petunjuk pengerjaan, ketentuan, dan kriteria penilaian.",
                 'indicators' => [
                     ['name' => "Kelengkapan isi LKPD sesuai instruksi yang diberikan."],
@@ -624,6 +636,7 @@ class InstructionalSmartService
 
         if ($type === 'concept_map') {
             return [
+                'description' => "Buatlah peta konsep yang menunjukkan hubungan antar ide pokok dalam materi ini dengan kata penghubung yang tepat.",
                 'stimulus' => "Gambarkan hubungan antar konsep utama dalam {$content} ke dalam sebuah peta konsep. Hubungkan setiap ide dengan kata penghubung yang bermakna.",
                 'indicators' => [
                     ['name' => "Kelengkapan Kata Kunci (Concepts)"],
@@ -647,6 +660,7 @@ class InstructionalSmartService
 
         if ($type === 'project') {
             return [
+                'description' => "Kerjakan proyek ini secara berkelompok, tunjukkan kreativitas dan kerja sama tim yang baik!",
                 'stimulus' => "Bagaimana kita bisa menggunakan konsep {$content} untuk memecahkan masalah nyata di lingkungan kita? Rancang dan buatlah sebuah solusi kreatif!",
                 'teacher_notes' => "Tahapan Projek: 1. Perencanaan (Ide & Desain), 2. Pelaksanaan (Pembuatan/Riset), 3. Pelaporan & Presentasi.",
                 'phase_planning' => "Murid mampu menyusun jadwal, pembagian peran, dan desain awal projek terkait {$content}.",
@@ -672,6 +686,7 @@ class InstructionalSmartService
 
         if ($type === 'portfolio') {
             return [
+                'description' => "Kumpulkan hasil karyamu dan jelaskan perkembangan belajarmu melalui refleksi diri.",
                 'stimulus' => "Pilihlah 3 hasil karya terbaikmu selama mempelajari {$content}. Jelaskan mengapa kamu memilih karya tersebut.",
                 'teacher_notes' => "Pertanyaan Refleksi: 1. Apa tantangan terbesar saat membuat karya ini? 2. Bagaimana pemahamanmu tentang {$content} berkembang?",
                 'levels' => [
@@ -689,6 +704,7 @@ class InstructionalSmartService
 
         if ($type === 'performance') {
             return [
+                'description' => "Tunjukkan keterampilan praktikmu sesuai prosedur dan kriteria yang telah ditentukan!",
                 'performance_mode' => 'rubric',
                 'stimulus' => "Demonstrasikan kemampuanmu dalam {$content} melalui praktik, proyek, atau produk nyata yang dapat dievaluasi.",
                 'indicators' => [
@@ -719,6 +735,7 @@ class InstructionalSmartService
 
         if ($type === 'assignment') {
             return [
+                'description' => "Analisis studi kasus berikut dan susun laporan pemecahan masalah secara sistematis dan rapi.",
                 'stimulus' => "Analisis studi kasus berikut dan susun laporan pemecahan masalah secara sistematis. Gunakan format laporan yang terstruktur: Identifikasi Masalah, Analisis, Solusi, dan Kesimpulan.",
                 'indicators' => [
                     ['name' => "Ketepatan identifikasi masalah dan akar permasalahan dari studi kasus {$content}."],
@@ -742,6 +759,7 @@ class InstructionalSmartService
 
         if ($type === 'written_test') {
             return [
+                'description' => "Kerjakan soal-soal berikut dengan teliti dan percaya diri! Pilihlah jawaban yang paling tepat.",
                 'quiz_mode' => 'mcq',
                 'questions' => array_map(fn($i) => [
                     'id' => 'q' . $i,

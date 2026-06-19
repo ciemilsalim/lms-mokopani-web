@@ -147,6 +147,7 @@ Konteks:
 - PERTANYAAN MCQ: Harus sangat singkat, padat, langsung pada inti pertanyaan, maksimal 2 kalimat sederhana. HINDARI narasi stimulus/kasus pengantar yang terlalu bertele-tele dan panjang.
 - PILIHAN JAWABAN (OPTIONS): Harus sangat singkat, berupa kata atau frasa pendek (maksimal 5-8 kata per opsi), sejajar panjangnya, jelas, dan tidak ambigu. HINDARI pilihan jawaban berupa kalimat panjang bertele-tele yang membingungkan siswa.
 - EXIT TICKET ("exit_ticket"): Pertanyaan refleksi wajib sangat pendek (maksimal 1 kalimat tanya sederhana per butir), santai, akrab, dan mudah dipahami siswa SMP. Hindari kalimat berbelit-belit, bertele-tele, atau teoretis.
+- FORMAT OUTPUT: Seluruh output JSON WAJIB menyertakan field "description" yang berisi deskripsi/instruksi tugas untuk siswa dalam bahasa Indonesia sederhana, ramah, dan mudah dipahami (1-3 kalimat). Field "description" ini berada di level ROOT objek JSON.
 =================================================================
 
 ===== KESESUAIAN KONTEKS & JENIS PENILAIAN =====
@@ -172,6 +173,7 @@ Format JSON sesuai jenis instrumen yang diminta:
 
 Untuk jenis kuis asesmen awal ("quiz_survey" ketika digunakan sebagai kuis gradasi):
 {
+  "description": "Deskripsi/instruksi tugas untuk siswa dalam bahasa sederhana dan ramah, misalnya: 'Jawablah 3 pertanyaan berikut sesuai dengan pemahamanmu saat ini. Tidak perlu khawatir jika ada yang belum bisa, ini hanya untuk mengetahui kemampuan awalku.'",
   "questions": [
     {"id": "q1", "type": "short_answer", "text": "Pertanyaan Level 1 (Kemampuan Dasar/Prasyarat)...", "correct_answer": "kunci jawaban singkat"},
     {"id": "q2", "type": "short_answer", "text": "Pertanyaan Level 2 (Kemampuan Sesuai Target)...", "correct_answer": "kunci jawaban singkat"},
@@ -182,6 +184,7 @@ Untuk jenis kuis asesmen awal ("quiz_survey" ketika digunakan sebagai kuis grada
 Untuk jenis tes tertulis ("written_test"):
 Jika Mode Soal adalah "mcq" (Pilihan Ganda):
 {
+  "description": "Deskripsi/instruksi tugas untuk siswa dalam bahasa sederhana dan ramah, misalnya: 'Kerjakan 10 soal pilihan ganda berikut dengan teliti. Pilihlah jawaban yang paling tepat ya!'",
   "quiz_mode": "mcq",
   "questions": [
     {"id": "q1", "type": "multiple_choice", "text": "Pertanyaan pilihan ganda 1...", "options": [{"id": "a", "text": "..."}, {"id": "b", "text": "..."}, {"id": "c", "text": "..."}, {"id": "d", "text": "..."}], "answer": "a", "points": 1},
@@ -199,6 +202,7 @@ Buat tepat 10 pertanyaan pilihan ganda.
 
 Jika Mode Soal adalah "essay" (Esai):
 {
+  "description": "Deskripsi/instruksi tugas untuk siswa dalam bahasa sederhana dan ramah, misalnya: 'Jawablah 5 pertanyaan uraian berikut dengan jelas dan lengkap. Tulislah jawabanmu dengan bahasamu sendiri ya!'",
   "quiz_mode": "essay",
   "questions": [
     {"id": "q1", "type": "essay", "text": "Pertanyaan uraian/esai 1...", "answer": "Pedoman penskoran atau jawaban ideal...", "points": 5},
@@ -216,6 +220,7 @@ Buat tepat 5 pertanyaan esai/uraian.
 
 Jika Mode Soal adalah "mixed" (Campuran):
 {
+  "description": "Deskripsi/instruksi tugas untuk siswa dalam bahasa sederhana dan ramah",
   "quiz_mode": "mixed",
   "questions": [
     {"id": "q1", "type": "multiple_choice", "text": "...", "options": [...], "answer": "a", "points": 1},
@@ -233,6 +238,7 @@ Pastikan seluruh pertanyaan dikemas dengan bahasa Indonesia yang sangat sederhan
 
 Untuk jenis tes lisan ("oral_test"):
 {
+  "description": "Deskripsi/instruksi tugas untuk siswa dalam bahasa sederhana dan ramah",
   "stimulus": "Topik atau konteks pertanyaan lisan terkait materi yang diuji",
   "questions": [
     {"text": "Pertanyaan lisan 1: Jelaskan konsep dasar dengan bahasamu sendiri...", "answer_guide": "Kunci jawaban atau pedoman penskoran untuk pertanyaan 1"},
@@ -250,6 +256,7 @@ Untuk jenis tes lisan ("oral_test"):
 
 Untuk jenis penugasan ("assignment"):
 {
+  "description": "Deskripsi/instruksi tugas untuk siswa dalam bahasa sederhana dan ramah",
   "stimulus": "Deskripsi studi kasus atau topik laporan yang harus dianalisis siswa",
   "indicators": [
     {"name": "Ketepatan identifikasi masalah dan akar permasalahan"},
@@ -269,6 +276,7 @@ Untuk jenis penugasan ("assignment"):
 Untuk jenis observasi ("performance_observation"):
 Jika Mode Observasi adalah "checklist":
 {
+  "description": "Deskripsi/instruksi observasi untuk guru dalam bahasa sederhana",
   "observation_mode": "checklist",
   "stimulus": "Deskripsi konteks pengamatan keterlibatan dan perilaku murid selama kegiatan pembelajaran dengan bahasa yang sederhana",
   "indicators": [
@@ -289,6 +297,7 @@ Jika Mode Observasi adalah "checklist":
 
 Jika Mode Observasi adalah "anecdotal":
 {
+  "description": "Deskripsi/instruksi observasi anekdotal untuk guru dalam bahasa sederhana",
   "observation_mode": "anecdotal",
   "stimulus": "Panduan pengamatan naratif keterlibatan dan perilaku murid selama kegiatan pembelajaran",
   "indicators": [
@@ -310,6 +319,7 @@ Jika Mode Observasi adalah "anecdotal":
 Untuk jenis kinerja ("performance"):
 Jika Mode Kinerja adalah "rubric":
 {
+  "description": "Deskripsi/instruksi tugas kinerja untuk siswa dalam bahasa sederhana dan ramah",
   "performance_mode": "rubric",
   "stimulus": "Deskripsi konteks praktik, proyek, atau produk yang harus didemonstrasikan murid dengan bahasa yang sederhana",
   "indicators": [
@@ -330,6 +340,7 @@ Jika Mode Kinerja adalah "rubric":
 
 Jika Mode Kinerja adalah "continuum":
 {
+  "description": "Deskripsi/instruksi tugas kinerja untuk siswa dalam bahasa sederhana dan ramah",
   "performance_mode": "continuum",
   "stimulus": "Deskripsi konteks praktik, proyek, atau produk yang didemonstrasikan murid secara berkala",
   "indicators": [
@@ -355,6 +366,7 @@ Jika Mode Kinerja adalah "continuum":
 
 Untuk jenis lembar observasi lainnya ("observation_checklist", "self_assessment", "peer_assessment"):
 {
+  "description": "Deskripsi/instruksi observasi/penilaian untuk siswa dalam bahasa sederhana dan ramah",
   "stimulus": "Deskripsi konteks observasi/pengamatan langsung dengan bahasa yang sederhana",
   "indicators": [
     {"name": "Indikator sikap/keterampilan 1"},
@@ -375,6 +387,7 @@ Untuk jenis lembar observasi lainnya ("observation_checklist", "self_assessment"
 Untuk jenis evaluasi reflektif ("exit_ticket" atau "reflective_journal"):
 - Khusus "exit_ticket": Rancang tepat 3 pertanyaan refleksi yang sangat pendek (maksimal 1 kalimat tanya per pertanyaan), menggunakan kata-kata sehari-hari yang sangat akrab bagi siswa SMP (misal: "Apa bagian yang paling membuatmu bingung hari ini?", "Hal apa yang paling seru saat kamu belajar tadi?", "Apa 1 pertanyaan yang ingin kamu tanyakan besok?"). HINDARI kalimat yang terlalu formal, akademis, atau panjang lebar.
 {
+  "description": "Deskripsi/instruksi refleksi untuk siswa dalam bahasa sederhana dan ramah, misalnya: 'Tuliskan refleksimu hari ini dengan jujur ya! Tidak ada jawaban yang salah.'",
   "stimulus": "Instruksi/ stimulus pemantik refleksi bagi murid dengan kalimat sederhana",
   "questions": [
     {"text": "Pertanyaan refleksi sangat singkat, sederhana, dan ramah anak 1 (maksimal 1 kalimat)"},
@@ -393,6 +406,7 @@ Untuk jenis evaluasi reflektif ("exit_ticket" atau "reflective_journal"):
 
 Untuk jenis proyek ("project"):
 {
+  "description": "Deskripsi/instruksi proyek untuk siswa dalam bahasa sederhana dan ramah",
   "stimulus": "Pertanyaan utama (driving question) proyek terkait {content}",
   "teacher_notes": "Tahapan Projek: 1. Perencanaan, 2. Pelaksanaan, 3. Pelaporan",
   "phase_planning": "Fokus evaluasi tahap perencanaan proyek terkait {content}",
@@ -418,6 +432,7 @@ Untuk jenis peta konsep ("concept_map"):
 - Tulis instruksi/petunjuk pembuatan peta konsep yang sangat sederhana, ramah anak SMP, dan mudah diikuti (maksimal 2-3 kalimat ringkas).
 - Sediakan daftar kata kunci acak (keywords) sebanyak 6 sampai 8 kata atau frasa pendek yang relevan dengan materi, sangat familiar untuk siswa SMP.
 {
+  "description": "Deskripsi/instruksi pembuatan peta konsep untuk siswa dalam bahasa sederhana dan ramah",
   "central_topic": "Topik Utama Peta Konsep (misalnya: Siklus Air, Struktur Sel)",
   "submission_mode": "hybrid",
   "instructions": "Petunjuk pembuatan peta konsep dengan kalimat sederhana yang mudah dipahami murid SMP",
