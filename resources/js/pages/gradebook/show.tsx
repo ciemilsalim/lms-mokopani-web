@@ -106,7 +106,7 @@ export default function GradebookShow({ summative_headers, initial_headers, form
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`Alur Asesmen Detail – LMS Mokopani`} />
 
-            <div className="flex h-full flex-1 flex-col gap-6 p-6 fade-in">
+            <div className="flex h-full flex-1 flex-col gap-6 min-w-0 fade-in">
                 {/* Header Actions */}
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
@@ -180,7 +180,7 @@ export default function GradebookShow({ summative_headers, initial_headers, form
                         <table className="w-full text-left text-[13px]">
                             <thead>
                                 <tr className="bg-muted/30">
-                                    <th className="sticky left-0 z-10 bg-muted/30 px-4 py-3 text-[11px] font-bold uppercase tracking-widest text-muted-foreground min-w-[200px]">Nama Siswa</th>
+                                    <th className="sticky left-0 z-30 bg-card px-3 sm:px-4 py-3 text-[11px] font-bold uppercase tracking-widest text-muted-foreground min-w-[140px] sm:min-w-[200px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] border-r border-border">Nama Siswa</th>
                                     
                                     {viewMode === 'summative' ? (
                                         summative_headers.map(h => (
@@ -230,9 +230,9 @@ export default function GradebookShow({ summative_headers, initial_headers, form
                                 ) : (
                                     filteredData.map((d, idx) => (
                                         <tr key={d.student_id} className={`group transition-colors hover:bg-popover dark:hover:bg-popover ${idx % 2 === 1 ? 'bg-muted/10' : ''}`}>
-                                            <td className={`sticky left-0 z-10 px-4 py-2 font-medium ${idx % 2 === 1 ? 'bg-muted/10 group-hover:bg-popover dark:group-hover:bg-popover' : 'bg-card group-hover:bg-popover dark:group-hover:bg-popover'} border-l-2 border-transparent group-hover:border-primary`}>
-                                                <div className="flex items-center gap-3">
-                                                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-primary dark:bg-muted/50 dark:text-foreground/80 shrink-0">
+                                            <td className="sticky left-0 z-20 px-3 sm:px-4 py-2 font-medium bg-card shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] border-l-2 border-transparent group-hover:border-primary border-r border-border">
+                                                <div className="flex items-center gap-2 sm:gap-3">
+                                                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-primary dark:bg-muted/50 dark:text-foreground/80 shrink-0 hidden sm:flex">
                                                         <User className="h-3.5 w-3.5" />
                                                     </div>
                                                     <div className="flex flex-col">

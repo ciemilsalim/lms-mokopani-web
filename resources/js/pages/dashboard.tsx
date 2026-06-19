@@ -299,20 +299,20 @@ export default function Dashboard({ stats, identity, subjects, recentActivities,
                 )}
 
                 {/* Stat Cards - EduAdmin Style */}
-                <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-6">
+                <div className="grid grid-cols-2 gap-3 sm:gap-5 sm:grid-cols-3 lg:grid-cols-6">
                     {cards.map((card) => {
                         const Icon = card.icon;
                         const c = colorMap[card.color] || colorMap.primary;
                         return (
                             <Card key={card.key} className="border border-border/50 card-hover shadow-sm bg-card overflow-hidden">
-                                <CardContent className="p-5">
-                                    <div className="flex items-center justify-between">
+                                <CardContent className="p-4 sm:p-5">
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-0">
                                         <div>
-                                            <p className="text-[11px] text-muted-foreground font-semibold uppercase tracking-wider">{card.label}</p>
-                                            <p className="text-3xl font-black text-foreground mt-1 leading-tight">{card.value}</p>
+                                            <p className="text-[10px] sm:text-[11px] text-muted-foreground font-semibold uppercase tracking-wider">{card.label}</p>
+                                            <p className="text-2xl sm:text-3xl font-black text-foreground mt-1 leading-none sm:leading-tight">{card.value}</p>
                                         </div>
-                                        <div className={`w-12 h-12 rounded-2xl ${c.bg} flex items-center justify-center flex-shrink-0 shadow-sm transition-transform group-hover:scale-110`}>
-                                            <Icon className={`h-6 w-6 ${c.text}`} strokeWidth={2.5} />
+                                        <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl ${c.bg} flex items-center justify-center flex-shrink-0 shadow-sm transition-transform group-hover:scale-110 self-start sm:self-auto`}>
+                                            <Icon className={`h-5 w-5 sm:h-6 sm:w-6 ${c.text}`} strokeWidth={2.5} />
                                         </div>
                                     </div>
                                 </CardContent>
@@ -324,7 +324,7 @@ export default function Dashboard({ stats, identity, subjects, recentActivities,
                 {/* Middle Row: Charts + Schedule + Activity */}
                 <div className="grid gap-6 xl:grid-cols-4">
                     {/* Topic Distribution - Donut Chart */}
-                    <Card className="xl:col-span-1 card-hover shadow-sm border border-border/80">
+                    <Card className="xl:col-span-1 card-hover shadow-sm border border-border/80 overflow-hidden">
                         <div className="flex items-center justify-between border-b px-6 py-4">
                             <div>
                                 <h2 className="font-semibold text-foreground">Distribusi Topik</h2>
@@ -368,7 +368,7 @@ export default function Dashboard({ stats, identity, subjects, recentActivities,
                     </Card>
 
                     {/* Popular Instructors */}
-                    <Card className="xl:col-span-1 card-hover shadow-sm border border-border/80">
+                    <Card className="xl:col-span-1 card-hover shadow-sm border border-border/80 overflow-hidden">
                         <div className="flex items-center justify-between border-b px-6 py-4">
                             <div>
                                 <h2 className="font-semibold text-foreground">Instruktur</h2>
@@ -417,7 +417,7 @@ export default function Dashboard({ stats, identity, subjects, recentActivities,
                     </Card>
 
                     {/* Today's Schedule */}
-                    <Card className="xl:col-span-1 card-hover shadow-sm border border-border/80">
+                    <Card className="xl:col-span-1 card-hover shadow-sm border border-border/80 overflow-hidden">
                         <div className="flex items-center justify-between border-b px-6 py-4">
                             <div>
                                 <h2 className="font-semibold text-foreground">Jadwal Hari Ini</h2>
@@ -467,7 +467,7 @@ export default function Dashboard({ stats, identity, subjects, recentActivities,
                     </Card>
 
                     {/* Assignment Progress */}
-                    <Card className="xl:col-span-1 card-hover shadow-sm border border-border/80">
+                    <Card className="xl:col-span-1 card-hover shadow-sm border border-border/80 overflow-hidden">
                         <div className="flex items-center justify-between border-b px-6 py-4">
                             <div>
                                 <h2 className="font-semibold text-foreground">Progress Asesmen</h2>
@@ -500,7 +500,7 @@ export default function Dashboard({ stats, identity, subjects, recentActivities,
 
                 {/* P5 Progress (Student Only) */}
                 {user_role === 'student' && (safeStats.p5_total ?? 0) > 0 && (
-                    <Card className="card-hover shadow-sm border border-border/80">
+                    <Card className="card-hover shadow-sm border border-border/80 overflow-hidden">
                         <div className="flex items-center justify-between border-b px-6 py-4">
                             <div>
                                 <h2 className="font-semibold text-foreground">Projek P5</h2>
@@ -543,13 +543,13 @@ export default function Dashboard({ stats, identity, subjects, recentActivities,
                 {/* Bottom Row: Course Table + Recent Activity */}
                 <div className="grid gap-6 xl:grid-cols-3">
                     {/* Course Progress Table */}
-                    <Card className="xl:col-span-2 shadow-sm border border-border/80">
-                        <div className="flex items-center justify-between border-b px-6 py-4">
+                    <Card className="xl:col-span-2 shadow-sm border border-border/80 overflow-hidden">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b px-6 py-4">
                             <div>
                                 <h2 className="font-semibold text-foreground">Progress Siswa</h2>
                                 <p className="text-xs text-muted-foreground mt-0.5">Status pembelajaran terkini</p>
                             </div>
-                            <div className="flex items-center gap-3">
+                            <div className="flex flex-wrap items-center gap-3">
                                 {subjects && subjects.length > 0 && (
                                     <select
                                         value={subjectFilter}
@@ -574,16 +574,16 @@ export default function Dashboard({ stats, identity, subjects, recentActivities,
                                 </select>
                             </div>
                         </div>
-                        <div className="overflow-x-auto">
+                        <div className="w-full">
                             {courseData.length > 0 ? (
                                 <>
-                                    <table className="w-full text-sm">
-                                        <thead className="bg-slate-50 dark:bg-slate-900/50 text-slate-500 text-xs uppercase tracking-wider border-b border-slate-100 dark:border-slate-800">
-                                            <tr className="text-left text-xs font-semibold uppercase text-muted-foreground">
-                                                <th className="px-6 py-3 font-medium">Siswa</th>
-                                                <th className="px-6 py-3 font-medium">Mata Pelajaran</th>
-                                                <th
-                                                    className="px-6 py-3 font-medium cursor-pointer select-none hover:text-foreground transition-colors"
+                                    <div className="w-full text-sm block sm:table">
+                                        <div className="hidden sm:table-header-group bg-slate-50 dark:bg-slate-900/50 text-slate-500 text-xs uppercase tracking-wider border-b border-slate-100 dark:border-slate-800">
+                                            <div className="sm:table-row text-left text-xs font-semibold uppercase text-muted-foreground">
+                                                <div className="sm:table-cell px-6 py-3 font-medium">Siswa</div>
+                                                <div className="sm:table-cell px-6 py-3 font-medium">Mata Pelajaran</div>
+                                                <div
+                                                    className="sm:table-cell px-6 py-3 font-medium cursor-pointer select-none hover:text-foreground transition-colors"
                                                     onClick={() => setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc')}
                                                 >
                                                     <span className="inline-flex items-center gap-1">
@@ -591,26 +591,30 @@ export default function Dashboard({ stats, identity, subjects, recentActivities,
                                                         <ArrowUpDown className="h-3 w-3" />
                                                         {sortOrder === 'desc' ? '↓' : '↑'}
                                                     </span>
-                                                </th>
-                                                <th className="px-6 py-3 font-medium">Status</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                                                </div>
+                                                <div className="sm:table-cell px-6 py-3 font-medium">Status</div>
+                                            </div>
+                                        </div>
+                                        <div className="block sm:table-row-group divide-y divide-slate-100 dark:divide-slate-800/60 sm:divide-y-0">
                                             {paginatedData.map((row) => (
-                                                <tr key={row.student_id + '-' + row.subject_id} className="border-b border-slate-100 dark:border-slate-800/60 last:border-0 transition hover:bg-muted/30">
-                                                    <td className="px-6 py-3">
-                                                        <div className="flex items-center gap-3">
-                                                            <Avatar className="h-8 w-8">
+                                                <div key={row.student_id + '-' + row.subject_id} className="block sm:table-row border-b border-slate-100 dark:border-slate-800/60 last:border-0 transition hover:bg-muted/30 p-4 sm:p-0">
+                                                    <div className="block sm:table-cell px-0 sm:px-6 py-2 sm:py-3 border-b border-dashed sm:border-0 border-border/50 mb-2 pb-3 sm:mb-0 sm:pb-3">
+                                                        <div className="flex items-center gap-3 min-w-0">
+                                                            <Avatar className="h-8 w-8 shrink-0">
                                                                 <AvatarFallback className="text-[10px] font-semibold bg-primary/10 text-primary">
                                                                     {row.student.split(' ').map((n: string) => n[0]).slice(0, 2).join('')}
                                                                 </AvatarFallback>
                                                             </Avatar>
-                                                            <span className="font-medium text-foreground">{row.student}</span>
+                                                            <span className="font-medium text-foreground truncate">{row.student}</span>
                                                         </div>
-                                                    </td>
-                                                    <td className="px-6 py-3 text-muted-foreground">{row.course}</td>
-                                                    <td className="px-6 py-3">
-                                                        <div className="flex items-center gap-3">
+                                                    </div>
+                                                    <div className="flex sm:table-cell items-center justify-between sm:justify-start px-0 sm:px-6 py-1.5 sm:py-3 text-muted-foreground min-w-0">
+                                                        <span className="sm:hidden text-xs font-medium text-foreground/70 shrink-0 mr-4">Mapel</span>
+                                                        <span className="text-right sm:text-left break-words min-w-0 flex-1">{row.course}</span>
+                                                    </div>
+                                                    <div className="flex sm:table-cell items-center justify-between sm:justify-start px-0 sm:px-6 py-1.5 sm:py-3 min-w-0">
+                                                        <span className="sm:hidden text-xs font-medium text-foreground/70 shrink-0 mr-4">Progress</span>
+                                                        <div className="flex items-center gap-3 w-[50%] sm:w-auto justify-end sm:justify-start">
                                                             <div className="h-1.5 flex-1 rounded-full bg-muted overflow-hidden">
                                                                 <div
                                                                     className="h-full rounded-full transition-all"
@@ -622,20 +626,21 @@ export default function Dashboard({ stats, identity, subjects, recentActivities,
                                                             </div>
                                                             <span className="w-8 text-xs font-medium text-right text-muted-foreground">{row.progress}%</span>
                                                         </div>
-                                                    </td>
-                                                    <td className="px-6 py-3">
+                                                    </div>
+                                                    <div className="flex sm:table-cell items-center justify-between sm:justify-start px-0 sm:px-6 py-1.5 sm:py-3 min-w-0">
+                                                        <span className="sm:hidden text-xs font-medium text-foreground/70 shrink-0 mr-4">Status</span>
                                                         <Badge
                                                             variant={row.status === 'completed' ? 'default' : row.status === 'active' ? 'secondary' : 'outline'}
                                                             className={row.status === 'completed' ? 'bg-[#28c76f]/10 text-[#28c76f] hover:bg-[#28c76f]/20 border-0' : ''}
                                                         >
                                                             {row.status === 'completed' ? 'Selesai' : row.status === 'active' ? 'Aktif' : 'Tertunda'}
                                                         </Badge>
-                                                    </td>
-                                                </tr>
+                                                    </div>
+                                                </div>
                                             ))}
-                                        </tbody>
-                                    </table>
-                                    <div className="flex items-center justify-between border-t px-6 py-3 text-xs text-muted-foreground">
+                                        </div>
+                                    </div>
+                                    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-t px-6 py-3 text-xs text-muted-foreground">
                                         <span>Menampilkan {startRow}-{endRow} dari {totalFiltered}</span>
                                         <div className="flex items-center gap-1">
                                             <button
@@ -684,7 +689,7 @@ export default function Dashboard({ stats, identity, subjects, recentActivities,
                     </Card>
 
                     {/* Recent Activity */}
-                    <Card className="xl:col-span-1 shadow-sm border border-border/80">
+                    <Card className="xl:col-span-1 shadow-sm border border-border/80 overflow-hidden">
                         <div className="flex items-center justify-between border-b px-6 py-4">
                             <div>
                                 <h2 className="font-semibold text-foreground">Aktivitas Terbaru</h2>

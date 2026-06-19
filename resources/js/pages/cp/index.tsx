@@ -90,18 +90,18 @@ export default function CpIndex({ cpList, subjects, filters }: CpIndexProps) {
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Capaian Pembelajaran – LMS Mokopani" />
 
-            <div className="flex h-full flex-1 flex-col gap-6 p-6">
+            <div className="flex h-full flex-1 flex-col gap-4 sm:gap-6">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                         <h1 className="text-2xl font-black text-foreground tracking-tight">Capaian Pembelajaran (CP)</h1>
                         <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest">Kurikulum Merdeka — CP per Elemen</p>
                     </div>
-                    <button onClick={openAddModal} className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary/90 transition shadow-sm">
+                    <button onClick={openAddModal} className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary/90 transition shadow-sm">
                         <Plus className="h-4 w-4" /> Tambah CP
                     </button>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                     <select
                         value={filters.subject_id || ''}
                         onChange={(e) => router.get('/cp', { ...filters, subject_id: e.target.value }, { preserveState: true })}
@@ -131,16 +131,16 @@ export default function CpIndex({ cpList, subjects, filters }: CpIndexProps) {
                         cpList.map(cp => (
                             <div key={cp.id} className="rounded-xl border border-border bg-card p-5 hover:shadow-sm transition">
                                 <div className="flex items-start justify-between mb-3">
-                                    <div className="flex items-center gap-3">
-                                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                                    <div className="flex items-center gap-3 min-w-0">
+                                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary shrink-0">
                                             <Layers className="h-4 w-4" />
                                         </div>
-                                        <div>
-                                            <h3 className="font-bold text-foreground text-sm">{cp.elemen}</h3>
-                                            <div className="flex items-center gap-2 mt-0.5">
+                                        <div className="min-w-0">
+                                            <h3 className="font-bold text-foreground text-sm truncate">{cp.elemen}</h3>
+                                            <div className="flex flex-wrap items-center gap-2 mt-0.5">
                                                 <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold text-muted-foreground uppercase">{cp.fase}</span>
-                                                <span className="text-[10px] font-medium text-muted-foreground">{cp.subject.name}</span>
-                                                {cp.kode && <span className="text-[10px] font-mono text-muted-foreground/60">[{cp.kode}]</span>}
+                                                <span className="text-[10px] font-medium text-muted-foreground truncate max-w-[120px] sm:max-w-none">{cp.subject.name}</span>
+                                                {cp.kode && <span className="text-[10px] font-mono text-muted-foreground/60 shrink-0">[{cp.kode}]</span>}
                                             </div>
                                         </div>
                                     </div>
@@ -162,13 +162,13 @@ export default function CpIndex({ cpList, subjects, filters }: CpIndexProps) {
 
             {showModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-                    <div className="w-full max-w-lg rounded-2xl bg-card border shadow-2xl p-8 animate-in fade-in zoom-in duration-200">
-                        <div className="flex items-center justify-between mb-8">
+                    <div className="w-full max-w-lg rounded-2xl bg-card border shadow-2xl p-5 sm:p-8 animate-in fade-in zoom-in duration-200 overflow-y-auto max-h-[90vh]">
+                        <div className="flex items-center justify-between mb-6 sm:mb-8">
                             <h3 className="text-xl font-black text-foreground">{editingId ? 'Edit Capaian Pembelajaran' : 'Tambah Capaian Pembelajaran'}</h3>
                             <button onClick={() => setShowModal(false)} className="p-2 rounded-xl hover:bg-muted transition text-muted-foreground"><X className="h-5 w-5" /></button>
                         </div>
-                        <form onSubmit={handleSubmit} className="space-y-5">
-                            <div className="grid grid-cols-2 gap-4">
+                        <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div className="space-y-1.5">
                                     <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Fase</label>
                                     <select value={data.fase} onChange={e => setData('fase', e.target.value)} className="w-full rounded-xl border border-input bg-muted/50 px-4 py-2.5 text-sm font-medium outline-none focus:ring-2 focus:ring-primary/20">

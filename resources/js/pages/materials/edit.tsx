@@ -85,7 +85,7 @@ export default function EditMaterial({ material, teachings, objectives }: EditMa
         ]}>
             <Head title={`Edit ${material.title} – LMS Mokopani`} />
 
-            <div className="flex h-full flex-1 flex-col gap-6 p-6 md:max-w-7xl mx-auto">
+            <div className="flex h-full flex-1 flex-col gap-4 sm:gap-6 md:max-w-7xl mx-auto">
                 <div className="flex items-center justify-between">
                     <Link 
                         href={`/materials/${material.id}`}
@@ -213,7 +213,7 @@ export default function EditMaterial({ material, teachings, objectives }: EditMa
                                             <button 
                                                 type="button"
                                                 onClick={() => removeExistingResource(res.id)}
-                                                className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-[#EB5757] text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all shadow-lg"
+                                                className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-[#EB5757] text-white flex items-center justify-center opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-all shadow-lg"
                                                 title="Hapus Sumber"
                                             >
                                                 <X className="h-3 w-3" />
@@ -251,7 +251,7 @@ export default function EditMaterial({ material, teachings, objectives }: EditMa
                                             <button 
                                                 type="button"
                                                 onClick={() => removeNewResource(res.id)}
-                                                className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-[#EB5757] text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all shadow-lg"
+                                                className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-[#EB5757] text-white flex items-center justify-center opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-all shadow-lg"
                                             >
                                                 <X className="h-3 w-3" />
                                             </button>

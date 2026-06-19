@@ -214,14 +214,16 @@ function TeacherGroupedView({ groups, search }: { groups: TeacherClassGroup[]; s
                                     <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-background dark:bg-popover shadow-sm border border-border/50">
                                         <BookOpen className="h-5 w-5 text-primary" />
                                     </div>
-                                    <div>
-                                        <h3 className="text-lg font-bold text-foreground">{cls.class_name}</h3>
-                                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight">
+                                    <div className="min-w-0">
+                                        <h3 className="text-lg font-bold text-foreground truncate">{cls.class_name}</h3>
+                                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight truncate">
                                             {cls.subjects.length} mapel • {cls.subjects.reduce((sum, s) => sum + s.tps.reduce((s2, tp) => s2 + tp.materials.length, 0), 0)} materi
                                         </p>
                                     </div>
                                 </div>
-                                {isClassOpen ? <ChevronDown className="h-5 w-5 text-muted-foreground" /> : <ChevronRight className="h-5 w-5 text-muted-foreground" />}
+                                <div className="shrink-0 ml-2">
+                                    {isClassOpen ? <ChevronDown className="h-5 w-5 text-muted-foreground" /> : <ChevronRight className="h-5 w-5 text-muted-foreground" />}
+                                </div>
                             </button>
                             {isClassOpen && (
                                 <div className="p-6 space-y-4">
@@ -328,15 +330,15 @@ function StudentGroupedView({ groups, search }: { groups: SubjectGroup[]; search
                                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-background dark:bg-popover shadow-sm border border-border/50">
                                     <BookOpen className="h-5 w-5 text-primary" />
                                 </div>
-                                <div>
-                                    <h3 className="text-lg font-bold text-foreground">{group.subject_name}</h3>
-                                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight">
+                                <div className="min-w-0">
+                                    <h3 className="text-lg font-bold text-foreground truncate">{group.subject_name}</h3>
+                                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight truncate">
                                         {group.tps.reduce((sum, tp) => sum + tp.materials.length, 0)} materi
                                     </p>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-3">
-                                <span className="rounded-full bg-primary/10 border border-primary/20 px-3 py-1 text-xs font-bold text-primary">
+                            <div className="flex items-center gap-3 shrink-0 ml-2">
+                                <span className="rounded-full bg-primary/10 border border-primary/20 px-3 py-1 text-xs font-bold text-primary whitespace-nowrap">
                                     {group.total} total
                                 </span>
                                 {isOpen ? <ChevronDown className="h-5 w-5 text-muted-foreground" /> : <ChevronRight className="h-5 w-5 text-muted-foreground" />}
@@ -392,43 +394,36 @@ export default function Materials({ materials, grouped_materials, teacher_groupe
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Materi Pembelajaran – LMS Mokopani" />
 
-            <div className="flex h-full flex-1 flex-col gap-6 p-6">
+            <div className="flex h-full flex-1 flex-col gap-4 sm:gap-6">
                 {/* Header */}
-                <div className="rounded-2xl bg-gradient-to-br from-primary via-primary/80 to-primary/60 p-8 text-white shadow-xl shadow-primary/20 dark:shadow-none">
+                <div className="rounded-2xl bg-gradient-to-br from-primary via-primary/80 to-primary/60 p-5 sm:p-8 text-white shadow-xl shadow-primary/20 dark:shadow-none">
                     <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                        <div className="flex items-center gap-4">
-                            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-md flex-shrink-0">
-                                <BookOpen className="h-10 w-10" />
+                        <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                            <div className="flex h-12 w-12 sm:h-16 sm:w-16 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-md flex-shrink-0">
+                                <BookOpen className="h-6 w-6 sm:h-10 sm:w-10" />
                             </div>
-                            <div>
-                                <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                                    <h1 className="text-2xl font-black">Materi Pembelajaran</h1>
+                            <div className="min-w-0">
+                                <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+                                    <h1 className="text-xl sm:text-2xl font-black truncate">Materi Pembelajaran</h1>
                                     {active_year && (
                                         <span className="rounded-full bg-white/20 px-2.5 py-0.5 text-[10px] font-bold text-white uppercase tracking-widest mt-1 sm:mt-0">
                                             {active_year} • {active_semester}
                                         </span>
                                     )}
                                 </div>
-                                <p className="text-sm font-bold text-white/70 mt-1">
+                                <p className="text-xs sm:text-sm font-bold text-white/70 mt-1 truncate">
                                     {user_role === 'teacher' ? 'Kelola materi pembelajaran untuk siswa Anda' : 'Pusat sumber belajar digital siswa'}
                                 </p>
                             </div>
                         </div>
                         {user_role === 'teacher' && (
-                            <div className="flex items-center gap-3">
+                            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                                 <Link
                                     href={route('materials.create')}
                                     className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-5 py-2.5 text-sm font-bold text-primary shadow-lg transition hover:bg-white/90"
                                 >
                                     <FilePlus className="h-4 w-4" />
                                     Tambah
-                                </Link>
-                                <Link
-                                    href={route('lesson-plans.create')}
-                                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-white/10 backdrop-blur-md px-5 py-2.5 text-sm font-bold text-white shadow-lg transition hover:bg-white/20"
-                                >
-                                    <Plus className="h-4 w-4" />
-                                    AI
                                 </Link>
                             </div>
                         )}

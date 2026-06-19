@@ -35,7 +35,7 @@ export default function NonCognitiveIndex({ students }: NonCognitiveIndexProps) 
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Diagnostik Non-Kognitif – LMS Mokopani" />
 
-            <div className="flex h-full flex-1 flex-col gap-6 p-6">
+            <div className="flex h-full flex-1 flex-col gap-6 min-w-0">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                         <h1 className="text-2xl font-bold text-foreground">Diagnostik Non-Kognitif</h1>

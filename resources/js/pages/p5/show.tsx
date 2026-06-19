@@ -1,7 +1,7 @@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router } from '@inertiajs/react';
-import { Heart, Calendar, Users, BookOpen, Pencil, Trash2, CheckCircle2, XCircle, Target } from 'lucide-react';
+import { Heart, Calendar, Users, BookOpen, Pencil, Trash2, CheckCircle2, XCircle, Target, ChevronLeft } from 'lucide-react';
 import { useState } from 'react';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 
@@ -143,8 +143,15 @@ export default function P5Show({ project, dimensi, students }: P5ShowProps) {
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`${project.judul} – P5`} />
 
-            <div className="flex h-full flex-1 flex-col gap-6">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex h-full flex-1 flex-col gap-6 min-w-0">
+                <button 
+                    onClick={() => window.history.back()}
+                    className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition self-start w-fit"
+                >
+                    <ChevronLeft className="h-4 w-4" /> Kembali ke Daftar Projek
+                </button>
+
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between -mt-2">
                     <div className="flex items-center gap-4">
                         <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-100 to-pink-100 text-rose-600 dark:from-rose-900/40 dark:to-pink-900/40 dark:text-rose-400 shadow-sm">
                             <Heart className="h-7 w-7" />
@@ -203,9 +210,9 @@ export default function P5Show({ project, dimensi, students }: P5ShowProps) {
                         <table className="w-full border-collapse">
                             <thead>
                                 <tr>
-                                    <th className="sticky left-0 bg-card z-30 px-4 py-2.5 border-b border-r border-border text-left min-w-[200px]">
+                                    <th className="sticky left-0 bg-card z-30 px-3 sm:px-4 py-2.5 border-b border-r border-border text-left min-w-[140px] sm:min-w-[200px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
                                         <div className="flex items-center gap-2">
-                                            <Users className="h-3.5 w-3.5 text-muted-foreground" />
+                                            <Users className="h-3.5 w-3.5 text-muted-foreground hidden sm:block" />
                                             <span className="font-bold text-muted-foreground text-xs uppercase tracking-wider">Siswa</span>
                                             <span className="text-[10px] text-muted-foreground/50 font-normal normal-case">({students.length})</span>
                                         </div>
@@ -219,7 +226,7 @@ export default function P5Show({ project, dimensi, students }: P5ShowProps) {
                                     ))}
                                 </tr>
                                 <tr>
-                                    <th className="sticky left-0 bg-card z-30 px-4 py-2 border-b border-r border-border"></th>
+                                    <th className="sticky left-0 bg-card z-30 px-3 sm:px-4 py-2 border-b border-r border-border shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]"></th>
                                     {dimensi.flatMap(d =>
                                         d.elements.map(el => (
                                             <th key={el.id} colSpan={el.sub_elements.length}
@@ -230,7 +237,7 @@ export default function P5Show({ project, dimensi, students }: P5ShowProps) {
                                     )}
                                 </tr>
                                 <tr>
-                                    <th className="sticky left-0 bg-card z-20 px-4 py-2 border-b border-r border-border"></th>
+                                    <th className="sticky left-0 bg-card z-30 px-3 sm:px-4 py-2 border-b border-r border-border shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]"></th>
                                     {dimensi.flatMap(d =>
                                         d.elements.flatMap(el =>
                                             el.sub_elements.map(se => (
@@ -245,15 +252,15 @@ export default function P5Show({ project, dimensi, students }: P5ShowProps) {
                             </thead>
                             <tbody>
                                 {students.map((student, si) => (
-                                    <tr key={student.id} className={`transition-colors ${si % 2 === 0 ? 'bg-white dark:bg-transparent' : 'bg-muted/[0.04] dark:bg-muted/[0.02]'}`}>
-                                        <td className="sticky left-0 z-10 px-4 py-2.5 border-b border-r border-border bg-inherit">
+                                    <tr key={student.id} className="transition-colors hover:bg-muted/30">
+                                        <td className="sticky left-0 z-20 px-3 sm:px-4 py-2.5 border-b border-r border-border bg-card shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
                                             <div className="flex items-center gap-2">
-                                                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-muted/50 text-[10px] font-bold text-muted-foreground shrink-0">
+                                                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-muted/50 text-[10px] font-bold text-muted-foreground shrink-0 hidden sm:flex">
                                                     {student.name.charAt(0).toUpperCase()}
                                                 </div>
                                                 <div className="min-w-0">
-                                                    <div className="text-sm font-medium text-foreground truncate">{student.name}</div>
-                                                    <div className="text-[10px] text-muted-foreground/60">{student.nis}</div>
+                                                    <div className="text-xs sm:text-sm font-medium text-foreground truncate">{student.name}</div>
+                                                    <div className="text-[9px] sm:text-[10px] text-muted-foreground/60">{student.nis}</div>
                                                 </div>
                                             </div>
                                         </td>

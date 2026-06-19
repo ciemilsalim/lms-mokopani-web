@@ -139,7 +139,7 @@ export default function NonCognitiveEdit({ student, diagnostic }: EditProps) {
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`Diagnostik ${student.name} – LMS Mokopani`} />
 
-            <div className="flex h-full flex-1 flex-col gap-6 p-6">
+            <div className="flex h-full flex-1 flex-col gap-6 min-w-0">
                 <button
                     onClick={() => window.history.back()}
                     className="flex items-center gap-2 text-sm font-bold text-muted-foreground hover:text-primary transition w-fit cursor-pointer"
@@ -402,7 +402,7 @@ export default function NonCognitiveEdit({ student, diagnostic }: EditProps) {
                         <button
                             type="submit"
                             disabled={saving}
-                            className="inline-flex items-center gap-2 rounded-xl bg-primary px-6 py-3 text-sm font-bold text-white shadow-lg shadow-primary/20 transition hover:opacity-90 disabled:opacity-50 cursor-pointer"
+                            className="w-full sm:w-auto inline-flex justify-center items-center gap-2 rounded-xl bg-primary px-6 py-3 text-sm font-bold text-white shadow-lg shadow-primary/20 transition hover:opacity-90 disabled:opacity-50 cursor-pointer"
                         >
                             <Save className="h-4 w-4" />
                             {saving ? 'Menyimpan...' : 'Simpan Diagnostik'}

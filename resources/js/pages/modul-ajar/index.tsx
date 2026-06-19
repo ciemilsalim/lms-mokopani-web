@@ -48,7 +48,7 @@ export default function Index({ modulAjars, period }: IndexProps) {
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Pembelajaran (Modul Ajar) – LMS Mokopani" />
 
-            <div className="flex h-full flex-1 flex-col gap-6 p-6">
+            <div className="flex h-full flex-1 flex-col gap-6">
                 {/* Header Banner */}
                 <div className="rounded-2xl bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 p-8 text-white shadow-xl shadow-indigo-500/20 dark:shadow-none">
                     <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -125,16 +125,16 @@ export default function Index({ modulAjars, period }: IndexProps) {
                                     </h2>
                                     
                                     {/* Material title */}
-                                    <div className="mt-2 text-xs font-bold text-muted-foreground border-l-2 border-primary/40 pl-2 leading-relaxed">
-                                        Materi: {m.material_title}
+                                    <div className="mt-2 text-xs font-bold text-muted-foreground border-l-2 border-primary/40 pl-2 leading-relaxed break-words">
+                                        Materi: {m.material_title?.replace(/&nbsp;/g, ' ')}
                                     </div>
 
                                     {/* TP code & desc */}
-                                    <p className="mt-4 text-[11px] text-muted-foreground font-semibold leading-relaxed line-clamp-3">
+                                    <p className="mt-4 text-[11px] text-muted-foreground font-semibold leading-relaxed line-clamp-3 break-words">
                                         <span className="font-extrabold text-foreground bg-muted px-1.5 py-0.5 rounded mr-1">
                                             {m.tp_code}
                                         </span>
-                                        {m.tp_desc}
+                                        {m.tp_desc?.replace(/&nbsp;/g, ' ')}
                                     </p>
                                 </div>
 

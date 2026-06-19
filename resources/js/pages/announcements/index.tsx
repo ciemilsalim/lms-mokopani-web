@@ -99,7 +99,7 @@ export default function Announcements({ announcements, classes, user_role }: Ann
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Pengumuman – LMS Mokopani" />
 
-            <div className="flex h-full flex-1 flex-col gap-6 p-6">
+            <div className="flex h-full flex-1 flex-col gap-6 min-w-0">
                 {/* Header */}
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
@@ -111,7 +111,7 @@ export default function Announcements({ announcements, classes, user_role }: Ann
                     {user_role === 'teacher' && (
                         <button
                             onClick={() => setShowModal(true)}
-                            className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary hover:bg-primary-hover px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-primary/15 transition cursor-pointer"
+                            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-primary hover:bg-primary-hover px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-primary/15 transition cursor-pointer"
                         >
                             <Plus className="h-4 w-4" />
                             Buat Pengumuman

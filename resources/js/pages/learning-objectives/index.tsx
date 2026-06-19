@@ -242,13 +242,13 @@ export default function LearningObjectiveIndex({ objectives, subjects, cpList }:
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Manajemen Perencanaan TP & ATP – LMS Mokopani" />
 
-            <div className="flex h-full flex-1 flex-col gap-6 p-6">
+            <div className="flex h-full flex-1 flex-col gap-4 sm:gap-6">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                         <h1 className="text-2xl font-black text-foreground tracking-tight">Perencanaan Pembelajaran</h1>
                         <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest mt-1">Manajemen Tujuan Pembelajaran (TP) & Alur (ATP)</p>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                         <button
                             onClick={() => setIsAtpMode(!isAtpMode)}
                             className={`inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold transition shadow-sm ${isAtpMode ? 'bg-primary text-white shadow-lg shadow-primary/20 hover:bg-primary-hover' : 'bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground border border-border/80'}`}
@@ -270,17 +270,17 @@ export default function LearningObjectiveIndex({ objectives, subjects, cpList }:
 
                 {isAtpMode ? (
                     <div className="flex flex-col gap-4 animate-in slide-in-from-top-4 duration-300">
-                        <div className="flex items-center justify-between p-4 bg-muted/30 rounded-xl border border-dashed border-border">
-                            <div className="flex items-center gap-4">
-                                <div className="p-2 bg-primary/10 rounded-lg text-primary">
+                        <div className="flex flex-col lg:flex-row lg:items-center justify-between p-4 bg-muted/30 rounded-xl border border-dashed border-border gap-4">
+                            <div className="flex items-center gap-3 sm:gap-4">
+                                <div className="p-2 bg-primary/10 rounded-lg text-primary shrink-0">
                                     <Sparkles className="h-5 w-5" />
                                 </div>
-                                <div>
-                                    <h3 className="text-sm font-bold">Penyusunan Alur Tujuan Pembelajaran (ATP)</h3>
-                                    <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-tight">Urutkan TP secara logis untuk mencapai kompetensi fase</p>
+                                <div className="min-w-0">
+                                    <h3 className="text-sm font-bold truncate">Penyusunan Alur Tujuan Pembelajaran (ATP)</h3>
+                                    <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-tight truncate sm:whitespace-normal">Urutkan TP secara logis untuk mencapai kompetensi fase</p>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex flex-wrap items-center gap-2">
                                 <select 
                                     value={sequencingMethod} 
                                     onChange={e => setSequencingMethod(e.target.value)}
@@ -297,14 +297,14 @@ export default function LearningObjectiveIndex({ objectives, subjects, cpList }:
                                 <button
                                     onClick={handleAutoSequence}
                                     disabled={isGenerating}
-                                    className="flex items-center gap-2 px-4 py-1.5 bg-primary/10 text-primary rounded-lg text-xs font-bold hover:bg-primary/20 transition disabled:opacity-50"
+                                    className="flex-1 sm:flex-none flex justify-center items-center gap-2 px-4 py-1.5 bg-primary/10 text-primary rounded-lg text-xs font-bold hover:bg-primary/20 transition disabled:opacity-50"
                                 >
                                     {isGenerating ? <RefreshCw className="h-3 w-3 animate-spin" /> : <ArrowUpDown className="h-3 w-3" />}
                                     Terapkan Cerdas
                                 </button>
                                 <button
                                     onClick={saveAtpOrder}
-                                    className="flex items-center gap-2 px-6 py-1.5 bg-success text-success-foreground rounded-lg text-xs font-black hover:opacity-90 transition shadow-sm"
+                                    className="flex-1 sm:flex-none flex justify-center items-center gap-2 px-6 py-1.5 bg-success text-success-foreground rounded-lg text-xs font-black hover:opacity-90 transition shadow-sm"
                                 >
                                     <Save className="h-3 w-3" />
                                     Simpan Alur
@@ -322,9 +322,9 @@ export default function LearningObjectiveIndex({ objectives, subjects, cpList }:
                                     </div>
                                     <GripVertical className="h-4 w-4 text-muted-foreground/30" />
                                     <div className="flex-1">
-                                        <div className="flex items-center gap-2 mb-1">
+                                        <div className="flex flex-wrap items-center gap-2 mb-1">
                                             <span className="text-[10px] font-bold text-muted-foreground uppercase">{obj.subject?.name}</span>
-                                            {obj.capaian_pembelajaran && <span className="text-[10px] font-bold text-primary/60">{obj.capaian_pembelajaran?.elemen}</span>}
+                                            {obj.capaian_pembelajaran && <span className="text-[10px] font-bold text-primary/60 truncate max-w-[150px]">{obj.capaian_pembelajaran?.elemen}</span>}
                                         </div>
                                         <p className="text-sm font-medium text-foreground">{obj.description}</p>
                                     </div>
@@ -355,10 +355,10 @@ export default function LearningObjectiveIndex({ objectives, subjects, cpList }:
                                                 </span>
                                             </div>
                                             {obj.capaian_pembelajaran && (
-                                                <span className="text-[10px] font-bold text-muted-foreground/60">{obj.capaian_pembelajaran?.elemen}</span>
+                                                <span className="text-[10px] font-bold text-muted-foreground/60 line-clamp-1">{obj.capaian_pembelajaran?.elemen}</span>
                                             )}
                                         </div>
-                                        <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition duration-300">
+                                        <div className="flex gap-2 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition duration-300">
                                             <button 
                                                 onClick={() => openEditModal(obj)}
                                                 className="h-8 w-8 flex items-center justify-center rounded-xl bg-muted text-muted-foreground hover:text-primary transition shadow-sm"
@@ -400,16 +400,16 @@ export default function LearningObjectiveIndex({ objectives, subjects, cpList }:
             {/* Modal Formulasi TP */}
             {showModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 animate-in fade-in duration-300">
-                    <div className="w-full max-w-2xl rounded-xl bg-card text-card-foreground border border-border p-6 shadow-none animate-in fade-in zoom-in duration-300 max-h-[90vh] overflow-y-auto">
-                        <div className="flex items-center justify-between mb-8">
-                            <div>
+                    <div className="w-full max-w-2xl rounded-xl bg-card text-card-foreground border border-border p-4 sm:p-6 shadow-none animate-in fade-in zoom-in duration-300 max-h-[90vh] overflow-y-auto">
+                        <div className="flex items-start sm:items-center justify-between mb-6 sm:mb-8 gap-4">
+                            <div className="min-w-0">
                                 <h3 className="text-2xl font-black text-foreground tracking-tight">
                                     {editingId ? 'Edit Perumusan TP' : 'Rumuskan Tujuan Pembelajaran'}
                                 </h3>
-                                <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest mt-1">Gunakan salah satu dari 3 metode perumusan</p>
+                                <p className="text-[10px] sm:text-xs text-muted-foreground font-bold uppercase tracking-widest mt-1 truncate sm:whitespace-normal">Gunakan salah satu dari 3 metode perumusan</p>
                             </div>
-                            <button onClick={() => setShowModal(false)} className="h-10 w-10 flex items-center justify-center rounded-xl hover:bg-muted transition text-muted-foreground">
-                                <X className="h-6 w-6" />
+                            <button onClick={() => setShowModal(false)} className="h-8 w-8 sm:h-10 sm:w-10 flex shrink-0 items-center justify-center rounded-xl hover:bg-muted transition text-muted-foreground">
+                                <X className="h-5 w-5 sm:h-6 sm:w-6" />
                             </button>
                         </div>
 
@@ -456,7 +456,7 @@ export default function LearningObjectiveIndex({ objectives, subjects, cpList }:
                                         <Target className="h-3.5 w-3.5 text-primary" />
                                         Pilih Beberapa CP untuk Digabungkan
                                     </label>
-                                    <div className="grid grid-cols-2 gap-3 max-h-40 overflow-y-auto p-4 bg-muted/30 rounded-xl">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-40 overflow-y-auto p-4 bg-muted/30 rounded-xl">
                                         {cpList
                                             .filter(cp => cp.subject.id.toString() === data.subject_id)
                                             .map(cp => (
@@ -528,7 +528,7 @@ export default function LearningObjectiveIndex({ objectives, subjects, cpList }:
                             )}
 
                             {activeTab === 'analysis' && (
-                                <div className="grid grid-cols-2 gap-6 p-6 bg-primary/5 rounded-xl border border-primary/10">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 p-4 sm:p-6 bg-primary/5 rounded-xl border border-primary/10">
                                     <div className="space-y-2">
                                         <label className="text-[10px] font-black text-primary uppercase tracking-widest">Kompetensi (Kata Kerja)</label>
                                         <input 
@@ -551,9 +551,9 @@ export default function LearningObjectiveIndex({ objectives, subjects, cpList }:
                             )}
 
                             <div className="space-y-3">
-                                <div className="flex items-center justify-between">
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                                     <label className="text-xs font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-                                        <AlignLeft className="h-3.5 w-3.5 text-primary" />
+                                        <AlignLeft className="h-3.5 w-3.5 text-primary shrink-0" />
                                         Rumusan Kalimat Tujuan Pembelajaran (TP)
                                     </label>
                                     <button

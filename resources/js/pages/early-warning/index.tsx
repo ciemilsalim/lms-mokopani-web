@@ -24,7 +24,7 @@ export default function EarlyWarningIndex({ teachings }: EarlyWarningIndexProps)
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Early Warning System – LMS Mokopani" />
 
-            <div className="flex h-full flex-1 flex-col gap-6 p-6 fade-in">
+            <div className="flex h-full flex-1 flex-col gap-6 min-w-0 fade-in">
                 <div className="flex flex-col gap-1">
                     <h1 className="text-2xl font-bold text-foreground">Early Warning System</h1>
                     <p className="text-sm text-muted-foreground">Pantau siswa berisiko berdasarkan akademik, disiplin, pemahaman, absensi, dan diagnostik</p>

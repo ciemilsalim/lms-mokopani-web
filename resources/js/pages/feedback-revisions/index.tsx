@@ -71,7 +71,7 @@ export default function FeedbackRevisionsIndex({ revisions, filters }: FeedbackR
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Feedback & Revisi – LMS Mokopani" />
 
-            <div className="flex h-full flex-1 flex-col gap-6 p-6">
+            <div className="flex h-full flex-1 flex-col gap-6 min-w-0">
                 <div>
                     <h1 className="text-2xl font-bold text-foreground">Feedback & Revisi</h1>
                     <p className="text-sm text-muted-foreground">Pantau feedback dan permintaan revisi tugas siswa</p>

@@ -48,7 +48,7 @@ export default function EarlyWarningShow({ subject, class: cls, summary }: Early
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`Early Warning – ${subject.name} – LMS Mokopani`} />
 
-            <div className="flex h-full flex-1 flex-col gap-6 p-6 fade-in">
+            <div className="flex h-full flex-1 flex-col gap-6 min-w-0 fade-in">
                 <Link
                     href={route('early-warning.index')}
                     className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary transition w-fit"

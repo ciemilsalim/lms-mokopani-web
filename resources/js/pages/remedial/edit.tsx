@@ -89,7 +89,7 @@ export default function EditRemedial({ record }: EditRemedialProps) {
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`Detail ${record.type === 'remedial' ? 'Remedial' : 'Pengayaan'} – LMS Mokopani`} />
 
-            <div className="flex h-full flex-1 flex-col gap-6 p-6">
+            <div className="flex h-full flex-1 flex-col gap-6 min-w-0">
                 <button
                     onClick={() => window.history.back()}
                     className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary transition w-fit"
@@ -156,11 +156,11 @@ export default function EditRemedial({ record }: EditRemedialProps) {
                                 </div>
                             </div>
 
-                            <div className="mt-6 flex items-center gap-3">
+                            <div className="mt-6 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                                 <button
                                     type="submit"
                                     disabled={saving}
-                                    className="inline-flex items-center gap-2 rounded-xl bg-primary px-6 py-3 text-sm font-bold text-white shadow-lg transition hover:opacity-90 disabled:opacity-50"
+                                    className="w-full sm:w-auto inline-flex justify-center items-center gap-2 rounded-xl bg-primary px-6 py-3 text-sm font-bold text-white shadow-lg transition hover:opacity-90 disabled:opacity-50"
                                 >
                                     <Save className="h-4 w-4" />
                                     {saving ? 'Menyimpan...' : 'Simpan Perubahan'}
@@ -170,25 +170,25 @@ export default function EditRemedial({ record }: EditRemedialProps) {
                                     <button
                                         type="button"
                                         onClick={() => setConfirmDelete(true)}
-                                        className="inline-flex items-center gap-2 rounded-xl border border-red-200 px-6 py-3 text-sm font-bold text-red-600 hover:bg-red-50 transition dark:border-red-900 dark:text-red-400 dark:hover:bg-red-900/20"
+                                        className="w-full sm:w-auto inline-flex justify-center items-center gap-2 rounded-xl border border-red-200 px-6 py-3 text-sm font-bold text-red-600 hover:bg-red-50 transition dark:border-red-900 dark:text-red-400 dark:hover:bg-red-900/20"
                                     >
                                         <Trash2 className="h-4 w-4" />
                                         Hapus
                                     </button>
                                 ) : (
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-xs font-bold text-red-600">Yakin hapus?</span>
+                                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto mt-2 sm:mt-0">
+                                        <span className="text-xs font-bold text-red-600 text-center sm:text-left mb-1 sm:mb-0">Yakin hapus?</span>
                                         <button
                                             type="button"
                                             onClick={handleDelete}
-                                            className="rounded-xl bg-red-600 px-4 py-2 text-xs font-bold text-white hover:bg-red-700 transition"
+                                            className="w-full sm:w-auto rounded-xl bg-red-600 px-4 py-2.5 sm:py-2 text-sm sm:text-xs font-bold text-white hover:bg-red-700 transition"
                                         >
                                             Ya, Hapus
                                         </button>
                                         <button
                                             type="button"
                                             onClick={() => setConfirmDelete(false)}
-                                            className="rounded-xl border border-border px-4 py-2 text-xs font-bold text-muted-foreground hover:bg-muted transition"
+                                            className="w-full sm:w-auto rounded-xl border border-border px-4 py-2.5 sm:py-2 text-sm sm:text-xs font-bold text-muted-foreground hover:bg-muted transition"
                                         >
                                             Batal
                                         </button>

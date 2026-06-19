@@ -134,7 +134,7 @@ export default function RemedialIndex({ records, teachings, filters }: RemedialI
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Remedial & Pengayaan – LMS Mokopani" />
 
-            <div className="flex h-full flex-1 flex-col gap-6 p-6 fade-in">
+            <div className="flex h-full flex-1 flex-col gap-6 min-w-0 fade-in">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                         <h1 className="text-2xl font-bold text-foreground">Remedial & Pengayaan</h1>
@@ -142,7 +142,7 @@ export default function RemedialIndex({ records, teachings, filters }: RemedialI
                     </div>
                     <Link
                         href={route('remedial.create')}
-                        className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-white shadow-lg transition hover:bg-primary-hover hover:shadow-xl active:scale-[0.97]"
+                        className="inline-flex w-full sm:w-auto justify-center items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-white shadow-lg transition hover:bg-primary-hover hover:shadow-xl active:scale-[0.97]"
                     >
                         <Plus className="h-4 w-4" />
                         Buat Baru

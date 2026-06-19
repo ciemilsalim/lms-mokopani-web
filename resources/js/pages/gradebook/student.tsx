@@ -60,7 +60,7 @@ export default function StudentGrade({ report, period }: StudentGradeProps) {
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Laporan Nilai Saya – LMS Mokopani" />
 
-            <div className="flex h-full flex-1 flex-col gap-6 p-6">
+            <div className="flex h-full flex-1 flex-col gap-6 min-w-0">
                 {/* Header Section */}
                 <div className="rounded-2xl bg-gradient-to-br from-primary via-primary/80 to-primary/60 p-8 text-white shadow-xl shadow-primary/20 dark:shadow-none">
                     <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">

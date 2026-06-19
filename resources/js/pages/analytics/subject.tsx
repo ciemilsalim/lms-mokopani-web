@@ -255,7 +255,7 @@ export default function SubjectAnalytics({ subject, class: cls, performance, sco
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`${subject.name} – Analitik`} />
 
-            <div className="flex h-full flex-1 flex-col gap-6 p-6 fade-in">
+            <div className="flex h-full flex-1 flex-col gap-6 min-w-0 fade-in">
                 {/* Header */}
                 <div className="flex items-start justify-between">
                     <div>
@@ -452,24 +452,24 @@ export default function SubjectAnalytics({ subject, class: cls, performance, sco
                             <p className="text-[11px] text-muted-foreground mt-0.5">Ringkasan perolehan nilai seluruh tugas dan ujian siswa</p>
                         </div>
                         {score_matrix.students.length > 0 && (
-                            <div className="flex flex-wrap items-center gap-2">
+                            <div className="flex flex-col sm:flex-row flex-wrap items-center gap-2">
                                 <button
                                     onClick={exportToPdf}
-                                    className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-muted transition duration-150 shadow-sm cursor-pointer"
+                                    className="w-full sm:w-auto inline-flex justify-center items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-muted transition duration-150 shadow-sm cursor-pointer"
                                 >
                                     <FileDown className="h-3.5 w-3.5 text-rose-500" />
                                     PDF
                                 </button>
                                 <button
                                     onClick={exportToExcel}
-                                    className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-muted transition duration-150 shadow-sm cursor-pointer"
+                                    className="w-full sm:w-auto inline-flex justify-center items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-muted transition duration-150 shadow-sm cursor-pointer"
                                 >
                                     <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-500" />
                                     Spreadsheet
                                 </button>
                                 <button
                                     onClick={exportToWord}
-                                    className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-muted transition duration-150 shadow-sm cursor-pointer"
+                                    className="w-full sm:w-auto inline-flex justify-center items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-muted transition duration-150 shadow-sm cursor-pointer"
                                 >
                                     <FileText className="h-3.5 w-3.5 text-blue-500" />
                                     Docs

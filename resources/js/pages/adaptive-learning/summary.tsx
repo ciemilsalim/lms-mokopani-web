@@ -163,7 +163,7 @@ export default function AdaptiveSummary({ subject, student, summary, non_cogniti
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`Diagnostik ${subject.name} – LMS Mokopani`} />
 
-            <div className="flex h-full flex-1 flex-col gap-6 p-6 fade-in">
+            <div className="flex h-full flex-1 flex-col gap-6 min-w-0 fade-in">
                 <Link
                     href={route('adaptive-learning.index')}
                     className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary transition w-fit"
@@ -337,7 +337,7 @@ export default function AdaptiveSummary({ subject, student, summary, non_cogniti
                             <button
                                 onClick={handleGenerate}
                                 disabled={loading}
-                                className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-3.5 py-2 text-xs font-semibold text-foreground shadow-sm hover:bg-muted transition duration-150 disabled:opacity-50"
+                                className="w-full sm:w-auto inline-flex justify-center items-center gap-2 rounded-xl border border-border bg-background px-3.5 py-2 text-xs font-semibold text-foreground shadow-sm hover:bg-muted transition duration-150 disabled:opacity-50"
                             >
                                 {loading ? (
                                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -360,7 +360,7 @@ export default function AdaptiveSummary({ subject, student, summary, non_cogniti
                                 <button
                                     onClick={handleGenerate}
                                     disabled={loading}
-                                    className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow hover:bg-primary/95 transition duration-150 disabled:opacity-50"
+                                    className="w-full sm:w-auto inline-flex justify-center items-center gap-2 rounded-xl bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow hover:bg-primary/95 transition duration-150 disabled:opacity-50"
                                 >
                                     {loading ? (
                                         <>

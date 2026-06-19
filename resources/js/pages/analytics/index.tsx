@@ -44,7 +44,7 @@ export default function AnalyticsIndex({ teachings, overview_stats }: AnalyticsI
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Analitik – LMS Mokopani" />
 
-            <div className="flex h-full flex-1 flex-col gap-6 p-6">
+            <div className="flex h-full flex-1 flex-col gap-6 min-w-0">
                 <div>
                     <h1 className="text-xl font-bold text-foreground">Analitik Pembelajaran</h1>
                     <p className="text-sm text-muted-foreground">

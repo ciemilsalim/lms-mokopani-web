@@ -246,7 +246,7 @@ export default function CreateMaterial({ teachings, objectives }: CreateMaterial
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Buat Materi Baru – LMS Mokopani" />
 
-            <div className="flex h-full flex-1 flex-col gap-4 sm:gap-6 p-3 sm:p-6">
+            <div className="flex h-full flex-1 flex-col gap-4 sm:gap-6">
                 <div className="flex items-center justify-between">
                     <button 
                         onClick={() => window.history.back()}
@@ -362,12 +362,12 @@ export default function CreateMaterial({ teachings, objectives }: CreateMaterial
                                             </h3>
                                             <p className="text-xs text-muted-foreground">Buat draf judul dan isi materi secara otomatis berdasarkan Tujuan Pembelajaran (TP).</p>
                                         </div>
-                                        <div className="flex items-center gap-2 shrink-0">
+                                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shrink-0 mt-3 sm:mt-0">
                                             <button
                                                 type="button"
                                                 onClick={() => setIsPromptModalOpen(true)}
                                                 title="Pengaturan Prompt AI"
-                                                className="p-2.5 rounded-lg border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted transition-all"
+                                                className="p-2.5 rounded-lg border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted transition-all flex items-center justify-center"
                                             >
                                                 <Settings className="h-4 w-4" />
                                             </button>
@@ -503,7 +503,7 @@ export default function CreateMaterial({ teachings, objectives }: CreateMaterial
                                                 </div>
                                                 <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider">{res.type === 'link' ? 'Link Eksternal' : 'File Lampiran'}</span>
                                             </div>
-                                            <button type="button" onClick={() => removeResource(res.id)} className="text-muted-foreground/40 hover:text-destructive transition-colors p-1 opacity-0 group-hover:opacity-100">
+                                            <button type="button" onClick={() => removeResource(res.id)} className="text-muted-foreground/40 hover:text-destructive transition-colors p-1 opacity-100 lg:opacity-0 lg:group-hover:opacity-100">
                                                 <Trash2 className="h-3 w-3" />
                                             </button>
                                         </div>

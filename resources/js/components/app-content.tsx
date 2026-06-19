@@ -7,7 +7,7 @@ interface AppContentProps extends React.ComponentProps<'div'> {
 export function AppContent({ variant = 'header', children, ...props }: AppContentProps) {
     if (variant === 'sidebar') {
         return (
-            <div className="content-wrapper flex flex-1 flex-col p-6" {...props}>
+            <div className="content-wrapper flex flex-1 flex-col p-4 sm:p-6" {...props}>
                 {children}
             </div>
         );

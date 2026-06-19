@@ -125,7 +125,7 @@ export default function CreateRemedial({ teachings }: CreateRemedialProps) {
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Buat Remedial/Pengayaan – LMS Mokopani" />
 
-            <div className="flex h-full flex-1 flex-col gap-6 p-6">
+            <div className="flex h-full flex-1 flex-col gap-6 min-w-0">
                 <button
                     onClick={() => step === 1 ? window.history.back() : setStep(1)}
                     className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary transition w-fit"

@@ -114,10 +114,10 @@ export default function Edit({ modulAjar, teachings, objectives, materials, peri
     const [pemanfaatanDigital, setPemanfaatanDigital] = useState(parsedData.pemanfaatan_digital || '');
     const [mediaIlustrasi, setMediaIlustrasi] = useState(parsedData.media_ilustrasi || '');
     
-    const [understanding, setUnderstanding] = useState(parsedData.understanding || '');
-    const [application, setApplication] = useState(parsedData.application || '');
-    const [reflection, setReflection] = useState(parsedData.reflection || '');
-    const [lkpd, setLkpd] = useState(parsedData.lkpd || modulAjar.lkpd || '');
+    const [understanding, setUnderstanding] = useState((parsedData.understanding || '').replace(/&nbsp;/g, ' '));
+    const [application, setApplication] = useState((parsedData.application || '').replace(/&nbsp;/g, ' '));
+    const [reflection, setReflection] = useState((parsedData.reflection || '').replace(/&nbsp;/g, ' '));
+    const [lkpd, setLkpd] = useState((parsedData.lkpd || modulAjar.lkpd || '').replace(/&nbsp;/g, ' '));
 
     const [activeTab, setActiveTab] = useState<string>('info');
     const [isSaving, setIsSaving] = useState(false);
@@ -186,10 +186,10 @@ export default function Edit({ modulAjar, teachings, objectives, materials, peri
                 setKemitraanPembelajaran(data.kemitraan_pembelajaran || '');
                 setPemanfaatanDigital(data.pemanfaatan_digital || '');
                 setMediaIlustrasi(data.media_ilustrasi || '');
-                setUnderstanding(data.understanding || '');
-                setApplication(data.application || '');
-                setReflection(data.reflection || '');
-                setLkpd(data.lkpd || '');
+                setUnderstanding((data.understanding || '').replace(/&nbsp;/g, ' '));
+                setApplication((data.application || '').replace(/&nbsp;/g, ' '));
+                setReflection((data.reflection || '').replace(/&nbsp;/g, ' '));
+                setLkpd((data.lkpd || '').replace(/&nbsp;/g, ' '));
 
                 if (data.ai_active === false) {
                     setAiNotification({
@@ -259,24 +259,34 @@ export default function Edit({ modulAjar, teachings, objectives, materials, peri
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title={`Edit Modul Ajar #${modulAjar.id} – LMS Mokopani`} />
+            <Head title={`Edit Modul Ajar #${modulAjar.id} – LMS Mokopani`}>
+                <style>{`
+                    .ql-toolbar {
+                        display: flex;
+                        flex-wrap: wrap;
+                    }
+                    .ql-editor {
+                        word-break: break-word;
+                    }
+                `}</style>
+            </Head>
 
-            <div className="flex h-full flex-1 flex-col gap-6 p-6">
+            <div className="flex h-full flex-1 flex-col gap-6 min-w-0">
                 {/* Top Back Action & Title */}
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <button 
                         onClick={() => window.history.back()}
-                        className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition"
+                        className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition self-start sm:self-auto"
                     >
                         <ChevronLeft className="h-4 w-4" />
                         Kembali
                     </button>
-                    <h1 className="text-xl font-bold text-foreground">Edit Modul Ajar / RPP</h1>
+                    <h1 className="text-xl font-bold text-foreground self-start sm:self-auto">Edit Modul Ajar / RPP</h1>
                 </div>
 
                 <div className="grid gap-6 lg:grid-cols-3">
                     {/* Left Panel: Read Only Configuration */}
-                    <div className="space-y-6">
+                    <div className="space-y-6 min-w-0">
                         <div className="rounded-xl border border-border bg-card p-6 space-y-5 shadow-sm">
                             <h2 className="text-sm font-bold text-foreground flex items-center gap-2 border-b border-border pb-3">
                                 <Layers className="h-4.5 w-4.5 text-primary" />
@@ -296,14 +306,14 @@ export default function Edit({ modulAjar, teachings, objectives, materials, peri
                                     <span className="font-extrabold bg-muted text-foreground px-1 py-0.5 rounded mr-1">
                                         {objectiveInfo?.code}
                                     </span>
-                                    {objectiveInfo?.description}
+                                    {objectiveInfo?.description?.replace(/&nbsp;/g, ' ')}
                                 </p>
                             </div>
 
                             {/* Material Info */}
                             <div className="space-y-1">
                                 <span className="text-[10px] font-bold text-muted-foreground uppercase">Materi Ajar</span>
-                                <p className="text-xs font-semibold text-foreground">{materialInfo?.title}</p>
+                                <p className="text-xs font-semibold text-foreground break-words">{materialInfo?.title?.replace(/&nbsp;/g, ' ')}</p>
                             </div>
 
                             {/* Pedagogical Model Selectable */}
@@ -403,7 +413,7 @@ export default function Edit({ modulAjar, teachings, objectives, materials, peri
                                     className="w-full p-3 rounded-lg border border-border bg-popover text-xs text-foreground font-mono focus:ring-1 focus:ring-primary outline-none resize-none leading-relaxed"
                                     placeholder="Instruksi kustomisasi prompt Modul Ajar..."
                                 />
-                                <p className="text-[10px] text-muted-foreground italic">
+                                <p className="text-[10px] text-muted-foreground italic break-words">
                                     Placeholder yang didukung: {"{subject}"}, {"{class}"}, {"{tp}"}, {"{material}"}, {"{pedagogical_model}"}, {"{initial_assessments}"}, {"{formative_assessments}"}, {"{summative_assessments}"}
                                 </p>
                             </div>
@@ -411,7 +421,7 @@ export default function Edit({ modulAjar, teachings, objectives, materials, peri
                     </div>
 
                     {/* Right Panel: Form Inputs */}
-                    <div className="lg:col-span-2 space-y-6">
+                    <div className="lg:col-span-2 space-y-6 min-w-0">
                         {aiNotification && (
                             <div className={`p-4 rounded-xl border flex items-start gap-3 text-xs animate-in fade-in duration-200 ${
                                 aiNotification.type === 'error' ? 'bg-red-500/10 border-red-500/20 text-red-600' :
@@ -450,10 +460,10 @@ export default function Edit({ modulAjar, teachings, objectives, materials, peri
                                 </div>
 
                                 {/* Form Box */}
-                                <div className="p-6">
+                                <div className="p-4 sm:p-6">
                                     {activeTab === 'info' && (
                                         <div className="space-y-4 animate-in fade-in duration-200">
-                                            <div className="grid grid-cols-2 gap-4">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                                 <div className="space-y-1">
                                                     <label className="text-xs font-bold text-foreground block">Alokasi Waktu</label>
                                                     <input 
@@ -545,12 +555,12 @@ export default function Edit({ modulAjar, teachings, objectives, materials, peri
                                 </div>
 
                                 {/* Save Button */}
-                                <div className="px-6 py-4 border-t border-border bg-muted/10 flex justify-end gap-3">
+                                <div className="p-4 sm:p-6 border-t border-border bg-muted/10 flex flex-col sm:flex-row justify-end gap-3">
                                     <button
                                         type="button"
                                         onClick={handleSave}
                                         disabled={isSaving}
-                                        className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary text-primary-foreground px-6 py-2.5 text-sm font-bold shadow-lg hover:brightness-110 active:scale-95 transition disabled:opacity-50"
+                                        className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-primary text-primary-foreground px-6 py-2.5 text-sm font-bold shadow-lg hover:brightness-110 active:scale-95 transition disabled:opacity-50"
                                     >
                                         {isSaving ? (
                                             <>

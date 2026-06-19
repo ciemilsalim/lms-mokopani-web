@@ -1510,7 +1510,7 @@ export default function ShowMaterial({
         ]}>
             <Head title={`${material.title} – LMS Mokopani`} />
 
-            <div className="flex h-full flex-1 flex-col gap-6 p-6">
+            <div className="flex h-full flex-1 flex-col gap-4 sm:gap-6">
                 <div className="flex items-center justify-between">
                     <button 
                         onClick={() => window.history.back()}
@@ -1520,13 +1520,7 @@ export default function ShowMaterial({
                         Kembali
                     </button>
                     {(user_role === 'teacher' || user_role === 'admin') && (
-                        <div className="flex items-center gap-3">
-                            <button
-                                onClick={() => setIsRppMode(true)}
-                                className="flex items-center gap-2 rounded-xl bg-[#3DD68C]/10 px-4 py-2 text-xs font-bold text-[#3DD68C] transition hover:bg-[#3DD68C]/20 dark:bg-[#3DD68C]/10 dark:text-[#3DD68C]"
-                            >
-                                <Printer className="h-3.5 w-3.5" /> Pratinjau / Cetak RPP
-                            </button>
+                        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                             <Link
                                 href={route('materials.edit', material.id)}
                                 className="flex items-center gap-2 rounded-xl bg-[#5E6AD2]/10 px-4 py-2 text-xs font-bold text-[#5E6AD2] transition hover:bg-[#5E6AD2]/20 dark:bg-[#5E6AD2]/10 dark:text-[#5E6AD2]"
@@ -2026,7 +2020,7 @@ export default function ShowMaterial({
                             </p>
                             <Link 
                                 href="/assignments" 
-                                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-white py-4 text-sm font-black text-[#5E6AD2] transition hover:bg-[#5E6AD2]/5 hover:shadow-lg active:scale-95"
+                                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-white py-4 text-sm font-black text-[#5E6AD2] transition hover:bg-white/90 hover:shadow-lg active:scale-95"
                             >
                                 Lihat Daftar Asesmen
                                 <ArrowRight className="h-4 w-4" />

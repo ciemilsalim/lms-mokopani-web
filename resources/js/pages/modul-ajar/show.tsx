@@ -336,31 +336,31 @@ export default function Show({ modulAjar, assignments }: any) {
                 `}</style>
             </Head>
 
-            <div className="flex flex-col gap-6 p-6 h-full flex-1 max-w-5xl mx-auto w-full">
+            <div className="flex flex-col gap-6 h-full flex-1 max-w-5xl mx-auto w-full">
                 {/* Action Bar (Not printed) */}
-                <div className="flex items-center justify-between print:hidden">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 print:hidden">
                     <button 
                         onClick={() => window.history.back()}
-                        className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition"
+                        className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition self-start sm:self-auto"
                     >
                         <ChevronLeft className="h-4 w-4" /> Kembali
                     </button>
-                    <div className="flex flex-wrap gap-3 justify-end">
+                    <div className="flex flex-wrap gap-2 sm:gap-3 w-full sm:w-auto justify-end">
                         <button
                             onClick={handleExportWord}
-                            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 text-white px-4 py-2 text-sm font-semibold shadow hover:bg-blue-700 transition"
+                            className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 text-white px-4 py-2 text-sm font-semibold shadow hover:bg-blue-700 transition"
                         >
                             <Download className="h-4 w-4" /> Ekspor Docs (Word)
                         </button>
                         <button
                             onClick={() => router.get(route('lesson-plans.edit', modulAjar.id))}
-                            className="inline-flex items-center gap-2 rounded-lg bg-secondary text-secondary-foreground px-4 py-2 text-sm font-semibold hover:bg-secondary/80 transition"
+                            className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 rounded-lg bg-secondary text-secondary-foreground px-4 py-2 text-sm font-semibold hover:bg-secondary/80 transition"
                         >
                             <Edit className="h-4 w-4" /> Edit Modul Ajar
                         </button>
                         <button
                             onClick={() => handlePrint('all')}
-                            className="inline-flex items-center gap-2 rounded-lg bg-primary text-primary-foreground px-4 py-2 text-sm font-semibold shadow hover:bg-primary/90 transition"
+                            className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 rounded-lg bg-primary text-primary-foreground px-4 py-2 text-sm font-semibold shadow hover:bg-primary/90 transition"
                         >
                             <Printer className="h-4 w-4" /> Cetak / PDF
                         </button>
@@ -374,7 +374,7 @@ export default function Show({ modulAjar, assignments }: any) {
                     <div className="p-8 border-b border-border bg-muted/10 print:bg-white print:border-b-2 print:border-black text-center space-y-2 hide-in-lkpd-print">
                         <h1 className="text-xl font-bold uppercase tracking-wider text-black">MODUL AJAR / RPP DEEP LEARNING</h1>
                         <h2 className="text-lg font-bold text-black">{modulAjar.subject_name} - {modulAjar.class_name}</h2>
-                        <p className="text-sm text-gray-600">{modulAjar.material_title}</p>
+                        <p className="text-sm text-gray-600">{modulAjar.material_title?.replace(/&nbsp;/g, ' ')}</p>
                     </div>
 
                     <div className="p-8 space-y-10 bg-white text-black print:p-0 print:py-6">
@@ -431,7 +431,7 @@ export default function Show({ modulAjar, assignments }: any) {
                                 <tbody>
                                     <tr>
                                         <td className="border border-black p-2 font-bold w-1/3 bg-gray-50">Tujuan Pembelajaran (TP)</td>
-                                        <td className="border border-black p-2"><strong className="mr-2">{modulAjar.tp_code}</strong> {modulAjar.tp_desc}</td>
+                                        <td className="border border-black p-2"><strong className="mr-2">{modulAjar.tp_code}</strong> {modulAjar.tp_desc?.replace(/&nbsp;/g, ' ')}</td>
                                     </tr>
                                     <tr>
                                         <td className="border border-black p-2 font-bold bg-gray-50">Praktik Pedagogis (Model)</td>

@@ -26,7 +26,7 @@ export default function AdaptiveStudents({ subject, kelas, students }: StudentsP
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`Pilih Siswa – ${subject.name} – LMS Mokopani`} />
 
-            <div className="flex h-full flex-1 flex-col gap-6 p-6">
+            <div className="flex h-full flex-1 flex-col gap-6 min-w-0">
                 <Link
                     href={route('adaptive-learning.index')}
                     className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary transition w-fit"

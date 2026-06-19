@@ -50,22 +50,22 @@ export default function FinalReport({ reportData, subject_name, class_name, teac
         ]}>
             <Head title={`Laporan Akhir ${subject_name} – LMS Mokopani`} />
 
-            <div className="flex h-full flex-1 flex-col gap-6 p-6 print:p-0">
+            <div className="flex h-full flex-1 flex-col gap-6 min-w-0 print:p-0">
                 {/* Actions (Hidden on Print) */}
-                <div className="flex items-center justify-between print:hidden">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between print:hidden">
                     <button 
                         onClick={() => window.history.back()}
-                        className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary transition"
+                        className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition self-start sm:self-auto"
                     >
                         <ChevronLeft className="h-4 w-4" />
                         Kembali
                     </button>
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                         {subject_id && class_id && (
                             <button 
                                 onClick={handleDownloadPdf}
                                 disabled={downloading}
-                                className="inline-flex items-center gap-2 rounded-xl bg-primary hover:bg-primary-hover px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-primary/20 transition disabled:opacity-50 cursor-pointer"
+                                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-primary hover:bg-primary-hover px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-primary/20 transition disabled:opacity-50 cursor-pointer"
                             >
                                 <Download className="h-4 w-4" />
                                 {downloading ? 'Mengunduh...' : 'Unduh PDF Rapor'}
@@ -73,7 +73,7 @@ export default function FinalReport({ reportData, subject_name, class_name, teac
                         )}
                         <button 
                             onClick={() => window.print()}
-                            className="inline-flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-5 py-2.5 text-sm font-bold text-primary hover:bg-primary/10 transition dark:border-primary/30 dark:bg-primary/5 dark:text-primary cursor-pointer"
+                            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-5 py-2.5 text-sm font-bold text-primary hover:bg-primary/10 transition dark:border-primary/30 dark:bg-primary/5 dark:text-primary cursor-pointer"
                         >
                             <Printer className="h-4 w-4" />
                             Cetak Laporan

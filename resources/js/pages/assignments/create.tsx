@@ -30,6 +30,8 @@ import {
     Plus,
     Sparkles,
     Settings,
+    AlignLeft,
+    Layers,
     X
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
@@ -318,7 +320,7 @@ export default function CreateAssignment({ teachings, objectives, assessment_typ
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Buat Tugas Baru – LMS Mokopani" />
 
-            <div className="flex h-full flex-1 flex-col gap-6 p-6">
+            <div className="flex h-full flex-1 flex-col gap-4 sm:gap-6">
                 <div className="flex items-center justify-between">
                     <button 
                         onClick={() => window.history.back()}
@@ -1046,6 +1048,214 @@ export default function CreateAssignment({ teachings, objectives, assessment_typ
                                                     <p className="text-xs text-muted-foreground italic">Belum ada kata kunci. Tambahkan kata kunci di atas untuk memudahkan murid menyusun peta konsep.</p>
                                                 )}
                                             </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* 6. KKTP SECTION (KKTPSection Layout) */}
+                                {data.instrument_config?.kktp && (
+                                    <div className="pt-6 mt-6 border-t border-border space-y-6">
+                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className={`flex h-9 w-9 items-center justify-center rounded-md bg-primary/10 text-primary border border-primary/25`}>
+                                                    <ListChecks className="h-5 w-5" />
+                                                </div>
+                                                <div>
+                                                    <h5 className="text-[12px] font-semibold uppercase tracking-[0.05em] text-foreground">Pendekatan KKTP</h5>
+                                                    <p className="text-[10px] text-muted-foreground font-mono uppercase tracking-[0.05em]">Kriteria Ketercapaian</p>
+                                                </div>
+                                            </div>
+                                            
+                                            <div className="flex bg-card text-card-foreground p-1 rounded-md border border-border overflow-x-auto no-scrollbar shrink-0">
+                                                {[
+                                                    { id: 'criteria_description', name: 'Deskripsi', icon: AlignLeft },
+                                                    { id: 'rubric', name: 'Rubrik', icon: Layers },
+                                                    { id: 'score_interval', name: 'Interval', icon: Activity },
+                                                    { id: 'percentage', name: 'Persentase', icon: Zap }
+                                                ].map(app => (
+                                                    <button
+                                                        key={app.id}
+                                                        type="button"
+                                                        onClick={() => updateKKTP('approach', app.id)}
+                                                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-[11px] font-semibold transition-all whitespace-nowrap cursor-pointer ${
+                                                            data.instrument_config?.kktp?.approach === app.id 
+                                                            ? `bg-primary text-white shadow-sm` 
+                                                            : 'text-muted-foreground hover:text-foreground dark:hover:text-foreground'
+                                                        }`}
+                                                    >
+                                                        <app.icon className="h-3 w-3" />
+                                                        {app.name}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        <div className="animate-in fade-in slide-in-from-top-1 duration-200">
+                                            {data.instrument_config?.kktp?.approach === 'criteria_description' && (
+                                                <div className="space-y-4">
+                                                    <div className="bg-popover rounded-md p-4 border border-border flex items-start gap-3">
+                                                        <Info className={`h-4 w-4 text-primary shrink-0 mt-0.5`} />
+                                                        <p className="text-[12px] text-muted-foreground leading-relaxed">
+                                                            <span className="font-semibold text-foreground">Deskripsi Kriteria:</span> Ketuntasan didasarkan pada jumlah indikator yang tercapai.
+                                                        </p>
+                                                    </div>
+                                                    <div className="flex items-center gap-4 bg-card text-card-foreground p-4 rounded-md border border-border">
+                                                        <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.05em]">Minimal Indikator:</label>
+                                                        <div className="flex items-center gap-3">
+                                                            <input 
+                                                                type="number"
+                                                                min={1}
+                                                                max={(data.instrument_config?.indicators?.length || data.instrument_config?.questions?.length || 1)}
+                                                                value={data.instrument_config?.kktp?.min_criteria || 2}
+                                                                onChange={e => updateKKTP('min_criteria', parseInt(e.target.value))}
+                                                                className="h-8 w-14 bg-popover border border-border rounded-md text-center font-mono text-[13px] text-foreground outline-none focus:border-primary"
+                                                            />
+                                                            <span className="text-[11px] text-muted-foreground font-mono">/ {(data.instrument_config?.indicators?.length || data.instrument_config?.questions?.length || 0)}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {data.instrument_config?.kktp?.approach === 'rubric' && (
+                                                <div className="space-y-4">
+                                                    <div className="bg-popover rounded-md p-4 border border-border flex items-start gap-3">
+                                                        <Info className={`h-4 w-4 text-primary shrink-0 mt-0.5`} />
+                                                        <p className="text-[12px] text-muted-foreground leading-relaxed">
+                                                            <span className="font-semibold text-foreground">Pendekatan Rubrik:</span> Tentukan level minimum pencapaian untuk dianggap tuntas.
+                                                        </p>
+                                                    </div>
+                                                    <div className="grid gap-3 sm:grid-cols-2">
+                                                        {data.instrument_config?.levels?.map((lvl: any, lvlIdx: number) => (
+                                                            <div 
+                                                                key={lvlIdx} 
+                                                                onClick={() => updateKKTP('passing_level', lvl.name)}
+                                                                className={`p-4 rounded-md border transition-all cursor-pointer relative group ${
+                                                                    data.instrument_config?.kktp?.passing_level === lvl.name 
+                                                                    ? `bg-popover border-primary shadow-sm` 
+                                                                    : 'bg-card text-card-foreground border-border hover:bg-muted/10'
+                                                                }`}
+                                                            >
+                                                                <div className="flex items-center justify-between mb-2">
+                                                                    <input 
+                                                                        value={lvl.name}
+                                                                        onChange={e => {
+                                                                            const lvls = [...(data.instrument_config?.levels || [])];
+                                                                            lvls[lvlIdx] = { ...lvls[lvlIdx], name: e.target.value };
+                                                                            updateConfig('levels', lvls);
+                                                                        }}
+                                                                        className={`w-full text-[11px] font-semibold uppercase tracking-wider bg-transparent border-none focus:ring-0 outline-none ${data.instrument_config?.kktp?.passing_level === lvl.name ? 'text-primary font-bold' : 'text-muted-foreground'}`}
+                                                                    />
+                                                                    {data.instrument_config?.kktp?.passing_level === lvl.name && <CheckCircle2 className={`h-4 w-4 text-primary`} />}
+                                                                </div>
+                                                                <textarea 
+                                                                    value={lvl.desc}
+                                                                    onChange={e => {
+                                                                        const lvls = [...(data.instrument_config?.levels || [])];
+                                                                        lvls[lvlIdx] = { ...lvls[lvlIdx], desc: e.target.value };
+                                                                        updateConfig('levels', lvls);
+                                                                    }}
+                                                                    rows={3}
+                                                                    className="w-full bg-transparent text-[12px] text-muted-foreground leading-relaxed border-none focus:ring-0 outline-none resize-none p-0"
+                                                                    placeholder="Deskripsi..."
+                                                                />
+                                                                {data.instrument_config?.kktp?.passing_level === lvl.name && (
+                                                                    <div className={`absolute bottom-1.5 right-2.5 text-[9px] font-semibold uppercase tracking-[0.08em] text-primary`}>✓ Batas Tuntas</div>
+                                                                )}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {data.instrument_config?.kktp?.approach === 'score_interval' && (
+                                                <div className="space-y-4">
+                                                    <div className="bg-popover rounded-md p-4 border border-border flex items-start gap-3">
+                                                        <Activity className={`h-4 w-4 text-primary shrink-0 mt-0.5`} />
+                                                        <p className="text-[12px] text-muted-foreground leading-relaxed">
+                                                            <span className="font-semibold text-foreground">Interval Nilai:</span> Tetapkan rentang skor (0-100) untuk tindak lanjut.
+                                                        </p>
+                                                    </div>
+                                                    <div className="grid gap-2">
+                                                        {(data.instrument_config?.kktp?.intervals || [
+                                                            { min: 0, max: 40, label: 'Belum Mencapai', desc: 'Remedial seluruhnya' },
+                                                            { min: 41, max: 60, label: 'Hampir Mencapai', desc: 'Remedial bagian tertentu' },
+                                                            { min: 61, max: 80, label: 'Sudah Mencapai', desc: 'Tuntas' },
+                                                            { min: 81, max: 100, label: 'Sudah Mencapai', desc: 'Pengayaan' }
+                                                        ]).map((iv: any, ivIdx: number) => (
+                                                            <div key={ivIdx} className="flex items-center gap-4 p-3 bg-card text-card-foreground rounded-md border border-border group">
+                                                                <div className="flex items-center gap-2">
+                                                                    <input 
+                                                                        type="number"
+                                                                        value={iv.min}
+                                                                        onChange={e => {
+                                                                            const ivs = [...(data.instrument_config?.kktp?.intervals || [])];
+                                                                            ivs[ivIdx] = { ...ivs[ivIdx], min: parseInt(e.target.value) };
+                                                                            updateKKTP('intervals', ivs);
+                                                                        }}
+                                                                        className="h-7 w-12 bg-popover border border-border rounded text-center text-[11px] font-mono text-foreground outline-none focus:border-primary"
+                                                                    />
+                                                                    <span className="text-muted-foreground">-</span>
+                                                                    <input 
+                                                                        type="number"
+                                                                        value={iv.max}
+                                                                        onChange={e => {
+                                                                            const ivs = [...(data.instrument_config?.kktp?.intervals || [])];
+                                                                            ivs[ivIdx] = { ...ivs[ivIdx], max: parseInt(e.target.value) };
+                                                                            updateKKTP('intervals', ivs);
+                                                                        }}
+                                                                        className="h-7 w-12 bg-popover border border-border rounded text-center text-[11px] font-mono text-foreground outline-none focus:border-primary"
+                                                                    />
+                                                                </div>
+                                                                <div className="flex-1 flex flex-col">
+                                                                    <input 
+                                                                        value={iv.label}
+                                                                        onChange={e => {
+                                                                            const ivs = [...(data.instrument_config?.kktp?.intervals || [])];
+                                                                            ivs[ivIdx] = { ...ivs[ivIdx], label: e.target.value };
+                                                                            updateKKTP('intervals', ivs);
+                                                                        }}
+                                                                        className="bg-transparent text-[12px] font-semibold text-foreground border-none focus:ring-0 p-0"
+                                                                    />
+                                                                    <input 
+                                                                        value={iv.desc}
+                                                                        onChange={e => {
+                                                                            const ivs = [...(data.instrument_config?.kktp?.intervals || [])];
+                                                                            ivs[ivIdx] = { ...ivs[ivIdx], desc: e.target.value };
+                                                                            updateKKTP('intervals', ivs);
+                                                                        }}
+                                                                        className="bg-transparent text-[11px] text-muted-foreground border-none focus:ring-0 p-0"
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {data.instrument_config?.kktp?.approach === 'percentage' && (
+                                                <div className="space-y-4">
+                                                    <div className="bg-popover rounded-md p-4 border border-border flex items-start gap-3">
+                                                        <Zap className={`h-4 w-4 text-primary shrink-0 mt-0.5`} />
+                                                        <p className="text-[12px] text-muted-foreground leading-relaxed">
+                                                            <span className="font-semibold text-foreground">Persentase:</span> Rasio kriteria yang dicapai terhadap total.
+                                                        </p>
+                                                    </div>
+                                                    <div className="flex items-center gap-4 bg-card text-card-foreground p-4 rounded-md border border-border">
+                                                        <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.05em]">Ambang Batas:</label>
+                                                        <div className="flex items-center gap-3">
+                                                            <input 
+                                                                type="number"
+                                                                min={0}
+                                                                max={100}
+                                                                value={data.instrument_config?.kktp?.threshold || 75}
+                                                                onChange={e => updateKKTP('threshold', parseInt(e.target.value))}
+                                                                className="h-8 w-14 bg-popover border border-border rounded-md text-center font-mono text-[13px] text-foreground outline-none focus:border-primary"
+                                                            />
+                                                            <span className="text-[11px] text-muted-foreground font-mono">%</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 )}

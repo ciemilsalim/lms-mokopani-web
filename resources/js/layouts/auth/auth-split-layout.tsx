@@ -13,7 +13,7 @@ export default function AuthSplitLayout({ children, title, description }: AuthLa
 
     return (
         <div className="authentication-wrapper authentication-cover flex min-h-svh">
-            <Link href={route('home')} className="app-brand auth-cover-brand fixed left-6 top-5 z-50 flex items-center gap-2 font-medium group">
+            <Link href={route('home')} className="app-brand auth-cover-brand hidden lg:flex fixed left-6 top-5 z-50 items-center gap-2 font-medium group">
                 <div className="flex h-9 w-9 items-center justify-center rounded-lg shadow-sm overflow-hidden border border-white/20 bg-white/10 backdrop-blur-sm transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3">
                     <AppLogoIcon className="size-full object-cover" />
                 </div>
@@ -39,18 +39,27 @@ export default function AuthSplitLayout({ children, title, description }: AuthLa
                 </div>
 
                 {/* Right: Form */}
-                <div className="flex w-full lg:w-[50%] xl:w-[40%] items-center justify-center bg-background p-8 sm:p-12">
-                    <div className="flex h-full w-full max-w-sm mx-auto flex-col">
-                        <div className="flex-1">
+                <div className="flex w-full lg:w-[50%] xl:w-[40%] items-center justify-center bg-background p-6 sm:p-12 relative overflow-y-auto">
+                    <div className="flex w-full max-w-sm mx-auto flex-col h-full min-h-[500px]">
+                        
+                        {/* Mobile Logo */}
+                        <div className="lg:hidden flex items-center gap-3 mt-4 mb-8">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-xl shadow-sm border border-border bg-card overflow-hidden">
+                                <AppLogoIcon className="size-full object-cover" />
+                            </div>
+                            <span className="text-xl font-bold tracking-tight text-foreground">{name}</span>
+                        </div>
+
+                        <div className="flex-1 flex flex-col justify-center">
                             {title && (
                                 <div className="mb-8">
-                                    <h4 className="text-xl font-semibold text-foreground">{title}</h4>
-                                    {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
+                                    <h4 className="text-2xl font-bold tracking-tight text-foreground">{title}</h4>
+                                    {description && <p className="mt-1.5 text-sm text-muted-foreground">{description}</p>}
                                 </div>
                             )}
                             {children}
                         </div>
-                        <p className="mt-8 text-center text-[10px] text-muted-foreground/60">
+                        <p className="mt-8 mb-4 text-center text-xs font-medium text-muted-foreground/60">
                             Created By Zahradev &middot; LMS Mokopani Versi 1.0
                         </p>
                     </div>

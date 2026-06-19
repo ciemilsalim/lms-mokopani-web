@@ -40,8 +40,8 @@ export default function ReportLearning({ subject, class: cls, tps, reportData, p
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`Laporan CP ${subject.name} – LMS Mokopani`} />
 
-            <div className="flex h-full flex-1 flex-col gap-6 p-6">
-                <div className="flex items-center justify-between">
+            <div className="flex h-full flex-1 flex-col gap-6 min-w-0">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <Link
                         href={route('gradebook.index')}
                         className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary transition"

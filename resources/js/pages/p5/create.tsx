@@ -69,15 +69,15 @@ export default function P5Create({ classes, dimensi, period }: P5CreateProps) {
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Buat Projek P5 – LMS Mokopani" />
 
-            <div className="flex h-full flex-1 flex-col gap-6 p-6 max-w-3xl mx-auto w-full">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h1 className="text-2xl font-black text-foreground tracking-tight">Buat Projek P5</h1>
-                        <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest">{period}</p>
-                    </div>
-                    <button onClick={() => window.history.back()} className="flex items-center gap-2 px-4 py-2 rounded-xl border border-border text-muted-foreground font-medium text-sm hover:bg-muted transition">
+            <div className="flex h-full flex-1 flex-col gap-6 max-w-3xl mx-auto w-full min-w-0">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <button 
+                        onClick={() => window.history.back()}
+                        className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition self-start sm:self-auto"
+                    >
                         <ChevronLeft className="h-4 w-4" /> Kembali
                     </button>
+                    <h1 className="text-xl font-bold text-foreground self-start sm:self-auto">Buat Projek P5 Baru</h1>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-8">
@@ -191,9 +191,9 @@ export default function P5Create({ classes, dimensi, period }: P5CreateProps) {
                         {errors.sub_element_ids && <p className="text-[10px] text-destructive">{errors.sub_element_ids}</p>}
                     </div>
 
-                    <div className="flex justify-end gap-3">
-                        <button type="button" onClick={() => window.history.back()} className="px-6 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground transition">Batal</button>
-                        <button type="submit" disabled={processing} className="flex items-center gap-2 px-6 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:bg-primary/90 transition disabled:opacity-50 shadow-sm">
+                    <div className="flex flex-col sm:flex-row justify-end gap-3">
+                        <button type="button" onClick={() => window.history.back()} className="w-full sm:w-auto px-6 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground transition text-center">Batal</button>
+                        <button type="submit" disabled={processing} className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:bg-primary/90 transition disabled:opacity-50 shadow-sm">
                             <Save className="h-4 w-4" /> Buat Projek
                         </button>
                     </div>

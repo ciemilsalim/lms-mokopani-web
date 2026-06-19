@@ -46,13 +46,13 @@ export default function P5Index({ projects, classes }: P5IndexProps) {
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Projek P5 – LMS Mokopani" />
 
-            <div className="flex h-full flex-1 flex-col gap-6 p-6">
+            <div className="flex h-full flex-1 flex-col gap-6 min-w-0">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                         <h1 className="text-2xl font-black text-foreground tracking-tight">Projek Penguatan P5</h1>
                         <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest">Profil Pelajar Pancasila</p>
                     </div>
-                    <Link href={route('p5.create')} className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary/90 transition shadow-sm">
+                    <Link href={route('p5.create')} className="flex w-full sm:w-auto items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary/90 transition shadow-sm">
                         <Plus className="h-4 w-4" /> Buat Projek
                     </Link>
                 </div>

@@ -90,7 +90,7 @@ export default function Create({ teachings, objectives, materials, period }: Cre
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Buat Modul Ajar Baru – LMS Mokopani" />
 
-            <div className="flex h-full flex-1 flex-col gap-6 p-6">
+            <div className="flex h-full flex-1 flex-col gap-6">
                 <div className="flex items-center justify-between">
                     <button 
                         onClick={() => window.history.back()}

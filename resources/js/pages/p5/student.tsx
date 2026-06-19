@@ -62,7 +62,7 @@ export default function StudentP5({ projects, period }: StudentP5Props) {
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Projek P5 Saya – LMS Mokopani" />
 
-            <div className="flex h-full flex-1 flex-col gap-6 p-6 max-w-5xl mx-auto w-full">
+            <div className="flex h-full flex-1 flex-col gap-6 max-w-5xl mx-auto w-full min-w-0">
                 <div className="rounded-2xl bg-gradient-to-br from-rose-600 via-rose-500 to-pink-500 p-8 text-white shadow-xl shadow-rose-200 dark:shadow-none">
                     <div className="flex items-center gap-4">
                         <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-md">
