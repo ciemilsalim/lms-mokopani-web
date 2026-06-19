@@ -23,11 +23,10 @@ return new class extends Migration
 
         // Copy existing data
         DB::statement('INSERT INTO lms_material_school_class (material_id, school_class_id, created_at, updated_at)
-                       SELECT id, school_class_id, NOW(), NOW() FROM lms_materials WHERE school_class_id IS NOT NULL');
+                       SELECT id, school_class_id, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP FROM lms_materials WHERE school_class_id IS NOT NULL');
 
         // Drop the column from lms_materials
         Schema::table('lms_materials', function (Blueprint $table) {
-            $table->dropForeign(['school_class_id']);
             $table->dropColumn('school_class_id');
         });
     }
