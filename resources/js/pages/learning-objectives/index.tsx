@@ -270,7 +270,7 @@ export default function LearningObjectiveIndex({ objectives, subjects, cpList }:
 
                 {isAtpMode ? (
                     <div className="flex flex-col gap-4 animate-in slide-in-from-top-4 duration-300">
-                        <div className="flex items-center justify-between p-4 bg-muted/30 rounded-2xl border border-dashed border-border">
+                        <div className="flex items-center justify-between p-4 bg-muted/30 rounded-xl border border-dashed border-border">
                             <div className="flex items-center gap-4">
                                 <div className="p-2 bg-primary/10 rounded-lg text-primary">
                                     <Sparkles className="h-5 w-5" />
@@ -314,7 +314,7 @@ export default function LearningObjectiveIndex({ objectives, subjects, cpList }:
 
                         <div className="space-y-2">
                             {tempObjectives.map((obj, index) => (
-                                <div key={obj.id} className="flex items-center gap-4 p-4 bg-card border rounded-2xl shadow-sm group hover:border-primary/30 transition">
+                                <div key={obj.id} className="flex items-center gap-4 p-4 bg-card border rounded-xl shadow-sm group hover:border-primary/30 transition">
                                     <div className="flex flex-col items-center gap-1">
                                         <button onClick={() => moveObjective(index, 'up')} disabled={index === 0} className="p-1 rounded hover:bg-muted disabled:opacity-30"><ArrowUpDown className="h-3 w-3 rotate-180" /></button>
                                         <span className="text-xs font-black text-primary/40 group-hover:text-primary transition">{index + 1}</span>
@@ -335,15 +335,15 @@ export default function LearningObjectiveIndex({ objectives, subjects, cpList }:
                 ) : (
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                         {objectives.length === 0 ? (
-                            <div className="col-span-full flex flex-col items-center justify-center py-24 text-muted-foreground border-2 border-dashed rounded-3xl bg-muted/20">
+                            <div className="col-span-full flex flex-col items-center justify-center py-24 text-muted-foreground border-2 border-dashed rounded-xl bg-muted/20">
                                 <Target className="h-16 w-16 mb-6 opacity-20" />
                                 <p className="text-xl font-black text-foreground/70">Belum ada Tujuan Pembelajaran</p>
                                 <p className="text-sm text-center font-medium max-w-sm mt-2">Silakan tambahkan TP menggunakan metode formulasi yang tersedia untuk mulai merancang pembelajaran.</p>
-                                <button onClick={openAddModal} className="mt-8 px-8 py-3 bg-primary text-primary-foreground rounded-2xl font-black shadow-xl shadow-primary/20 hover:opacity-90 transition">Mulai Merumuskan TP</button>
+                                <button onClick={openAddModal} className="mt-8 px-8 py-3 bg-primary text-primary-foreground rounded-xl font-black shadow-xl shadow-primary/20 hover:opacity-90 transition">Mulai Merumuskan TP</button>
                             </div>
                         ) : (
                             objectives.map((obj) => (
-                                <div key={obj.id} className="group relative rounded-3xl border border-border bg-card p-6 shadow-sm transition-all hover:shadow-xl hover:-translate-y-1">
+                                <div key={obj.id} className="group relative rounded-xl border border-border bg-card p-6 shadow-sm transition-all hover:shadow-xl hover:-translate-y-1">
                                     <div className="flex items-start justify-between mb-4">
                                         <div className="flex flex-col gap-1">
                                             <div className="flex items-center gap-2">
@@ -375,7 +375,7 @@ export default function LearningObjectiveIndex({ objectives, subjects, cpList }:
                                     </div>
                                     <div className="space-y-4">
                                         <div className="flex items-center gap-3">
-                                            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-muted text-primary">
+                                            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted text-primary">
                                                 <span className="text-sm font-black">{obj.order}</span>
                                             </div>
                                             <span className="text-sm font-black text-foreground tracking-tight">{obj.code || `TP ${obj.order}`}</span>
@@ -399,8 +399,8 @@ export default function LearningObjectiveIndex({ objectives, subjects, cpList }:
 
             {/* Modal Formulasi TP */}
             {showModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/60 backdrop-blur-md p-4">
-                    <div className="w-full max-w-2xl rounded-[2.5rem] bg-card text-card-foreground border-border p-10 shadow-2xl border border-border animate-in fade-in zoom-in duration-300 max-h-[90vh] overflow-y-auto">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 animate-in fade-in duration-300">
+                    <div className="w-full max-w-2xl rounded-xl bg-card text-card-foreground border border-border p-6 shadow-none animate-in fade-in zoom-in duration-300 max-h-[90vh] overflow-y-auto">
                         <div className="flex items-center justify-between mb-8">
                             <div>
                                 <h3 className="text-2xl font-black text-foreground tracking-tight">
@@ -408,13 +408,13 @@ export default function LearningObjectiveIndex({ objectives, subjects, cpList }:
                                 </h3>
                                 <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest mt-1">Gunakan salah satu dari 3 metode perumusan</p>
                             </div>
-                            <button onClick={() => setShowModal(false)} className="h-10 w-10 flex items-center justify-center rounded-2xl hover:bg-muted transition text-muted-foreground">
+                            <button onClick={() => setShowModal(false)} className="h-10 w-10 flex items-center justify-center rounded-xl hover:bg-muted transition text-muted-foreground">
                                 <X className="h-6 w-6" />
                             </button>
                         </div>
 
                         {/* Tab Selector */}
-                        <div className="flex p-1 bg-muted/50 rounded-[1.5rem] mb-8">
+                        <div className="flex p-1 bg-muted/50 rounded-xl mb-8">
                             {[
                                 { id: 'direct', label: 'Salin CP', desc: 'Praktis' },
                                 { id: 'analysis', label: 'Analisis', desc: 'Kompetensi & Konten' },
@@ -424,7 +424,7 @@ export default function LearningObjectiveIndex({ objectives, subjects, cpList }:
                                     key={tab.id}
                                     type="button"
                                     onClick={() => setActiveTab(tab.id as any)}
-                                    className={`flex-1 flex flex-col items-center py-3 rounded-[1.25rem] transition ${activeTab === tab.id ? 'bg-card dark:bg-popover shadow-xl border border-border/40 text-primary' : 'hover:bg-muted/50 hover:text-foreground text-muted-foreground'}`}
+                                    className={`flex-1 flex flex-col items-center py-3 rounded-md transition ${activeTab === tab.id ? 'bg-card dark:bg-popover shadow-xl border border-border/40 text-primary' : 'hover:bg-muted/50 hover:text-foreground text-muted-foreground'}`}
                                 >
                                     <span className={`text-xs font-black ${activeTab === tab.id ? 'text-primary' : 'text-muted-foreground'}`}>{tab.label}</span>
                                     <span className="text-[9px] font-bold text-muted-foreground/60 uppercase">{tab.desc}</span>
@@ -442,7 +442,7 @@ export default function LearningObjectiveIndex({ objectives, subjects, cpList }:
                                     value={data.subject_id}
                                     onChange={(e) => setData('subject_id', e.target.value)}
                                     disabled={!!editingId}
-                                    className="w-full rounded-[1.25rem] border border-border bg-muted/30 px-5 py-3.5 text-sm font-bold outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition"
+                                    className="w-full rounded-md border border-border bg-muted/30 px-5 py-3.5 text-sm font-bold outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition"
                                 >
                                     <option value="">Pilih Mapel</option>
                                     {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -456,7 +456,7 @@ export default function LearningObjectiveIndex({ objectives, subjects, cpList }:
                                         <Target className="h-3.5 w-3.5 text-primary" />
                                         Pilih Beberapa CP untuk Digabungkan
                                     </label>
-                                    <div className="grid grid-cols-2 gap-3 max-h-40 overflow-y-auto p-4 bg-muted/30 rounded-[1.5rem]">
+                                    <div className="grid grid-cols-2 gap-3 max-h-40 overflow-y-auto p-4 bg-muted/30 rounded-xl">
                                         {cpList
                                             .filter(cp => cp.subject.id.toString() === data.subject_id)
                                             .map(cp => (
@@ -491,7 +491,7 @@ export default function LearningObjectiveIndex({ objectives, subjects, cpList }:
                                             setData('cp_id', e.target.value);
                                             setDirectSuggestions([]);
                                         }}
-                                        className="w-full rounded-[1.25rem] border border-border bg-muted/30 px-5 py-3.5 text-sm font-bold outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition"
+                                        className="w-full rounded-md border border-border bg-muted/30 px-5 py-3.5 text-sm font-bold outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition"
                                     >
                                         <option value="">-- Pilih Elemen CP --</option>
                                         {cpList
@@ -503,7 +503,7 @@ export default function LearningObjectiveIndex({ objectives, subjects, cpList }:
                             )}
 
                             {activeTab === 'direct' && directSuggestions.length > 0 && (
-                                <div className="space-y-3 p-6 bg-primary/5 rounded-[2rem] border border-primary/10 animate-in fade-in slide-in-from-bottom-2">
+                                <div className="space-y-3 p-6 bg-primary/5 rounded-xl border border-primary/10 animate-in fade-in slide-in-from-bottom-2">
                                     <label className="text-[10px] font-black text-primary uppercase tracking-widest">Pilih Kalimat TP yang Sesuai</label>
                                     <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
                                         {directSuggestions.map((s, idx) => (
@@ -512,7 +512,7 @@ export default function LearningObjectiveIndex({ objectives, subjects, cpList }:
                                                 type="button"
                                                 disabled={s.is_used}
                                                 onClick={() => setData('description', s.text)}
-                                                className={`w-full text-left p-4 rounded-2xl border transition group flex items-start justify-between gap-3 ${s.is_used ? 'bg-muted opacity-50 cursor-not-allowed border-transparent' : data.description === s.text ? 'bg-primary border-primary text-primary-foreground' : 'bg-card border-border hover:border-primary/40 shadow-sm'}`}
+                                                className={`w-full text-left p-4 rounded-xl border transition group flex items-start justify-between gap-3 ${s.is_used ? 'bg-muted opacity-50 cursor-not-allowed border-transparent' : data.description === s.text ? 'bg-primary border-primary text-primary-foreground' : 'bg-card border-border hover:border-primary/40 shadow-sm'}`}
                                             >
                                                 <span className="text-sm font-medium leading-relaxed">{s.text}</span>
                                                 {s.is_used ? (
@@ -528,7 +528,7 @@ export default function LearningObjectiveIndex({ objectives, subjects, cpList }:
                             )}
 
                             {activeTab === 'analysis' && (
-                                <div className="grid grid-cols-2 gap-6 p-6 bg-primary/5 rounded-[2rem] border border-primary/10">
+                                <div className="grid grid-cols-2 gap-6 p-6 bg-primary/5 rounded-xl border border-primary/10">
                                     <div className="space-y-2">
                                         <label className="text-[10px] font-black text-primary uppercase tracking-widest">Kompetensi (Kata Kerja)</label>
                                         <input 
@@ -571,7 +571,7 @@ export default function LearningObjectiveIndex({ objectives, subjects, cpList }:
                                     placeholder="Tuliskan rumusan tujuan pembelajaran di sini atau klik 'Rumuskan Otomatis'..."
                                     value={data.description}
                                     onChange={(e) => setData('description', e.target.value)}
-                                    className="w-full rounded-[2rem] border border-border bg-muted/30 px-6 py-5 text-sm font-bold outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition leading-relaxed resize-none"
+                                    className="w-full rounded-xl border border-border bg-muted/30 px-6 py-5 text-sm font-bold outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition leading-relaxed resize-none"
                                 ></textarea>
                                 {errors.description && <p className="text-[10px] text-destructive font-bold">{errors.description}</p>}
                             </div>
@@ -579,7 +579,7 @@ export default function LearningObjectiveIndex({ objectives, subjects, cpList }:
                             <button 
                                 type="submit"
                                 disabled={processing}
-                                className="w-full rounded-[1.5rem] bg-primary py-4 text-sm font-black text-primary-foreground shadow-xl shadow-primary/30 transition hover:opacity-95 disabled:opacity-50"
+                                className="w-full rounded-xl bg-primary py-4 text-sm font-black text-primary-foreground shadow-xl shadow-primary/30 transition hover:opacity-95 disabled:opacity-50"
                             >
                                 {processing ? 'Menyimpan...' : editingId ? 'Simpan Perubahan' : 'Terbitkan Tujuan Pembelajaran'}
                             </button>

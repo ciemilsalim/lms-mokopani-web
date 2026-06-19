@@ -366,8 +366,8 @@ const ConceptMapCanvas = ({ data, setData, readOnly = false, canvasHeight }: { d
             ref={canvasRef}
             className={`relative w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 overflow-hidden select-none group/canvas ${
                 isFullscreen 
-                    ? 'fixed inset-4 z-[200] rounded-[2rem] shadow-2xl' 
-                    : `${defaultHeight} rounded-2xl`
+                    ? 'fixed inset-4 z-[200] rounded-xl shadow-2xl' 
+                    : `${defaultHeight} rounded-xl`
             } ${readOnly ? 'cursor-grab' : ''} ${isPanning ? '!cursor-grabbing' : ''}`}
             onClick={handleCanvasClick}
             onWheel={handleWheel}
@@ -382,7 +382,7 @@ const ConceptMapCanvas = ({ data, setData, readOnly = false, canvasHeight }: { d
             
             {/* Interactive Help Banner — hidden in readOnly */}
             {!readOnly && (
-                <div className="absolute bottom-4 left-4 right-4 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200 dark:border-slate-800 rounded-2xl p-3 flex flex-wrap items-center justify-between gap-3 z-20 shadow-lg shadow-slate-100 dark:shadow-none animate-in fade-in duration-300" onClick={(e) => e.stopPropagation()}>
+                <div className="absolute bottom-4 left-4 right-4 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200 dark:border-slate-800 rounded-xl p-3 flex flex-wrap items-center justify-between gap-3 z-20 shadow-lg shadow-slate-100 dark:shadow-none animate-in fade-in duration-300" onClick={(e) => e.stopPropagation()}>
                     <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-[10px] font-bold text-slate-500 dark:text-slate-400">
                         <span className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300"><Move className="h-3.5 w-3.5 text-indigo-500 shrink-0" /> Geser konsep untuk memindahkan</span>
                         <span className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300"><Link2 className="h-3.5 w-3.5 text-amber-500 shrink-0" /> Klik rantai lalu klik konsep lain</span>
@@ -574,7 +574,7 @@ const ConceptMapCanvas = ({ data, setData, readOnly = false, canvasHeight }: { d
             
             {data.nodes.length === 0 && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                    <div className="h-16 w-16 bg-slate-100 dark:bg-slate-900 rounded-[2rem] flex items-center justify-center text-slate-350 dark:text-slate-700 mb-4">
+                    <div className="h-16 w-16 bg-slate-100 dark:bg-slate-900 rounded-xl flex items-center justify-center text-slate-350 dark:text-slate-700 mb-4">
                         <GitBranch className="h-8 w-8" />
                     </div>
                     <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest italic">Kanvas Peta Konsep Kosong</p>
@@ -1963,7 +1963,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                 </div>
 
                 {/* Assignment Info Card */}
-                <div className="rounded-2xl border border-border bg-white dark:bg-slate-900 p-8 shadow-2xl shadow-slate-100/50 dark:shadow-none">
+                <div className="rounded-xl border border-border bg-white dark:bg-slate-900 p-8 shadow-2xl shadow-slate-100/50 dark:shadow-none">
                     <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
                         <div className="space-y-3">
                             <div className="flex items-center gap-3">
@@ -2044,7 +2044,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                             )}
                                         </div>
                                     </div>
-                                    <div className="flex items-center gap-4 bg-white dark:bg-slate-900 border border-border px-5 py-3 rounded-2xl shadow-sm">
+                                    <div className="flex items-center gap-4 bg-white dark:bg-slate-900 border border-border px-5 py-3 rounded-xl shadow-sm">
                                         <div className="text-right">
                                             <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Total Siswa</p>
                                             <p className="text-lg font-black text-foreground">{students.length}</p>
@@ -2063,7 +2063,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                     </div>
                                 </div>
 
-                                <div className="overflow-hidden rounded-2xl border border-border bg-white dark:bg-slate-900 shadow-2xl shadow-slate-100/50 dark:shadow-none">
+                                <div className="overflow-hidden rounded-xl border border-border bg-white dark:bg-slate-900 shadow-2xl shadow-slate-100/50 dark:shadow-none">
                                     <table className="w-full text-left text-sm border-collapse">
                                         <thead className="bg-slate-50/50 dark:bg-slate-800/50 text-[10px] font-black text-muted-foreground uppercase tracking-widest border-b border-border">
                                             <tr>
@@ -2119,7 +2119,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                     <tr key={student.id} className="group hover:bg-slate-50/30 dark:hover:bg-slate-800/20 transition-all">
                                                         <td className="px-8 py-6">
                                                             <div className="flex items-center gap-4">
-                                                                <div className="h-10 w-10 rounded-2xl bg-sky-50 dark:bg-sky-950/30 flex items-center justify-center text-primary font-black text-xs shadow-sm border border-sky-100 dark:border-sky-900/30 group-hover:scale-110 transition-transform">
+                                                                <div className="h-10 w-10 rounded-xl bg-sky-50 dark:bg-sky-950/30 flex items-center justify-center text-primary font-black text-xs shadow-sm border border-sky-100 dark:border-sky-900/30 group-hover:scale-110 transition-transform">
                                                                     {student.name.charAt(0)}
                                                                 </div>
                                                                 <div>
@@ -2514,7 +2514,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                     </span>
                                 </div>
 
-                                <div className="overflow-hidden rounded-2xl border border-border bg-white dark:bg-slate-900 shadow-2xl shadow-slate-100/50 dark:shadow-none">
+                                <div className="overflow-hidden rounded-xl border border-border bg-white dark:bg-slate-900 shadow-2xl shadow-slate-100/50 dark:shadow-none">
                                     <table className="w-full text-left text-sm">
                                         <thead className="bg-slate-50/50 dark:bg-slate-800/50 text-[10px] font-black text-muted-foreground uppercase tracking-widest border-b border-border">
                                             <tr>
@@ -2542,7 +2542,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                         <tr key={student.id} className="group hover:bg-slate-50/30 dark:hover:bg-slate-800/20 transition-all">
                                                             <td className="px-8 py-6">
                                                                 <div className="flex items-center gap-4">
-                                                                    <div className="h-10 w-10 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-muted-foreground group-hover:bg-sky-50 dark:group-hover:bg-sky-950/30 group-hover:text-primary transition-colors">
+                                                                    <div className="h-10 w-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-muted-foreground group-hover:bg-sky-50 dark:group-hover:bg-sky-950/30 group-hover:text-primary transition-colors">
                                                                         <User className="h-5 w-5" />
                                                                     </div>
                                                                     <div>
@@ -2671,7 +2671,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                             </div>
                         )}
                         
-                        <div className="rounded-2xl border border-border bg-white dark:bg-slate-900 p-8 shadow-sm">
+                        <div className="rounded-xl border border-border bg-white dark:bg-slate-900 p-8 shadow-sm">
                             <CommentSection 
                                 assignmentId={assignment.id} 
                                 comments={comments} 
@@ -2685,7 +2685,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                         <div className="grid gap-8 lg:grid-cols-3">
                         {/* Submission Form */}
                         <div className="lg:col-span-2 space-y-4">
-                            <div className="rounded-2xl border border-border bg-card p-6 md:p-8 shadow-sm">
+                            <div className="rounded-xl border border-border bg-card p-6 md:p-8 shadow-sm">
                                 <div className="flex items-center justify-between mb-6">
                                     <h2 className="text-lg font-black text-foreground tracking-tight uppercase tracking-wider">Kumpulkan Jawaban</h2>
                                     {assignment.assessment_type === 'initial' && (
@@ -2696,7 +2696,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                 </div>
 
                                 {isSummativeLocked && (
-                                    <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50/50 dark:border-amber-900/30 dark:bg-amber-950/20 p-5 flex items-start gap-3.5 animate-pulse">
+                                    <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50/50 dark:border-amber-900/30 dark:bg-amber-950/20 p-5 flex items-start gap-3.5 animate-pulse">
                                         <div className="h-9 w-9 rounded-xl bg-amber-500 text-white flex items-center justify-center flex-shrink-0 shadow-sm">
                                             <AlertCircle className="h-4 w-4" />
                                         </div>
@@ -2710,13 +2710,13 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                 )}
 
                                 {assignment.instrument_config?.stimulus && assignment.instrument_type !== 'project' && (
-                                    <div className="mb-10 p-8 rounded-2xl bg-indigo-50/30 dark:bg-slate-800/50 border border-indigo-100 dark:border-slate-800 space-y-6">
+                                    <div className="mb-10 p-8 rounded-xl bg-indigo-50/30 dark:bg-slate-800/50 border border-indigo-100 dark:border-slate-800 space-y-6">
                                         <div className="flex items-center gap-3 text-[10px] font-black text-primary uppercase tracking-widest">
                                             <MessageSquare className="h-4 w-4" />
                                             Stimulus / Studi Kasus
                                         </div>
                                         {assignment.instrument_config.stimulus_image && (
-                                            <div className="rounded-3xl overflow-hidden border border-border shadow-lg">
+                                            <div className="rounded-xl overflow-hidden border border-border shadow-lg">
                                                 <img 
                                                     src={`/storage/${assignment.instrument_config.stimulus_image}`} 
                                                     className="w-full max-h-96 object-cover" 
@@ -2753,7 +2753,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                             peer_name: selectedStudent?.name || ''
                                                         });
                                                     }}
-                                                    className="w-full rounded-3xl border border-slate-100 bg-slate-50/30 px-6 py-4 text-sm font-bold outline-none focus:border-indigo-400 focus:bg-white transition-all shadow-sm dark:bg-slate-800/50 dark:border-slate-800 dark:text-slate-200"
+                                                    className="w-full rounded-xl border border-slate-100 bg-slate-50/30 px-6 py-4 text-sm font-bold outline-none focus:border-indigo-400 focus:bg-white transition-all shadow-sm dark:bg-slate-800/50 dark:border-slate-800 dark:text-slate-200"
                                                 >
                                                     <option value="">Pilih teman yang akan dinilai...</option>
                                                     {available_peers.map(p => (
@@ -2776,7 +2776,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                             </div>
                                                             <p className="text-xs text-muted-foreground">Tandai indikator yang menurutmu sudah dicapai oleh rekanmu:</p>
                                                             {(assignment.instrument_config?.indicators || []).map((ind: any, idx: number) => (
-                                                                <label key={idx} className="flex items-center gap-4 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20 hover:bg-white dark:hover:bg-slate-800 transition-all cursor-pointer group">
+                                                                <label key={idx} className="flex items-center gap-4 p-4 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20 hover:bg-white dark:hover:bg-slate-800 transition-all cursor-pointer group">
                                                                     <input
                                                                         type="checkbox"
                                                                         checked={peerChecklistData[idx]?.checked || false}
@@ -2803,7 +2803,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                 <p className="text-sm font-black text-slate-700 dark:text-slate-200 uppercase tracking-widest">Penilaian Antarteman - Rubrik Sederhana</p>
                                                             </div>
                                                             {(assignment.instrument_config?.indicators || []).map((ind: any, idx: number) => (
-                                                                <div key={idx} className="p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20 space-y-3">
+                                                                <div key={idx} className="p-4 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20 space-y-3">
                                                                     <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{ind.name}</p>
                                                                     <div className="flex gap-2">
                                                                         {['Perlu Bimbingan', 'Cukup', 'Baik', 'Sangat Baik'].map((level, lvlIdx) => (
@@ -2850,7 +2850,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                             key={star}
                                                                             type="button"
                                                                             onClick={() => setPeerAssessmentData({ ...peerAssessmentData, rating: star })}
-                                                                            className={`flex-1 h-14 rounded-2xl border-2 flex items-center justify-center text-lg font-black transition-all ${peerAssessmentData.rating >= star ? 'bg-amber-500 border-amber-500 text-white shadow-lg shadow-amber-100/50' : 'bg-slate-50/50 border-slate-50 text-slate-300 dark:bg-slate-800 dark:border-slate-800 hover:border-amber-200'}`}
+                                                                            className={`flex-1 h-14 rounded-xl border-2 flex items-center justify-center text-lg font-black transition-all ${peerAssessmentData.rating >= star ? 'bg-amber-500 border-amber-500 text-white shadow-lg shadow-amber-100/50' : 'bg-slate-50/50 border-slate-50 text-slate-300 dark:bg-slate-800 dark:border-slate-800 hover:border-amber-200'}`}
                                                                         >
                                                                             {star}
                                                                         </button>
@@ -2867,7 +2867,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                         placeholder="Sebutkan nama teman terbaik..."
                                                                         value={peerAssessmentData.best_performer}
                                                                         onChange={(e) => setPeerAssessmentData({ ...peerAssessmentData, best_performer: e.target.value })}
-                                                                        className="w-full rounded-2xl border border-slate-100 bg-slate-50/30 px-6 py-4 text-sm font-medium outline-none focus:border-indigo-400 focus:bg-white transition-all dark:bg-slate-800/50 dark:border-slate-800 dark:text-slate-200"
+                                                                        className="w-full rounded-xl border border-slate-100 bg-slate-50/30 px-6 py-4 text-sm font-medium outline-none focus:border-indigo-400 focus:bg-white transition-all dark:bg-slate-800/50 dark:border-slate-800 dark:text-slate-200"
                                                                     />
                                                                 </div>
                                                                 <div className="space-y-4">
@@ -2877,7 +2877,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                         placeholder="Sebutkan nama teman tersebut..."
                                                                         value={peerAssessmentData.worst_performer}
                                                                         onChange={(e) => setPeerAssessmentData({ ...peerAssessmentData, worst_performer: e.target.value })}
-                                                                        className="w-full rounded-2xl border border-slate-100 bg-slate-50/30 px-6 py-4 text-sm font-medium outline-none focus:border-indigo-400 focus:bg-white transition-all dark:bg-slate-800/50 dark:border-slate-800 dark:text-slate-200"
+                                                                        className="w-full rounded-xl border border-slate-100 bg-slate-50/30 px-6 py-4 text-sm font-medium outline-none focus:border-indigo-400 focus:bg-white transition-all dark:bg-slate-800/50 dark:border-slate-800 dark:text-slate-200"
                                                                     />
                                                                 </div>
                                                                 <div className="space-y-4">
@@ -2890,7 +2890,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                         placeholder="Cth: Pembagian tugas kurang merata atau komunikasi sulit..."
                                                                         value={peerAssessmentData.obstacles}
                                                                         onChange={(e) => setPeerAssessmentData({ ...peerAssessmentData, obstacles: e.target.value })}
-                                                                        className="w-full rounded-3xl border border-slate-100 bg-slate-50/30 px-6 py-4 text-sm font-medium outline-none focus:border-indigo-400 focus:bg-white transition-all dark:bg-slate-800/50 dark:border-slate-800 dark:text-slate-200"
+                                                                        className="w-full rounded-xl border border-slate-100 bg-slate-50/30 px-6 py-4 text-sm font-medium outline-none focus:border-indigo-400 focus:bg-white transition-all dark:bg-slate-800/50 dark:border-slate-800 dark:text-slate-200"
                                                                     ></textarea>
                                                                 </div>
                                                                 <div className="space-y-4">
@@ -2903,7 +2903,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                         placeholder="Cth: Lebih banyak diskusi tatap muka atau pembagian peran yang lebih jelas..."
                                                                         value={peerAssessmentData.future_expectations}
                                                                         onChange={(e) => setPeerAssessmentData({ ...peerAssessmentData, future_expectations: e.target.value })}
-                                                                        className="w-full rounded-3xl border border-slate-100 bg-slate-50/30 px-6 py-4 text-sm font-medium outline-none focus:border-indigo-400 focus:bg-white transition-all dark:bg-slate-800/50 dark:border-slate-800 dark:text-slate-200"
+                                                                        className="w-full rounded-xl border border-slate-100 bg-slate-50/30 px-6 py-4 text-sm font-medium outline-none focus:border-indigo-400 focus:bg-white transition-all dark:bg-slate-800/50 dark:border-slate-800 dark:text-slate-200"
                                                                     ></textarea>
                                                                 </div>
                                                             </div>
@@ -2926,7 +2926,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                         </div>
                                                         <p className="text-xs text-muted-foreground">Tandai indikator yang menurutmu sudah kamu capai:</p>
                                                         {(assignment.instrument_config?.indicators || []).map((ind: any, idx: number) => (
-                                                            <label key={idx} className="flex items-center gap-4 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20 hover:bg-white dark:hover:bg-slate-800 transition-all cursor-pointer group">
+                                                            <label key={idx} className="flex items-center gap-4 p-4 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20 hover:bg-white dark:hover:bg-slate-800 transition-all cursor-pointer group">
                                                                 <input
                                                                     type="checkbox"
                                                                     checked={selfChecklistData[idx]?.checked || false}
@@ -2953,7 +2953,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                             <p className="text-sm font-black text-slate-700 dark:text-slate-200 uppercase tracking-widest">Penilaian Diri - Rubrik Sederhana</p>
                                                         </div>
                                                         {(assignment.instrument_config?.indicators || []).map((ind: any, idx: number) => (
-                                                            <div key={idx} className="p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20 space-y-3">
+                                                            <div key={idx} className="p-4 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20 space-y-3">
                                                                 <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{ind.name}</p>
                                                                 <div className="flex gap-2">
                                                                     {['Perlu Bimbingan', 'Cukup', 'Baik', 'Sangat Baik'].map((level, lvlIdx) => (
@@ -3004,7 +3004,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                         key={item.id}
                                                                         type="button"
                                                                         onClick={() => setSelfAssessmentData({ ...selfAssessmentData, feeling: item.id })}
-                                                                        className={`flex flex-col items-center gap-3 p-6 rounded-[2rem] border-2 transition-all ${selfAssessmentData.feeling === item.id ? 'border-amber-500 bg-amber-50/50 dark:bg-amber-950/20 shadow-xl shadow-amber-100/50' : 'border-slate-50 bg-slate-50/30 dark:border-slate-800'}`}
+                                                                        className={`flex flex-col items-center gap-3 p-6 rounded-xl border-2 transition-all ${selfAssessmentData.feeling === item.id ? 'border-amber-500 bg-amber-50/50 dark:bg-amber-950/20 shadow-xl shadow-amber-100/50' : 'border-slate-50 bg-slate-50/30 dark:border-slate-800'}`}
                                                                     >
                                                                         <span className="text-4xl">{item.icon}</span>
                                                                         <span className={`text-[10px] font-black uppercase tracking-widest ${selfAssessmentData.feeling === item.id ? 'text-amber-700 dark:text-amber-400' : 'text-muted-foreground'}`}>{item.label}</span>
@@ -3018,7 +3018,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                     placeholder="Cth: Saya senang karena materi hari ini sangat seru dan mudah dipahami..."
                                                                     value={selfAssessmentData.feeling_reason}
                                                                     onChange={(e) => setSelfAssessmentData({ ...selfAssessmentData, feeling_reason: e.target.value })}
-                                                                    className="w-full rounded-3xl border border-slate-100 bg-slate-50/30 px-6 py-4 text-sm font-medium outline-none focus:border-amber-400 focus:bg-white transition-all shadow-sm dark:bg-slate-800/50 dark:border-slate-800 dark:text-slate-200"
+                                                                    className="w-full rounded-xl border border-slate-100 bg-slate-50/30 px-6 py-4 text-sm font-medium outline-none focus:border-amber-400 focus:bg-white transition-all shadow-sm dark:bg-slate-800/50 dark:border-slate-800 dark:text-slate-200"
                                                                 ></textarea>
                                                             </div>
                                                         </div>
@@ -3037,7 +3037,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                         key={scale}
                                                                         type="button"
                                                                         onClick={() => setSelfAssessmentData({ ...selfAssessmentData, effort_scale: scale })}
-                                                                        className={`flex-1 h-16 rounded-2xl border-2 flex items-center justify-center text-xl font-black transition-all ${selfAssessmentData.effort_scale === scale ? 'bg-sky-500 border-sky-500 text-white shadow-xl shadow-sky-200/50' : 'bg-slate-50/50 border-slate-50 text-slate-300 dark:bg-slate-800 dark:border-slate-800 hover:border-sky-200'}`}
+                                                                        className={`flex-1 h-16 rounded-xl border-2 flex items-center justify-center text-xl font-black transition-all ${selfAssessmentData.effort_scale === scale ? 'bg-sky-500 border-sky-500 text-white shadow-xl shadow-sky-200/50' : 'bg-slate-50/50 border-slate-50 text-slate-300 dark:bg-slate-800 dark:border-slate-800 hover:border-sky-200'}`}
                                                                     >
                                                                         {scale}
                                                                     </button>
@@ -3064,7 +3064,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                     placeholder="Cth: Saya masih kesulitan di bagian perkalian, strateginya saya akan berlatih lebih banyak di rumah..."
                                                                     value={selfAssessmentData.reflection_notes}
                                                                     onChange={(e) => setSelfAssessmentData({ ...selfAssessmentData, reflection_notes: e.target.value })}
-                                                                    className="w-full rounded-2xl border border-slate-100 bg-slate-50/30 px-8 py-6 text-sm font-medium outline-none focus:border-indigo-400 focus:bg-white transition-all shadow-sm dark:bg-slate-800/50 dark:border-slate-800 dark:text-slate-200"
+                                                                    className="w-full rounded-xl border border-slate-100 bg-slate-50/30 px-8 py-6 text-sm font-medium outline-none focus:border-indigo-400 focus:bg-white transition-all shadow-sm dark:bg-slate-800/50 dark:border-slate-800 dark:text-slate-200"
                                                                 ></textarea>
                                                             </div>
                                                         </div>
@@ -3299,12 +3299,12 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                 value={studentForm.data.answers[q.id] || ''}
                                                                 disabled={isSummativeLocked}
                                                                 onChange={(e) => studentForm.setData('answers', { ...studentForm.data.answers, [q.id]: e.target.value })}
-                                                                className="w-full rounded-2xl border border-slate-100 bg-slate-50/50 px-5 py-4 text-sm font-medium outline-none focus:border-sky-400 focus:bg-white focus:ring-4 focus:ring-sky-50 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-200 transition-all shadow-sm disabled:opacity-75 disabled:cursor-not-allowed"
+                                                                className="w-full rounded-xl border border-slate-100 bg-slate-50/50 px-5 py-4 text-sm font-medium outline-none focus:border-sky-400 focus:bg-white focus:ring-4 focus:ring-sky-50 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-200 transition-all shadow-sm disabled:opacity-75 disabled:cursor-not-allowed"
                                                             ></textarea>
                                                         ) : q.type === 'multiple_choice' ? (
                                                             <div className="grid gap-3">
                                                                 {(q.options || []).map((opt: any, optIdx: number) => (
-                                                                    <label key={opt.id} className={`flex items-center gap-4 p-4 rounded-2xl border transition-all group shadow-sm ${studentForm.data.answers[q.id] === opt.id.toString() ? 'border-sky-500 bg-sky-50/50 dark:bg-sky-950/20' : 'border-slate-50 bg-white dark:bg-slate-900 dark:border-slate-800 hover:border-sky-200'} ${isSummativeLocked ? 'pointer-events-none opacity-60' : 'cursor-pointer'}`}>
+                                                                    <label key={opt.id} className={`flex items-center gap-4 p-4 rounded-xl border transition-all group shadow-sm ${studentForm.data.answers[q.id] === opt.id.toString() ? 'border-sky-500 bg-sky-50/50 dark:bg-sky-950/20' : 'border-slate-50 bg-white dark:bg-slate-900 dark:border-slate-800 hover:border-sky-200'} ${isSummativeLocked ? 'pointer-events-none opacity-60' : 'cursor-pointer'}`}>
                                                                         <div className={`h-5 w-5 rounded-full border-2 flex items-center justify-center transition-all ${studentForm.data.answers[q.id] === opt.id.toString() ? 'border-sky-500 bg-sky-500' : 'border-slate-200 group-hover:border-sky-300'}`}>
                                                                             {studentForm.data.answers[q.id] === opt.id.toString() && <div className="h-2 w-2 rounded-full bg-white" />}
                                                                         </div>
@@ -3334,7 +3334,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                 value={studentForm.data.answers[q.id] || ''}
                                                                 disabled={isSummativeLocked}
                                                                 onChange={(e) => studentForm.setData('answers', { ...studentForm.data.answers, [q.id]: e.target.value })}
-                                                                className="w-full rounded-2xl border border-slate-100 bg-slate-50/50 px-5 py-4 text-sm font-bold outline-none focus:border-sky-400 focus:bg-white focus:ring-4 focus:ring-sky-50 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-200 transition-all shadow-sm disabled:opacity-75 disabled:cursor-not-allowed"
+                                                                className="w-full rounded-xl border border-slate-100 bg-slate-50/50 px-5 py-4 text-sm font-bold outline-none focus:border-sky-400 focus:bg-white focus:ring-4 focus:ring-sky-50 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-200 transition-all shadow-sm disabled:opacity-75 disabled:cursor-not-allowed"
                                                             />
                                                         )}
                                                     </div>
@@ -3350,7 +3350,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                     placeholder="Rangkuman jawaban atau hal yang ingin Anda sampaikan terkait kuis ini..."
                                                     value={studentForm.data.content}
                                                     onChange={(e) => studentForm.setData('content', e.target.value)}
-                                                    className="w-full rounded-[2rem] border border-slate-100 bg-slate-50/30 px-6 py-5 text-sm font-medium outline-none focus:border-sky-400 focus:bg-white focus:ring-4 focus:ring-sky-50 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-200 transition-all shadow-sm"
+                                                    className="w-full rounded-xl border border-slate-100 bg-slate-50/30 px-6 py-5 text-sm font-medium outline-none focus:border-sky-400 focus:bg-white focus:ring-4 focus:ring-sky-50 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-200 transition-all shadow-sm"
                                                 ></textarea>
                                             </div>
                                         </div>
@@ -3544,7 +3544,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                 </div>
                                             </div>
                                             {(assignment.instrument_config?.indicators || []).map((ind: any, idx: number) => (
-                                                <label key={idx} className="flex items-center gap-4 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20 hover:bg-white dark:hover:bg-slate-800 transition-all cursor-pointer group">
+                                                <label key={idx} className="flex items-center gap-4 p-4 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20 hover:bg-white dark:hover:bg-slate-800 transition-all cursor-pointer group">
                                                     <input
                                                         type="checkbox"
                                                         checked={exitChecklistData[idx]?.checked || false}
@@ -3572,7 +3572,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                 </div>
                                             </div>
                                             {(assignment.instrument_config?.questions || []).map((q: any, idx: number) => (
-                                                <div key={idx} className="p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20 space-y-3">
+                                                <div key={idx} className="p-4 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20 space-y-3">
                                                     <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{q.text}</p>
                                                     <input
                                                         type="text"
@@ -3947,10 +3947,10 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                         </div>
                                     ) : assignment.instrument_type === 'concept_map' ? (
                                         <div className="space-y-8 animate-in fade-in duration-500">
-                                            <div className="p-6 rounded-2xl bg-indigo-50/30 dark:bg-indigo-950/10 border border-indigo-100 dark:border-indigo-900/30">
+                                            <div className="p-6 rounded-xl bg-indigo-50/30 dark:bg-indigo-950/10 border border-indigo-100 dark:border-indigo-900/30">
                                                 <div className="flex items-center justify-between flex-wrap gap-4 mb-4">
                                                     <div className="flex items-center gap-4">
-                                                        <div className="h-10 w-10 rounded-2xl bg-indigo-500 text-white flex items-center justify-center shadow-lg shadow-indigo-200">
+                                                        <div className="h-10 w-10 rounded-xl bg-indigo-500 text-white flex items-center justify-center shadow-lg shadow-indigo-200">
                                                             <GitBranch className="h-5 w-5" />
                                                         </div>
                                                         <div>
@@ -3961,7 +3961,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
 
                                                     {/* Toggle for Hybrid Mode */}
                                                     {(assignment.instrument_config?.submission_mode === 'hybrid' || !assignment.instrument_config?.submission_mode) && (
-                                                        <div className="flex items-center bg-slate-100 dark:bg-slate-900 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-800">
+                                                        <div className="flex items-center bg-slate-100 dark:bg-slate-900 p-1.5 rounded-xl border border-slate-200 dark:border-slate-800">
                                                             <button
                                                                 type="button"
                                                                 onClick={() => setConceptMapSubMode('canvas')}
@@ -4002,8 +4002,8 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                             )}
 
                                             {conceptMapSubMode === 'upload' && (
-                                                <div className="animate-in fade-in duration-300 space-y-4 p-8 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/20 dark:bg-slate-950/20 text-center flex flex-col items-center justify-center">
-                                                    <div className="h-16 w-16 rounded-[2rem] bg-indigo-500/10 text-indigo-500 flex items-center justify-center mb-4">
+                                                <div className="animate-in fade-in duration-300 space-y-4 p-8 rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/20 dark:bg-slate-950/20 text-center flex flex-col items-center justify-center">
+                                                    <div className="h-16 w-16 rounded-xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center mb-4">
                                                         <ImageIcon className="h-8 w-8" />
                                                     </div>
                                                     <h5 className="text-sm font-bold text-foreground">Unggah Foto Peta Konsep Anda</h5>
@@ -4062,7 +4062,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                     value={studentForm.data.content}
                                                     disabled={isSummativeLocked}
                                                     onChange={(e) => studentForm.setData('content', e.target.value)}
-                                                    className="w-full rounded-2xl border border-slate-100 bg-slate-50/30 px-8 py-6 text-sm font-medium outline-none focus:border-sky-400 focus:bg-white focus:ring-4 focus:ring-sky-50 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-200 transition-all shadow-sm disabled:opacity-75 disabled:cursor-not-allowed"
+                                                    className="w-full rounded-xl border border-slate-100 bg-slate-50/30 px-8 py-6 text-sm font-medium outline-none focus:border-sky-400 focus:bg-white focus:ring-4 focus:ring-sky-50 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-200 transition-all shadow-sm disabled:opacity-75 disabled:cursor-not-allowed"
                                                 />
                                             </div>
                                         </div>
@@ -4087,7 +4087,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                             </label>
                                             <div className="relative group">
                                                 {my_submission?.file_path && (
-                                                    <div className="mb-4 p-4 rounded-2xl bg-sky-50 dark:bg-sky-950/30 border border-sky-100 dark:border-sky-900/30 flex items-center justify-between group/file">
+                                                    <div className="mb-4 p-4 rounded-xl bg-sky-50 dark:bg-sky-950/30 border border-sky-100 dark:border-sky-900/30 flex items-center justify-between group/file">
                                                         <div className="flex items-center gap-3">
                                                             <div className="h-10 w-10 rounded-xl bg-white dark:bg-slate-900 flex items-center justify-center text-primary shadow-sm border border-sky-100 dark:border-sky-800">
                                                                 <FileText className="h-6 w-6" />
@@ -4106,8 +4106,8 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                         </a>
                                                     </div>
                                                 )}
-                                                <div className={`w-full rounded-2xl border-2 border-dashed border-border bg-slate-50/20 px-8 py-12 text-center transition-all ${isSummativeLocked ? 'pointer-events-none opacity-60' : 'group-hover:border-sky-400 group-hover:bg-sky-50/10 cursor-pointer'}`}>
-                                                    <div className="h-12 w-12 rounded-2xl bg-white dark:bg-slate-900 border border-border flex items-center justify-center mx-auto mb-4 text-muted-foreground group-hover:text-primary transition-colors shadow-sm">
+                                                <div className={`w-full rounded-xl border-2 border-dashed border-border bg-slate-50/20 px-8 py-12 text-center transition-all ${isSummativeLocked ? 'pointer-events-none opacity-60' : 'group-hover:border-sky-400 group-hover:bg-sky-50/10 cursor-pointer'}`}>
+                                                    <div className="h-12 w-12 rounded-xl bg-white dark:bg-slate-900 border border-border flex items-center justify-center mx-auto mb-4 text-muted-foreground group-hover:text-primary transition-colors shadow-sm">
                                                         <Upload className="h-6 w-6" />
                                                     </div>
                                                     <p className="text-sm font-bold text-slate-600 dark:text-muted-foreground">
@@ -4131,7 +4131,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                         className={`w-full ${
                                             (assignment.instrument_type === 'formative_quiz' || assignment.instrument_type === 'exit_ticket')
                                                 ? 'rounded-lg bg-primary hover:bg-[#4E5BBF] shadow-none py-4 text-xs font-semibold'
-                                                : 'rounded-[2rem] bg-gradient-to-r from-sky-500 to-indigo-600 shadow-sky-200 py-5 text-sm font-black'
+                                                : 'rounded-xl bg-gradient-to-r from-sky-500 to-indigo-600 shadow-sky-200 py-5 text-sm font-black'
                                         } text-white shadow-2xl dark:shadow-none hover:opacity-90 transition-all active:scale-[0.98] disabled:opacity-50 uppercase tracking-widest`}
                                     >
                                         {my_submission ? (my_submission.is_remedial_open ? 'Kirim Jawaban Remedial' : 'Perbarui Jawaban') : 'Kirim Jawaban Sekarang'}
@@ -4144,7 +4144,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                         <div className="space-y-6">
                             <div className={(assignment.instrument_type === 'formative_quiz' || assignment.instrument_type === 'exit_ticket')
                                 ? "rounded-xl border border-slate-200 dark:border-slate-800 border-slate-100 bg-white dark:bg-[#0b0f19]/30 bg-white/70 backdrop-blur-md p-6 shadow-none"
-                                : "rounded-2xl border border-border bg-white dark:bg-slate-900 p-8 shadow-sm"
+                                : "rounded-xl border border-border bg-white dark:bg-slate-900 p-8 shadow-sm"
                             }>
                                 <h2 className={`text-xs font-black text-foreground uppercase tracking-widest mb-6 border-b pb-4 ${
                                     (assignment.instrument_type === 'formative_quiz' || assignment.instrument_type === 'exit_ticket')
@@ -4163,12 +4163,12 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                             <div className={`flex items-center gap-4 p-5 border ${
                                                 (assignment.instrument_type === 'formative_quiz' || assignment.instrument_type === 'exit_ticket')
                                                     ? 'rounded-xl bg-emerald-500/10 border-emerald-500/20 dark:bg-emerald-950/20 dark:border-emerald-900/30'
-                                                    : 'rounded-3xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30'
+                                                    : 'rounded-xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30'
                                             }`}>
                                                 <div className={`h-10 w-10 flex items-center justify-center text-white ${
                                                     (assignment.instrument_type === 'formative_quiz' || assignment.instrument_type === 'exit_ticket')
                                                         ? 'rounded-lg bg-emerald-500 shadow-none'
-                                                        : 'rounded-2xl bg-emerald-500 shadow-lg shadow-emerald-200'
+                                                        : 'rounded-xl bg-emerald-500 shadow-lg shadow-emerald-200'
                                                 }`}>
                                                     <CheckCircle2 className="h-6 w-6" />
                                                 </div>
@@ -4294,7 +4294,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                         <div className={`p-6 border space-y-4 ${
                                                             (assignment.instrument_type === 'formative_quiz' || assignment.instrument_type === 'exit_ticket')
                                                                 ? 'rounded-xl bg-emerald-500/10 border-emerald-500/20 dark:bg-emerald-950/20 dark:border-emerald-900/30'
-                                                                : 'rounded-2xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30'
+                                                                : 'rounded-xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30'
                                                         }`}>
                                                             <div className="flex items-center gap-3">
                                                                 <div className={`h-6 w-6 flex items-center justify-center text-white ${
@@ -4314,7 +4314,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                         <div className={`p-6 border space-y-4 ${
                                                             (assignment.instrument_type === 'formative_quiz' || assignment.instrument_type === 'exit_ticket')
                                                                 ? 'rounded-xl bg-rose-500/10 border-rose-500/20 dark:bg-rose-950/20 dark:border-rose-900/30'
-                                                                : 'rounded-2xl bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/30'
+                                                                : 'rounded-xl bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/30'
                                                         }`}>
                                                             <div className="flex items-center gap-3">
                                                                 <div className={`h-6 w-6 flex items-center justify-center text-white ${
@@ -4340,7 +4340,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                     <div className={`p-5 border ${
                                                         (assignment.instrument_type === 'formative_quiz' || assignment.instrument_type === 'exit_ticket')
                                                             ? 'rounded-xl bg-slate-50 dark:bg-slate-950/40 bg-slate-50 border-slate-200 dark:border-slate-800 border-slate-100'
-                                                            : 'rounded-3xl bg-muted/50 border border-border'
+                                                            : 'rounded-xl bg-muted/50 border border-border'
                                                     }`}>
                                                         <p className="text-xs text-slate-600 dark:text-slate-300 italic font-medium leading-relaxed">
                                                             "{my_submission.feedback}"
@@ -4366,7 +4366,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                         {(assignment.instrument_config?.indicators || []).map((ind: any, idx: number) => {
                                                                             const indKey = ind.id || ind.name || ind.text || idx.toString();
                                                                             return (
-                                                                                <div key={indKey} className="flex items-center justify-between p-4 rounded-2xl bg-muted/50 border border-border">
+                                                                                <div key={indKey} className="flex items-center justify-between p-4 rounded-xl bg-muted/50 border border-border">
                                                                                     <span className="text-xs font-bold text-slate-700 dark:text-slate-200">{ind.text || ind.name}</span>
                                                                                     {p.checklist[indKey] === true ? (
                                                                                         <span className="px-3 py-1 rounded-full bg-emerald-500 text-white text-[8px] font-black uppercase tracking-widest shadow-sm">Muncul</span>
@@ -4378,13 +4378,13 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                         })}
                                                                     </div>
                                                                     {p.note && (
-                                                                        <div className="p-5 rounded-3xl bg-indigo-50/30 dark:bg-indigo-950/10 border border-indigo-100 dark:border-indigo-900/30">
+                                                                        <div className="p-5 rounded-xl bg-indigo-50/30 dark:bg-indigo-950/10 border border-indigo-100 dark:border-indigo-900/30">
                                                                             <p className="text-[9px] font-black text-indigo-500 uppercase tracking-widest mb-2">Catatan Guru:</p>
                                                                             <p className="text-xs text-slate-600 dark:text-slate-300 italic font-medium leading-relaxed">"{p.note}"</p>
                                                                         </div>
                                                                     )}
                                                                     {p.action_plan && (
-                                                                        <div className="p-5 rounded-3xl bg-emerald-50/30 dark:bg-emerald-950/10 border border-emerald-100 dark:border-emerald-900/30">
+                                                                        <div className="p-5 rounded-xl bg-emerald-50/30 dark:bg-emerald-950/10 border border-emerald-100 dark:border-emerald-900/30">
                                                                             <p className="text-[9px] font-black text-emerald-500 uppercase tracking-widest mb-2">Strategi Pengembangan:</p>
                                                                             <p className="text-xs text-emerald-700 dark:text-emerald-300 font-bold leading-relaxed italic">"{p.action_plan}"</p>
                                                                         </div>
@@ -4417,7 +4417,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                             <div key={criterion.id} className="space-y-3">
                                                                                 <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest ml-4">{criterion.text}</p>
                                                                                 {level ? (
-                                                                                    <div className="p-5 rounded-3xl bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/30 shadow-sm transition-all hover:scale-[1.01]">
+                                                                                    <div className="p-5 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/30 shadow-sm transition-all hover:scale-[1.01]">
                                                                                         <div className="flex items-center justify-between mb-2">
                                                                                             <span className="px-3 py-1 rounded-full bg-amber-500 text-white text-[8px] font-black uppercase tracking-widest shadow-sm">{level.name}</span>
                                                                                             <CheckCircle2 className="h-4 w-4 text-amber-500" />
@@ -4427,7 +4427,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                                         </p>
                                                                                     </div>
                                                                                 ) : (
-                                                                                    <div className="p-4 rounded-2xl bg-muted/50 border border-border italic text-[10px] text-muted-foreground font-bold text-center">
+                                                                                    <div className="p-4 rounded-xl bg-muted/50 border border-border italic text-[10px] text-muted-foreground font-bold text-center">
                                                                                         Belum dinilai oleh pengajar.
                                                                                     </div>
                                                                                 )}
@@ -4474,16 +4474,16 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                         )}
                                                                     </div>
                                                                     {p.context && (
-                                                                        <div className="p-5 rounded-3xl bg-indigo-50/30 dark:bg-indigo-950/10 border border-indigo-100 dark:border-indigo-900/30">
+                                                                        <div className="p-5 rounded-xl bg-indigo-50/30 dark:bg-indigo-950/10 border border-indigo-100 dark:border-indigo-900/30">
                                                                             <p className="text-[9px] font-black text-indigo-500 uppercase tracking-widest mb-2">Konteks Kejadian:</p>
                                                                             <p className="text-xs text-slate-600 dark:text-slate-300 font-bold leading-relaxed">{p.context}</p>
                                                                         </div>
                                                                     )}
-                                                                    <div className="p-5 rounded-3xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-sm">
+                                                                    <div className="p-5 rounded-xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-sm">
                                                                         <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mb-2">Deskripsi Peristiwa:</p>
                                                                         <p className="text-xs text-slate-700 dark:text-slate-200 leading-relaxed italic">"{p.event_description}"</p>
                                                                     </div>
-                                                                    <div className="p-5 rounded-3xl bg-emerald-50/30 dark:bg-emerald-950/10 border border-emerald-100 dark:border-emerald-900/30">
+                                                                    <div className="p-5 rounded-xl bg-emerald-50/30 dark:bg-emerald-950/10 border border-emerald-100 dark:border-emerald-900/30">
                                                                         <p className="text-[9px] font-black text-emerald-500 uppercase tracking-widest mb-2">Analisis & Tindak Lanjut:</p>
                                                                         <p className="text-xs text-emerald-700 dark:text-emerald-300 font-bold leading-relaxed italic">"{p.analysis_followup}"</p>
                                                                     </div>
@@ -4519,7 +4519,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                             if (p.assessment_mode === 'checklist') {
                                                                 return (
                                                                     <div className="space-y-4">
-                                                                        <div className="p-5 rounded-3xl bg-indigo-50/40 dark:bg-indigo-950/15 border border-indigo-100/60 dark:border-indigo-900/35 space-y-3">
+                                                                        <div className="p-5 rounded-xl bg-indigo-50/40 dark:bg-indigo-950/15 border border-indigo-100/60 dark:border-indigo-900/35 space-y-3">
                                                                             <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest leading-none mb-1">Daftar Indikator Penilaian Diri</p>
                                                                             <div className="space-y-3">
                                                                                 {(p.indicators || []).map((ind: any, idx: number) => (
@@ -4544,7 +4544,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                             if (p.assessment_mode === 'simple_rubric') {
                                                                 return (
                                                                     <div className="space-y-4">
-                                                                        <div className="p-5 rounded-3xl bg-indigo-50/40 dark:bg-indigo-950/15 border border-indigo-100/60 dark:border-indigo-900/35 space-y-3">
+                                                                        <div className="p-5 rounded-xl bg-indigo-50/40 dark:bg-indigo-950/15 border border-indigo-100/60 dark:border-indigo-900/35 space-y-3">
                                                                             <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest leading-none mb-1">Kriteria Capaian Penilaian Diri</p>
                                                                             <div className="space-y-4">
                                                                                 {(p.indicators || []).map((ind: any, idx: number) => (
@@ -4579,12 +4579,12 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                         </div>
                                                                     </div>
                                                                     {p.feeling_reason && (
-                                                                        <div className="p-5 rounded-3xl bg-muted/50 border border-border">
+                                                                        <div className="p-5 rounded-xl bg-muted/50 border border-border">
                                                                             <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mb-2">Alasan Perasaan:</p>
                                                                             <p className="text-xs text-slate-600 dark:text-slate-300 font-medium leading-relaxed italic">"{p.feeling_reason}"</p>
                                                                         </div>
                                                                     )}
-                                                                    <div className="p-5 rounded-3xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-sm">
+                                                                    <div className="p-5 rounded-xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-sm">
                                                                         <p className="text-[9px] font-black text-indigo-500 uppercase tracking-widest mb-2">Catatan Refleksi:</p>
                                                                         <p className="text-xs text-slate-700 dark:text-slate-200 leading-relaxed font-bold">"{p.reflection_notes}"</p>
                                                                     </div>
@@ -4620,11 +4620,11 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                             if (p.assessment_mode === 'checklist') {
                                                                 return (
                                                                     <div className="space-y-4">
-                                                                        <div className="p-4 rounded-2xl bg-muted border border-slate-100 dark:border-slate-700 mb-4">
+                                                                        <div className="p-4 rounded-xl bg-muted border border-slate-100 dark:border-slate-700 mb-4">
                                                                             <p className="text-[8px] font-black text-muted-foreground uppercase tracking-widest mb-1">Teman yang Dinilai:</p>
                                                                             <p className="text-xs font-bold text-slate-700 dark:text-slate-200">{p.peer_name}</p>
                                                                         </div>
-                                                                        <div className="p-5 rounded-3xl bg-indigo-50/40 dark:bg-indigo-950/15 border border-indigo-100/60 dark:border-indigo-900/35 space-y-3">
+                                                                        <div className="p-5 rounded-xl bg-indigo-50/40 dark:bg-indigo-950/15 border border-indigo-100/60 dark:border-indigo-900/35 space-y-3">
                                                                             <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest leading-none mb-1">Daftar Indikator Penilaian</p>
                                                                             <div className="space-y-3">
                                                                                 {(p.indicators || []).map((ind: any, idx: number) => (
@@ -4649,11 +4649,11 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                             if (p.assessment_mode === 'simple_rubric') {
                                                                 return (
                                                                     <div className="space-y-4">
-                                                                        <div className="p-4 rounded-2xl bg-muted border border-slate-100 dark:border-slate-700 mb-4">
+                                                                        <div className="p-4 rounded-xl bg-muted border border-slate-100 dark:border-slate-700 mb-4">
                                                                             <p className="text-[8px] font-black text-muted-foreground uppercase tracking-widest mb-1">Teman yang Dinilai:</p>
                                                                             <p className="text-xs font-bold text-slate-700 dark:text-slate-200">{p.peer_name}</p>
                                                                         </div>
-                                                                        <div className="p-5 rounded-3xl bg-indigo-50/40 dark:bg-indigo-950/15 border border-indigo-100/60 dark:border-indigo-900/35 space-y-3">
+                                                                        <div className="p-5 rounded-xl bg-indigo-50/40 dark:bg-indigo-950/15 border border-indigo-100/60 dark:border-indigo-900/35 space-y-3">
                                                                             <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest leading-none mb-1">Kriteria Capaian Penilaian</p>
                                                                             <div className="space-y-4">
                                                                                 {(p.indicators || []).map((ind: any, idx: number) => (
@@ -4672,7 +4672,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
 
                                                             return (
                                                                 <div className="space-y-6">
-                                                                    <div className="p-4 rounded-2xl bg-muted border border-slate-100 dark:border-slate-700">
+                                                                    <div className="p-4 rounded-xl bg-muted border border-slate-100 dark:border-slate-700">
                                                                         <p className="text-[8px] font-black text-muted-foreground uppercase tracking-widest mb-1">Teman yang Dinilai:</p>
                                                                         <p className="text-xs font-bold text-slate-700 dark:text-slate-200">{p.peer_name}</p>
                                                                     </div>
@@ -4683,17 +4683,17 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                         <span className="text-xs font-black text-muted-foreground ml-2">{p.rating} / 5</span>
                                                                     </div>
                                                                     <div className="grid gap-3">
-                                                                        <div className="p-4 rounded-2xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30">
+                                                                        <div className="p-4 rounded-xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30">
                                                                             <p className="text-[8px] font-black text-emerald-600 uppercase tracking-widest mb-1">Terbaik di Kelompok:</p>
                                                                             <p className="text-xs font-bold text-emerald-700 dark:text-emerald-300">{p.best_performer}</p>
                                                                         </div>
-                                                                        <div className="p-4 rounded-2xl bg-rose-50/50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/30">
+                                                                        <div className="p-4 rounded-xl bg-rose-50/50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/30">
                                                                             <p className="text-[8px] font-black text-rose-600 uppercase tracking-widest mb-1">Perlu Peningkatan:</p>
                                                                             <p className="text-xs font-bold text-rose-700 dark:text-rose-300">{p.worst_performer}</p>
                                                                         </div>
                                                                     </div>
                                                                     {p.obstacles && (
-                                                                        <div className="p-5 rounded-3xl bg-muted/50 border border-border">
+                                                                        <div className="p-5 rounded-xl bg-muted/50 border border-border">
                                                                             <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mb-2">Kendala Kelompok:</p>
                                                                             <p className="text-xs text-slate-600 dark:text-slate-300 font-medium italic">{p.obstacles}</p>
                                                                         </div>
@@ -4801,7 +4801,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                          ))}
                                                                      </div>
                                                                  ) : (
-                                                                     <div className="p-5 rounded-3xl bg-muted/50 border border-border">
+                                                                     <div className="p-5 rounded-xl bg-muted/50 border border-border">
                                                                          <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mb-2">Catatan Refleksi:</p>
                                                                          <p className="text-xs text-slate-600 dark:text-slate-350 font-medium leading-relaxed italic">"{parsed.answers?.reflection || 'Tidak menuliskan umpan balik teks'}"</p>
                                                                      </div>
@@ -4890,18 +4890,18 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                         if (p.type === 'concept_map') {
                                                             return (
                                                                 <div className="space-y-6">
-                                                                    <div className="p-5 rounded-2xl bg-indigo-50/30 dark:bg-indigo-950/10 border border-indigo-100 dark:border-indigo-900/30">
+                                                                    <div className="p-5 rounded-xl bg-indigo-50/30 dark:bg-indigo-950/10 border border-indigo-100 dark:border-indigo-900/30">
                                                                         <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-1 leading-none">Topik Utama:</p>
                                                                         <p className="text-sm font-black text-foreground">{assignment.instrument_config?.central_topic}</p>
                                                                     </div>
                                                                     {p.submission_type === 'upload' ? (
-                                                                        <div className="relative overflow-hidden rounded-2xl border border-border bg-slate-50 dark:bg-slate-900 p-6 text-center">
+                                                                        <div className="relative overflow-hidden rounded-xl border border-border bg-slate-50 dark:bg-slate-900 p-6 text-center">
                                                                             <p className="text-[9px] font-black text-indigo-500 uppercase tracking-widest mb-3 text-left">Foto Peta Konsep Terunggah:</p>
                                                                             {my_submission.file_path ? (
                                                                                 <img 
                                                                                     src={`/storage/${my_submission.file_path}`} 
                                                                                     alt="Peta Konsep" 
-                                                                                    className="max-h-[500px] w-auto mx-auto rounded-3xl object-contain shadow-lg border border-border hover:scale-[1.01] transition-all"
+                                                                                    className="max-h-[500px] w-auto mx-auto rounded-xl object-contain shadow-lg border border-border hover:scale-[1.01] transition-all"
                                                                                 />
                                                                             ) : (
                                                                                 <p className="text-xs text-muted-foreground italic">File tidak ditemukan.</p>
@@ -4937,7 +4937,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                 <div className={
                                                     assignment.instrument_type === 'formative_quiz'
                                                         ? "p-5 rounded-xl bg-slate-50 dark:bg-slate-950/40 bg-slate-50 border border-slate-200 dark:border-slate-800 border-slate-100"
-                                                        : "p-5 rounded-3xl bg-muted/50 border border-border"
+                                                        : "p-5 rounded-xl bg-muted/50 border border-border"
                                                 }>
                                                     <p className={`text-xs font-bold leading-relaxed ${
                                                         assignment.instrument_type === 'formative_quiz'
@@ -4991,7 +4991,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                             const val = p.observations?.[indKey];
                                                                             const isChecked = val === true || val === 'konsisten' || val === 'mulai';
                                                                             return (
-                                                                                <div key={indKey} className="flex items-center justify-between p-4 rounded-2xl bg-white dark:bg-slate-900 border border-border shadow-sm">
+                                                                                <div key={indKey} className="flex items-center justify-between p-4 rounded-xl bg-white dark:bg-slate-900 border border-border shadow-sm">
                                                                                     <span className="text-xs font-bold text-slate-700 dark:text-slate-200">{indicator.text || indicator.name}</span>
                                                                                     {isChecked ? (
                                                                                         <span className="px-3 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 border border-emerald-100 dark:border-emerald-900/30 flex items-center gap-1">
@@ -5007,7 +5007,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                         })}
                                                                     </div>
                                                                     {p.notes && (
-                                                                        <div className="p-5 rounded-[2rem] bg-muted/50 border border-border">
+                                                                        <div className="p-5 rounded-xl bg-muted/50 border border-border">
                                                                             <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mb-2">Umpan Balik Guru:</p>
                                                                             <p className="text-xs text-slate-600 dark:text-slate-300 font-medium leading-relaxed italic">"{p.notes}"</p>
                                                                         </div>
@@ -5025,7 +5025,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                     <div className="flex flex-col items-center py-10 text-center space-y-4">
                                         {['observation_checklist', 'anecdotal_notes', 'performance_observation'].includes(assignment.instrument_type) ? (
                                             <>
-                                                <div className={`h-16 w-16 rounded-[2rem] ${assignment.instrument_type === 'anecdotal_notes' ? 'bg-indigo-50 dark:bg-indigo-950/20 text-indigo-500' : 'bg-sky-50 dark:bg-sky-950/20 text-primary'} flex items-center justify-center`}>
+                                                <div className={`h-16 w-16 rounded-xl ${assignment.instrument_type === 'anecdotal_notes' ? 'bg-indigo-50 dark:bg-indigo-950/20 text-indigo-500' : 'bg-sky-50 dark:bg-sky-950/20 text-primary'} flex items-center justify-center`}>
                                                     {assignment.instrument_type === 'anecdotal_notes' ? <FileText className="h-8 w-8 opacity-50" /> : <Activity className="h-8 w-8 opacity-50" />}
                                                 </div>
                                                 <div>
@@ -5037,7 +5037,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                             </>
                                         ) : (
                                             <>
-                                                <div className="h-16 w-16 rounded-[2rem] bg-amber-50 dark:bg-amber-950/20 flex items-center justify-center text-amber-500">
+                                                <div className="h-16 w-16 rounded-xl bg-amber-50 dark:bg-amber-950/20 flex items-center justify-center text-amber-500">
                                                     <Clock className="h-8 w-8 opacity-50" />
                                                 </div>
                                                 <div>
@@ -5052,7 +5052,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                         </div>
                     </div>
 
-                    <div className="rounded-2xl border border-border bg-white dark:bg-slate-900 p-8 shadow-sm">
+                    <div className="rounded-xl border border-border bg-white dark:bg-slate-900 p-8 shadow-sm">
                             <CommentSection 
                                 assignmentId={assignment.id} 
                                 comments={comments} 
@@ -5066,11 +5066,11 @@ export default function ShowAssignment({ assignment, students, my_submission, my
 
             {/* Observation Modal (TEACHER) */}
             {selectedStudent && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-md p-4 animate-in fade-in duration-300">
-                    <div className="w-full max-w-2xl rounded-[3rem] bg-white dark:bg-slate-900 p-10 shadow-2xl border border-white/20 animate-in zoom-in-95 duration-300">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 animate-in fade-in duration-300">
+                    <div className="w-full max-w-2xl rounded-xl bg-card p-6 shadow-none border border-border animate-in zoom-in-95 duration-300">
                         <div className="flex items-center justify-between mb-8">
                             <div className="flex items-center gap-4">
-                                <div className={`h-12 w-12 rounded-2xl ${assignment.instrument_type === 'anecdotal_notes' ? 'bg-indigo-500 shadow-indigo-200' : 'bg-sky-500 shadow-sky-200'} flex items-center justify-center text-white shadow-lg`}>
+                                <div className={`h-12 w-12 rounded-xl ${assignment.instrument_type === 'anecdotal_notes' ? 'bg-indigo-500 shadow-indigo-200' : 'bg-sky-500 shadow-sky-200'} flex items-center justify-center text-white shadow-lg`}>
                                     {assignment.instrument_type === 'anecdotal_notes' ? <FileText className="h-6 w-6" /> : <Activity className="h-6 w-6" />}
                                 </div>
                                 <div>
@@ -5088,7 +5088,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                         {assignment.instrument_type === 'anecdotal_notes' ? (
                             <div className="space-y-6 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
                                 {(assignment.instrument_config?.stimulus || assignment.description) && (
-                                    <div className="p-6 rounded-[2rem] bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100/50 dark:border-indigo-900/30 shadow-sm space-y-3 mb-4">
+                                    <div className="p-6 rounded-xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100/50 dark:border-indigo-900/30 shadow-sm space-y-3 mb-4">
                                         <div className="flex items-center gap-2 text-indigo-500">
                                             <Info className="h-4 w-4" />
                                             <h4 className="text-[10px] font-black uppercase tracking-widest">Stimulus / Konteks Observasi</h4>
@@ -5103,7 +5103,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                             type="date"
                                             value={anecdotalData.date}
                                             onChange={(e) => setAnecdotalData({ ...anecdotalData, date: e.target.value })}
-                                            className="w-full rounded-2xl border border-border bg-slate-50/50 dark:bg-slate-800/50 px-5 py-3 text-xs font-bold focus:border-indigo-400 outline-none transition-all"
+                                            className="w-full rounded-xl border border-border bg-slate-50/50 dark:bg-slate-800/50 px-5 py-3 text-xs font-bold focus:border-indigo-400 outline-none transition-all"
                                         />
                                     </div>
                                     <div className="space-y-2">
@@ -5114,14 +5114,14 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                 placeholder="Waktu"
                                                 value={anecdotalData.time}
                                                 onChange={(e) => setAnecdotalData({ ...anecdotalData, time: e.target.value })}
-                                                className="w-24 rounded-2xl border border-border bg-slate-50/50 dark:bg-slate-800/50 px-4 py-3 text-xs font-bold focus:border-indigo-400 outline-none transition-all"
+                                                className="w-24 rounded-xl border border-border bg-slate-50/50 dark:bg-slate-800/50 px-4 py-3 text-xs font-bold focus:border-indigo-400 outline-none transition-all"
                                             />
                                             <input 
                                                 type="text"
                                                 placeholder="Lokasi..."
                                                 value={anecdotalData.location}
                                                 onChange={(e) => setAnecdotalData({ ...anecdotalData, location: e.target.value })}
-                                                className="flex-1 rounded-2xl border border-border bg-slate-50/50 dark:bg-slate-800/50 px-4 py-3 text-xs font-bold focus:border-indigo-400 outline-none transition-all"
+                                                className="flex-1 rounded-xl border border-border bg-slate-50/50 dark:bg-slate-800/50 px-4 py-3 text-xs font-bold focus:border-indigo-400 outline-none transition-all"
                                             />
                                         </div>
                                     </div>
@@ -5134,7 +5134,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                         placeholder="Misal: Saat mengerjakan proyek kelompok membuat miniatur tata surya"
                                         value={anecdotalData.context}
                                         onChange={(e) => setAnecdotalData({ ...anecdotalData, context: e.target.value })}
-                                        className="w-full rounded-2xl border border-border bg-slate-50/50 dark:bg-slate-800/50 px-5 py-4 text-xs font-medium focus:border-indigo-400 outline-none transition-all"
+                                        className="w-full rounded-xl border border-border bg-slate-50/50 dark:bg-slate-800/50 px-5 py-4 text-xs font-medium focus:border-indigo-400 outline-none transition-all"
                                     />
                                 </div>
 
@@ -5145,7 +5145,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                         placeholder="Apa yang diucapkan atau dilakukan murid secara objektif..."
                                         value={anecdotalData.event_description}
                                         onChange={(e) => setAnecdotalData({ ...anecdotalData, event_description: e.target.value })}
-                                        className="w-full rounded-[2rem] border border-border bg-slate-50/50 dark:bg-slate-800/50 px-6 py-4 text-xs font-medium focus:border-indigo-400 outline-none transition-all resize-none"
+                                        className="w-full rounded-xl border border-border bg-slate-50/50 dark:bg-slate-800/50 px-6 py-4 text-xs font-medium focus:border-indigo-400 outline-none transition-all resize-none"
                                     />
                                 </div>
 
@@ -5156,7 +5156,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                         placeholder="Interpretasi guru dan rencana strategi ke depannya..."
                                         value={anecdotalData.analysis_followup}
                                         onChange={(e) => setAnecdotalData({ ...anecdotalData, analysis_followup: e.target.value })}
-                                        className="w-full rounded-[2rem] border border-border bg-slate-50/50 dark:bg-slate-800/50 px-6 py-4 text-xs font-medium focus:border-emerald-400 outline-none transition-all resize-none"
+                                        className="w-full rounded-xl border border-border bg-slate-50/50 dark:bg-slate-800/50 px-6 py-4 text-xs font-medium focus:border-emerald-400 outline-none transition-all resize-none"
                                     />
                                 </div>
 
@@ -5164,14 +5164,14 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                     <button 
                                         type="button"
                                         onClick={() => setSelectedStudent(null)}
-                                        className="flex-1 rounded-[1.5rem] bg-slate-100 dark:bg-slate-800 py-4 text-xs font-black text-muted-foreground uppercase tracking-widest hover:bg-slate-200 transition-all"
+                                        className="flex-1 rounded-md bg-slate-100 dark:bg-slate-800 py-4 text-xs font-black text-muted-foreground uppercase tracking-widest hover:bg-slate-200 transition-all"
                                     >
                                         Batal
                                     </button>
                                     <button 
                                         type="button"
                                         onClick={handleSaveAnecdotal}
-                                        className="flex-[2] rounded-[1.5rem] bg-gradient-to-r from-indigo-500 to-purple-600 py-4 text-xs font-black text-white shadow-xl shadow-indigo-200 dark:shadow-none hover:scale-[1.02] active:scale-[0.98] transition-all uppercase tracking-widest"
+                                        className="flex-[2] rounded-md bg-gradient-to-r from-indigo-500 to-purple-600 py-4 text-xs font-black text-white shadow-xl shadow-indigo-200 dark:shadow-none hover:scale-[1.02] active:scale-[0.98] transition-all uppercase tracking-widest"
                                     >
                                         <Save className="h-4 w-4 inline mr-2" />
                                         Simpan Catatan
@@ -5182,7 +5182,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                             <div className="space-y-8 animate-in fade-in duration-300">
                                 <div className="max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar space-y-8">
                                     {(assignment.instrument_config?.stimulus || assignment.description) && (
-                                        <div className="p-6 rounded-[2rem] bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100/50 dark:border-indigo-900/30 shadow-sm space-y-3">
+                                        <div className="p-6 rounded-xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100/50 dark:border-indigo-900/30 shadow-sm space-y-3">
                                             <div className="flex items-center gap-2 text-indigo-500">
                                                 <Info className="h-4 w-4" />
                                                 <h4 className="text-[10px] font-black uppercase tracking-widest">Stimulus / Konteks Tes Lisan</h4>
@@ -5201,7 +5201,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                         const val = Math.min(assignment.max_points, Math.max(0, parseInt(e.target.value) || 0));
                                                         setOralTestData({ ...oralTestData, score: val });
                                                     }}
-                                                    className="w-full rounded-[2rem] border border-border bg-slate-50/50 dark:bg-slate-800/50 px-8 py-5 text-3xl font-black text-primary focus:ring-4 focus:ring-indigo-100 dark:focus:ring-indigo-900/20 outline-none transition-all text-center"
+                                                    className="w-full rounded-xl border border-border bg-slate-50/50 dark:bg-slate-800/50 px-8 py-5 text-3xl font-black text-primary focus:ring-4 focus:ring-indigo-100 dark:focus:ring-indigo-900/20 outline-none transition-all text-center"
                                                 />
                                                 <div className="absolute top-1/2 -translate-y-1/2 right-6 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                     <button onClick={() => setOralTestData(prev => ({ ...prev, score: Math.min(assignment.max_points, prev.score + 5) }))} className="p-1 hover:bg-indigo-50 rounded-md text-indigo-500"><ChevronUp className="h-4 w-4" /></button>
@@ -5216,7 +5216,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                 value={oralTestData.notes}
                                                 onChange={(e) => setOralTestData({ ...oralTestData, notes: e.target.value })}
                                                 placeholder="Ketik catatan di sini saat siswa berbicara..."
-                                                className="w-full h-full rounded-[2rem] border border-border bg-slate-50/50 dark:bg-slate-800/50 px-6 py-5 text-xs font-medium focus:ring-2 focus:ring-indigo-500 outline-none transition-all resize-none"
+                                                className="w-full h-full rounded-xl border border-border bg-slate-50/50 dark:bg-slate-800/50 px-6 py-5 text-xs font-medium focus:ring-2 focus:ring-indigo-500 outline-none transition-all resize-none"
                                             />
                                         </div>
                                     </div>
@@ -5227,13 +5227,13 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                         </h4>
                                         <div className="grid gap-6">
                                             {(assignment.instrument_config?.questions || []).map((q: any, idx: number) => (
-                                                <div key={q.id} className="p-6 rounded-2xl bg-slate-50/50 dark:bg-slate-800/20 border border-border space-y-4">
+                                                <div key={q.id} className="p-6 rounded-xl bg-slate-50/50 dark:bg-slate-800/20 border border-border space-y-4">
                                                     <div className="flex items-start justify-between gap-4">
                                                         <div className="flex-1 space-y-1">
                                                             <span className="text-[9px] font-black text-indigo-500 uppercase tracking-widest">Pertanyaan 0{idx + 1}</span>
                                                             <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{q.text}</p>
                                                         </div>
-                                                        <div className="px-4 py-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30 max-w-[240px]">
+                                                        <div className="px-4 py-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30 max-w-[240px]">
                                                             <span className="text-[8px] font-black text-emerald-600 uppercase tracking-widest block mb-1">Panduan Kunci</span>
                                                             <p className="text-[10px] text-slate-600 dark:text-muted-foreground italic leading-snug">{q.answer_guide || 'Tidak ada panduan khusus.'}</p>
                                                         </div>
@@ -5246,7 +5246,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                             question_responses: { ...oralTestData.question_responses, [q.id]: e.target.value } 
                                                         })}
                                                         placeholder="Ringkasan jawaban siswa untuk soal ini..."
-                                                        className="w-full rounded-2xl border border-border bg-white dark:bg-slate-900 px-5 py-3 text-[11px] font-medium outline-none focus:ring-1 focus:ring-indigo-500 transition-all resize-none"
+                                                        className="w-full rounded-xl border border-border bg-white dark:bg-slate-900 px-5 py-3 text-[11px] font-medium outline-none focus:ring-1 focus:ring-indigo-500 transition-all resize-none"
                                                     />
                                                 </div>
                                             ))}
@@ -5263,14 +5263,14 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                         <button 
                                             type="button"
                                             onClick={() => setSelectedStudent(null)}
-                                            className="px-8 py-4 rounded-2xl bg-slate-100 dark:bg-slate-800 text-xs font-black text-muted-foreground uppercase tracking-widest hover:bg-slate-200 transition-all"
+                                            className="px-8 py-4 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs font-black text-muted-foreground uppercase tracking-widest hover:bg-slate-200 transition-all"
                                         >
                                             Selesai
                                         </button>
                                         <button 
                                             type="button"
                                             onClick={handleSaveOralTest}
-                                            className="px-10 py-4 rounded-2xl bg-indigo-600 text-xs font-black text-white shadow-xl shadow-indigo-100 dark:shadow-none hover:scale-105 active:scale-95 transition-all uppercase tracking-widest"
+                                            className="px-10 py-4 rounded-xl bg-indigo-600 text-xs font-black text-white shadow-xl shadow-indigo-100 dark:shadow-none hover:scale-105 active:scale-95 transition-all uppercase tracking-widest"
                                         >
                                             Simpan Sekarang
                                         </button>
@@ -5281,7 +5281,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                             <div className="space-y-8 animate-in fade-in duration-300">
                                 <div className="max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar space-y-10">
                                     {(assignment.instrument_config?.stimulus || assignment.description) && (
-                                        <div className="p-6 rounded-[2rem] bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100/50 dark:border-indigo-900/30 shadow-sm space-y-3">
+                                        <div className="p-6 rounded-xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100/50 dark:border-indigo-900/30 shadow-sm space-y-3">
                                             <div className="flex items-center gap-2 text-indigo-500">
                                                 <Info className="h-4 w-4" />
                                                 <h4 className="text-[10px] font-black uppercase tracking-widest">Stimulus / Konteks Kinerja</h4>
@@ -5290,7 +5290,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                         </div>
                                     )}
                                     {/* Score Header */}
-                                    <div className="flex items-center justify-between bg-emerald-50 dark:bg-emerald-950/20 p-6 rounded-[2rem] border border-emerald-100 dark:border-emerald-900/30">
+                                    <div className="flex items-center justify-between bg-emerald-50 dark:bg-emerald-950/20 p-6 rounded-xl border border-emerald-100 dark:border-emerald-900/30">
                                         <div className="flex items-center gap-3">
                                             <div className="h-10 w-10 rounded-xl bg-emerald-500 text-white flex items-center justify-center shadow-lg shadow-emerald-200 dark:shadow-none">
                                                 <Zap className="h-6 w-6" />
@@ -5319,7 +5319,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                         return (
                                                             <label 
                                                                 key={indicatorKey} 
-                                                                className={`flex items-center gap-3 p-4 rounded-2xl border-2 cursor-pointer select-none transition-all ${
+                                                                className={`flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer select-none transition-all ${
                                                                     isChecked
                                                                         ? 'border-emerald-400 bg-emerald-50 dark:bg-emerald-950/20'
                                                                         : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-indigo-300'
@@ -5379,7 +5379,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                     const final = calculatePerformanceScore(newScores);
                                                                     teacherForm.setData('score', final);
                                                                 }}
-                                                                className={`p-5 rounded-3xl border-2 transition-all text-left flex flex-col justify-between h-full group ${performanceData.scores[criterion.id] === level.id ? 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/20' : 'border-slate-50 dark:border-slate-800 bg-slate-50/20 hover:border-emerald-200'}`}
+                                                                className={`p-5 rounded-xl border-2 transition-all text-left flex flex-col justify-between h-full group ${performanceData.scores[criterion.id] === level.id ? 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/20' : 'border-slate-50 dark:border-slate-800 bg-slate-50/20 hover:border-emerald-200'}`}
                                                             >
                                                                 <div>
                                                                     <div className="flex items-center justify-between mb-3">
@@ -5447,7 +5447,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-8 border-t border-border">
                                         <div className="space-y-4">
                                             <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-4">Bukti Praktik (Foto/Video)</label>
-                                            <div className="relative group/upload h-40 rounded-[2rem] border-2 border-dashed border-slate-200 dark:border-slate-800 flex items-center justify-center overflow-hidden hover:border-emerald-400 transition-all">
+                                            <div className="relative group/upload h-40 rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-800 flex items-center justify-center overflow-hidden hover:border-emerald-400 transition-all">
                                                 {performanceData.evidence_preview ? (
                                                     <div className="relative w-full h-full group">
                                                         <img src={performanceData.evidence_preview} className="w-full h-full object-cover" />
@@ -5463,7 +5463,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                     </div>
                                                 ) : (
                                                     <div className="text-center space-y-2">
-                                                        <div className="h-12 w-12 rounded-2xl bg-muted text-muted-foreground flex items-center justify-center mx-auto group-hover/upload:scale-110 group-hover/upload:text-emerald-500 transition-all">
+                                                        <div className="h-12 w-12 rounded-xl bg-muted text-muted-foreground flex items-center justify-center mx-auto group-hover/upload:scale-110 group-hover/upload:text-emerald-500 transition-all">
                                                             <Camera className="h-6 w-6" />
                                                         </div>
                                                         <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Klik untuk unggah bukti</p>
@@ -5489,7 +5489,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                 value={performanceData.notes}
                                                 onChange={(e) => setPerformanceData({ ...performanceData, notes: e.target.value })}
                                                 placeholder="Berikan catatan spesifik terkait keterampilan yang perlu ditingkatkan murid..."
-                                                className="w-full rounded-[2rem] border border-border bg-slate-50/30 dark:border-slate-800/30 px-6 py-5 text-xs font-medium focus:border-emerald-400 outline-none transition-all resize-none"
+                                                className="w-full rounded-xl border border-border bg-slate-50/30 dark:border-slate-800/30 px-6 py-5 text-xs font-medium focus:border-emerald-400 outline-none transition-all resize-none"
                                             />
                                         </div>
                                     </div>
@@ -5499,14 +5499,14 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                     <button 
                                         type="button"
                                         onClick={() => setSelectedStudent(null)}
-                                        className="flex-1 rounded-[1.5rem] bg-slate-100 dark:bg-slate-800 py-4 text-xs font-black text-muted-foreground uppercase tracking-widest hover:bg-slate-200 transition-all"
+                                        className="flex-1 rounded-md bg-slate-100 dark:bg-slate-800 py-4 text-xs font-black text-muted-foreground uppercase tracking-widest hover:bg-slate-200 transition-all"
                                     >
                                         Batal
                                     </button>
                                     <button 
                                         type="button"
                                         onClick={handleSavePerformance}
-                                        className="flex-[2] rounded-[1.5rem] bg-gradient-to-r from-emerald-500 to-teal-600 py-4 text-xs font-black text-white shadow-xl shadow-emerald-200 dark:shadow-none hover:scale-[1.02] active:scale-[0.98] transition-all uppercase tracking-widest"
+                                        className="flex-[2] rounded-md bg-gradient-to-r from-emerald-500 to-teal-600 py-4 text-xs font-black text-white shadow-xl shadow-emerald-200 dark:shadow-none hover:scale-[1.02] active:scale-[0.98] transition-all uppercase tracking-widest"
                                     >
                                         <Save className="h-4 w-4 inline mr-2" />
                                         Simpan Penilaian Kinerja
@@ -5524,12 +5524,12 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                         <h4 className="text-xs font-black text-foreground uppercase tracking-widest">Hasil Karya Siswa</h4>
                                     </div>
                                     
-                                    <div className="rounded-2xl bg-muted/40 border border-slate-100 dark:border-slate-700 p-8 min-h-[400px] flex flex-col items-center justify-center text-center">
+                                    <div className="rounded-xl bg-muted/40 border border-slate-100 dark:border-slate-700 p-8 min-h-[400px] flex flex-col items-center justify-center text-center">
                                         {submissionMap[selectedStudent.id] ? (
                                             <div className="w-full space-y-6">
                                                 {/* File/Link Preview Logic */}
-                                                <div className="aspect-video w-full rounded-3xl bg-white dark:bg-slate-900 shadow-sm border border-border flex flex-col items-center justify-center p-8">
-                                                    <div className="h-16 w-16 rounded-2xl bg-indigo-50 dark:bg-indigo-950/30 text-indigo-500 flex items-center justify-center mb-4">
+                                                <div className="aspect-video w-full rounded-xl bg-white dark:bg-slate-900 shadow-sm border border-border flex flex-col items-center justify-center p-8">
+                                                    <div className="h-16 w-16 rounded-xl bg-indigo-50 dark:bg-indigo-950/30 text-indigo-500 flex items-center justify-center mb-4">
                                                         {submissionMap[selectedStudent.id].content_type?.includes('image') ? <ImageIcon className="h-8 w-8" /> : <FileText className="h-8 w-8" />}
                                                     </div>
                                                     <p className="text-xs font-black text-slate-700 dark:text-slate-200 uppercase tracking-widest truncate max-w-full px-4">
@@ -5543,7 +5543,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                         Buka / Download File
                                                     </a>
                                                 </div>
-                                                <div className="p-6 rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/30 space-y-4">
+                                                <div className="p-6 rounded-xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/30 space-y-4">
                                                     <h5 className="text-[9px] font-black text-primary uppercase tracking-widest mb-2 flex items-center gap-2">
                                                         <MessageSquare className="h-3 w-3" /> Detail Proyek Siswa
                                                     </h5>
@@ -5595,7 +5595,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                             </div>
                                             <h4 className="text-xs font-black text-foreground uppercase tracking-widest">Panel Penilaian Proyek</h4>
                                         </div>
-                                        <div className="px-6 py-2 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/30">
+                                        <div className="px-6 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/30">
                                             <span className="text-[9px] font-black text-emerald-600 uppercase tracking-widest block leading-none">Skor Akhir</span>
                                             <span className="text-2xl font-black text-emerald-600 tracking-tighter">{teacherForm.data.score}</span>
                                         </div>
@@ -5620,7 +5620,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                 const final = calculatePerformanceScore(newScores);
                                                                 teacherForm.setData('score', final);
                                                             }}
-                                                            className={`p-4 rounded-2xl border-2 transition-all text-left group ${projectGradingData.scores[criterion.id] === level.id ? 'border-indigo-500 bg-indigo-50/50 dark:bg-indigo-950/20' : 'border-slate-50 dark:border-slate-800 bg-slate-50/20 hover:border-indigo-200'}`}
+                                                            className={`p-4 rounded-xl border-2 transition-all text-left group ${projectGradingData.scores[criterion.id] === level.id ? 'border-indigo-500 bg-indigo-50/50 dark:bg-indigo-950/20' : 'border-slate-50 dark:border-slate-800 bg-slate-50/20 hover:border-indigo-200'}`}
                                                         >
                                                             <div className="flex items-center justify-between mb-2">
                                                                 <span className={`text-[9px] font-black uppercase tracking-tighter ${projectGradingData.scores[criterion.id] === level.id ? 'text-indigo-600' : 'text-muted-foreground'}`}>{level.name}</span>
@@ -5694,7 +5694,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                 value={projectGradingData.notes}
                                                 onChange={(e) => setProjectGradingData({ ...projectGradingData, notes: e.target.value })}
                                                 placeholder="Berikan apresiasi atau arahan perbaikan untuk proyek ini..."
-                                                className="w-full rounded-[2rem] border border-border bg-slate-50/30 px-6 py-5 text-xs font-medium focus:border-indigo-400 outline-none transition-all resize-none"
+                                                className="w-full rounded-xl border border-border bg-slate-50/30 px-6 py-5 text-xs font-medium focus:border-indigo-400 outline-none transition-all resize-none"
                                             />
                                         </div>
 
@@ -5702,14 +5702,14 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                             <button 
                                                 type="button"
                                                 onClick={() => setSelectedStudent(null)}
-                                                className="flex-1 rounded-2xl bg-slate-100 dark:bg-slate-800 py-4 text-xs font-black text-muted-foreground uppercase tracking-widest hover:bg-slate-200 transition-all"
+                                                className="flex-1 rounded-xl bg-slate-100 dark:bg-slate-800 py-4 text-xs font-black text-muted-foreground uppercase tracking-widest hover:bg-slate-200 transition-all"
                                             >
                                                 Batal
                                             </button>
                                             <button 
                                                 type="button"
                                                 onClick={handleSaveProject}
-                                                className="flex-[2] rounded-2xl bg-indigo-600 py-4 text-xs font-black text-white shadow-xl shadow-indigo-100 dark:shadow-none hover:scale-[1.02] active:scale-[0.98] transition-all uppercase tracking-widest"
+                                                className="flex-[2] rounded-xl bg-indigo-600 py-4 text-xs font-black text-white shadow-xl shadow-indigo-100 dark:shadow-none hover:scale-[1.02] active:scale-[0.98] transition-all uppercase tracking-widest"
                                             >
                                                 Simpan & Beri Nilai
                                             </button>
@@ -5720,7 +5720,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                         ) : assignment.instrument_type === 'portfolio' ? (
                             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                                 {(assignment.instrument_config?.stimulus || assignment.description) && (
-                                    <div className="p-6 rounded-[2rem] bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100/50 dark:border-indigo-900/30 shadow-sm space-y-3">
+                                    <div className="p-6 rounded-xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100/50 dark:border-indigo-900/30 shadow-sm space-y-3">
                                         <div className="flex items-center gap-2 text-indigo-500">
                                             <Info className="h-4 w-4" />
                                             <h4 className="text-[10px] font-black uppercase tracking-widest">Stimulus / Konteks Portofolio</h4>
@@ -5729,9 +5729,9 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                     </div>
                                 )}
                                 {/* Portfolio Header */}
-                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-amber-50 dark:bg-amber-950/20 p-8 rounded-2xl border border-amber-100 dark:border-amber-900/30">
+                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-amber-50 dark:bg-amber-950/20 p-8 rounded-xl border border-amber-100 dark:border-amber-900/30">
                                     <div className="flex items-center gap-4">
-                                        <div className="h-14 w-14 rounded-2xl bg-amber-500 text-white flex items-center justify-center shadow-xl shadow-amber-200 dark:shadow-none">
+                                        <div className="h-14 w-14 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-xl shadow-amber-200 dark:shadow-none">
                                             <Briefcase className="h-8 w-8" />
                                         </div>
                                         <div>
@@ -5746,7 +5746,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                 type="number"
                                                 value={teacherForm.data.score}
                                                 onChange={(e) => teacherForm.setData('score', Number(e.target.value))}
-                                                className="w-24 bg-white dark:bg-slate-900 border-2 border-amber-200 dark:border-amber-800 rounded-2xl px-4 py-2 text-center text-xl font-black text-amber-600 outline-none focus:ring-2 focus:ring-amber-500 transition-all"
+                                                className="w-24 bg-white dark:bg-slate-900 border-2 border-amber-200 dark:border-amber-800 rounded-xl px-4 py-2 text-center text-xl font-black text-amber-600 outline-none focus:ring-2 focus:ring-amber-500 transition-all"
                                             />
                                         </div>
                                     </div>
@@ -5763,7 +5763,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             {portfolioData.artifacts.length > 0 ? (
                                                 portfolioData.artifacts.map((art: any, idx: number) => (
-                                                    <div key={idx} className="group relative aspect-square rounded-[2rem] bg-white dark:bg-slate-900 border border-border shadow-sm overflow-hidden hover:shadow-xl transition-all duration-500 hover:-translate-y-1">
+                                                    <div key={idx} className="group relative aspect-square rounded-xl bg-white dark:bg-slate-900 border border-border shadow-sm overflow-hidden hover:shadow-xl transition-all duration-500 hover:-translate-y-1">
                                                         {art.type?.includes('image') ? (
                                                             <img src={art.url} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
                                                         ) : (
@@ -5782,7 +5782,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                     </div>
                                                 ))
                                             ) : (
-                                                <div className="col-span-full h-60 rounded-[2rem] border-2 border-dashed border-border flex flex-col items-center justify-center text-center p-8 opacity-50">
+                                                <div className="col-span-full h-60 rounded-xl border-2 border-dashed border-border flex flex-col items-center justify-center text-center p-8 opacity-50">
                                                     <AlertCircle className="h-10 w-10 text-slate-300 mb-2" />
                                                     <p className="text-sm font-bold text-muted-foreground italic">Belum ada karya yang disematkan.</p>
                                                 </div>
@@ -5801,7 +5801,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                             {/* Student Reflections */}
                                             <div className="space-y-4">
                                                 {(assignment.instrument_config?.reflection_prompts || []).map((prompt: string, idx: number) => (
-                                                    <div key={idx} className="p-6 rounded-3xl bg-muted/40 border border-slate-100 dark:border-slate-700 space-y-2">
+                                                    <div key={idx} className="p-6 rounded-xl bg-muted/40 border border-slate-100 dark:border-slate-700 space-y-2">
                                                         <p className="text-[9px] font-black text-amber-600 uppercase tracking-widest leading-relaxed">{prompt}</p>
                                                         <p className="text-[11px] font-medium text-slate-600 dark:text-muted-foreground italic">
                                                             "{portfolioData.reflections[idx] || 'Siswa tidak menyertakan refleksi untuk pertanyaan ini.'}"
@@ -5818,7 +5818,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                     value={portfolioData.notes}
                                                     onChange={(e) => setPortfolioData({ ...portfolioData, notes: e.target.value })}
                                                     placeholder="Berikan apresiasi atas perkembangan murid dan arahan untuk tantangan selanjutnya..."
-                                                    className="w-full rounded-[2rem] border border-border bg-white dark:bg-slate-900 px-6 py-5 text-xs font-medium focus:border-amber-500 outline-none transition-all resize-none shadow-sm"
+                                                    className="w-full rounded-xl border border-border bg-white dark:bg-slate-900 px-6 py-5 text-xs font-medium focus:border-amber-500 outline-none transition-all resize-none shadow-sm"
                                                 />
                                             </div>
 
@@ -5826,14 +5826,14 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                 <button 
                                                     type="button"
                                                     onClick={() => setSelectedStudent(null)}
-                                                    className="flex-1 rounded-2xl bg-slate-100 dark:bg-slate-800 py-4 text-xs font-black text-muted-foreground uppercase tracking-widest hover:bg-slate-200 transition-all"
+                                                    className="flex-1 rounded-xl bg-slate-100 dark:bg-slate-800 py-4 text-xs font-black text-muted-foreground uppercase tracking-widest hover:bg-slate-200 transition-all"
                                                 >
                                                     Batal
                                                 </button>
                                                 <button 
                                                     type="button"
                                                     onClick={handleSavePortfolio}
-                                                    className="flex-[2] rounded-2xl bg-amber-600 py-4 text-xs font-black text-white shadow-xl shadow-amber-100 dark:shadow-none hover:scale-[1.02] active:scale-[0.98] transition-all uppercase tracking-widest"
+                                                    className="flex-[2] rounded-xl bg-amber-600 py-4 text-xs font-black text-white shadow-xl shadow-amber-100 dark:shadow-none hover:scale-[1.02] active:scale-[0.98] transition-all uppercase tracking-widest"
                                                 >
                                                     Simpan Evaluasi
                                                 </button>
@@ -5846,7 +5846,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                             <div className="space-y-8 animate-in fade-in duration-300">
                                 <div className="max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar space-y-10">
                                     {(assignment.instrument_config?.stimulus || assignment.description) && (
-                                        <div className="p-6 rounded-[2rem] bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100/50 dark:border-indigo-900/30 shadow-sm space-y-3">
+                                        <div className="p-6 rounded-xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100/50 dark:border-indigo-900/30 shadow-sm space-y-3">
                                             <div className="flex items-center gap-2 text-indigo-500">
                                                 <Info className="h-4 w-4" />
                                                 <h4 className="text-[10px] font-black uppercase tracking-widest">Stimulus / Konteks Penilaian Rubrik</h4>
@@ -5868,7 +5868,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                         key={level.id}
                                                         type="button"
                                                         onClick={() => setRubricData({ ...rubricData, [criterion.id]: level.id })}
-                                                        className={`p-5 rounded-3xl border-2 transition-all text-left group flex flex-col justify-between h-full ${rubricData[criterion.id] === level.id ? 'border-amber-500 bg-amber-50/50 dark:bg-amber-950/20' : 'border-slate-50 dark:border-slate-800 bg-slate-50/20 hover:border-amber-200'}`}
+                                                        className={`p-5 rounded-xl border-2 transition-all text-left group flex flex-col justify-between h-full ${rubricData[criterion.id] === level.id ? 'border-amber-500 bg-amber-50/50 dark:bg-amber-950/20' : 'border-slate-50 dark:border-slate-800 bg-slate-50/20 hover:border-amber-200'}`}
                                                     >
                                                         <div>
                                                             <div className="flex items-center justify-between mb-3">
@@ -5892,7 +5892,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                             value={teacherForm.data.feedback}
                                             onChange={(e) => teacherForm.setData('feedback', e.target.value)}
                                             placeholder="Berikan catatan tambahan terkait performa murid secara keseluruhan..."
-                                            className="w-full rounded-[2rem] border border-border bg-slate-50/30 dark:bg-slate-800/30 px-6 py-5 text-xs font-medium focus:border-amber-400 outline-none transition-all resize-none"
+                                            className="w-full rounded-xl border border-border bg-slate-50/30 dark:bg-slate-800/30 px-6 py-5 text-xs font-medium focus:border-amber-400 outline-none transition-all resize-none"
                                         />
                                     </div>
                                 </div>
@@ -5901,14 +5901,14 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                     <button 
                                         type="button"
                                         onClick={() => setSelectedStudent(null)}
-                                        className="flex-1 rounded-[1.5rem] bg-slate-100 dark:bg-slate-800 py-4 text-xs font-black text-muted-foreground uppercase tracking-widest hover:bg-slate-200 transition-all"
+                                        className="flex-1 rounded-md bg-slate-100 dark:bg-slate-800 py-4 text-xs font-black text-muted-foreground uppercase tracking-widest hover:bg-slate-200 transition-all"
                                     >
                                         Batal
                                     </button>
                                     <button 
                                         type="button"
                                         onClick={handleSaveRubric}
-                                        className="flex-[2] rounded-[1.5rem] bg-gradient-to-r from-amber-500 to-orange-600 py-4 text-xs font-black text-white shadow-xl shadow-amber-200 dark:shadow-none hover:scale-[1.02] active:scale-[0.98] transition-all uppercase tracking-widest"
+                                        className="flex-[2] rounded-md bg-gradient-to-r from-amber-500 to-orange-600 py-4 text-xs font-black text-white shadow-xl shadow-amber-200 dark:shadow-none hover:scale-[1.02] active:scale-[0.98] transition-all uppercase tracking-widest"
                                     >
                                         <Save className="h-4 w-4 inline mr-2" />
                                         Simpan Penilaian Rubrik
@@ -5918,7 +5918,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                         ) : ['observation_checklist', 'guided_discussion'].includes(assignment.instrument_type) ? (
                             <div className="space-y-8 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
                                 {(assignment.instrument_config?.stimulus || assignment.description) && (
-                                    <div className="p-6 rounded-[2rem] bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100/50 dark:border-indigo-900/30 shadow-sm space-y-3 mb-4">
+                                    <div className="p-6 rounded-xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100/50 dark:border-indigo-900/30 shadow-sm space-y-3 mb-4">
                                         <div className="flex items-center gap-2 text-indigo-500">
                                             <Info className="h-4 w-4" />
                                             <h4 className="text-[10px] font-black uppercase tracking-widest">Stimulus / Konteks Observasi</h4>
@@ -5935,7 +5935,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                         {(assignment.instrument_config?.indicators || []).map((indicator: any, idx: number) => {
                                             const indicatorKey = indicator.id || indicator.name || indicator.text || idx.toString();
                                             return (
-                                                <div key={indicatorKey} className="flex items-center justify-between p-4 rounded-2xl border border-slate-50 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20 hover:bg-white transition-all">
+                                                <div key={indicatorKey} className="flex items-center justify-between p-4 rounded-xl border border-slate-50 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20 hover:bg-white transition-all">
                                                     <div className="flex items-center gap-3">
                                                         <span className="text-[10px] font-black text-slate-300">0{idx + 1}</span>
                                                         <span className="text-xs font-bold text-slate-700 dark:text-slate-200">{indicator.text || indicator.name}</span>
@@ -6000,7 +6000,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                             value={obsData.note}
                                             onChange={(e) => setObsData({ ...obsData, note: e.target.value })}
                                             placeholder="Deskripsikan perilaku menonjol atau kejadian saat itu..."
-                                            className="w-full rounded-[2rem] border border-border bg-slate-50/50 dark:bg-slate-800/50 px-6 py-4 text-xs font-medium focus:border-sky-400 outline-none transition-all resize-none"
+                                            className="w-full rounded-xl border border-border bg-slate-50/50 dark:bg-slate-800/50 px-6 py-4 text-xs font-medium focus:border-sky-400 outline-none transition-all resize-none"
                                         />
                                     </div>
                                     <div className="space-y-3">
@@ -6010,7 +6010,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                             value={obsData.action_plan}
                                             onChange={(e) => setObsData({ ...obsData, action_plan: e.target.value })}
                                             placeholder="Tuliskan rencana bimbingan atau tantangan selanjutnya..."
-                                            className="w-full rounded-[2rem] border border-border bg-slate-50/50 dark:bg-slate-800/50 px-6 py-4 text-xs font-medium focus:border-emerald-400 outline-none transition-all resize-none"
+                                            className="w-full rounded-xl border border-border bg-slate-50/50 dark:bg-slate-800/50 px-6 py-4 text-xs font-medium focus:border-emerald-400 outline-none transition-all resize-none"
                                         />
                                     </div>
                                 </div>
@@ -6019,14 +6019,14 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                     <button 
                                         type="button"
                                         onClick={() => setSelectedStudent(null)}
-                                        className="flex-1 rounded-[1.5rem] bg-slate-100 dark:bg-slate-800 py-4 text-xs font-black text-muted-foreground uppercase tracking-widest hover:bg-slate-200 transition-all"
+                                        className="flex-1 rounded-md bg-slate-100 dark:bg-slate-800 py-4 text-xs font-black text-muted-foreground uppercase tracking-widest hover:bg-slate-200 transition-all"
                                     >
                                         Batal
                                     </button>
                                     <button 
                                         type="button"
                                         onClick={handleSaveObservation}
-                                        className="flex-1 rounded-[1.5rem] bg-gradient-to-r from-emerald-500 to-teal-600 py-4 text-xs font-black text-white shadow-xl shadow-emerald-200 dark:shadow-none hover:scale-[1.02] active:scale-[0.98] transition-all uppercase tracking-widest"
+                                        className="flex-1 rounded-md bg-gradient-to-r from-emerald-500 to-teal-600 py-4 text-xs font-black text-white shadow-xl shadow-emerald-200 dark:shadow-none hover:scale-[1.02] active:scale-[0.98] transition-all uppercase tracking-widest"
                                     >
                                         <Save className="h-4 w-4 inline mr-2" />
                                         Simpan Observasi
@@ -6036,7 +6036,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                         ) : assignment.instrument_type === 'performance_observation' ? (
                             <div className="space-y-8 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar animate-in fade-in duration-300">
                                 {(assignment.instrument_config?.stimulus || assignment.description) && (
-                                    <div className="p-6 rounded-[2rem] bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100/50 dark:border-indigo-900/30 shadow-sm space-y-3 mb-4">
+                                    <div className="p-6 rounded-xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100/50 dark:border-indigo-900/30 shadow-sm space-y-3 mb-4">
                                         <div className="flex items-center gap-2 text-indigo-500">
                                             <Info className="h-4 w-4" />
                                             <h4 className="text-[10px] font-black uppercase tracking-widest">Stimulus / Konteks Observasi</h4>
@@ -6055,7 +6055,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                             return (
                                                 <label 
                                                     key={indicatorKey} 
-                                                    className={`flex items-center gap-3 p-4 rounded-2xl border-2 cursor-pointer select-none transition-all ${
+                                                    className={`flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer select-none transition-all ${
                                                         isChecked
                                                             ? 'border-emerald-450 bg-emerald-50/60 dark:bg-emerald-950/20'
                                                             : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-indigo-300'
@@ -6131,7 +6131,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                         value={performanceObsData.notes}
                                         onChange={(e) => setPerformanceObsData({ ...performanceObsData, notes: e.target.value })}
                                         placeholder="Tuliskan detail observasi atau masukan perbaikan untuk siswa..."
-                                        className="w-full rounded-[2rem] border border-border bg-slate-50/50 dark:bg-slate-800/50 px-6 py-5 text-xs font-medium focus:border-emerald-400 outline-none transition-all resize-none shadow-sm"
+                                        className="w-full rounded-xl border border-border bg-slate-50/50 dark:bg-slate-800/50 px-6 py-5 text-xs font-medium focus:border-emerald-400 outline-none transition-all resize-none shadow-sm"
                                     />
                                 </div>
 
@@ -6139,14 +6139,14 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                     <button 
                                         type="button"
                                         onClick={() => setSelectedStudent(null)}
-                                        className="flex-1 rounded-[1.5rem] bg-slate-100 dark:bg-slate-800 py-4 text-xs font-black text-muted-foreground uppercase tracking-widest hover:bg-slate-200 transition-all"
+                                        className="flex-1 rounded-md bg-slate-100 dark:bg-slate-800 py-4 text-xs font-black text-muted-foreground uppercase tracking-widest hover:bg-slate-200 transition-all"
                                     >
                                         Batal
                                     </button>
                                     <button 
                                         type="button"
                                         onClick={handleSavePerformanceObservation}
-                                        className="flex-1 rounded-[1.5rem] bg-gradient-to-r from-emerald-500 to-teal-600 py-4 text-xs font-black text-white shadow-xl shadow-emerald-200 dark:shadow-none hover:scale-[1.02] active:scale-[0.98] transition-all uppercase tracking-widest"
+                                        className="flex-1 rounded-md bg-gradient-to-r from-emerald-500 to-teal-600 py-4 text-xs font-black text-white shadow-xl shadow-emerald-200 dark:shadow-none hover:scale-[1.02] active:scale-[0.98] transition-all uppercase tracking-widest"
                                     >
                                         <Save className="h-4 w-4 inline mr-2" />
                                         Simpan Observasi Kinerja
@@ -6164,8 +6164,8 @@ export default function ShowAssignment({ assignment, students, my_submission, my
 
             {/* Grading Modal (Standard Quiz/Essay) */}
             {selectedSubmission && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-md p-4 animate-in fade-in duration-300">
-                    <div className={`w-full max-h-[95vh] overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-2xl border border-white/20 animate-in zoom-in-95 duration-300 flex gap-0 ${
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 animate-in fade-in duration-300">
+                    <div className={`w-full max-h-[95vh] overflow-hidden rounded-xl bg-card shadow-none border border-border animate-in zoom-in-95 duration-300 flex gap-0 ${
                         (() => {
                             try {
                                 const p = JSON.parse(selectedSubmission.content || '');
@@ -6197,7 +6197,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                 </button>
                             </div>
                             {(assignment.instrument_config?.stimulus || assignment.description) && (
-                                <div className="p-6 rounded-[2rem] bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100/50 dark:border-indigo-900/30 shadow-sm space-y-3">
+                                <div className="p-6 rounded-xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100/50 dark:border-indigo-900/30 shadow-sm space-y-3">
                                     <div className="flex items-center gap-2 text-indigo-500">
                                         <Info className="h-4 w-4" />
                                         <h4 className="text-[10px] font-black uppercase tracking-widest">Stimulus / Konteks Asesmen</h4>
@@ -6229,7 +6229,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
 
                                         return (
                                             <div className="space-y-8">
-                                                <div className="flex items-center justify-between p-6 rounded-[2rem] bg-blue-50/50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/30">
+                                                <div className="flex items-center justify-between p-6 rounded-xl bg-blue-50/50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/30">
                                                     <div>
                                                         <h4 className="text-xs font-black text-blue-800 dark:text-blue-400 uppercase tracking-widest leading-none mb-1">Skor Sistem</h4>
                                                         <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Kuis Objektif</p>
@@ -6242,7 +6242,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                     const correctOpt = isMcq ? (q.options?.find((o: any) => o.is_correct) || q.options?.find((o: any) => o.id === q.answer)) : null;
                                                     
                                                     return (
-                                                        <div key={q.id} className="space-y-4 p-6 rounded-3xl bg-muted/50 border border-border">
+                                                        <div key={q.id} className="space-y-4 p-6 rounded-xl bg-muted/50 border border-border">
                                                             <div className="flex items-start gap-3">
                                                                 <span className="h-6 w-6 rounded-lg bg-white dark:bg-slate-900 text-[10px] font-black text-muted-foreground flex items-center justify-center shadow-sm">{idx + 1}</span>
                                                                 <p className="text-sm font-black text-slate-700 dark:text-slate-200">{q.text}</p>
@@ -6251,13 +6251,13 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                             <div className="grid sm:grid-cols-2 gap-4 ml-9">
                                                                 <div className="space-y-2">
                                                                     <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Jawaban Siswa:</p>
-                                                                    <div className={`p-4 rounded-2xl text-xs font-bold ${isMcq ? (studentAnswer === correctOpt?.id?.toString() ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-rose-50 text-rose-700 border border-rose-100') : 'bg-white dark:bg-slate-900 text-slate-600 border border-slate-200 dark:border-slate-800 shadow-sm'}`}>
+                                                                    <div className={`p-4 rounded-xl text-xs font-bold ${isMcq ? (studentAnswer === correctOpt?.id?.toString() ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-rose-50 text-rose-700 border border-rose-100') : 'bg-white dark:bg-slate-900 text-slate-600 border border-slate-200 dark:border-slate-800 shadow-sm'}`}>
                                                                         {isMcq ? (q.options?.find((o: any) => o.id.toString() === studentAnswer)?.text || 'Tidak dijawab') : (studentAnswer || 'Kosong')}
                                                                     </div>
                                                                 </div>
                                                                 <div className="space-y-2">
                                                                     <p className="text-[9px] font-black text-emerald-500 uppercase tracking-widest">Kunci / Referensi:</p>
-                                                                    <div className="p-4 rounded-2xl bg-emerald-50/50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30 text-xs font-bold italic">
+                                                                    <div className="p-4 rounded-xl bg-emerald-50/50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30 text-xs font-bold italic">
                                                                         {isMcq ? (correctOpt?.text || 'Belum diatur') : (q.correct_answer || q.answer || 'Belum diatur')}
                                                                     </div>
                                                                 </div>
@@ -6266,7 +6266,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                     );
                                                 })}
                                                 {parsed.note && (
-                                                    <div className="p-5 rounded-3xl bg-indigo-50/50 dark:bg-indigo-950/10 border border-indigo-100 dark:border-indigo-900/30">
+                                                    <div className="p-5 rounded-xl bg-indigo-50/50 dark:bg-indigo-950/10 border border-indigo-100 dark:border-indigo-900/30">
                                                         <p className="text-[9px] font-black text-indigo-500 uppercase tracking-widest mb-2">Catatan Siswa:</p>
                                                         <p className="text-xs text-slate-600 dark:text-muted-foreground italic font-medium">"{parsed.note}"</p>
                                                     </div>
@@ -6321,13 +6321,13 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                 </div>
 
                                                 {parsed.feeling_reason && (
-                                                    <div className="p-5 rounded-3xl bg-muted/50 border border-border">
+                                                    <div className="p-5 rounded-xl bg-muted/50 border border-border">
                                                         <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mb-2">Alasan Perasaan:</p>
                                                         <p className="text-xs text-slate-600 dark:text-slate-300 font-medium leading-relaxed italic">"{parsed.feeling_reason}"</p>
                                                     </div>
                                                 )}
 
-                                                <div className="p-6 rounded-[2rem] bg-indigo-50/30 dark:bg-indigo-950/10 border border-indigo-100 dark:border-indigo-900/30">
+                                                <div className="p-6 rounded-xl bg-indigo-50/30 dark:bg-indigo-950/10 border border-indigo-100 dark:border-indigo-900/30">
                                                     <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-3">Catatan Refleksi Siswa:</p>
                                                     <p className="text-sm text-slate-700 dark:text-slate-200 leading-relaxed font-bold italic">"{parsed.reflection_notes}"</p>
                                                 </div>
@@ -6371,11 +6371,11 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                         return (
                                             <div className="space-y-6">
                                                 <div className="flex flex-wrap gap-3">
-                                                    <div className="px-5 py-3 rounded-2xl bg-indigo-50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/30">
+                                                    <div className="px-5 py-3 rounded-xl bg-indigo-50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/30">
                                                         <p className="text-[8px] font-black text-indigo-500 uppercase tracking-widest mb-1">Menilai Teman:</p>
                                                         <p className="text-sm font-black text-foreground">{parsed.peer_name}</p>
                                                     </div>
-                                                    <div className="px-5 py-3 rounded-2xl bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/30 flex items-center gap-3">
+                                                    <div className="px-5 py-3 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/30 flex items-center gap-3">
                                                         <div className="flex items-center gap-1">
                                                             {[1, 2, 3, 4, 5].map((s) => (
                                                                 <Star key={s} className={`h-3 w-3 ${parsed.rating >= s ? 'text-amber-400 fill-amber-400' : 'text-slate-300'}`} />
@@ -6386,22 +6386,22 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                 </div>
 
                                                 <div className="grid sm:grid-cols-2 gap-4">
-                                                    <div className="p-5 rounded-3xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30">
+                                                    <div className="p-5 rounded-xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30">
                                                         <p className="text-[9px] font-black text-emerald-500 uppercase tracking-widest mb-2">Terbaik di Kelompok:</p>
                                                         <p className="text-xs font-bold text-slate-700 dark:text-slate-200">"{parsed.best_performer}"</p>
                                                     </div>
-                                                    <div className="p-5 rounded-3xl bg-rose-50/50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/30">
+                                                    <div className="p-5 rounded-xl bg-rose-50/50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/30">
                                                         <p className="text-[9px] font-black text-rose-500 uppercase tracking-widest mb-2">Perlu Peningkatan:</p>
                                                         <p className="text-xs font-bold text-slate-700 dark:text-slate-200">"{parsed.worst_performer}"</p>
                                                     </div>
                                                 </div>
 
-                                                <div className="p-5 rounded-3xl bg-muted border border-border shadow-sm">
+                                                <div className="p-5 rounded-xl bg-muted border border-border shadow-sm">
                                                     <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mb-2">Kendala Kelompok:</p>
                                                     <p className="text-xs text-slate-600 dark:text-slate-300 font-medium leading-relaxed italic">"{parsed.obstacles}"</p>
                                                 </div>
 
-                                                <div className="p-5 rounded-3xl bg-sky-50/30 dark:bg-sky-950/10 border border-sky-100 dark:border-sky-900/30">
+                                                <div className="p-5 rounded-xl bg-sky-50/30 dark:bg-sky-950/10 border border-sky-100 dark:border-sky-900/30">
                                                     <p className="text-[9px] font-black text-primary uppercase tracking-widest mb-2">Harapan ke Depan:</p>
                                                     <p className="text-xs text-sky-800 dark:text-sky-300 font-bold italic">"{parsed.future_expectations}"</p>
                                                 </div>
@@ -6412,7 +6412,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                         return (
                                             <div className="flex-1 flex flex-col min-h-0 space-y-4">
                                                 <div className="flex items-center justify-between flex-wrap gap-2 shrink-0">
-                                                    <div className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-indigo-50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/30">
+                                                    <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/30">
                                                         <GitBranch className="h-4 w-4 text-indigo-500" />
                                                         <div>
                                                             <p className="text-[9px] font-black text-indigo-400 uppercase tracking-widest leading-none">Topik Utama</p>
@@ -6428,14 +6428,14 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                     </div>
                                                 </div>
                                                 {parsed.submission_type === 'upload' ? (
-                                                    <div className="flex-1 min-h-0 relative overflow-hidden rounded-2xl border border-border bg-slate-50 dark:bg-slate-900 p-6 flex flex-col justify-center items-center">
+                                                    <div className="flex-1 min-h-0 relative overflow-hidden rounded-xl border border-border bg-slate-50 dark:bg-slate-900 p-6 flex flex-col justify-center items-center">
                                                         <p className="text-[9px] font-black text-indigo-500 uppercase tracking-widest mb-3 self-start">Foto Peta Konsep Murid:</p>
                                                         {selectedSubmission.file_path ? (
                                                             <div className="relative group/img flex-1 flex items-center justify-center min-h-0 overflow-hidden">
                                                                 <img 
                                                                     src={`/storage/${selectedSubmission.file_path}`} 
                                                                     alt="Peta Konsep Murid" 
-                                                                    className="max-h-full max-w-full object-contain rounded-2xl border border-border shadow-lg cursor-zoom-in transition-transform hover:scale-[1.005]"
+                                                                    className="max-h-full max-w-full object-contain rounded-xl border border-border shadow-lg cursor-zoom-in transition-transform hover:scale-[1.005]"
                                                                     onClick={() => window.open(`/storage/${selectedSubmission.file_path}`, '_blank')}
                                                                 />
                                                                 <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/img:opacity-100 transition-opacity pointer-events-none">
@@ -6449,7 +6449,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                         )}
                                                     </div>
                                                 ) : (
-                                                    <div className="flex-1 min-h-0 rounded-2xl overflow-hidden border border-border relative">
+                                                    <div className="flex-1 min-h-0 rounded-xl overflow-hidden border border-border relative">
                                                         <ConceptMapCanvas 
                                                             data={{ nodes: parsed.nodes || [], edges: parsed.edges || [] }} 
                                                             readOnly={true}
@@ -6463,7 +6463,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                     if (parsed.type === 'structured_assignment') {
                                         return (
                                             <div className="space-y-6 animate-in fade-in duration-300">
-                                                <div className="p-6 rounded-[2rem] bg-white dark:bg-slate-900 border border-border shadow-sm space-y-4">
+                                                <div className="p-6 rounded-xl bg-white dark:bg-slate-900 border border-border shadow-sm space-y-4">
                                                     <p className="text-[10px] font-black text-primary uppercase tracking-widest leading-none">Jawaban LKPD Murid</p>
                                                     <p className="text-sm font-semibold text-foreground whitespace-pre-wrap leading-relaxed">
                                                         {parsed.answer_text || '(Tidak ada jawaban teks)'}
@@ -6473,7 +6473,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                     <a 
                                                         href={`/storage/${selectedSubmission.file_path}`} 
                                                         target="_blank" 
-                                                        className="flex items-center gap-3 p-4 rounded-2xl bg-sky-50 dark:bg-sky-950/30 text-primary border border-sky-100 dark:border-sky-900/30 hover:bg-sky-100 dark:hover:bg-sky-950/40 transition-all shadow-sm"
+                                                        className="flex items-center gap-3 p-4 rounded-xl bg-sky-50 dark:bg-sky-950/30 text-primary border border-sky-100 dark:border-sky-900/30 hover:bg-sky-100 dark:hover:bg-sky-950/40 transition-all shadow-sm"
                                                     >
                                                         <Download className="h-5 w-5" />
                                                         <div className="text-left">
@@ -6488,7 +6488,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                     if (parsed.type === 'project') {
                                         return (
                                             <div className="space-y-6 animate-in fade-in duration-300">
-                                                <div className="p-6 rounded-[2rem] bg-white dark:bg-slate-900 border border-border shadow-sm space-y-4">
+                                                <div className="p-6 rounded-xl bg-white dark:bg-slate-900 border border-border shadow-sm space-y-4">
                                                     <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest leading-none">Deskripsi Proyek</p>
                                                     <p className="text-sm font-semibold text-foreground whitespace-pre-wrap leading-relaxed mb-4">
                                                         {parsed.description || '(Tidak ada deskripsi)'}
@@ -6503,7 +6503,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                     <a 
                                                         href={`/storage/${selectedSubmission.file_path}`} 
                                                         target="_blank" 
-                                                        className="flex items-center gap-3 p-4 rounded-2xl bg-sky-50 dark:bg-sky-950/30 text-primary border border-sky-100 dark:border-sky-900/30 hover:bg-sky-100 dark:hover:bg-sky-950/40 transition-all shadow-sm"
+                                                        className="flex items-center gap-3 p-4 rounded-xl bg-sky-50 dark:bg-sky-950/30 text-primary border border-sky-100 dark:border-sky-900/30 hover:bg-sky-100 dark:hover:bg-sky-950/40 transition-all shadow-sm"
                                                     >
                                                         <Download className="h-5 w-5" />
                                                         <div className="text-left">
@@ -6518,7 +6518,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                     if (parsed.type === 'assignment') {
                                         return (
                                             <div className="space-y-6 animate-in fade-in duration-300">
-                                                <div className="p-6 rounded-[2rem] bg-white dark:bg-slate-900 border border-border shadow-sm space-y-4">
+                                                <div className="p-6 rounded-xl bg-white dark:bg-slate-900 border border-border shadow-sm space-y-4">
                                                     <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest leading-none">Laporan / Teks Jawaban</p>
                                                     <p className="text-sm font-semibold text-foreground whitespace-pre-wrap leading-relaxed mb-4">
                                                         {parsed.report_text || '(Tidak ada laporan)'}
@@ -6533,7 +6533,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                     <a 
                                                         href={`/storage/${selectedSubmission.file_path}`} 
                                                         target="_blank" 
-                                                        className="flex items-center gap-3 p-4 rounded-2xl bg-sky-50 dark:bg-sky-950/30 text-primary border border-sky-100 dark:border-sky-900/30 hover:bg-sky-100 dark:hover:bg-sky-950/40 transition-all shadow-sm"
+                                                        className="flex items-center gap-3 p-4 rounded-xl bg-sky-50 dark:bg-sky-950/30 text-primary border border-sky-100 dark:border-sky-900/30 hover:bg-sky-100 dark:hover:bg-sky-950/40 transition-all shadow-sm"
                                                     >
                                                         <Download className="h-5 w-5" />
                                                         <div className="text-left">
@@ -6548,7 +6548,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                     if (parsed.type === 'portfolio') {
                                         return (
                                             <div className="space-y-6 animate-in fade-in duration-300">
-                                                <div className="p-6 rounded-[2rem] bg-white dark:bg-slate-900 border border-border shadow-sm space-y-4">
+                                                <div className="p-6 rounded-xl bg-white dark:bg-slate-900 border border-border shadow-sm space-y-4">
                                                     <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest leading-none mb-3">Refleksi Portofolio</p>
                                                     {(parsed.reflections || []).map((ref: any, idx: number) => (
                                                         <div key={idx} className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950/40 bg-slate-50 border border-slate-200 dark:border-slate-800 border-slate-100 space-y-1">
@@ -6561,7 +6561,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                     <a 
                                                         href={`/storage/${selectedSubmission.file_path}`} 
                                                         target="_blank" 
-                                                        className="flex items-center gap-3 p-4 rounded-2xl bg-sky-50 dark:bg-sky-950/30 text-primary border border-sky-100 dark:border-sky-900/30 hover:bg-sky-100 dark:hover:bg-sky-950/40 transition-all shadow-sm"
+                                                        className="flex items-center gap-3 p-4 rounded-xl bg-sky-50 dark:bg-sky-950/30 text-primary border border-sky-100 dark:border-sky-900/30 hover:bg-sky-100 dark:hover:bg-sky-950/40 transition-all shadow-sm"
                                                     >
                                                         <Download className="h-5 w-5" />
                                                         <div className="text-left">
@@ -6576,7 +6576,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                     if (parsed.type === 'reflective_journal') {
                                         return (
                                             <div className="space-y-6 animate-in fade-in duration-300">
-                                                <div className="p-6 rounded-[2rem] bg-white dark:bg-slate-900 border border-border shadow-sm space-y-4">
+                                                <div className="p-6 rounded-xl bg-white dark:bg-slate-900 border border-border shadow-sm space-y-4">
                                                     <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest leading-none mb-3">Refleksi Jurnal Murid</p>
                                                     {(parsed.answers || []).map((ans: any, idx: number) => (
                                                         <div key={idx} className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950/40 bg-slate-50 border border-slate-200 dark:border-slate-800 border-slate-100 space-y-1">
@@ -6596,7 +6596,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                 <div className={`flex items-center justify-between p-6 ${
                                                     parsed.type === 'formative_quiz'
                                                         ? 'rounded-xl bg-primary/10 border border-primary/20 text-primary'
-                                                        : 'rounded-[2rem] bg-rose-50/50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/30 text-rose-500'
+                                                        : 'rounded-xl bg-rose-50/50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/30 text-rose-500'
                                                 }`}>
                                                     <div>
                                                         <h4 className={`text-xs font-black uppercase tracking-widest leading-none mb-1 ${
@@ -6629,7 +6629,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                                 <img 
                                                                                     src={q.image_url} 
                                                                                     alt="Question Image" 
-                                                                                    className="w-full rounded-2xl border border-border"
+                                                                                    className="w-full rounded-xl border border-border"
                                                                                 />
                                                                             </div>
                                                                         )}
@@ -6645,7 +6645,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                 <div className={`ml-8 p-5 border space-y-3 ${
                                                                     parsed.type === 'formative_quiz'
                                                                         ? 'rounded-xl bg-slate-50 dark:bg-slate-950/40 bg-slate-50 border-slate-200 dark:border-slate-800 border-slate-100'
-                                                                        : 'rounded-3xl bg-muted/50 border border-border'
+                                                                        : 'rounded-xl bg-muted/50 border border-border'
                                                                 }`}>
                                                                     <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Jawaban Murid:</p>
                                                                     {q.type === 'multiple_choice' ? (
@@ -6734,7 +6734,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                         ))}
                                                     </div>
                                                 ) : (
-                                                    <div className="p-5 rounded-3xl bg-muted/50 border border-border">
+                                                    <div className="p-5 rounded-xl bg-muted/50 border border-border">
                                                         <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mb-2">Catatan Refleksi:</p>
                                                         <p className="text-xs text-slate-600 dark:text-slate-350 font-medium leading-relaxed italic">"{parsed.answers?.reflection || 'Tidak menuliskan umpan balik teks'}"</p>
                                                     </div>
@@ -6746,7 +6746,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                 
                                 return (
                                     <div className="space-y-6">
-                                        <div className="p-8 rounded-2xl bg-muted/50 border border-border">
+                                        <div className="p-8 rounded-xl bg-muted/50 border border-border">
                                             <p className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-4">Isi Jawaban:</p>
                                             {(() => {
                                                 try {
@@ -6763,14 +6763,14 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                     const aText = isObjWithQAndA ? (val.answer || '-') : String(val);
                                                                     
                                                                     return (
-                                                                        <div key={key} className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-border shadow-sm space-y-1">
+                                                                        <div key={key} className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-border shadow-sm space-y-1">
                                                                             <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">{qText}</p>
                                                                             <p className="text-sm font-bold text-foreground whitespace-pre-wrap">{aText}</p>
                                                                         </div>
                                                                     );
                                                                 })}
                                                                 {note && (
-                                                                    <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/30">
+                                                                    <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/30">
                                                                         <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-1">Catatan Tambahan:</p>
                                                                         <p className="text-sm font-bold text-muted-foreground italic">"{note}"</p>
                                                                     </div>
@@ -6791,7 +6791,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                             <a 
                                                 href={`/storage/${selectedSubmission.file_path}`} 
                                                 target="_blank" 
-                                                className="flex items-center gap-3 p-4 rounded-2xl bg-sky-50 dark:bg-sky-950/30 text-primary border border-sky-100 dark:border-sky-900/30 hover:bg-sky-100 transition-all shadow-sm"
+                                                className="flex items-center gap-3 p-4 rounded-xl bg-sky-50 dark:bg-sky-950/30 text-primary border border-sky-100 dark:border-sky-900/30 hover:bg-sky-100 transition-all shadow-sm"
                                             >
                                                 <Download className="h-5 w-5" />
                                                 <div className="text-left">
@@ -6812,8 +6812,8 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                     const p = JSON.parse(selectedSubmission.content || '');
                                     return p.type === 'concept_map'
                                         ? 'w-full lg:w-[400px] p-8 border-t lg:border-t-0 lg:border-l border-slate-150 dark:border-slate-800 h-full flex flex-col shrink-0 overflow-hidden bg-slate-50/50 dark:bg-slate-900/30'
-                                        : 'w-full md:w-80 p-8 rounded-2xl border max-h-[70vh] pr-2 space-y-6';
-                                } catch { return 'w-full md:w-80 p-8 rounded-2xl border max-h-[70vh] pr-2 space-y-6'; }
+                                        : 'w-full md:w-80 p-8 rounded-xl border max-h-[70vh] pr-2 space-y-6';
+                                } catch { return 'w-full md:w-80 p-8 rounded-xl border max-h-[70vh] pr-2 space-y-6'; }
                             })()
                         }`}>
                             <form 
@@ -6824,14 +6824,14 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                     <>
                                         <div className="flex-1 overflow-y-auto pr-1 space-y-6 min-h-0 custom-scrollbar mb-4">
                                             {/* Concept map: checklist-only grading (no numeric score input) */}
-                                            <div className="space-y-4 p-5 rounded-[2rem] bg-indigo-50/40 dark:bg-indigo-950/15 border border-indigo-100/60 dark:border-indigo-900/35 animate-in slide-in-from-top-2 duration-200">
+                                            <div className="space-y-4 p-5 rounded-xl bg-indigo-50/40 dark:bg-indigo-950/15 border border-indigo-100/60 dark:border-indigo-900/35 animate-in slide-in-from-top-2 duration-200">
                                                 <div className="flex items-center justify-between">
                                                     <div>
                                                         <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest leading-none">Rubrik Penilaian Peta Konsep</p>
                                                         <p className="text-[9px] text-muted-foreground font-medium mt-1">Centang kriteria yang terpenuhi — skor dihitung otomatis</p>
                                                     </div>
                                                     {/* Auto-score badge */}
-                                                    <div className="flex flex-col items-center justify-center h-12 w-12 rounded-2xl bg-indigo-600 text-white shadow-lg shadow-indigo-200 dark:shadow-none shrink-0">
+                                                    <div className="flex flex-col items-center justify-center h-12 w-12 rounded-xl bg-indigo-600 text-white shadow-lg shadow-indigo-200 dark:shadow-none shrink-0">
                                                         <span className="text-lg font-black leading-none">{teacherForm.data.score}</span>
                                                         <span className="text-[7px] font-bold opacity-70 uppercase tracking-widest">skor</span>
                                                     </div>
@@ -6839,7 +6839,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
 
                                                 <div className="space-y-2">
                                                     {/* Koneksi Logis */}
-                                                    <label className={`flex items-center gap-3 p-3 rounded-2xl border-2 cursor-pointer select-none transition-all ${
+                                                    <label className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer select-none transition-all ${
                                                         conceptRubric.koneksi
                                                             ? 'border-emerald-400 bg-emerald-50 dark:bg-emerald-950/20'
                                                             : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-indigo-300'
@@ -6865,7 +6865,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                     </label>
 
                                                     {/* Kata Hubung Tepat */}
-                                                    <label className={`flex items-center gap-3 p-3 rounded-2xl border-2 cursor-pointer select-none transition-all ${
+                                                    <label className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer select-none transition-all ${
                                                         conceptRubric.kataHubung
                                                             ? 'border-emerald-400 bg-emerald-50 dark:bg-emerald-950/20'
                                                             : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-indigo-300'
@@ -6891,7 +6891,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                     </label>
 
                                                     {/* Kelengkapan Materi */}
-                                                    <label className={`flex items-center gap-3 p-3 rounded-2xl border-2 cursor-pointer select-none transition-all ${
+                                                    <label className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer select-none transition-all ${
                                                         conceptRubric.kelengkapan
                                                             ? 'border-emerald-400 bg-emerald-50 dark:bg-emerald-950/20'
                                                             : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-indigo-300'
@@ -6941,7 +6941,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                     placeholder="Tuliskan masukan untuk pengembangan murid..."
                                                     value={teacherForm.data.feedback}
                                                     onChange={(e) => teacherForm.setData('feedback', e.target.value)}
-                                                    className="w-full rounded-[1.5rem] border border-slate-200 bg-white px-5 py-4 text-xs font-medium outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-100 transition-all resize-none shadow-sm"
+                                                    className="w-full rounded-md border border-slate-200 bg-white px-5 py-4 text-xs font-medium outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-100 transition-all resize-none shadow-sm"
                                                 ></textarea>
                                             </div>
                                         </div>
@@ -6950,14 +6950,14 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                             <button 
                                                 type="submit"
                                                 disabled={teacherForm.processing}
-                                                className="w-full rounded-2xl bg-gradient-to-r from-sky-500 to-indigo-600 py-4 text-xs font-black text-white shadow-xl shadow-sky-200 dark:shadow-none hover:scale-[1.02] active:scale-[0.98] transition-all uppercase tracking-widest"
+                                                className="w-full rounded-xl bg-gradient-to-r from-sky-500 to-indigo-600 py-4 text-xs font-black text-white shadow-xl shadow-sky-200 dark:shadow-none hover:scale-[1.02] active:scale-[0.98] transition-all uppercase tracking-widest"
                                             >
                                                 {teacherForm.processing ? 'Menyimpan...' : 'Simpan Penilaian'}
                                             </button>
                                             <button 
                                                 type="button"
                                                 onClick={() => setSelectedSubmission(null)}
-                                                className="w-full rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 py-4 text-xs font-black text-muted-foreground uppercase tracking-widest hover:bg-slate-50 transition-all text-center block"
+                                                className="w-full rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 py-4 text-xs font-black text-muted-foreground uppercase tracking-widest hover:bg-slate-50 transition-all text-center block"
                                             >
                                                 Tutup
                                             </button>
@@ -6981,7 +6981,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                     
                                                     if (gradingApproach === 'criteria_description') {
                                                         return (
-                                                            <div className="space-y-4 p-5 rounded-[2rem] bg-indigo-50/40 dark:bg-indigo-950/15 border border-indigo-100/60 dark:border-indigo-900/35">
+                                                            <div className="space-y-4 p-5 rounded-xl bg-indigo-50/40 dark:bg-indigo-950/15 border border-indigo-100/60 dark:border-indigo-900/35">
                                                                 <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest leading-none mb-1">Capaian Indikator (KKTP)</p>
                                                                 <p className="text-[9px] text-muted-foreground font-medium mb-3">Tandai indikator yang dicapai secara memadai oleh siswa</p>
                                                                 
@@ -7023,7 +7023,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                         );
                                                     } else {
                                                         return (
-                                                            <div className="space-y-4 p-5 rounded-[2rem] bg-indigo-50/40 dark:bg-indigo-950/15 border border-indigo-100/60 dark:border-indigo-900/35">
+                                                            <div className="space-y-4 p-5 rounded-xl bg-indigo-50/40 dark:bg-indigo-950/15 border border-indigo-100/60 dark:border-indigo-900/35">
                                                                 <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest leading-none mb-1">Kategori Capaian KKTP</p>
                                                                 <p className="text-[9px] text-muted-foreground font-medium mb-3">Pilih tingkat capaian siswa</p>
                                                                 
@@ -7094,7 +7094,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                     min={0}
                                                     value={teacherForm.data.score}
                                                     onChange={(e) => teacherForm.setData('score', parseInt(e.target.value))}
-                                                    className="w-full rounded-2xl border border-slate-100 bg-white px-5 py-4 text-xl font-black text-slate-800 outline-none focus:border-sky-400 focus:ring-4 focus:ring-sky-50 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-100 transition-all text-center"
+                                                    className="w-full rounded-xl border border-slate-100 bg-white px-5 py-4 text-xl font-black text-slate-800 outline-none focus:border-sky-400 focus:ring-4 focus:ring-sky-50 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-100 transition-all text-center"
                                                 />
                                             </div>
                                         )}
@@ -7106,7 +7106,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                 placeholder="Tuliskan masukan untuk pengembangan murid..."
                                                 value={teacherForm.data.feedback}
                                                 onChange={(e) => teacherForm.setData('feedback', e.target.value)}
-                                                className="w-full rounded-[2rem] border border-slate-100 bg-white px-5 py-4 text-xs font-medium outline-none focus:border-sky-400 focus:ring-4 focus:ring-sky-50 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-100 transition-all resize-none"
+                                                className="w-full rounded-xl border border-slate-100 bg-white px-5 py-4 text-xs font-medium outline-none focus:border-sky-400 focus:ring-4 focus:ring-sky-50 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-100 transition-all resize-none"
                                             ></textarea>
                                         </div>
 
@@ -7115,7 +7115,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                 <button 
                                                     type="submit"
                                                     disabled={teacherForm.processing}
-                                                    className="w-full rounded-2xl bg-gradient-to-r from-sky-500 to-indigo-600 py-4 text-xs font-black text-white shadow-xl shadow-sky-200 dark:shadow-none hover:scale-[1.02] active:scale-[0.98] transition-all uppercase tracking-widest"
+                                                    className="w-full rounded-xl bg-gradient-to-r from-sky-500 to-indigo-600 py-4 text-xs font-black text-white shadow-xl shadow-sky-200 dark:shadow-none hover:scale-[1.02] active:scale-[0.98] transition-all uppercase tracking-widest"
                                                 >
                                                     {teacherForm.processing ? 'Menyimpan...' : 'Simpan Penilaian'}
                                                 </button>
@@ -7123,7 +7123,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                             <button 
                                                 type="button"
                                                 onClick={() => setSelectedSubmission(null)}
-                                                className="w-full rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 py-4 text-xs font-black text-muted-foreground uppercase tracking-widest hover:bg-slate-50 transition-all"
+                                                className="w-full rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 py-4 text-xs font-black text-muted-foreground uppercase tracking-widest hover:bg-slate-50 transition-all"
                                             >
                                                 {(!(assignment.instrument_config?.questions && assignment.instrument_config.questions.length > 0 && assignment.instrument_config.questions.every((q: any) => q.type === 'multiple_choice'))) ? 'Tutup' : 'Selesai'}
                                             </button>
