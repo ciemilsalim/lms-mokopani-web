@@ -452,7 +452,7 @@ export default function Assignments({ assignments, grouped_assignments, teacher_
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Asesmen – LMS Mokopani" />
 
-            <div className="flex h-full flex-1 flex-col gap-4 sm:gap-6">
+            <div className="flex h-full flex-1 flex-col gap-4 sm:gap-6 min-w-0 fade-in">
                 {/* Header */}
                 <div className="rounded-2xl bg-gradient-to-br from-primary via-primary/80 to-primary/60 p-8 text-white shadow-xl shadow-primary/20 dark:shadow-none">
                     <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">

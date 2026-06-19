@@ -779,7 +779,7 @@ export default function ShowMaterial({
                     }
                 `}</style>
                 
-                <div className="flex h-full flex-1 flex-col gap-6 p-6">
+                <div className="flex h-full flex-1 flex-col gap-6 min-w-0 fade-in">
                     {/* Header Controls (no-print) */}
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 no-print border-b border-[#2C2C3A]/10 dark:border-[#2C2C3A] pb-6">
                         <div>
@@ -1510,7 +1510,7 @@ export default function ShowMaterial({
         ]}>
             <Head title={`${material.title} – LMS Mokopani`} />
 
-            <div className="flex h-full flex-1 flex-col gap-4 sm:gap-6">
+            <div className="flex h-full flex-1 flex-col gap-4 sm:gap-6 min-w-0 fade-in">
                 <div className="flex items-center justify-between">
                     <button 
                         onClick={() => window.history.back()}

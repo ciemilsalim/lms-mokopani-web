@@ -43,7 +43,7 @@ export default function Subjects({ subjects }: SubjectsProps) {
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={isStudent ? 'Pelajaran Saya – LMS Mokopani' : 'Mata Pelajaran – LMS Mokopani'} />
 
-            <div className="flex h-full flex-1 flex-col gap-6 p-6">
+            <div className="flex h-full flex-1 flex-col gap-6 min-w-0 fade-in">
                 {/* Header */}
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
@@ -58,7 +58,7 @@ export default function Subjects({ subjects }: SubjectsProps) {
                         <button
                             id="btn-add-subject"
                             onClick={() => router.visit('/subjects/create')}
-                            className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-primary to-primary/70 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-primary/20 dark:shadow-lg dark:shadow-black/20 hover:opacity-90 transition active:scale-95"
+                            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-primary to-primary/70 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-primary/20 dark:shadow-lg dark:shadow-black/20 hover:opacity-90 transition active:scale-95 cursor-pointer"
                         >
                             <Plus className="h-4 w-4" />
                             Tambah Mata Pelajaran
@@ -123,7 +123,7 @@ export default function Subjects({ subjects }: SubjectsProps) {
                                     </div>
                                 )}
 
-                                <div className="mt-4 flex gap-3">
+                                <div className="mt-4 flex flex-wrap gap-2 sm:gap-3">
                                     <span className="flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
                                         📄 {subject.materials_count} Materi
                                     </span>

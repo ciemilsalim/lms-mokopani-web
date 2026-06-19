@@ -245,7 +245,7 @@ export default function EditAssignment({ assignment, teachings, objectives, asse
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Edit Tugas – LMS Mokopani" />
 
-            <div className="flex h-full flex-1 flex-col gap-4 sm:gap-6">
+            <div className="flex h-full flex-1 flex-col gap-4 sm:gap-6 min-w-0 fade-in">
                 <div className="flex items-center justify-between">
                     <button
                         onClick={() => window.history.back()}

@@ -1941,7 +1941,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
             <Head title={`${assignment.title} – LMS Mokopani`} />
 
             <>
-                <div className="flex h-full flex-1 flex-col gap-6 p-6 max-w-7xl mx-auto w-full">
+                <div className="flex h-full flex-1 flex-col gap-6 min-w-0 fade-in max-w-7xl mx-auto w-full">
                 {/* Back Button & Actions */}
                 <div className="flex items-center justify-between">
                     <button 

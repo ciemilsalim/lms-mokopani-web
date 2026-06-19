@@ -140,7 +140,7 @@ export default function Guide() {
             { title: 'Petunjuk Penggunaan', href: '#' },
         ]}>
             <Head title={`Petunjuk Penggunaan – ${label}`} />
-            <div className="flex h-full flex-1 flex-col gap-4 sm:gap-6 p-4 sm:p-6 max-w-4xl mx-auto w-full">
+            <div className="flex h-full flex-1 flex-col gap-6 min-w-0 fade-in max-w-4xl mx-auto w-full">
                 <div className="flex items-center gap-3 sm:gap-4">
                     <div className="flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-xl bg-primary/10 text-primary shrink-0">
                         <Book className="h-6 w-6 sm:h-7 sm:w-7" />

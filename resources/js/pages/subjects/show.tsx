@@ -80,7 +80,7 @@ export default function SubjectShow({ subject, learning_path, diagnostic_summary
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`${subject.name} – Learning Journey`} />
 
-            <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
+            <div className="mx-auto max-w-4xl w-full min-w-0 fade-in py-4">
                 {/* Subject Header */}
                 <div className="mb-12 text-center">
                     <div className="mb-6 inline-flex h-16 w-16 items-center justify-center rounded-3xl bg-gradient-to-br from-primary to-primary/70 text-white shadow-xl shadow-primary/20 dark:shadow-none">
