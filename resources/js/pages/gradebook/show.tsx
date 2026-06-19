@@ -175,28 +175,28 @@ export default function GradebookShow({ summative_headers, initial_headers, form
                 </div>
 
                 {/* Main Table */}
-                <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+                <div className="overflow-hidden rounded-xl border border-border bg-card shadow-none">
                     <div className="overflow-x-auto scrollbar-thin">
-                        <table className="w-full border-collapse text-left text-sm">
+                        <table className="w-full text-left text-[13px]">
                             <thead>
-                                <tr className="border-b border-border bg-slate-50/80 dark:bg-slate-900/50">
-                                    <th className="sticky left-0 z-10 bg-slate-50/80 dark:bg-slate-900/50 px-6 py-4 text-[11px] font-bold uppercase tracking-widest text-muted-foreground min-w-[200px]">Nama Siswa</th>
+                                <tr className="bg-muted/30">
+                                    <th className="sticky left-0 z-10 bg-muted/30 px-4 py-3 text-[11px] font-bold uppercase tracking-widest text-muted-foreground min-w-[200px]">Nama Siswa</th>
                                     
                                     {viewMode === 'summative' ? (
                                         summative_headers.map(h => (
-                                            <th key={h.id} className="px-5 py-4 min-w-[140px] text-center border-l border-border">
+                                            <th key={h.id} className="px-3 py-3 min-w-[120px] text-center">
                                                 <div className="flex flex-col gap-0.5" title={h.tp_desc || ''}>
                                                     <span className="truncate max-w-[120px] mx-auto text-[11px] font-bold text-foreground">{h.title}</span>
                                                     <span className="text-[10px] font-bold text-primary uppercase tracking-wider">{h.tp}</span>
                                                     {h.tp_desc && (
-                                                        <span className="text-[9px] font-medium text-muted-foreground line-clamp-2 max-w-[130px] mx-auto leading-tight">{h.tp_desc}</span>
+                                                        <span className="text-[9px] font-medium text-muted-foreground line-clamp-1 max-w-[130px] mx-auto leading-tight">{h.tp_desc}</span>
                                                     )}
                                                 </div>
                                             </th>
                                         ))
                                     ) : (
                                         getCurrentHeaders().map(h => (
-                                            <th key={h.id} className="px-5 py-4 min-w-[140px] text-center border-l border-border">
+                                            <th key={h.id} className="px-3 py-3 min-w-[120px] text-center">
                                                 <div className="flex flex-col gap-0.5">
                                                     <span className="truncate max-w-[120px] mx-auto text-[11px] font-bold text-foreground">{h.title}</span>
                                                     <span className={`text-[10px] font-bold uppercase tracking-wider ${viewMode === 'initial' ? 'text-emerald-600 dark:text-emerald-400' : 'text-warning'}`}>
@@ -209,14 +209,14 @@ export default function GradebookShow({ summative_headers, initial_headers, form
 
                                     {viewMode === 'summative' && (
                                         <>
-                                            <th className="px-5 py-4 text-[11px] font-bold uppercase tracking-widest text-primary min-w-[120px] text-center border-l border-border bg-primary/5">Sumatif Akhir</th>
-                                            <th className="px-5 py-4 text-[11px] font-bold uppercase tracking-widest text-primary min-w-[100px] text-center border-l border-border bg-primary/5">Nilai Akhir</th>
-                                            <th className="px-5 py-4 text-[11px] font-bold uppercase tracking-widest text-success min-w-[300px] border-l border-border bg-success/5">Capaian Kompetensi (Rapor)</th>
+                                            <th className="px-3 py-3 text-[11px] font-bold uppercase tracking-widest text-primary min-w-[120px] text-center bg-primary/5">Sumatif Akhir</th>
+                                            <th className="px-3 py-3 text-[11px] font-bold uppercase tracking-widest text-primary min-w-[100px] text-center bg-primary/5">Nilai Akhir</th>
+                                            <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-widest text-success min-w-[300px] bg-success/5">Capaian Kompetensi (Rapor)</th>
                                         </>
                                     )}
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-border">
+                            <tbody className="">
                                 {filteredData.length === 0 ? (
                                     <tr>
                                         <td colSpan={100} className="px-6 py-16 text-center text-muted-foreground text-sm italic">
@@ -229,14 +229,14 @@ export default function GradebookShow({ summative_headers, initial_headers, form
                                     </tr>
                                 ) : (
                                     filteredData.map((d, idx) => (
-                                        <tr key={d.student_id} className={`group transition-colors hover:bg-primary/[0.03] dark:hover:bg-primary/[0.06] ${idx % 2 === 1 ? 'bg-slate-50/40 dark:bg-slate-900/20' : ''}`}>
-                                            <td className={`sticky left-0 z-10 px-6 py-4 font-medium ${idx % 2 === 1 ? 'bg-slate-50/40 dark:bg-slate-900/20' : 'bg-card'}`}>
+                                        <tr key={d.student_id} className={`group transition-colors hover:bg-popover dark:hover:bg-popover ${idx % 2 === 1 ? 'bg-muted/10' : ''}`}>
+                                            <td className={`sticky left-0 z-10 px-4 py-2 font-medium ${idx % 2 === 1 ? 'bg-muted/10 group-hover:bg-popover dark:group-hover:bg-popover' : 'bg-card group-hover:bg-popover dark:group-hover:bg-popover'} border-l-2 border-transparent group-hover:border-primary`}>
                                                 <div className="flex items-center gap-3">
-                                                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary dark:bg-muted/50 dark:text-foreground/80">
-                                                        <User className="h-4 w-4" />
+                                                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-primary dark:bg-muted/50 dark:text-foreground/80 shrink-0">
+                                                        <User className="h-3.5 w-3.5" />
                                                     </div>
                                                     <div className="flex flex-col">
-                                                        <span className="font-bold text-foreground">{d.student_name}</span>
+                                                        <span className="font-bold text-foreground text-[13px]">{d.student_name}</span>
                                                         <span className="text-[10px] font-mono font-bold text-muted-foreground uppercase tracking-wider">{d.student_nis || '-'}</span>
                                                     </div>
                                                 </div>
@@ -244,16 +244,16 @@ export default function GradebookShow({ summative_headers, initial_headers, form
 
                                             {viewMode === 'summative' ? (
                                                 d.summative.map((s, idx) => (
-                                                    <td key={idx} className="px-6 py-4 text-center border-l border-border">
-                                                        <span className={`text-sm font-bold ${s.score === '-' ? 'text-muted-foreground/30' : 'text-foreground'}`}>
+                                                    <td key={idx} className="px-3 py-2 text-center group-hover:bg-popover">
+                                                        <span className={`text-[13px] font-bold ${s.score === '-' ? 'text-muted-foreground/30' : 'text-foreground'}`}>
                                                             {s.score}
                                                         </span>
                                                     </td>
                                                 ))
                                             ) : (
                                                 getCurrentScores(d).map((s, idx) => (
-                                                    <td key={idx} className="px-6 py-4 text-center border-l border-border">
-                                                        <span className={`text-sm font-bold ${s.score === '-' ? 'text-muted-foreground/30' : 'text-foreground'}`}>
+                                                    <td key={idx} className="px-3 py-2 text-center group-hover:bg-popover">
+                                                        <span className={`text-[13px] font-bold ${s.score === '-' ? 'text-muted-foreground/30' : 'text-foreground'}`}>
                                                             {s.score}
                                                         </span>
                                                     </td>
@@ -262,23 +262,23 @@ export default function GradebookShow({ summative_headers, initial_headers, form
 
                                             {viewMode === 'summative' && (
                                                 <>
-                                                    <td className="px-6 py-4 text-center border-l border-border bg-primary/5">
+                                                    <td className="px-3 py-2 text-center bg-primary/5 group-hover:bg-primary/10">
                                                         <input 
                                                             type="number"
                                                             value={localScores[d.student_id] ?? ''}
                                                             placeholder="0"
-                                                            className="w-16 bg-background dark:bg-popover border border-border rounded-lg px-2 py-1 text-center text-xs font-bold text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+                                                            className="w-14 bg-background dark:bg-popover border-transparent rounded-md px-1 py-0.5 text-center text-xs font-bold text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all hover:border-border"
                                                             onChange={(e) => updateSumatifAkhir(d.student_id, Number(e.target.value))}
                                                             onBlur={(e) => saveSumatifAkhir(d.student_id, Number(e.target.value))}
                                                         />
                                                     </td>
-                                                    <td className="px-6 py-4 text-center border-l border-border bg-primary/5 font-bold text-primary dark:text-primary-hover">
+                                                    <td className="px-3 py-2 text-center bg-primary/5 font-bold text-primary dark:text-primary-hover group-hover:bg-primary/10">
                                                         {Math.round((d.average + (localScores[d.student_id] || 0)) / ((localScores[d.student_id] ?? 0) > 0 ? 2 : 1))}
                                                     </td>
-                                                    <td className="px-6 py-4 border-l border-border bg-success/5">
-                                                        <div className="flex items-start gap-2.5 rounded-xl bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-100/60 dark:border-indigo-800/30 p-3">
-                                                            <Info className="h-4 w-4 shrink-0 text-indigo-500 dark:text-indigo-400 mt-0.5" />
-                                                            <p className="text-[11px] leading-relaxed text-indigo-800 dark:text-indigo-300 font-medium italic">
+                                                    <td className="px-4 py-2 bg-success/5 group-hover:bg-success/10">
+                                                        <div className="flex items-start gap-2.5 rounded-lg bg-indigo-50/60 dark:bg-indigo-950/30 p-2 border-0">
+                                                            <Info className="h-3.5 w-3.5 shrink-0 text-indigo-500 dark:text-indigo-400 mt-0.5" />
+                                                            <p className="text-[11px] leading-snug text-indigo-800 dark:text-indigo-300 font-medium italic line-clamp-2" title={d.description}>
                                                                 {d.description}
                                                             </p>
                                                         </div>

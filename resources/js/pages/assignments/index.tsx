@@ -97,10 +97,7 @@ const typeStyles: Record<string, { bg: string; text: string; icon: any }> = {
 
 function AssignmentCard({ asgn, isTeacher = false }: { asgn: Assignment; isTeacher?: boolean }) {
     const overdue = isOverdue(asgn.due_date);
-    const style = typeStyles[asgn.assessment_type || 'summative'];
-    const TypeIcon = style?.icon || ClipboardList;
     const isAccessible = asgn.is_accessible !== false; // default true if undefined
-
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
     const handleEdit = (e: React.MouseEvent) => {
@@ -115,145 +112,86 @@ function AssignmentCard({ asgn, isTeacher = false }: { asgn: Assignment; isTeach
     return (
         <div
             onClick={() => isAccessible && router.visit(`/assignments/${asgn.id}`)}
-            className={`group flex cursor-pointer flex-col justify-between rounded-2xl border border-border/80 bg-card p-6 card-hover shadow-sm ${
+            className={`group flex items-center justify-between py-2 px-4 hover:bg-popover border-l-2 border-transparent hover:border-primary transition-colors cursor-pointer ${
                 !isAccessible ? 'opacity-60 grayscale-[30%] cursor-not-allowed pointer-events-none' : ''
             }`}
         >
-            <div>
-                {/* Card Header */}
-                <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                        <span className={`h-2.5 w-2.5 rounded-full ${
-                            asgn.assessment_type === 'initial' ? 'bg-indigo-500' : 
-                            asgn.assessment_type === 'formative' ? 'bg-amber-500' : 'bg-emerald-500'
-                        }`} />
-                        <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
-                            {asgn.assessment_type === 'initial' ? 'Awal' : 
-                             asgn.assessment_type === 'formative' ? 'Formatif' : 'Sumatif'}
-                        </span>
-                    </div>
-
-                    <div className="flex items-center gap-1 min-h-[28px]">
-                        {asgn.due_date && (
-                            <span className={`inline-flex items-center gap-1.5 text-[11px] font-bold ${
-                                overdue 
-                                    ? 'text-destructive' 
-                                    : 'text-muted-foreground'
-                            }`}>
-                                <Clock className="h-3.5 w-3.5" />
-                                {asgn.due_date}
-                            </span>
-                        )}
-
-                        {isTeacher && (
-                            <div className="flex items-center gap-0.5 ml-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                                <button
-                                    onClick={handleEdit}
-                                    className="rounded-lg p-1.5 text-muted-foreground hover:bg-primary/10 hover:text-primary transition cursor-pointer"
-                                    title="Edit asesmen"
-                                >
-                                    <Pencil className="h-3.5 w-3.5" />
-                                </button>
-                                <button
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        setShowDeleteConfirm(true);
-                                    }}
-                                    className="rounded-lg p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition cursor-pointer"
-                                    title="Hapus asesmen"
-                                >
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                </button>
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                <ConfirmDialog
-                    open={showDeleteConfirm}
-                    onOpenChange={setShowDeleteConfirm}
-                    title="Hapus Asesmen"
-                    message="Peringatan! Menghapus data ini akan ikut MENGHAPUS SEMUA data terkait (misal: pengumpulan siswa, nilai, remedial, dll) secara permanen."
-                    onConfirm={handleDelete}
-                    requireInput="DELETE"
-                    inputPlaceholder="Ketik DELETE untuk konfirmasi"
-                />
-
-                {/* Card Title & Description */}
-                <h3 className="mt-3 text-[14px] font-bold text-foreground group-hover:text-primary transition-colors leading-snug line-clamp-2">
+            <div className="flex items-center gap-3 min-w-0 flex-1">
+                <span className={`h-2.5 w-2.5 rounded-full shrink-0 ${
+                    asgn.assessment_type === 'initial' ? 'bg-emerald-500' : 
+                    asgn.assessment_type === 'formative' ? 'bg-warning' : 'bg-primary'
+                }`} title={asgn.assessment_type || 'Tugas'} />
+                
+                <h3 className="text-[13px] font-medium text-foreground truncate max-w-sm group-hover:text-primary transition-colors">
                     {asgn.title}
                 </h3>
-                {asgn.description && (
-                    <p className="mt-1.5 text-[12px] text-muted-foreground leading-relaxed line-clamp-2 font-medium">
-                        {asgn.description}
-                    </p>
-                )}
+                
+                <span className="hidden sm:inline-flex items-center rounded bg-muted/50 border border-border px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground whitespace-nowrap">
+                    {instrumentLabels[asgn.instrument_type || ''] || asgn.instrument_type}
+                </span>
 
-                {/* Instrument Metadata */}
-                <div className="mt-4 flex items-center gap-2 text-[11px] font-semibold text-muted-foreground flex-wrap">
-                    <div className={`flex h-6 w-6 items-center justify-center rounded-lg ${style?.bg || 'bg-muted'} ${style?.text || 'text-muted-foreground'}`}>
-                        <TypeIcon className="h-3.5 w-3.5" />
-                    </div>
-                    <span>
-                        {instrumentLabels[asgn.instrument_type || ''] || asgn.instrument_type}
+                {asgn.due_date && overdue && (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-destructive">
+                        <Clock className="h-3 w-3" /> Terlambat
                     </span>
-                    {asgn.scoring_tool && (
-                        <>
-                            <span className="text-muted-foreground/30">•</span>
-                            <span>
-                                {scoringToolLabels[asgn.scoring_tool] || asgn.scoring_tool}
-                            </span>
-                        </>
-                    )}
-                    {!isTeacher && asgn.student_submission?.is_graded && (
-                        <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
-                            <CheckCircle2 className="h-2.5 w-2.5" /> Dinilai
-                        </span>
-                    )}
-                </div>
+                )}
+                {!isTeacher && asgn.student_submission?.is_graded && (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-500">
+                        <CheckCircle2 className="h-3 w-3" /> Dinilai
+                    </span>
+                )}
             </div>
 
-            <div className="mt-5">
-                {/* Divider */}
-                <div className="h-[1px] bg-border/40 dark:bg-border/20 w-full mb-4" />
-
-                {/* Card Footer */}
-                <div className="flex items-center justify-between">
-                    {isTeacher ? (
-                        asgn.submissions_count > 0 ? (
-                            <div className="flex items-center gap-1.5 text-[11px] font-bold text-primary">
-                                <Users className="h-3.5 w-3.5" />
-                                <span>{asgn.submissions_count} Mengumpulkan</span>
-                            </div>
-                        ) : (
-                            <div className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground">
-                                <Users className="h-3.5 w-3.5 animate-pulse" />
-                                <span>0 mengumpulkan</span>
-                            </div>
-                        )
-                    ) : (
-                        <div className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground">
-                            {asgn.student_submission ? (
-                                <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-bold">
-                                    <CheckCircle2 className="h-3.5 w-3.5" />
-                                    Sudah Dikumpulkan
-                                </span>
+            <div className="flex items-center gap-4 shrink-0 pl-4">
+                {isTeacher ? (
+                    <div className="flex items-center gap-3">
+                        <div className="flex items-center justify-end min-w-[70px]">
+                            {asgn.submissions_count > 0 ? (
+                                <span className="text-[11px] text-primary font-bold">{asgn.submissions_count} kumpul</span>
                             ) : (
-                                <span className="inline-flex items-center gap-1 text-amber-500 font-semibold">
-                                    <Clock className="h-3.5 w-3.5 animate-pulse" />
-                                    Belum Dikumpulkan
-                                </span>
+                                <span className="text-[11px] text-muted-foreground font-medium">0 kumpul</span>
                             )}
                         </div>
-                    )}
-
-                    <span className="rounded-lg bg-muted dark:bg-slate-800 px-2.5 py-1 text-[10px] font-bold text-foreground border border-border dark:border-border/30">
-                        {['reflective_journal', 'self_assessment', 'peer_assessment'].includes(asgn.instrument_type || '') 
-                            ? 'Deskriptif' 
-                            : `${asgn.max_points} Poin`}
-                    </span>
-                </div>
+                        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                            <button
+                                onClick={handleEdit}
+                                className="rounded p-1 text-muted-foreground hover:bg-primary/10 hover:text-primary transition cursor-pointer"
+                                title="Edit asesmen"
+                            >
+                                <Pencil className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setShowDeleteConfirm(true);
+                                }}
+                                className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition cursor-pointer"
+                                title="Hapus asesmen"
+                            >
+                                <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="flex items-center gap-2 text-[11px]">
+                        {asgn.student_submission ? (
+                            <span className="text-emerald-500 font-medium">Dikumpulkan</span>
+                        ) : (
+                            <span className="text-muted-foreground">Belum</span>
+                        )}
+                    </div>
+                )}
             </div>
+
+            <ConfirmDialog
+                open={showDeleteConfirm}
+                onOpenChange={setShowDeleteConfirm}
+                title="Hapus Asesmen"
+                message="Peringatan! Menghapus data ini akan ikut MENGHAPUS SEMUA data terkait (misal: pengumpulan siswa, nilai, remedial, dll) secara permanen."
+                onConfirm={handleDelete}
+                requireInput="DELETE"
+                inputPlaceholder="Ketik DELETE untuk konfirmasi"
+            />
         </div>
     );
 }
@@ -264,9 +202,6 @@ const sortAssignments = (assignments: Assignment[]) => {
 };
 
 function GroupedView({ groups, search, filterType }: { groups: SubjectGroup[]; search: string; filterType: string }) {
-    const [expandedSubjects, setExpandedSubjects] = useState<Record<number, boolean>>({});
-    const [expandedTPs, setExpandedTPs] = useState<Record<string, boolean>>({});
-
     const visible = groups
         .map(subject => ({
             ...subject,
@@ -293,83 +228,34 @@ function GroupedView({ groups, search, filterType }: { groups: SubjectGroup[]; s
     }
 
     return (
-        <div className="grid gap-6">
-            {visible.map((group) => {
-                const isOpen = expandedSubjects[group.subject_id] !== false;
-                const totalVisibleAsgn = group.objectives.reduce((sum, o) => sum + o.assignments.length, 0);
-                
-                return (
-                    <div key={group.subject_id} className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-all hover:shadow-md">
-                        <button
-                            onClick={() => setExpandedSubjects(prev => ({ ...prev, [group.subject_id]: !isOpen }))}
-                            className="flex w-full items-center justify-between border-b border-border bg-muted/30 px-6 py-4 text-left cursor-pointer"
-                        >
-                            <div className="flex items-center gap-3">
-                                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-background dark:bg-popover shadow-sm border border-border/50">
-                                    <BookOpen className="h-5 w-5 text-primary" />
-                                </div>
-                                <div>
-                                    <h3 className="text-lg font-bold text-foreground">{group.subject_name}</h3>
-                                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight">
-                                        {group.objectives.length} TP • {totalVisibleAsgn} asesmen
-                                    </p>
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-3">
-                                <span className="rounded-full bg-primary/10 border border-primary/20 px-3 py-1 text-xs font-bold text-primary">
-                                    {group.total} total
-                                </span>
-                                {isOpen ? <ChevronDown className="h-5 w-5 text-muted-foreground" /> : <ChevronRight className="h-5 w-5 text-muted-foreground" />}
-                            </div>
-                        </button>
-                        {isOpen && (
-                            <div className="p-6 space-y-4">
-                                {group.objectives.map((obj) => {
-                                    const tpKey = `${group.subject_id}-${obj.objective_id}`;
-                                    const isTPOpen = expandedTPs[tpKey] !== false;
-                                    return (
-                                        <div key={tpKey} className="rounded-xl border border-border/50 bg-muted/20 overflow-hidden">
-                                            <button
-                                                onClick={() => setExpandedTPs(prev => ({ ...prev, [tpKey]: !isTPOpen }))}
-                                                className="flex w-full items-center justify-between px-5 py-3 text-left hover:bg-muted/30 transition cursor-pointer"
-                                            >
-                                                <div className="flex items-center gap-2 min-w-0">
-                                                    <span className="rounded-full bg-primary/10 border border-primary/20 px-2.5 py-0.5 text-[10px] font-bold text-primary shrink-0">
-                                                        {obj.objective_code}
-                                                    </span>
-                                                    <p className="text-xs font-bold text-foreground truncate">{obj.objective_description}</p>
-                                                </div>
-                                                <div className="flex items-center gap-3 shrink-0 ml-3">
-                                                    <span className="text-[10px] font-medium text-muted-foreground whitespace-nowrap">{obj.assignments.length} asesmen</span>
-                                                    {isTPOpen ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
-                                                </div>
-                                            </button>
-                                            {isTPOpen && (
-                                                <div className="px-5 pb-5 pt-3">
-                                                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                                                        {obj.assignments.map(asgn => (
-                                                            <AssignmentCard key={asgn.id} asgn={asgn} isTeacher={false} />
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        )}
+        <div className="flex flex-col rounded-xl border border-border bg-card overflow-hidden shadow-none">
+            {visible.map((group, gIdx) => (
+                <div key={group.subject_id} className={`${gIdx > 0 ? 'border-t border-border' : ''}`}>
+                    <div className="flex items-center px-4 py-2 bg-muted/30 border-b border-border">
+                        <span className="text-[11px] font-semibold uppercase tracking-widest text-foreground">{group.subject_name}</span>
                     </div>
-                );
-            })}
+                    <div className="flex flex-col">
+                        {group.objectives.map((obj, oIdx) => (
+                            <div key={obj.objective_id} className={`${oIdx > 0 ? 'border-t border-border/50' : ''}`}>
+                                <div className="px-4 py-1.5 bg-muted/10 flex items-center gap-2">
+                                    <span className="text-[10px] font-bold text-primary">{obj.objective_code}</span>
+                                    <span className="text-[11px] font-medium text-muted-foreground line-clamp-1">{obj.objective_description}</span>
+                                </div>
+                                <div className="flex flex-col divide-y divide-border/30">
+                                    {obj.assignments.map(asgn => (
+                                        <AssignmentCard key={asgn.id} asgn={asgn} isTeacher={false} />
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            ))}
         </div>
     );
 }
 
 function TeacherGroupedView({ groups, search, filterType }: { groups: TeacherClassGroup[]; search: string; filterType: string }) {
-    const [expandedClasses, setExpandedClasses] = useState<Record<number, boolean>>({});
-    const [expandedSubjects, setExpandedSubjects] = useState<Record<string, boolean>>({});
-    const [expandedTPs, setExpandedTPs] = useState<Record<string, boolean>>({});
-
     const visible = groups
         .map(cls => ({
             ...cls,
@@ -401,109 +287,40 @@ function TeacherGroupedView({ groups, search, filterType }: { groups: TeacherCla
     }
 
     return (
-        <div className="grid gap-6">
-            {visible.map((cls) => {
-                const isClassOpen = expandedClasses[cls.class_id] !== false;
-                const totalAssignments = cls.subjects.reduce((sum, s) => sum + s.objectives.reduce((tpSum, o) => tpSum + o.assignments.length, 0), 0);
-                
-                return (
-                    <div key={cls.class_id} className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-                        <button
-                            onClick={() => setExpandedClasses(prev => ({ ...prev, [cls.class_id]: !isClassOpen }))}
-                            className="flex w-full items-center justify-between border-b border-border bg-muted/30 px-6 py-4 text-left cursor-pointer"
-                        >
-                            <div className="flex items-center gap-3">
-                                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-background dark:bg-popover shadow-sm border border-border/50">
-                                    <BookOpen className="h-5 w-5 text-primary" />
-                                </div>
-                                <div>
-                                    <h3 className="text-lg font-bold text-foreground">{cls.class_name}</h3>
-                                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight">
-                                        {cls.subjects.length} Mapel • {totalAssignments} asesmen
-                                    </p>
-                                </div>
-                            </div>
-                            {isClassOpen ? <ChevronDown className="h-5 w-5 text-muted-foreground" /> : <ChevronRight className="h-5 w-5 text-muted-foreground" />}
-                        </button>
-                        
-                        {isClassOpen && (
-                            <div className="p-6 space-y-6">
-                                {cls.subjects.map((sub) => {
-                                    const subKey = `${cls.class_id}-${sub.subject_id}`;
-                                    const isSubOpen = expandedSubjects[subKey] !== false;
-                                    const totalSubAssignments = sub.objectives.reduce((sum, o) => sum + o.assignments.length, 0);
-                                    
-                                    return (
-                                        <div key={subKey} className="overflow-hidden rounded-xl border border-border bg-card">
-                                            <button
-                                                onClick={() => setExpandedSubjects(prev => ({ ...prev, [subKey]: !isSubOpen }))}
-                                                className="flex w-full items-center justify-between bg-muted/20 px-5 py-3 text-left cursor-pointer font-bold text-slate-800 dark:text-slate-100"
-                                            >
-                                                <div className="flex items-center gap-2">
-                                                    <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
-                                                    <h4 className="text-sm font-bold text-foreground">{sub.subject_name}</h4>
-                                                </div>
-                                                <div className="flex items-center gap-3 shrink-0 ml-3">
-                                                    <span className="text-[10px] font-medium text-muted-foreground whitespace-nowrap">{totalSubAssignments} asesmen</span>
-                                                    {isSubOpen ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
-                                                </div>
-                                            </button>
-                                            
-                                            {isSubOpen && (
-                                                <div className="p-4 space-y-4">
-                                                    {sub.objectives.map((obj) => {
-                                                        const tpKey = `${cls.class_id}-${sub.subject_id}-${obj.objective_id}`;
-                                                        const isTPOpen = expandedTPs[tpKey] !== false;
-                                                        
-                                                        return (
-                                                            <div key={tpKey} className="rounded-xl border border-border/50 bg-muted/10 overflow-hidden">
-                                                                <button
-                                                                    onClick={() => setExpandedTPs(prev => ({ ...prev, [tpKey]: !isTPOpen }))}
-                                                                    className="flex w-full items-center justify-between px-5 py-3 text-left hover:bg-muted/20 transition cursor-pointer"
-                                                                >
-                                                                    <div className="flex items-center gap-2 min-w-0">
-                                                                        <span className="rounded-full bg-primary/10 border border-primary/20 px-2.5 py-0.5 text-[10px] font-bold text-primary shrink-0">
-                                                                            {obj.objective_code}
-                                                                        </span>
-                                                                        <p className="text-xs font-bold text-foreground truncate">{obj.objective_description}</p>
-                                                                    </div>
-                                                                    <div className="flex items-center gap-3 shrink-0 ml-3">
-                                                                        <span className="text-[10px] font-medium text-muted-foreground whitespace-nowrap">{obj.assignments.length} asesmen</span>
-                                                                        {isTPOpen ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
-                                                                    </div>
-                                                                </button>
-                                                                
-                                                                {isTPOpen && (
-                                                                    <div className="px-5 pb-5 pt-3">
-                                                                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                                                                            {obj.assignments.map(asgn => (
-                                                                                <AssignmentCard key={asgn.id} asgn={asgn} isTeacher={true} />
-                                                                            ))}
-                                                                        </div>
-                                                                        <div className="mt-4 flex justify-center">
-                                                                            <button
-                                                                                onClick={(e) => { e.stopPropagation(); router.visit('/assignments/create'); }}
-                                                                                className="flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border bg-transparent px-6 py-3 text-sm font-bold text-muted-foreground hover:border-primary hover:text-primary hover:bg-primary/5 transition-all cursor-pointer"
-                                                                            >
-                                                                                <Plus className="h-4 w-4" />
-                                                                                Tambah Asesmen
-                                                                            </button>
-                                                                        </div>
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                        );
-                                                    })}
-                                                </div>
-                                            )}
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        )}
+        <div className="flex flex-col gap-6">
+            {visible.map((cls) => (
+                <div key={cls.class_id} className="flex flex-col rounded-xl border border-border bg-card overflow-hidden shadow-none">
+                    <div className="flex items-center justify-between px-4 py-2.5 bg-muted/50 border-b border-border">
+                        <span className="text-[12px] font-bold uppercase tracking-widest text-foreground">{cls.class_name}</span>
+                        <span className="text-[10px] font-bold text-muted-foreground">{cls.subjects.length} Mapel</span>
                     </div>
-                );
-            })}
+                    <div className="flex flex-col">
+                        {cls.subjects.map((sub, sIdx) => (
+                            <div key={sub.subject_id} className={`${sIdx > 0 ? 'border-t border-border' : ''}`}>
+                                <div className="px-4 py-2 bg-muted/20 flex items-center gap-2">
+                                    <BookOpen className="h-3.5 w-3.5 text-primary" />
+                                    <span className="text-[11px] font-semibold uppercase tracking-widest text-foreground/80">{sub.subject_name}</span>
+                                </div>
+                                <div className="flex flex-col">
+                                    {sub.objectives.map((obj, oIdx) => (
+                                        <div key={obj.objective_id} className={`${oIdx > 0 ? 'border-t border-border/50' : ''}`}>
+                                            <div className="px-4 py-1.5 bg-muted/5 flex items-center gap-2">
+                                                <span className="text-[10px] font-bold text-primary">{obj.objective_code}</span>
+                                                <span className="text-[11px] font-medium text-muted-foreground line-clamp-1">{obj.objective_description}</span>
+                                            </div>
+                                            <div className="flex flex-col divide-y divide-border/30">
+                                                {obj.assignments.map(asgn => (
+                                                    <AssignmentCard key={asgn.id} asgn={asgn} isTeacher={true} />
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            ))}
         </div>
     );
 }
@@ -525,7 +342,7 @@ function FlatView({ assignments, search, filterType }: { assignments: Assignment
     }
 
     return (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="flex flex-col rounded-xl border border-border bg-card overflow-hidden shadow-none divide-y divide-border/30">
             {filtered.map(asgn => (
                 <AssignmentCard key={asgn.id} asgn={asgn} />
             ))}
