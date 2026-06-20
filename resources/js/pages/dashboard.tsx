@@ -30,7 +30,7 @@ interface DashboardStats {
     topic_data?: { name: string; value: number; color: string }[];
     assignment_progress?: { completed: number; pending: number; total: number };
     popular_instructors?: { name: string; role: string; lessons: number; color?: string }[];
-    course_progress?: { student_id: number; student: string; course: string; subject_id: number; progress: number; status: string }[];
+    course_progress?: { student_id?: number; student: string; class_id?: number; class_name?: string; course: string; subject_id?: number; progress: number; status: string }[];
 }
 
 interface IdentityInfo {
@@ -72,6 +72,7 @@ interface DashboardProps {
     stats: DashboardStats;
     identity?: IdentityInfo;
     subjects?: { id: number; name: string }[];
+    classes?: { id: number; name: string }[];
     recentActivities: RecentActivity[];
     recentAnnouncements: AnnouncementItem[];
     todaySchedule: ScheduleItem[];
@@ -168,7 +169,7 @@ const activityLabelMap: Record<string, string> = {
 
 
 
-export default function Dashboard({ stats, identity, subjects, recentActivities, recentAnnouncements, todaySchedule, todayName }: DashboardProps) {
+export default function Dashboard({ stats, identity, subjects, classes, recentActivities, recentAnnouncements, todaySchedule, todayName }: DashboardProps) {
     const { auth, user_role } = usePage<SharedData>().props;
 
     const roleLabel: Record<string, string> = {
@@ -207,6 +208,7 @@ export default function Dashboard({ stats, identity, subjects, recentActivities,
     const courseData = safeStats.course_progress ?? [];
 
     const [subjectFilter, setSubjectFilter] = useState<number | 'all'>('all');
+    const [classFilter, setClassFilter] = useState<number | 'all'>('all');
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
     const [perPage, setPerPage] = useState(10);
     const [page, setPage] = useState(1);
@@ -214,8 +216,9 @@ export default function Dashboard({ stats, identity, subjects, recentActivities,
     const filteredData = useMemo(() => {
         return courseData
             .filter(row => subjectFilter === 'all' || row.subject_id === subjectFilter)
+            .filter(row => classFilter === 'all' || row.class_id === classFilter)
             .sort((a, b) => sortOrder === 'desc' ? b.progress - a.progress : a.progress - b.progress);
-    }, [courseData, subjectFilter, sortOrder]);
+    }, [courseData, subjectFilter, classFilter, sortOrder]);
 
     const totalFiltered = filteredData.length;
     const totalPages = Math.max(1, Math.ceil(totalFiltered / perPage));
@@ -550,6 +553,18 @@ export default function Dashboard({ stats, identity, subjects, recentActivities,
                                 <p className="text-xs text-muted-foreground mt-0.5">Status pembelajaran terkini</p>
                             </div>
                             <div className="flex flex-wrap items-center gap-3">
+                                {classes && classes.length > 0 && (
+                                    <select
+                                        value={classFilter}
+                                        onChange={e => { setClassFilter(e.target.value === 'all' ? 'all' : Number(e.target.value)); setPage(1); }}
+                                        className="rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                                    >
+                                        <option value="all">Semua Kelas</option>
+                                        {classes.map(c => (
+                                            <option key={c.id} value={c.id}>{c.name}</option>
+                                        ))}
+                                    </select>
+                                )}
                                 {subjects && subjects.length > 0 && (
                                     <select
                                         value={subjectFilter}
@@ -605,7 +620,10 @@ export default function Dashboard({ stats, identity, subjects, recentActivities,
                                                                     {row.student.split(' ').map((n: string) => n[0]).slice(0, 2).join('')}
                                                                 </AvatarFallback>
                                                             </Avatar>
-                                                            <span className="font-medium text-foreground truncate">{row.student}</span>
+                                                            <div className="flex flex-col min-w-0">
+                                                                <span className="font-medium text-foreground truncate">{row.student}</span>
+                                                                {row.class_name && <span className="text-[10px] text-muted-foreground truncate">{row.class_name}</span>}
+                                                            </div>
                                                         </div>
                                                     </div>
                                                     <div className="flex sm:table-cell items-center justify-between sm:justify-start px-0 sm:px-6 py-1.5 sm:py-3 text-muted-foreground min-w-0">
