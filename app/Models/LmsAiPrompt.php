@@ -68,14 +68,14 @@ class LmsAiPrompt extends Model
             'orchestrator_draft' => "Kamu adalah asisten cerdas dan pakar Kurikulum Merdeka dengan konsep Pembelajaran Mendalam (Deep Learning) tingkat SMP di Indonesia. Tugasmu adalah merancang Rencana Pelaksanaan Pembelajaran (RPP) dan Materi Ajar yang komprehensif, kaya konten, sangat detail, tetapi dikemas dengan bahasa yang sederhana, komunikatif, mudah dimengerti siswa SMP (usia 12-15 tahun), dan tidak menggunakan istilah ilmiah/akademis yang terlalu tinggi. Jika harus menggunakan istilah ilmiah khusus, sertakan penjelasan singkat yang mudah dalam tanda kurung. Rancang berdasarkan mata pelajaran {subject}, kelas {class}, model pedagogis {pedagogical_model}, dan Tujuan Pembelajaran (TP): {tp}.
 Format output harus berupa JSON valid tanpa code fence, mengandung key:
 - title: Judul materi yang spesifik, kreatif, dan secara langsung mencerminkan kompetensi & materi inti dari TP. Dalam bentuk teks biasa TANPA tag HTML.
-- content: Uraian materi utama yang terstruktur menggunakan HTML semantik (<h2>, <h3>, <p>, <strong>, <em>, <ul>, <ol>, <li>, <blockquote>, <hr>). Materi harus disusun secara terstruktur berdasarkan konsep dari yang kongkrit/kontekstual sehari-hari terlebih dahulu, kemudian berangsur menuju abstrak/teoritis. Tulis draf materi ini dengan sangat detail dan lengkap (minimal 5-6 paragraf panjang) yang mencakup sub-bagian:
+- content: Uraian materi utama yang terstruktur menggunakan HTML semantik (<h2>, <h3>, <p>, <strong>, <em>, <ul>, <ol>, <li>, <code>, <blockquote>, <hr>). Materi harus disusun secara terstruktur berdasarkan konsep dari yang kongkrit/kontekstual sehari-hari terlebih dahulu, kemudian berangsur menuju abstrak/teoritis. Tulis draf materi ini dengan sangat detail dan lengkap (minimal 5-6 paragraf panjang) yang mencakup sub-bagian:
   1. <h2>Kemampuan Prasyarat</h2>: Jabarkan secara detail konsep-konsep dasar atau keterampilan apa saja yang harus sudah dikuasai siswa sebelum masuk pada materi inti ini.
   2. <h2>Materi Inti</h2>: Penjelasan konsep utama, rumus, atau teori yang dikemas sederhana dan kaya analogi kehidupan nyata.
   3. <h2>Materi Diferensiasi</h2>: Sediakan materi/aktivitas penunjang spesifik yang dibagi menjadi 3 tingkat kemampuan siswa:
      - <h3>Tingkat Perlu Bimbingan</h3>: Penjelasan konsep yang sangat disederhanakan.
      - <h3>Tingkat Cukup/Baik</h3>: Pemahaman standar/utama materi sesuai target TP.
      - <h3>Tingkat Sangat Baik/Tantangan</h3>: Materi pengayaan, eksplorasi tingkat lanjut.
-- image_prompt: Deskripsi detail (minimal 2 kalimat) ilustrasi visual atau infografis yang relevan. Teks biasa tanpa HTML.",
+- image_prompt: Deskripsi detail (minimal 2 kalimat) ilustrasi visual atau infografis yang relevan. WAJIB sertakan instruksi style: 'style ilustrasi gaya Flat 2D Vector minimalis'. Teks biasa tanpa HTML.",
             
             'experiences' => "Kamu adalah asisten cerdas dan pakar Kurikulum Merdeka dengan konsep Pembelajaran Mendalam (Deep Learning) tingkat SMP di Indonesia.
 Mata Pelajaran: {subject}
@@ -190,7 +190,7 @@ Format output harus berupa JSON valid tanpa code fence (```json ... ```), mengan
 - lingkungan_pembelajaran: Deskripsi lingkungan pembelajaran (contoh: 'Ruang Kelas dan Perpustakaan'). Teks biasa.
 - kemitraan_pembelajaran: Bentuk kemitraan (contoh: 'Diskusi kelompok antar teman sebaya'). Teks biasa.
 - pemanfaatan_digital: Penggunaan teknologi (contoh: 'Penggunaan tablet untuk mencari referensi'). Teks biasa.
-- media_ilustrasi: Deskripsi gambar/media ilustrasi ajar (image prompt visual). Teks biasa.
+- media_ilustrasi: Deskripsi gambar/media ilustrasi ajar (image prompt visual). WAJIB sertakan instruksi style: 'style ilustrasi gaya Flat 2D Vector minimalis'. Teks biasa.
 - understanding: Kegiatan memahami (Understanding). Langkah operasional guru memicu rasa ingin tahu murid. Gunakan format HTML semantik.
 - application: Kegiatan mengaplikasikan (Application). Skenario aktivitas praktis, studi kasus nyata. Gunakan format HTML semantik.
 - reflection: Kegiatan merefleksikan (Reflection). Aktivitas metakognisi murid menilai pemahaman. Gunakan format HTML semantik.

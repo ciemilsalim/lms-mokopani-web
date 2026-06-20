@@ -36,7 +36,7 @@ Buatkan rancangan utuh dan mendalam yang terdiri dari:
      * *Tingkat Perlu Bimbingan*: Penjelasan konsep yang sangat disederhanakan dengan bantuan visual/analogis dasar yang sangat mudah.
      * *Tingkat Cukup/Baik*: Pemahaman standar/utama materi sesuai target TP.
      * *Tingkat Sangat Baik/Tantangan*: Materi pengayaan, eksplorasi tingkat lanjut, atau studi kasus kritis yang lebih menantang.
-3. **Ide Gambar Relevan**: Deskripsi detail (minimal 2 kalimat) ilustrasi visual atau infografis yang relevan untuk memvisualisasikan konsep abstrak tersebut agar lebih mudah dipahami murid. Dalam bentuk teks biasa.
+3. **Ide Gambar Relevan**: Deskripsi detail (minimal 2 kalimat) ilustrasi visual atau infografis yang relevan untuk memvisualisasikan konsep abstrak tersebut agar lebih mudah dipahami murid. WAJIB sertakan instruksi style: 'style ilustrasi gaya Flat 2D Vector minimalis'. Dalam bentuk teks biasa.
 
 ===== ATURAN FORMAT HTML WAJIB =====
 Semua field yang berisi teks panjang (content) WAJIB ditulis menggunakan HTML semantik yang bersih dan profesional. Gunakan tag berikut:

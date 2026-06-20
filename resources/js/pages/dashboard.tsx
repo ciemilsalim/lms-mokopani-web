@@ -231,39 +231,48 @@ export default function Dashboard({ stats, identity, subjects, classes, recentAc
 
             <div className="space-y-6 fade-in">
                 {/* Welcome Banner + Identity */}
-                <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-primary/90 via-primary to-primary/70 p-6 text-white shadow-sm">
-                    <div className="relative z-10 flex items-center justify-between">
-                        <div className="min-w-0 flex-1">
-                            <p className="text-sm font-medium text-white/70">Selamat datang kembali</p>
-                            <h1 className="mt-1 text-2xl font-semibold">
-                                {identity?.name ?? auth?.user?.name ?? 'Pengguna'}
-                                <span className="ml-2 inline-flex items-center rounded-full bg-white/20 px-2.5 py-0.5 text-xs font-medium">
-                                    {roleLabel[user_role] ?? user_role}
-                                </span>
-                            </h1>
-                            {identity ? (
-                                <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-white/80">
-                                    {identity.idLabel && identity.idValue && (
-                                        <>
-                                            <span>{identity.idLabel}: <strong className="text-white">{identity.idValue}</strong></span>
-                                            <span className="hidden sm:inline text-white/30">|</span>
-                                        </>
-                                    )}
-                                    {identity.extra && (
-                                        <>
-                                            <span className="text-white/90">{identity.extra}</span>
-                                            <span className="hidden sm:inline text-white/30">|</span>
-                                        </>
-                                    )}
-                                    <span className="text-white/70">{identity.sekolah}</span>
-                                    <span className="hidden sm:inline text-white/30">|</span>
-                                    <span className="text-white/70">{identity.tahunAjaran} • {identity.semester}</span>
-                                </div>
-                            ) : (
-                                <p className="mt-1 text-sm text-white/60">Pantau aktivitas pembelajaran hari ini</p>
-                            )}
+                <div className="relative">
+                    <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-primary/90 via-primary to-primary/70 p-6 text-white shadow-sm">
+                        <div className="relative z-10 flex items-center justify-between">
+                            <div className="min-w-0 flex-1">
+                                <p className="text-sm font-medium text-white/70">Selamat datang kembali</p>
+                                <h1 className="mt-1 text-2xl font-semibold">
+                                    {identity?.name ?? auth?.user?.name ?? 'Pengguna'}
+                                    <span className="ml-2 inline-flex items-center rounded-full bg-white/20 px-2.5 py-0.5 text-xs font-medium">
+                                        {roleLabel[user_role] ?? user_role}
+                                    </span>
+                                </h1>
+                                {identity ? (
+                                    <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-white/80">
+                                        {identity.idLabel && identity.idValue && (
+                                            <>
+                                                <span>{identity.idLabel}: <strong className="text-white">{identity.idValue}</strong></span>
+                                                <span className="hidden sm:inline text-white/30">|</span>
+                                            </>
+                                        )}
+                                        {identity.extra && (
+                                            <>
+                                                <span className="text-white/90">{identity.extra}</span>
+                                                <span className="hidden sm:inline text-white/30">|</span>
+                                            </>
+                                        )}
+                                        <span className="text-white/70">{identity.sekolah}</span>
+                                        <span className="hidden sm:inline text-white/30">|</span>
+                                        <span className="text-white/70">{identity.tahunAjaran} • {identity.semester}</span>
+                                    </div>
+                                ) : (
+                                    <p className="mt-1 text-sm text-white/60">Pantau aktivitas pembelajaran hari ini</p>
+                                )}
+                            </div>
                         </div>
-                        <TrendingUp className="hidden h-20 w-20 text-white/10 sm:block shrink-0" />
+                    </div>
+                    {/* Pop-out Image outside overflow-hidden */}
+                    <div className="hidden sm:block absolute right-8 bottom-0 z-20 pointer-events-none">
+                        <img 
+                            src={user_role === 'student' ? "/student-illustration.png" : "/teacher-illustration.png"} 
+                            alt={user_role === 'student' ? "Ilustrasi Siswa" : "Ilustrasi Guru"} 
+                            className="h-44 w-auto object-contain object-bottom drop-shadow-xl translate-y-1 -scale-x-100" 
+                        />
                     </div>
                 </div>
 

@@ -74,7 +74,7 @@ class InstructionalSmartService
         return [
             'title' => $title,
             'content' => $materialContent,
-            'image_prompt' => "Minimalist educational vector illustration representing " . $content . " in clean, harmonious colors.",
+            'image_prompt' => "Minimalist educational flat 2D vector illustration representing " . $content . " in clean, harmonious colors, consistent with a minimalist flat 2D vector style.",
             'initial' => [
                 'instrument_type' => 'quiz_survey',
                 'title' => "Asesmen Diagnostik Awal: " . $content,
