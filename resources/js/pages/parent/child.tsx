@@ -48,7 +48,7 @@ export default function ParentChild({ student, report, period }: ParentChildProp
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`${student.name} – Laporan Belajar`} />
 
-            <div className="flex h-full flex-1 flex-col gap-6 p-6">
+            <div className="flex h-full flex-1 flex-col gap-6 min-w-0 fade-in">
                 <Link
                     href="/parent/dashboard"
                     className="flex w-fit items-center gap-2 text-sm font-bold text-muted-foreground transition-colors hover:text-foreground"

@@ -2,6 +2,7 @@ import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link } from '@inertiajs/react';
 import { BookOpen, ClipboardList, Users, TrendingUp, ChevronRight, GraduationCap, Calendar } from 'lucide-react';
+import { LineChart, Line, PieChart, Pie, Cell, ResponsiveContainer, XAxis, Tooltip, CartesianGrid } from 'recharts';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: '/dashboard' },
@@ -18,6 +19,8 @@ interface ChildData {
     pending: number;
     avg_score: number | null;
     attendance_pct: number | null;
+    grade_trend: { name: string; score: number }[];
+    attendance_breakdown: { name: string; value: number; fill: string }[];
 }
 
 interface ParentDashboardProps {
@@ -29,7 +32,7 @@ export default function ParentDashboard({ children }: ParentDashboardProps) {
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Anak Saya – LMS Mokopani" />
 
-            <div className="flex h-full flex-1 flex-col gap-6 p-6">
+            <div className="flex h-full flex-1 flex-col gap-6 min-w-0 fade-in">
                 <div>
                     <h1 className="text-xl font-bold text-foreground">Anak Saya</h1>
                     <p className="text-sm text-muted-foreground">
@@ -107,6 +110,71 @@ export default function ParentDashboard({ children }: ParentDashboardProps) {
                                             <span className="text-[10px] font-black uppercase tracking-wider">Kelas</span>
                                         </div>
                                         <span className="text-lg font-black text-foreground">{child.class_name}</span>
+                                    </div>
+                                </div>
+
+                                {/* Analytics Charts Section */}
+                                <div className="mt-6 grid gap-6 lg:grid-cols-2 pointer-events-none">
+                                    <div className="rounded-xl border bg-card p-4 shadow-sm border-border/80">
+                                        <h3 className="text-sm font-bold text-foreground mb-4">Progres Belajar (Nilai Terakhir)</h3>
+                                        <div className="h-32 w-full">
+                                            {child.grade_trend && child.grade_trend.length > 0 ? (
+                                                <ResponsiveContainer width="100%" height="100%">
+                                                    <LineChart data={child.grade_trend}>
+                                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.1)" />
+                                                        <XAxis dataKey="name" hide />
+                                                        <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }} />
+                                                        <Line type="monotone" dataKey="score" stroke="#7367f0" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                                                    </LineChart>
+                                                </ResponsiveContainer>
+                                            ) : (
+                                                <div className="flex h-full items-center justify-center text-xs text-muted-foreground">Belum ada data nilai</div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className="rounded-xl border bg-card p-4 shadow-sm border-border/80">
+                                        <h3 className="text-sm font-bold text-foreground mb-4">Progres Kehadiran</h3>
+                                        <div className="flex h-32 w-full items-center gap-4">
+                                            {child.attendance_breakdown && child.attendance_breakdown.length > 0 && child.attendance_breakdown[0].name !== 'Belum Ada' ? (
+                                                <>
+                                                    <div className="flex-1 h-full">
+                                                        <ResponsiveContainer width="100%" height="100%">
+                                                            <PieChart>
+                                                                <Pie
+                                                                    data={child.attendance_breakdown}
+                                                                    cx="50%"
+                                                                    cy="50%"
+                                                                    innerRadius={30}
+                                                                    outerRadius={45}
+                                                                    paddingAngle={2}
+                                                                    dataKey="value"
+                                                                    stroke="none"
+                                                                >
+                                                                    {child.attendance_breakdown.map((entry, index) => (
+                                                                        <Cell key={`cell-${index}`} fill={entry.fill} />
+                                                                    ))}
+                                                                </Pie>
+                                                                <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }} />
+                                                            </PieChart>
+                                                        </ResponsiveContainer>
+                                                    </div>
+                                                    <div className="flex-1 space-y-1">
+                                                        {child.attendance_breakdown.map((item, i) => (
+                                                            <div key={i} className="flex items-center justify-between text-xs">
+                                                                <div className="flex items-center gap-1.5">
+                                                                    <span className="h-2 w-2 rounded-full" style={{ backgroundColor: item.fill }} />
+                                                                    <span className="text-muted-foreground">{item.name}</span>
+                                                                </div>
+                                                                <span className="font-bold text-foreground">{item.value}</span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </>
+                                            ) : (
+                                                <div className="flex w-full h-full items-center justify-center text-xs text-muted-foreground">Belum ada data kehadiran</div>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             </Link>

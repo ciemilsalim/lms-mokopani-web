@@ -45,16 +45,38 @@ class ParentController extends Controller
             $present = $attendances->where('status', 'Hadir')->count();
             $attendancePct = $totalAttendance > 0 ? round(($present / $totalAttendance) * 100) : null;
 
+            $gradeTrend = $submissions->whereNotNull('score')
+                ->sortBy('submitted_at')
+                ->take(-10)
+                ->values()
+                ->map(fn($s, $i) => [
+                    'name' => 'Tugas ' . ($i + 1),
+                    'score' => $s->score,
+                ])->toArray();
+
+            $attendanceBreakdownRaw = [
+                ['name' => 'Hadir', 'value' => $present, 'fill' => '#10B981'], // emerald
+                ['name' => 'Izin', 'value' => $attendances->where('status', 'Izin')->count(), 'fill' => '#F59E0B'], // amber
+                ['name' => 'Sakit', 'value' => $attendances->where('status', 'Sakit')->count(), 'fill' => '#0EA5E9'], // sky
+                ['name' => 'Alpa', 'value' => $attendances->where('status', 'Alpa')->count(), 'fill' => '#F43F5E'], // rose
+            ];
+            $attendanceBreakdown = array_values(array_filter($attendanceBreakdownRaw, fn($item) => $item['value'] > 0));
+            if (empty($attendanceBreakdown)) {
+                $attendanceBreakdown = [['name' => 'Belum Ada', 'value' => 1, 'fill' => '#E2E8F0']]; // slate-200
+            }
+
             return [
-                'id'                => $child->id,
-                'name'              => $child->name,
-                'nis'               => $child->nis,
-                'class_name'        => $child->schoolClass?->name ?? '-',
-                'total_assignments' => $totalAssignments,
-                'submitted'         => $submitted,
-                'pending'           => $totalAssignments - $submitted,
-                'avg_score'         => $avgScore ? round($avgScore, 1) : null,
-                'attendance_pct'    => $attendancePct,
+                'id'                   => $child->id,
+                'name'                 => $child->name,
+                'nis'                  => $child->nis,
+                'class_name'           => $child->schoolClass?->name ?? '-',
+                'total_assignments'    => $totalAssignments,
+                'submitted'            => $submitted,
+                'pending'              => $totalAssignments - $submitted,
+                'avg_score'            => $avgScore ? round($avgScore, 1) : null,
+                'attendance_pct'       => $attendancePct,
+                'grade_trend'          => $gradeTrend,
+                'attendance_breakdown' => $attendanceBreakdown,
             ];
         });
 
@@ -76,7 +98,9 @@ class ParentController extends Controller
         $activeSemester = Semester::getActive();
 
         $assignments = LmsAssignment::with('subject')
-            ->where('school_class_id', $student->school_class_id)
+            ->whereHas('schoolClasses', function ($q) use ($student) {
+                $q->where('school_classes.id', $student->school_class_id);
+            })
             ->where('academic_year_id', $activeYear?->id)
             ->where('semester_id', $activeSemester?->id)
             ->get();
