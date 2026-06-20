@@ -115,10 +115,10 @@ class DashboardController extends Controller
             'pending_submissions' => LmsSubmission::whereIn('assignment_id', $myAssignmentIds)->whereNull('score')->count(),
         ];
 
-        $stats = array_merge($stats, $this->topicData($teacher));
         $stats = array_merge($stats, $this->assignmentProgress($myAssignmentIds));
-        $stats['popular_instructors'] = $this->popularInstructors();
         $stats['course_progress'] = $this->courseProgress($teacher, $teachingClassIds);
+        $stats['pending_grading_list'] = $this->pendingGradingList($teacher->id);
+        $stats['class_performance'] = $this->classPerformance($teacher->id, $teachingClassIds);
 
         $recentActivities = $this->recentActivities(
             (clone $myMaterials)->with('subject')->latest()->take(5)->get(),
@@ -203,13 +203,18 @@ class DashboardController extends Controller
         ];
 
         $stats = array_merge($stats, $this->topicData(student: $student));
+        $gradedCount = LmsSubmission::where('student_id', $student->id)
+            ->whereIn('assignment_id', $myAssignmentIds)->whereNotNull('score')->count();
+
         $stats['assignment_progress'] = [
-            'completed' => $submittedCount,
-            'pending'   => (clone $myAssignments)->count() - $submittedCount,
-            'total'     => (clone $myAssignments)->count(),
+            'graded'      => $gradedCount,
+            'ungraded'    => max(0, $submittedCount - $gradedCount),
+            'unsubmitted' => max(0, (clone $myAssignments)->count() - $submittedCount),
+            'total'       => max(1, (clone $myAssignments)->count()),
         ];
-        $stats['popular_instructors'] = $this->popularInstructors();
         $stats['course_progress'] = $this->courseProgress(student: $student);
+        $stats['upcoming_deadlines'] = $this->upcomingDeadlines($student);
+        $stats['grade_trend'] = $this->gradeTrend($student->id);
         $stats['p5_progress'] = $p5Total > 0 ? round(($p5Scored / $p5Total) * 100) : 0;
 
         $student->load('schoolClass');
@@ -278,15 +283,16 @@ class DashboardController extends Controller
             $query->whereIn('assignment_id', $assignmentIds);
         }
 
-        $total = (clone $query)->count();
-        $completed = (clone $query)->whereNotNull('score')->count();
-        $pending = $total - $completed;
+        $totalSubmissions = (clone $query)->count();
+        $graded = (clone $query)->whereNotNull('score')->count();
+        $ungraded = $totalSubmissions - $graded;
 
         return [
             'assignment_progress' => [
-                'completed' => $completed,
-                'pending'   => max(0, $pending),
-                'total'     => $total,
+                'graded'      => $graded,
+                'ungraded'    => max(0, $ungraded),
+                'unsubmitted' => 0,
+                'total'       => max(1, $totalSubmissions),
             ],
         ];
     }
@@ -394,6 +400,87 @@ class DashboardController extends Controller
             }
         }
         return $result;
+    }
+
+    private function pendingGradingList($teacherId): array
+    {
+        return LmsAssignment::where('teacher_id', $teacherId)
+            ->withCount(['submissions as pending_count' => function ($query) {
+                $query->whereNull('score');
+            }])
+            ->having('pending_count', '>', 0)
+            ->with('subject', 'schoolClasses')
+            ->orderByDesc('created_at')
+            ->take(5)
+            ->get()
+            ->map(fn($a) => [
+                'id' => $a->id,
+                'title' => $a->title,
+                'subject' => $a->subject?->name,
+                'class' => $a->schoolClasses->pluck('name')->join(', '),
+                'pending_count' => $a->pending_count,
+            ])
+            ->toArray();
+    }
+
+    private function classPerformance($teacherId, $classIds): array
+    {
+        $classes = \App\Models\SchoolClass::whereIn('id', $classIds)->get();
+        $assignmentIds = LmsAssignment::where('teacher_id', $teacherId)->pluck('id');
+        
+        return $classes->map(function ($c) use ($assignmentIds) {
+            $studentIds = Student::where('school_class_id', $c->id)->pluck('id');
+            $avg = LmsSubmission::whereIn('student_id', $studentIds)
+                ->whereIn('assignment_id', $assignmentIds)
+                ->whereNotNull('score')
+                ->avg('score');
+            
+            return [
+                'name' => $c->name,
+                'value' => round((float)$avg, 1),
+                'color' => $this->chartColors[$c->id % count($this->chartColors)],
+            ];
+        })->filter(fn($c) => $c['value'] > 0)->values()->toArray();
+    }
+
+    private function upcomingDeadlines($student): array
+    {
+        return LmsAssignment::whereHas('schoolClasses', function ($q) use ($student) { 
+                $q->where('school_classes.id', $student->school_class_id); 
+            })
+            ->whereNotNull('due_date')
+            ->where('due_date', '>=', now())
+            ->whereDoesntHave('submissions', function ($q) use ($student) {
+                $q->where('student_id', $student->id);
+            })
+            ->with('subject')
+            ->orderBy('due_date')
+            ->take(5)
+            ->get()
+            ->map(fn($a) => [
+                'id' => $a->id,
+                'title' => $a->title,
+                'subject' => $a->subject?->name,
+                'due_date' => \Carbon\Carbon::parse($a->due_date)->format('d M Y H:i'),
+                'is_urgent' => \Carbon\Carbon::parse($a->due_date)->isBefore(now()->addDays(2)),
+            ])
+            ->toArray();
+    }
+
+    private function gradeTrend($studentId): array
+    {
+        $submissions = LmsSubmission::where('student_id', $studentId)
+            ->whereNotNull('score')
+            ->with('assignment')
+            ->orderBy('submitted_at')
+            ->take(10)
+            ->get();
+            
+        return $submissions->map(fn($s, $i) => [
+            'name' => 'Tugas ' . ($i + 1),
+            'title' => $s->assignment?->title,
+            'score' => $s->score,
+        ])->toArray();
     }
 
     // ─── HELPERS ─────────────────────────────────────────────────────

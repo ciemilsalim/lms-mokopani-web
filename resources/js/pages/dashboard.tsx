@@ -8,7 +8,7 @@ import {
     User, Star, FileText, Activity, ArrowUpRight, Zap, Heart, ArrowUpDown,
 } from 'lucide-react';
 import { useState, useMemo } from 'react';
-import { Cell, PieChart, Pie, ResponsiveContainer, RadialBarChart, RadialBar } from 'recharts';
+import { Cell, PieChart, Pie, ResponsiveContainer, RadialBarChart, RadialBar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, BarChart, Bar } from 'recharts';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -27,8 +27,12 @@ interface DashboardStats {
     p5_total?: number;
     p5_scored?: number;
     p5_progress?: number;
+    pending_grading_list?: { id: number; title: string; subject: string; class: string; pending_count: number }[];
+    class_performance?: { name: string; value: number; color: string }[];
+    upcoming_deadlines?: { id: number; title: string; subject: string; due_date: string; is_urgent: boolean }[];
+    grade_trend?: { name: string; title: string; score: number }[];
     topic_data?: { name: string; value: number; color: string }[];
-    assignment_progress?: { completed: number; pending: number; total: number };
+    assignment_progress?: { graded: number; ungraded: number; unsubmitted: number; total: number };
     popular_instructors?: { name: string; role: string; lessons: number; color?: string }[];
     course_progress?: { student_id?: number; student: string; class_id?: number; class_name?: string; course: string; subject_id?: number; progress: number; status: string }[];
 }
@@ -194,15 +198,7 @@ export default function Dashboard({ stats, identity, subjects, classes, recentAc
         { name: 'Lainnya', value: 8, color: '#00cfe8' },
     ];
 
-    const ap = safeStats.assignment_progress;
-    const completedPct = ap ? Math.round((ap.completed / Math.max(ap.total, 1)) * 100) : 65;
-    const pendingPct = ap ? Math.round((ap.pending / Math.max(ap.total, 1)) * 100) : 25;
-    const remainingPct = Math.max(0, 100 - completedPct - pendingPct);
-    const assignmentRadialData = [
-        { name: 'Selesai', value: completedPct, fill: '#28c76f' },
-        { name: 'Tertunda', value: pendingPct, fill: '#ff9f43' },
-        { name: 'Belum', value: remainingPct ?? 10, fill: '#7367f0' },
-    ];
+
 
     const popularInstructors = safeStats.popular_instructors ?? [];
     const courseData = safeStats.course_progress ?? [];
@@ -326,98 +322,220 @@ export default function Dashboard({ stats, identity, subjects, classes, recentAc
 
                 {/* Middle Row: Charts + Schedule + Activity */}
                 <div className="grid gap-6 xl:grid-cols-4">
-                    {/* Topic Distribution - Donut Chart */}
-                    <Card className="xl:col-span-1 card-hover shadow-sm border border-border/80 overflow-hidden">
-                        <div className="flex items-center justify-between border-b px-6 py-4">
-                            <div>
-                                <h2 className="font-semibold text-foreground">Distribusi Topik</h2>
-                                <p className="text-xs text-muted-foreground mt-0.5">Materi per mata pelajaran</p>
+                    {/* Admin Only: Topic Distribution */}
+                    {user_role === 'admin' && (
+                        <Card className="xl:col-span-1 card-hover shadow-sm border border-border/80 overflow-hidden">
+                            <div className="flex items-center justify-between border-b px-6 py-4">
+                                <div>
+                                    <h2 className="font-semibold text-foreground">Distribusi Topik</h2>
+                                    <p className="text-xs text-muted-foreground mt-0.5">Materi per mata pelajaran</p>
+                                </div>
+                                <BarChart3 className="h-4 w-4 text-muted-foreground" />
                             </div>
-                            <BarChart3 className="h-4 w-4 text-muted-foreground" />
-                        </div>
-                        <CardContent className="p-5">
-                            <div className="flex items-center justify-center">
-                                <ResponsiveContainer width="100%" height={180}>
-                                    <PieChart>
-                                        <Pie
-                                            data={topicData}
-                                            cx="50%"
-                                            cy="50%"
-                                            innerRadius={55}
-                                            outerRadius={80}
-                                            paddingAngle={3}
-                                            dataKey="value"
-                                            stroke="none"
-                                        >
-                                            {topicData.map((entry, index) => (
-                                                <Cell key={index} fill={entry.color} />
-                                            ))}
-                                        </Pie>
-                                    </PieChart>
-                                </ResponsiveContainer>
-                            </div>
-                            <div className="mt-3 space-y-2">
-                                {topicData.map((item) => (
-                                    <div key={item.name} className="flex items-center justify-between text-xs">
-                                        <div className="flex items-center gap-2">
-                                            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: item.color }} />
-                                            <span className="text-foreground">{item.name}</span>
+                            <CardContent className="p-5">
+                                <div className="flex items-center justify-center">
+                                    <ResponsiveContainer width="100%" height={180}>
+                                        <PieChart>
+                                            <Pie
+                                                data={topicData}
+                                                cx="50%"
+                                                cy="50%"
+                                                innerRadius={55}
+                                                outerRadius={80}
+                                                paddingAngle={3}
+                                                dataKey="value"
+                                                stroke="none"
+                                            >
+                                                {topicData.map((entry, index) => (
+                                                    <Cell key={index} fill={entry.color} />
+                                                ))}
+                                            </Pie>
+                                        </PieChart>
+                                    </ResponsiveContainer>
+                                </div>
+                                <div className="mt-3 space-y-2">
+                                    {topicData.map((item) => (
+                                        <div key={item.name} className="flex items-center justify-between text-xs">
+                                            <div className="flex items-center gap-2">
+                                                <span className="h-2 w-2 rounded-full" style={{ backgroundColor: item.color }} />
+                                                <span className="text-foreground">{item.name}</span>
+                                            </div>
+                                            <span className="font-medium text-muted-foreground">{item.value}</span>
                                         </div>
-                                        <span className="font-medium text-muted-foreground">{item.value}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        </CardContent>
-                    </Card>
+                                    ))}
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
 
-                    {/* Popular Instructors */}
-                    <Card className="xl:col-span-1 card-hover shadow-sm border border-border/80 overflow-hidden">
-                        <div className="flex items-center justify-between border-b px-6 py-4">
-                            <div>
-                                <h2 className="font-semibold text-foreground">Instruktur</h2>
-                                <p className="text-xs text-muted-foreground mt-0.5">Populer bulan ini</p>
+                    {/* Admin Only: Popular Instructors */}
+                    {user_role === 'admin' && (
+                        <Card className="xl:col-span-1 card-hover shadow-sm border border-border/80 overflow-hidden">
+                            <div className="flex items-center justify-between border-b px-6 py-4">
+                                <div>
+                                    <h2 className="font-semibold text-foreground">Instruktur</h2>
+                                    <p className="text-xs text-muted-foreground mt-0.5">Populer bulan ini</p>
+                                </div>
+                                <Star className="h-4 w-4 text-muted-foreground" />
                             </div>
-                            <Star className="h-4 w-4 text-muted-foreground" />
-                        </div>
-                        <CardContent className="p-5 space-y-4">
-                            {popularInstructors.length > 0 ? popularInstructors.map((inst, i) => {
-                                const c = colorMap[inst.color ?? 'primary'];
-                                return (
-                                    <div key={i} className="group flex items-center gap-3 rounded-lg p-2 transition hover:bg-muted/50 cursor-pointer">
-                                        <Avatar className="h-10 w-10 border-2 border-background shadow-sm">
-                                            <AvatarFallback className="text-xs font-semibold" style={{ backgroundColor: c.hex + '20', color: c.hex }}>
-                                                {inst.name.split(' ').map(n => n[0]).join('')}
-                                            </AvatarFallback>
-                                        </Avatar>
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-sm font-medium text-foreground truncate">{inst.name}</p>
-                                            <p className="text-xs text-muted-foreground">{inst.role}</p>
+                            <CardContent className="p-5 space-y-4">
+                                {popularInstructors.length > 0 ? popularInstructors.map((inst, i) => {
+                                    const c = colorMap[inst.color ?? 'primary'];
+                                    return (
+                                        <div key={i} className="group flex items-center gap-3 rounded-lg p-2 transition hover:bg-muted/50 cursor-pointer">
+                                            <Avatar className="h-10 w-10 border-2 border-background shadow-sm">
+                                                <AvatarFallback className="text-xs font-semibold" style={{ backgroundColor: c.hex + '20', color: c.hex }}>
+                                                    {inst.name.split(' ').map(n => n[0]).join('')}
+                                                </AvatarFallback>
+                                            </Avatar>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-sm font-medium text-foreground truncate">{inst.name}</p>
+                                                <p className="text-xs text-muted-foreground">{inst.role}</p>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="text-sm font-semibold text-foreground">{inst.lessons}</p>
+                                                <p className="text-[10px] text-muted-foreground">Pertemuan</p>
+                                            </div>
                                         </div>
-                                        <div className="text-right">
-                                            <p className="text-sm font-semibold text-foreground">{inst.lessons}</p>
-                                            <p className="text-[10px] text-muted-foreground">Pertemuan</p>
-                                        </div>
+                                    );
+                                }) : (
+                                    <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+                                        <Users className="h-10 w-10 mb-2 opacity-30" />
+                                        <p className="text-sm font-medium">Belum ada data instruktur</p>
                                     </div>
-                                );
-                            }) : (
-                                <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-                                    <Users className="h-10 w-10 mb-2 opacity-30" />
-                                    <p className="text-sm font-medium">Belum ada data instruktur</p>
+                                )}
+                                {user_role === 'admin' && popularInstructors.length > 0 && (
+                                    <Link href={route('teachers.index')} className="flex items-center justify-center gap-1 pt-2 text-xs font-medium text-primary transition hover:text-primary/80">
+                                        Lihat semua instruktur
+                                        <ChevronRight className="h-3 w-3" />
+                                    </Link>
+                                )}
+                            </CardContent>
+                        </Card>
+                    )}
+
+                    {/* Teacher Only: Pending Grading */}
+                    {user_role === 'teacher' && (
+                        <Card className="xl:col-span-1 card-hover shadow-sm border border-border/80 overflow-hidden">
+                            <div className="flex items-center justify-between border-b px-6 py-4">
+                                <div>
+                                    <h2 className="font-semibold text-foreground">Tugas Perlu Dinilai</h2>
+                                    <p className="text-xs text-muted-foreground mt-0.5">Asesmen menunggu penilaian</p>
                                 </div>
-                            )}
-                            {user_role === 'admin' && popularInstructors.length > 0 && (
-                                <Link href={route('teachers.index')} className="flex items-center justify-center gap-1 pt-2 text-xs font-medium text-primary transition hover:text-primary/80">
-                                    Lihat semua instruktur
-                                    <ChevronRight className="h-3 w-3" />
-                                </Link>
-                            )}
-                            {user_role === 'teacher' && safeStats.total_teachers > 0 && (
-                                <div className="pt-1 text-center text-[10px] text-muted-foreground italic">
-                                    Total {safeStats.total_teachers} guru terdaftar
+                                <ClipboardCheck className="h-4 w-4 text-rose-500" />
+                            </div>
+                            <CardContent className="p-0">
+                                {(safeStats.pending_grading_list ?? []).length > 0 ? (
+                                    <div className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                                        {(safeStats.pending_grading_list ?? []).map((item, i) => (
+                                            <div key={i} className="flex items-center gap-3 p-4 transition hover:bg-muted/30">
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-sm font-semibold text-foreground truncate">{item.title}</p>
+                                                    <p className="text-xs text-muted-foreground truncate">{item.class} • {item.subject}</p>
+                                                </div>
+                                                <Badge variant="destructive" className="shrink-0">{item.pending_count} Perlu Dinilai</Badge>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="py-12 text-center text-muted-foreground">
+                                        <CheckCircle2 className="h-10 w-10 mx-auto mb-2 text-emerald-500/50" />
+                                        <p className="text-sm font-medium">Semua tugas sudah dinilai</p>
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+                    )}
+
+                    {/* Teacher Only: Class Performance */}
+                    {user_role === 'teacher' && (
+                        <Card className="xl:col-span-1 card-hover shadow-sm border border-border/80 overflow-hidden">
+                            <div className="flex items-center justify-between border-b px-6 py-4">
+                                <div>
+                                    <h2 className="font-semibold text-foreground">Performa Kelas</h2>
+                                    <p className="text-xs text-muted-foreground mt-0.5">Rata-rata nilai per kelas</p>
                                 </div>
-                            )}
-                        </CardContent>
-                    </Card>
+                                <BarChart3 className="h-4 w-4 text-emerald-500" />
+                            </div>
+                            <CardContent className="p-5">
+                                <div className="flex items-center justify-center">
+                                    <ResponsiveContainer width="100%" height={180}>
+                                        <BarChart data={safeStats.class_performance ?? []}>
+                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.1)" />
+                                            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#888' }} />
+                                            <Tooltip cursor={{ fill: 'rgba(0,0,0,0.05)' }} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }} />
+                                            <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                                                {(safeStats.class_performance ?? []).map((entry, index) => (
+                                                    <Cell key={`cell-${index}`} fill={entry.color} />
+                                                ))}
+                                            </Bar>
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
+
+                    {/* Student Only: Upcoming Deadlines */}
+                    {user_role === 'student' && (
+                        <Card className="xl:col-span-1 card-hover shadow-sm border border-border/80 overflow-hidden">
+                            <div className="flex items-center justify-between border-b px-6 py-4">
+                                <div>
+                                    <h2 className="font-semibold text-foreground">Tugas Mendatang</h2>
+                                    <p className="text-xs text-muted-foreground mt-0.5">Tenggat waktu terdekat</p>
+                                </div>
+                                <Clock className="h-4 w-4 text-amber-500" />
+                            </div>
+                            <CardContent className="p-0">
+                                {(safeStats.upcoming_deadlines ?? []).length > 0 ? (
+                                    <div className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                                        {(safeStats.upcoming_deadlines ?? []).map((item, i) => (
+                                            <div key={i} className="flex items-center gap-3 p-4 transition hover:bg-muted/30">
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-sm font-semibold text-foreground truncate">{item.title}</p>
+                                                    <p className="text-xs text-muted-foreground truncate">{item.subject}</p>
+                                                </div>
+                                                <div className="text-right shrink-0">
+                                                    <p className={`text-xs font-semibold ${item.is_urgent ? 'text-rose-500' : 'text-amber-500'}`}>{item.due_date}</p>
+                                                    {item.is_urgent && <span className="text-[9px] uppercase font-bold text-rose-500">Mendesak</span>}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="py-12 text-center text-muted-foreground">
+                                        <CheckCircle2 className="h-10 w-10 mx-auto mb-2 text-emerald-500/50" />
+                                        <p className="text-sm font-medium">Tidak ada tugas mendesak</p>
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+                    )}
+
+                    {/* Student Only: Grade Trend */}
+                    {user_role === 'student' && (
+                        <Card className="xl:col-span-1 card-hover shadow-sm border border-border/80 overflow-hidden">
+                            <div className="flex items-center justify-between border-b px-6 py-4">
+                                <div>
+                                    <h2 className="font-semibold text-foreground">Perkembangan Belajar</h2>
+                                    <p className="text-xs text-muted-foreground mt-0.5">Tren nilai terbaru</p>
+                                </div>
+                                <TrendingUp className="h-4 w-4 text-primary" />
+                            </div>
+                            <CardContent className="p-5">
+                                <div className="flex items-center justify-center">
+                                    <ResponsiveContainer width="100%" height={180}>
+                                        <LineChart data={safeStats.grade_trend ?? []}>
+                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.1)" />
+                                            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#888' }} />
+                                            <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }} />
+                                            <Line type="monotone" dataKey="score" stroke="#7367f0" strokeWidth={3} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 6 }} />
+                                        </LineChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
 
                     {/* Today's Schedule */}
                     <Card className="xl:col-span-1 card-hover shadow-sm border border-border/80 overflow-hidden">
@@ -479,24 +597,52 @@ export default function Dashboard({ stats, identity, subjects, classes, recentAc
                             <FileText className="h-4 w-4 text-muted-foreground" />
                         </div>
                         <CardContent className="p-5">
-                            <div className="flex items-center justify-center">
-                                <ResponsiveContainer width="100%" height={180}>
-                                    <RadialBarChart cx="50%" cy="50%" innerRadius="30%" outerRadius="80%" barSize={12} data={assignmentRadialData}>
-                                        <RadialBar dataKey="value" cornerRadius={6} background={{ fill: '#f1f0f2' }} />
-                                    </RadialBarChart>
-                                </ResponsiveContainer>
-                            </div>
-                            <div className="mt-3 space-y-2">
-                                {assignmentRadialData.map((item) => (
-                                    <div key={item.name} className="flex items-center justify-between text-xs">
-                                        <div className="flex items-center gap-2">
-                                            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: item.fill }} />
-                                            <span className="text-foreground">{item.name}</span>
+                            {(() => {
+                                const ap = safeStats.assignment_progress;
+                                const total = Math.max(ap?.total ?? 1, 1);
+                                
+                                let chartData = [];
+                                if (user_role === 'student') {
+                                    const gradedPct = Math.round(((ap?.graded ?? 0) / total) * 100);
+                                    const ungradedPct = Math.round(((ap?.ungraded ?? 0) / total) * 100);
+                                    const unsubmittedPct = Math.max(0, 100 - gradedPct - ungradedPct);
+                                    chartData = [
+                                        { name: 'Selesai Dinilai', value: gradedPct, fill: '#28c76f' },
+                                        { name: 'Menunggu Penilaian', value: ungradedPct, fill: '#ff9f43' },
+                                        { name: 'Belum Dikerjakan', value: unsubmittedPct, fill: '#7367f0' },
+                                    ];
+                                } else {
+                                    const gradedPct = Math.round(((ap?.graded ?? 0) / total) * 100);
+                                    const ungradedPct = Math.max(0, 100 - gradedPct);
+                                    chartData = [
+                                        { name: 'Selesai Dinilai', value: gradedPct, fill: '#28c76f' },
+                                        { name: 'Perlu Dinilai', value: ungradedPct, fill: '#ea5455' },
+                                    ];
+                                }
+
+                                return (
+                                    <>
+                                        <div className="flex items-center justify-center">
+                                            <ResponsiveContainer width="100%" height={180}>
+                                                <RadialBarChart cx="50%" cy="50%" innerRadius="30%" outerRadius="80%" barSize={12} data={chartData}>
+                                                    <RadialBar dataKey="value" cornerRadius={6} background={{ fill: '#f1f0f2' }} />
+                                                </RadialBarChart>
+                                            </ResponsiveContainer>
                                         </div>
-                                        <span className="font-medium text-muted-foreground">{item.value}%</span>
-                                    </div>
-                                ))}
-                            </div>
+                                        <div className="mt-3 space-y-2">
+                                            {chartData.map((item) => (
+                                                <div key={item.name} className="flex items-center justify-between text-xs">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="h-2 w-2 rounded-full" style={{ backgroundColor: item.fill }} />
+                                                        <span className="text-foreground">{item.name}</span>
+                                                    </div>
+                                                    <span className="font-medium text-muted-foreground">{item.value}%</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </>
+                                );
+                            })()}
                         </CardContent>
                     </Card>
                 </div>
