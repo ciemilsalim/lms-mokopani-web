@@ -1,6 +1,6 @@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import {
     Users, AlertTriangle, TrendingUp, ClipboardList, BarChart3, Target,
     CheckCircle2, XCircle, Clock, AlertCircle, Brain, BookOpen,
@@ -88,10 +88,30 @@ interface SubjectAnalyticsProps {
     score_matrix: ScoreMatrix;
     risk_summary: RiskSummary;
     question_analysis: QuestionAnalysis[];
+    semesters: { id: number; name: string; is_active: boolean; academic_year: string }[];
+    filters: { semester_id: number | null; start_date: string | null; end_date: string | null };
 }
 
-export default function SubjectAnalytics({ subject, class: cls, performance, score_matrix, risk_summary, question_analysis }: SubjectAnalyticsProps) {
+export default function SubjectAnalytics({ subject, class: cls, performance, score_matrix, risk_summary, question_analysis, semesters, filters }: SubjectAnalyticsProps) {
     const [selectedStudent, setSelectedStudent] = useState<AtRiskStudent | null>(null);
+    const [filterData, setFilterData] = useState({
+        semester_id: filters?.semester_id || '',
+        start_date: filters?.start_date || '',
+        end_date: filters?.end_date || ''
+    });
+
+    const applyFilters = (key: string, value: string) => {
+        const newData = { ...filterData, [key]: value };
+        setFilterData(newData);
+        
+        // Clean empty values
+        const params: Record<string, string> = {};
+        if (newData.semester_id) params.semester_id = newData.semester_id.toString();
+        if (newData.start_date) params.start_date = newData.start_date;
+        if (newData.end_date) params.end_date = newData.end_date;
+
+        router.get(route('analytics.show', [subject.id, cls.id]), params, { preserveState: true, preserveScroll: true });
+    };
 
     const exportToExcel = () => {
         const headers = ['Siswa', ...score_matrix.assignments.map(a => a.title), 'Rata-rata'];
@@ -256,11 +276,38 @@ export default function SubjectAnalytics({ subject, class: cls, performance, sco
             <Head title={`${subject.name} – Analitik`} />
 
             <div className="flex h-full flex-1 flex-col gap-6 min-w-0 fade-in">
-                {/* Header */}
-                <div className="flex items-start justify-between">
+                {/* Header & Filters */}
+                <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                     <div>
                         <h1 className="text-xl font-bold text-foreground">{subject.name}</h1>
                         <p className="text-sm text-muted-foreground">{cls.name}</p>
+                    </div>
+                    <div className="flex flex-col sm:flex-row items-center gap-3 rounded-2xl border border-border bg-card p-2 shadow-sm">
+                        <select
+                            value={filterData.semester_id}
+                            onChange={(e) => applyFilters('semester_id', e.target.value)}
+                            className="w-full sm:w-auto rounded-xl border-none bg-muted/50 px-3 py-2 text-xs font-bold text-foreground outline-none focus:ring-2 focus:ring-primary/20"
+                        >
+                            <option value="">Semua Semester</option>
+                            {semesters?.map(s => (
+                                <option key={s.id} value={s.id}>{s.academic_year} - {s.name}</option>
+                            ))}
+                        </select>
+                        <div className="flex items-center gap-2 w-full sm:w-auto">
+                            <input
+                                type="date"
+                                value={filterData.start_date}
+                                onChange={(e) => applyFilters('start_date', e.target.value)}
+                                className="w-full rounded-xl border-none bg-muted/50 px-3 py-2 text-xs font-bold text-foreground outline-none focus:ring-2 focus:ring-primary/20"
+                            />
+                            <span className="text-muted-foreground text-xs">-</span>
+                            <input
+                                type="date"
+                                value={filterData.end_date}
+                                onChange={(e) => applyFilters('end_date', e.target.value)}
+                                className="w-full rounded-xl border-none bg-muted/50 px-3 py-2 text-xs font-bold text-foreground outline-none focus:ring-2 focus:ring-primary/20"
+                            />
+                        </div>
                     </div>
                 </div>
 
@@ -514,10 +561,24 @@ export default function SubjectAnalytics({ subject, class: cls, performance, sco
                                                 </td>
                                             ))}
                                             <td className="py-2.5 px-4 text-right">
-                                                <span className={`font-black text-sm ${
-                                                    (s.average ?? 0) >= 70 ? 'text-emerald-600' :
-                                                    (s.average ?? 0) >= 40 ? 'text-amber-600' : 'text-rose-600'
-                                                }`}>{s.average ?? '-'}</span>
+                                                <div className="flex flex-col items-end">
+                                                    <span className={`font-black text-sm ${
+                                                        (s.average ?? 0) >= 70 ? 'text-emerald-600' :
+                                                        (s.average ?? 0) >= 40 ? 'text-amber-600' : 'text-rose-600'
+                                                    }`}>{s.average ?? '-'}</span>
+                                                    {s.average !== null && performance.class_avg_score !== null && (
+                                                        <span className={`text-[9px] font-bold mt-0.5 px-1.5 py-0.5 rounded-full ${
+                                                            s.average > performance.class_avg_score 
+                                                                ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' 
+                                                                : s.average < performance.class_avg_score
+                                                                    ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400'
+                                                                    : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+                                                        }`}>
+                                                            {s.average > performance.class_avg_score ? '+' : ''}
+                                                            {(s.average - performance.class_avg_score).toFixed(1)} vs Rata-rata
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </td>
                                         </tr>
                                     ))}

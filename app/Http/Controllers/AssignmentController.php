@@ -309,7 +309,8 @@ class AssignmentController extends Controller
             'title'                 => 'required|string|max:255',
             'description'           => 'required|string',
             'due_date'              => 'required|date',
-            'max_points'            => 'required|integer|min:0',
+            'max_points'            => 'nullable|integer|min:0',
+            'passing_grade'         => 'nullable|integer|min:0',
         ]);
 
         $validated['teacher_id'] = $teacher->id;
@@ -727,11 +728,13 @@ class AssignmentController extends Controller
     public function grade(Request $request)
     {
         $validated = $request->validate([
-            'assignment_id' => 'required|exists:lms_assignments,id',
-            'student_id'    => 'required|exists:mysql_absensi.students,id',
-            'score'         => 'required|integer|min:0',
-            'feedback'      => 'nullable|string',
-            'content'       => 'nullable|string', // Untuk data observasi/kuis terstruktur
+            'assignment_id'     => 'required|exists:lms_assignments,id',
+            'student_id'        => 'required|exists:mysql_absensi.students,id',
+            'score'             => 'nullable|integer|min:0',
+            'qualitative_score' => 'nullable|string',
+            'kktp_details'      => 'nullable|array',
+            'feedback'          => 'nullable|string',
+            'content'           => 'nullable|string', // Untuk data observasi/kuis terstruktur
         ]);
 
         $submission = \App\Models\LmsSubmission::updateOrCreate(
@@ -740,10 +743,12 @@ class AssignmentController extends Controller
                 'student_id'    => $validated['student_id'],
             ],
             [
-                'score'        => $validated['score'],
-                'feedback'     => $validated['feedback'],
-                'content'      => $validated['content'] ?? null,
-                'submitted_at' => now(),
+                'score'             => $validated['score'] ?? null,
+                'qualitative_score' => $validated['qualitative_score'] ?? null,
+                'kktp_details'      => $validated['kktp_details'] ?? null,
+                'feedback'          => $validated['feedback'] ?? null,
+                'content'           => $validated['content'] ?? null,
+                'submitted_at'      => now(),
             ]
         );
 

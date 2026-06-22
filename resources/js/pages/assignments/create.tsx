@@ -1418,19 +1418,21 @@ export default function CreateAssignment({ teachings, objectives, assessment_typ
                                             {errors.due_date && <p className="text-xs text-destructive">{errors.due_date}</p>}
                                         </div>
 
-                                        <div className="space-y-2">
-                                            <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                                                <Star className="h-3.5 w-3.5 text-muted-foreground" />
-                                                Poin Maksimal
-                                            </label>
-                                            <input 
-                                                type="number"
-                                                value={data.max_points}
-                                                onChange={(e) => setData('max_points', parseInt(e.target.value))}
-                                                className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 dark:bg-popover transition"
-                                            />
-                                            {errors.max_points && <p className="text-xs text-destructive mt-1">{errors.max_points}</p>}
-                                        </div>
+                                        {(data.instrument_config?.kktp?.approach === 'score_interval' || data.instrument_config?.kktp?.approach === 'percentage' || !data.instrument_config?.kktp) && (
+                                            <div className="space-y-2">
+                                                <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                                                    <Star className="h-3.5 w-3.5 text-muted-foreground" />
+                                                    Poin Maksimal
+                                                </label>
+                                                <input 
+                                                    type="number"
+                                                    value={data.max_points ?? ''}
+                                                    onChange={(e) => setData('max_points', e.target.value ? parseInt(e.target.value) : null)}
+                                                    className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 dark:bg-popover transition"
+                                                />
+                                                {errors.max_points && <p className="text-xs text-destructive mt-1">{errors.max_points}</p>}
+                                            </div>
+                                        )}
 
                                         <button 
                                             type="submit"

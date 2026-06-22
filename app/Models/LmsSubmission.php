@@ -17,6 +17,8 @@ class LmsSubmission extends Model
         'content',
         'file_path',
         'score',
+        'qualitative_score',
+        'kktp_details',
         'attempts',
         'is_remedial_open',
         'remedial_history',
@@ -28,6 +30,7 @@ class LmsSubmission extends Model
         'submitted_at' => 'datetime',
         'is_remedial_open' => 'boolean',
         'remedial_history' => 'array',
+        'kktp_details' => 'array',
     ];
 
     public function assignment()

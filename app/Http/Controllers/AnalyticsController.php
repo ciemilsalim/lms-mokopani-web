@@ -61,24 +61,38 @@ class AnalyticsController extends Controller
         ]);
     }
 
-    public function show(int $subjectId, int $classId, AnalyticsService $analytics, EarlyWarningService $earlyWarning)
+    public function show(int $subjectId, int $classId, Request $request, AnalyticsService $analytics, EarlyWarningService $earlyWarning)
     {
         $subject = Subject::findOrFail($subjectId);
         $class = \App\Models\SchoolClass::findOrFail($classId);
 
-        $performance = $analytics->getClassPerformance($subjectId, $classId);
-        $scoreMatrix = $analytics->getStudentScoresMatrix($subjectId, $classId);
+        $semesterId = $request->input('semester_id') ? (int) $request->input('semester_id') : null;
+        $startDate = $request->input('start_date');
+        $endDate = $request->input('end_date');
+
+        $performance = $analytics->getClassPerformance($subjectId, $classId, $semesterId, $startDate, $endDate);
+        $scoreMatrix = $analytics->getStudentScoresMatrix($subjectId, $classId, $semesterId, $startDate, $endDate);
         $riskSummary = $earlyWarning->getClassRiskSummary($classId, $subjectId);
 
+        $semesters = Semester::with('academicYear')->orderByDesc('id')->get()->map(fn($s) => [
+            'id' => $s->id,
+            'name' => $s->name,
+            'is_active' => $s->is_active,
+            'academic_year' => $s->academicYear->name ?? '',
+        ]);
+
         // Question difficulty for last few objective-type assignments
-        $assignments = LmsAssignment::where('subject_id', $subjectId)
+        $queryAssignments = LmsAssignment::where('subject_id', $subjectId)
             ->whereHas('schoolClasses', function ($q) use ($classId) {
                 $q->where('school_classes.id', $classId);
             })
-            ->whereIn('instrument_type', ['quiz_survey', 'written_test'])
-            ->orderByDesc('id')
-            ->take(5)
-            ->get();
+            ->whereIn('instrument_type', ['quiz_survey', 'written_test']);
+            
+        if ($semesterId) $queryAssignments->where('semester_id', $semesterId);
+        if ($startDate) $queryAssignments->whereDate('due_date', '>=', $startDate);
+        if ($endDate) $queryAssignments->whereDate('due_date', '<=', $endDate);
+
+        $assignments = $queryAssignments->orderByDesc('id')->take(5)->get();
 
         $questionAnalysis = [];
         foreach ($assignments as $a) {
@@ -99,6 +113,12 @@ class AnalyticsController extends Controller
             'score_matrix'       => $scoreMatrix,
             'risk_summary'       => $riskSummary,
             'question_analysis'  => $questionAnalysis,
+            'semesters'          => $semesters,
+            'filters'            => [
+                'semester_id' => $semesterId ?? Semester::getActive()?->id,
+                'start_date'  => $startDate,
+                'end_date'    => $endDate,
+            ]
         ]);
     }
 }

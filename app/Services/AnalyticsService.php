@@ -12,19 +12,26 @@ use App\Models\SubjectAttendance;
 
 class AnalyticsService
 {
-    public function getClassPerformance(int $subjectId, int $classId): array
+    public function getClassPerformance(int $subjectId, int $classId, ?int $semesterId = null, ?string $startDate = null, ?string $endDate = null): array
     {
         $activeYear = AcademicYear::getActive();
-        $activeSemester = Semester::getActive();
+        $targetSemesterId = $semesterId ?? Semester::getActive()?->id;
 
-        $assignments = LmsAssignment::where('subject_id', $subjectId)
+        $query = LmsAssignment::where('subject_id', $subjectId)
             ->whereHas('schoolClasses', function ($q) use ($classId) {
                 $q->where('school_classes.id', $classId);
             })
             ->where('academic_year_id', $activeYear?->id)
-            ->where('semester_id', $activeSemester?->id)
-            ->orderBy('id')
-            ->get();
+            ->where('semester_id', $targetSemesterId);
+
+        if ($startDate) {
+            $query->whereDate('due_date', '>=', $startDate);
+        }
+        if ($endDate) {
+            $query->whereDate('due_date', '<=', $endDate);
+        }
+
+        $assignments = $query->orderBy('due_date')->get();
 
         $students = Student::where('school_class_id', $classId)->orderBy('name')->get(['id', 'name', 'nis']);
         $studentIds = $students->pluck('id');
@@ -87,19 +94,26 @@ class AnalyticsService
         ];
     }
 
-    public function getStudentScoresMatrix(int $subjectId, int $classId): array
+    public function getStudentScoresMatrix(int $subjectId, int $classId, ?int $semesterId = null, ?string $startDate = null, ?string $endDate = null): array
     {
         $activeYear = AcademicYear::getActive();
-        $activeSemester = Semester::getActive();
+        $targetSemesterId = $semesterId ?? Semester::getActive()?->id;
 
-        $assignments = LmsAssignment::where('subject_id', $subjectId)
+        $query = LmsAssignment::where('subject_id', $subjectId)
             ->whereHas('schoolClasses', function ($q) use ($classId) {
                 $q->where('school_classes.id', $classId);
             })
             ->where('academic_year_id', $activeYear?->id)
-            ->where('semester_id', $activeSemester?->id)
-            ->orderBy('id')
-            ->get(['id', 'title', 'passing_grade', 'max_points']);
+            ->where('semester_id', $targetSemesterId);
+
+        if ($startDate) {
+            $query->whereDate('due_date', '>=', $startDate);
+        }
+        if ($endDate) {
+            $query->whereDate('due_date', '<=', $endDate);
+        }
+
+        $assignments = $query->orderBy('due_date')->get(['id', 'title', 'passing_grade', 'max_points']);
 
         $students = Student::where('school_class_id', $classId)->orderBy('name')->get(['id', 'name', 'nis']);
 
