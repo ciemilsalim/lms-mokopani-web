@@ -16,6 +16,8 @@ class LmsRemedialRecord extends Model
         'type',
         'initial_score',
         'remedial_score',
+        'remedial_strategy',
+        'remedial_focus',
         'description',
         'due_date',
         'status',

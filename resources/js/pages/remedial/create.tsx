@@ -58,6 +58,8 @@ export default function CreateRemedial({ teachings }: CreateRemedialProps) {
     const [eligibleData, setEligibleData] = useState<EligibleResponse | null>(null);
     const [selectedStudents, setSelectedStudents] = useState<Record<number, number[]>>({});
     const [descriptions, setDescriptions] = useState<Record<string, string>>({});
+    const [strategies, setStrategies] = useState<Record<string, string>>({});
+    const [focuses, setFocuses] = useState<Record<string, string>>({});
     const [dueDate, setDueDate] = useState('');
     const [submitting, setSubmitting] = useState(false);
 
@@ -98,13 +100,26 @@ export default function CreateRemedial({ teachings }: CreateRemedialProps) {
 
             for (const assignmentId of assignmentIds) {
                 const assignmentData = student.assignments.find((a) => a.assignment_id === assignmentId);
+                
+                // Auto-determine focus if not overridden by bulk input
+                let defaultFocus = '';
+                if (assignmentData?.score !== null) {
+                    if (assignmentData.score <= 40) {
+                        defaultFocus = 'Mempelajari kembali seluruh kriteria';
+                    } else {
+                        defaultFocus = 'Mempelajari kembali sebagian kriteria';
+                    }
+                }
+
                 records.push({
                     student_id: studentId,
                     assignment_id: assignmentId,
                     subject_id: Number(subjectId),
                     type,
                     initial_score: assignmentData?.score ?? null,
-                    description: descriptions[`${studentId}-${assignmentId}`] || null,
+                    remedial_strategy: strategies['_all'] || null,
+                    remedial_focus: focuses['_all'] || defaultFocus,
+                    description: descriptions['_all'] || null,
                     due_date: dueDate || null,
                 });
             }
@@ -308,25 +323,41 @@ export default function CreateRemedial({ teachings }: CreateRemedialProps) {
                                     </h3>
                                     <div className="grid gap-4 md:grid-cols-2">
                                         <div className="space-y-2">
-                                            <label className="text-sm font-bold text-foreground">Deskripsi (opsional, untuk semua)</label>
+                                            <label className="text-sm font-bold text-foreground">Bentuk Pendampingan</label>
+                                            <select
+                                                value={strategies['_all'] || ''}
+                                                onChange={(e) => setStrategies({ '_all': e.target.value })}
+                                                className="w-full rounded-xl border border-border bg-white px-4 py-3 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 dark:bg-slate-900"
+                                            >
+                                                <option value="">-- Pilih Bentuk Pendampingan --</option>
+                                                <option value="Bimbingan Individu">Bimbingan Individu</option>
+                                                <option value="Tutor Sebaya">Tutor Sebaya</option>
+                                                <option value="Penugasan Terpandu">Penugasan Terpandu</option>
+                                                <option value="Belajar Kelompok">Belajar Kelompok</option>
+                                            </select>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-bold text-foreground">Fokus Kriteria (Otomatis dari skor jika kosong)</label>
+                                            <input
+                                                type="text"
+                                                value={focuses['_all'] || ''}
+                                                onChange={(e) => setFocuses({ '_all': e.target.value })}
+                                                className="w-full rounded-xl border border-border bg-white px-4 py-3 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 dark:bg-slate-900"
+                                                placeholder="Contoh: Seluruh kriteria, atau spesifik indikator 1"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-bold text-foreground">Catatan Tambahan (Opsional)</label>
                                             <textarea
                                                 value={descriptions['_all'] || ''}
-                                                onChange={(e) => {
-                                                    const val = e.target.value;
-                                                    setDescriptions({ '_all': val });
-                                                    for (const [key] of Object.entries(descriptions)) {
-                                                        if (key !== '_all') {
-                                                            setDescriptions((prev) => ({ ...prev, [key]: val }));
-                                                        }
-                                                    }
-                                                }}
-                                                rows={3}
+                                                onChange={(e) => setDescriptions({ '_all': e.target.value })}
+                                                rows={2}
                                                 className="w-full rounded-xl border border-border bg-white px-4 py-3 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 dark:bg-slate-900"
                                                 placeholder="Catatan untuk semua records..."
                                             />
                                         </div>
                                         <div className="space-y-2">
-                                            <label className="text-sm font-bold text-foreground">Tenggat Waktu (opsional)</label>
+                                            <label className="text-sm font-bold text-foreground">Tenggat Waktu (Opsional)</label>
                                             <input
                                                 type="date"
                                                 value={dueDate}

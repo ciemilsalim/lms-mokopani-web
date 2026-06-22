@@ -159,6 +159,8 @@ class RemedialRecordController extends Controller
             'records.*.subject_id'     => 'required|exists:mysql_absensi.subjects,id',
             'records.*.type'           => 'required|in:remedial,pengayaan',
             'records.*.initial_score'  => 'nullable|integer|min:0',
+            'records.*.remedial_strategy' => 'nullable|string|max:255',
+            'records.*.remedial_focus' => 'nullable|string|max:255',
             'records.*.description'    => 'nullable|string|max:500',
             'records.*.due_date'       => 'nullable|date',
         ]);
@@ -172,6 +174,8 @@ class RemedialRecordController extends Controller
                 'teacher_id'    => $teacher->id,
                 'type'          => $record['type'],
                 'initial_score' => $record['initial_score'] ?? null,
+                'remedial_strategy' => $record['remedial_strategy'] ?? null,
+                'remedial_focus' => $record['remedial_focus'] ?? null,
                 'description'   => $record['description'] ?? null,
                 'due_date'      => $record['due_date'] ?? null,
                 'status'        => 'assigned',
