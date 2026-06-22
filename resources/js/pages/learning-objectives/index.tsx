@@ -400,39 +400,41 @@ export default function LearningObjectiveIndex({ objectives, subjects, cpList }:
             {/* Modal Formulasi TP */}
             {showModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 animate-in fade-in duration-300">
-                    <div className="w-full max-w-2xl rounded-xl bg-card text-card-foreground border border-border p-4 sm:p-6 shadow-none animate-in fade-in zoom-in duration-300 max-h-[90vh] overflow-y-auto">
-                        <div className="flex items-start sm:items-center justify-between mb-6 sm:mb-8 gap-4">
+                    <div className="w-full max-w-2xl rounded-xl bg-card text-card-foreground border border-border flex flex-col shadow-none animate-in fade-in zoom-in duration-300 max-h-[90vh] overflow-hidden">
+                        <div className="flex shrink-0 items-start sm:items-center justify-between p-4 sm:p-6 border-b border-border/40 gap-4 bg-card z-10">
                             <div className="min-w-0">
                                 <h3 className="text-2xl font-black text-foreground tracking-tight">
                                     {editingId ? 'Edit Perumusan TP' : 'Rumuskan Tujuan Pembelajaran'}
                                 </h3>
                                 <p className="text-[10px] sm:text-xs text-muted-foreground font-bold uppercase tracking-widest mt-1 truncate sm:whitespace-normal">Gunakan salah satu dari 3 metode perumusan</p>
                             </div>
-                            <button onClick={() => setShowModal(false)} className="h-8 w-8 sm:h-10 sm:w-10 flex shrink-0 items-center justify-center rounded-xl hover:bg-muted transition text-muted-foreground">
+                            <button type="button" onClick={() => setShowModal(false)} className="h-8 w-8 sm:h-10 sm:w-10 flex shrink-0 items-center justify-center rounded-xl hover:bg-muted transition text-muted-foreground">
                                 <X className="h-5 w-5 sm:h-6 sm:w-6" />
                             </button>
                         </div>
 
-                        {/* Tab Selector */}
-                        <div className="flex p-1 bg-muted/50 rounded-xl mb-8">
-                            {[
-                                { id: 'direct', label: 'Salin CP', desc: 'Praktis' },
-                                { id: 'analysis', label: 'Analisis', desc: 'Kompetensi & Konten' },
-                                { id: 'cross_element', label: 'Lintas Elemen', desc: 'Terintegrasi' }
-                            ].map(tab => (
-                                <button
-                                    key={tab.id}
-                                    type="button"
-                                    onClick={() => setActiveTab(tab.id as any)}
-                                    className={`flex-1 flex flex-col items-center py-3 rounded-md transition ${activeTab === tab.id ? 'bg-card dark:bg-popover shadow-xl border border-border/40 text-primary' : 'hover:bg-muted/50 hover:text-foreground text-muted-foreground'}`}
-                                >
-                                    <span className={`text-xs font-black ${activeTab === tab.id ? 'text-primary' : 'text-muted-foreground'}`}>{tab.label}</span>
-                                    <span className="text-[9px] font-bold text-muted-foreground/60 uppercase">{tab.desc}</span>
-                                </button>
-                            ))}
-                        </div>
+                        <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+                            <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+                                {/* Tab Selector */}
+                                <div className="flex p-1 bg-muted/50 rounded-xl mb-8">
+                                    {[
+                                        { id: 'direct', label: 'Salin CP', desc: 'Praktis' },
+                                        { id: 'analysis', label: 'Analisis', desc: 'Kompetensi & Konten' },
+                                        { id: 'cross_element', label: 'Lintas Elemen', desc: 'Terintegrasi' }
+                                    ].map(tab => (
+                                        <button
+                                            key={tab.id}
+                                            type="button"
+                                            onClick={() => setActiveTab(tab.id as any)}
+                                            className={`flex-1 flex flex-col items-center py-3 rounded-md transition ${activeTab === tab.id ? 'bg-card dark:bg-popover shadow-xl border border-border/40 text-primary' : 'hover:bg-muted/50 hover:text-foreground text-muted-foreground'}`}
+                                        >
+                                            <span className={`text-xs font-black ${activeTab === tab.id ? 'text-primary' : 'text-muted-foreground'}`}>{tab.label}</span>
+                                            <span className="text-[9px] font-bold text-muted-foreground/60 uppercase">{tab.desc}</span>
+                                        </button>
+                                    ))}
+                                </div>
 
-                        <form onSubmit={handleSubmit} className="space-y-6">
+                                <div className="space-y-6">
                             <div className="space-y-2">
                                 <label className="text-xs font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2">
                                     <BookOpen className="h-3.5 w-3.5 text-primary" />
@@ -576,13 +578,18 @@ export default function LearningObjectiveIndex({ objectives, subjects, cpList }:
                                 {errors.description && <p className="text-[10px] text-destructive font-bold">{errors.description}</p>}
                             </div>
 
-                            <button 
-                                type="submit"
-                                disabled={processing}
-                                className="w-full rounded-xl bg-primary py-4 text-sm font-black text-primary-foreground shadow-xl shadow-primary/30 transition hover:opacity-95 disabled:opacity-50"
-                            >
-                                {processing ? 'Menyimpan...' : editingId ? 'Simpan Perubahan' : 'Terbitkan Tujuan Pembelajaran'}
-                            </button>
+                                </div>
+                            </div>
+                            
+                            <div className="shrink-0 p-4 sm:p-6 border-t border-border/40 bg-card z-10">
+                                <button 
+                                    type="submit"
+                                    disabled={processing}
+                                    className="w-full rounded-xl bg-primary py-4 text-sm font-black text-primary-foreground shadow-xl shadow-primary/30 transition hover:opacity-95 disabled:opacity-50"
+                                >
+                                    {processing ? 'Menyimpan...' : editingId ? 'Simpan Perubahan' : 'Terbitkan Tujuan Pembelajaran'}
+                                </button>
+                            </div>
                         </form>
                     </div>
                 </div>

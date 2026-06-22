@@ -396,7 +396,31 @@ export default function CreateAssignment({ teachings, objectives, assessment_typ
                                             <button
                                                 key={inst.id}
                                                 type="button"
-                                                onClick={() => setData('instrument_type', inst.id)}
+                                                onClick={() => {
+                                                    setData(prev => {
+                                                        const newData = { ...prev, instrument_type: inst.id };
+                                                        
+                                                        // Auto-set KKTP Approach
+                                                        let approach = prev.instrument_config?.kktp?.approach || 'rubric';
+                                                        const criteriaIds = ['observation_checklist', 'performance_observation', 'exit_ticket', 'self_assessment', 'peer_assessment', 'guided_discussion', 'anecdotal_notes'];
+                                                        const rubricIds = ['performance', 'concept_map', 'reflective_journal', 'project', 'portfolio'];
+                                                        const intervalIds = ['structured_assignment', 'assignment', 'formative_quiz', 'written_test', 'oral_test', 'quiz_survey'];
+
+                                                        if (criteriaIds.includes(inst.id)) approach = 'criteria_description';
+                                                        else if (rubricIds.includes(inst.id)) approach = 'rubric';
+                                                        else if (intervalIds.includes(inst.id)) approach = 'score_interval';
+
+                                                        newData.instrument_config = {
+                                                            ...newData.instrument_config,
+                                                            kktp: {
+                                                                ...newData.instrument_config?.kktp,
+                                                                approach: approach
+                                                            }
+                                                        };
+                                                        
+                                                        return newData;
+                                                    });
+                                                }}
                                                 className={`group flex flex-col items-start gap-3 rounded-xl border p-4 text-left transition-all ${
                                                     isActive 
                                                     ? `${colors.border} ${colors.bg} shadow-sm` 
@@ -417,26 +441,7 @@ export default function CreateAssignment({ teachings, objectives, assessment_typ
                                 {errors.instrument_type && <p className="text-xs text-destructive mt-2">{errors.instrument_type}</p>}
                             </div>
 
-                            {data.instrument_type && (
-                                <div className="space-y-3 pt-4 border-t border-border animate-in fade-in duration-200">
-                                    <div className="flex items-center gap-2">
-                                        <h2 className="text-sm font-semibold text-foreground">Pilih Alat Penskoran (Opsional)</h2>
-                                    </div>
-                                    <div className="max-w-md">
-                                        <select
-                                            value={data.scoring_tool || ''}
-                                            onChange={(e) => setData('scoring_tool', e.target.value || '')}
-                                            className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 dark:bg-popover transition"
-                                        >
-                                            <option value="">-- Tanpa Alat Penskoran (Opsional) --</option>
-                                            {scoring_tools.map((tool) => (
-                                                <option key={tool.id} value={tool.id}>{tool.name} — {tool.desc}</option>
-                                            ))}
-                                        </select>
-                                        {errors.scoring_tool && <p className="text-xs text-destructive mt-1">{errors.scoring_tool}</p>}
-                                    </div>
-                                </div>
-                            )}
+
                         </div>
                     )}
 
