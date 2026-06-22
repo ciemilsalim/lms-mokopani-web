@@ -104,10 +104,14 @@ export default function CreateRemedial({ teachings }: CreateRemedialProps) {
                 // Auto-determine focus if not overridden by bulk input
                 let defaultFocus = '';
                 if (assignmentData?.score !== null) {
-                    if (assignmentData.score <= 40) {
-                        defaultFocus = 'Mempelajari kembali seluruh kriteria';
+                    if (type === 'remedial') {
+                        if (assignmentData.score <= 40) {
+                            defaultFocus = 'Mempelajari kembali seluruh kriteria';
+                        } else {
+                            defaultFocus = 'Mempelajari kembali sebagian kriteria';
+                        }
                     } else {
-                        defaultFocus = 'Mempelajari kembali sebagian kriteria';
+                        defaultFocus = 'Memperluas pengetahuan melalui referensi tingkat lanjut';
                     }
                 }
 
@@ -323,27 +327,44 @@ export default function CreateRemedial({ teachings }: CreateRemedialProps) {
                                     </h3>
                                     <div className="grid gap-4 md:grid-cols-2">
                                         <div className="space-y-2">
-                                            <label className="text-sm font-bold text-foreground">Bentuk Pendampingan</label>
+                                            <label className="text-sm font-bold text-foreground">
+                                                {type === 'remedial' ? 'Bentuk Pendampingan' : 'Bentuk Tantangan Pengayaan'}
+                                            </label>
                                             <select
                                                 value={strategies['_all'] || ''}
                                                 onChange={(e) => setStrategies({ '_all': e.target.value })}
                                                 className="w-full rounded-xl border border-border bg-white px-4 py-3 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 dark:bg-slate-900"
                                             >
-                                                <option value="">-- Pilih Bentuk Pendampingan --</option>
-                                                <option value="Bimbingan Individu">Bimbingan Individu</option>
-                                                <option value="Tutor Sebaya">Tutor Sebaya</option>
-                                                <option value="Penugasan Terpandu">Penugasan Terpandu</option>
-                                                <option value="Belajar Kelompok">Belajar Kelompok</option>
+                                                <option value="">
+                                                    {type === 'remedial' ? '-- Pilih Bentuk Pendampingan --' : '-- Pilih Bentuk Tantangan --'}
+                                                </option>
+                                                {type === 'remedial' ? (
+                                                    <>
+                                                        <option value="Bimbingan Individu">Bimbingan Individu</option>
+                                                        <option value="Tutor Sebaya">Tutor Sebaya</option>
+                                                        <option value="Penugasan Terpandu">Penugasan Terpandu</option>
+                                                        <option value="Belajar Kelompok">Belajar Kelompok</option>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <option value="Proyek Mandiri">Proyek Mandiri (Kompleksitas Tinggi)</option>
+                                                        <option value="Eksplorasi Referensi">Eksplorasi Referensi Baru</option>
+                                                        <option value="Problem Solving">Pemecahan Masalah Lanjutan</option>
+                                                        <option value="Tutor Sebaya">Menjadi Tutor Sebaya</option>
+                                                    </>
+                                                )}
                                             </select>
                                         </div>
                                         <div className="space-y-2">
-                                            <label className="text-sm font-bold text-foreground">Fokus Kriteria (Otomatis dari skor jika kosong)</label>
+                                            <label className="text-sm font-bold text-foreground">
+                                                {type === 'remedial' ? 'Fokus Kriteria (Otomatis dari skor jika kosong)' : 'Fokus Eksplorasi (Otomatis jika kosong)'}
+                                            </label>
                                             <input
                                                 type="text"
                                                 value={focuses['_all'] || ''}
                                                 onChange={(e) => setFocuses({ '_all': e.target.value })}
                                                 className="w-full rounded-xl border border-border bg-white px-4 py-3 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 dark:bg-slate-900"
-                                                placeholder="Contoh: Seluruh kriteria, atau spesifik indikator 1"
+                                                placeholder={type === 'remedial' ? "Contoh: Seluruh kriteria, atau spesifik indikator 1" : "Contoh: Studi kasus nyata..."}
                                             />
                                         </div>
                                         <div className="space-y-2">
