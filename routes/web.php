@@ -25,6 +25,8 @@ Route::get('/', function () {
     return redirect()->route('login');
 })->name('home');
 
+Route::get('/sso/login', [\App\Http\Controllers\Auth\SsoLoginController::class, 'login'])->name('sso.login');
+
 Route::middleware(['auth'])->group(function () {
     // ── Notifications ──────────────────────────────────────────────
     Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.index');
