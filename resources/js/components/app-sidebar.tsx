@@ -90,32 +90,19 @@ const adminNavSections: NavSection[] = [
         label: 'Utama',
         items: [
             { title: 'Dashboard',           url: '/dashboard', icon: LayoutDashboard },
-            { title: 'Mata Pelajaran',      url: '/subjects',  icon: BookOpen },
             { title: 'Petunjuk Penggunaan', url: '/guide',     icon: Book },
         ],
     },
     {
-        label: 'Perencanaan',
+        label: 'Data Master',
         items: [
-            { title: 'Capaian Pembelajaran', url: '/cp',                  icon: Target },
-            { title: 'Tujuan Pembelajaran',  url: '/learning-objectives', icon: GraduationCap },
-            { title: 'Materi',               url: '/materials',           icon: Library },
-            { title: 'Asesmen',              url: '/assignments',         icon: ClipboardList },
-            { title: 'Pembelajaran',         url: '/lesson-plans',        icon: BookOpen },
-            { title: 'Projek P5',            url: '/p5',                  icon: Heart },
+            { title: 'Mata Pelajaran',      url: '/subjects',  icon: BookOpen },
+            { title: 'Data Guru',           url: '/teachers',  icon: Users },
+            { title: 'Data Siswa',          url: '/students',  icon: Users },
         ],
     },
     {
-        label: 'Penilaian & Diagnostik',
-        items: [
-            { title: 'Nilai & Rapor',            url: '/gradebook',          icon: FileBarChart },
-            { title: 'Remedial & Pengayaan',     url: '/remedial',           icon: FileWarning },
-            { title: 'Diagnostik Non-Kognitif',  url: '/non-cognitive',     icon: Users },
-            { title: 'Diagnostik Adaptif',       url: '/adaptive-learning', icon: Brain },
-        ],
-    },
-    {
-        label: 'Analitik & Monitoring',
+        label: 'Monitoring & Analitik',
         items: [
             { title: 'Analitik Pembelajaran', url: '/analytics',      icon: BarChart3 },
             { title: 'Early Warning System',  url: '/early-warning',  icon: FileWarning },
@@ -124,8 +111,7 @@ const adminNavSections: NavSection[] = [
     {
         label: 'Komunikasi',
         items: [
-            { title: 'Feedback & Revisi', url: '/feedback-revisions', icon: MessageSquare },
-            { title: 'Pengumuman',       url: '/announcements',       icon: Bell },
+            { title: 'Pengumuman', url: '/announcements', icon: Bell },
         ],
     },
 ];
@@ -137,6 +123,12 @@ const parentNavSections: NavSection[] = [
             { title: 'Dashboard',           url: '/dashboard',       icon: LayoutDashboard },
             { title: 'Anak Saya',           url: '/parent/dashboard', icon: Heart },
             { title: 'Petunjuk Penggunaan', url: '/guide',           icon: Book },
+        ],
+    },
+    {
+        label: 'Informasi',
+        items: [
+            { title: 'Pengumuman', url: '/announcements', icon: Bell },
         ],
     },
 ];
