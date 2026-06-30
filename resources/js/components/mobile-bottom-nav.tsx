@@ -1,9 +1,8 @@
 import { type NavItem, type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
-import { Menu } from 'lucide-react';
+import { Menu, LogOut, Settings, Palette } from 'lucide-react';
 import { getNavSections } from './app-sidebar';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from './ui/sheet';
-import { NavMain } from './nav-main';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose } from './ui/sheet';
 import AppLogo from './app-logo';
 
 export function MobileBottomNav() {
@@ -67,16 +66,74 @@ export function MobileBottomNav() {
                         <span className="text-[10px] font-semibold tracking-tight">Lainnya</span>
                     </button>
                 </SheetTrigger>
-                <SheetContent side="bottom" className="h-[80vh] px-0 py-4 flex flex-col gap-0">
-                    <SheetHeader className="px-6 pb-4 border-b border-border/60 text-left">
+                <SheetContent side="bottom" className="h-[85vh] px-0 py-4 flex flex-col gap-0 rounded-t-2xl">
+                    <SheetHeader className="px-5 pb-4 border-b border-border/60 text-left sticky top-0 bg-background z-10 shrink-0">
                         <SheetTitle className="flex items-center gap-2">
-                            <AppLogo />
+                            <span className="font-semibold text-foreground text-base">Menu Navigasi</span>
                         </SheetTitle>
                     </SheetHeader>
-                    <div className="flex-1 overflow-y-auto px-4 py-2 flex flex-col gap-4">
+                    <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-6 pb-12">
                         {sections.map((section) => (
-                            <NavMain key={section.label} items={section.items} label={section.label} />
+                            <div key={section.label}>
+                                <div className="text-[11px] font-bold uppercase text-muted-foreground tracking-wider mb-3">
+                                    {section.label}
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                    {section.items.map((item) => {
+                                        const isActive = window.location.pathname.startsWith(item.url || '#') && item.url !== '/';
+                                        const isDashboard = item.url === '/dashboard' && window.location.pathname === '/dashboard';
+                                        const actuallyActive = isDashboard || (isActive && item.url !== '/dashboard');
+
+                                        return (
+                                            <SheetClose asChild key={item.title}>
+                                                <Link
+                                                    href={item.url || '#'}
+                                                    className={`group flex flex-col items-center justify-center gap-1.5 text-center p-3.5 rounded-xl text-[11px] font-semibold border transition-all duration-300 ${
+                                                        actuallyActive
+                                                            ? 'bg-primary/5 border-primary/20 text-primary shadow-sm'
+                                                            : 'bg-muted/40 border-border/40 text-muted-foreground hover:bg-muted/60 hover:text-foreground'
+                                                    }`}
+                                                >
+                                                    <div className="opacity-80 group-hover:opacity-100 transition-opacity">
+                                                        {item.icon && <item.icon className="h-5 w-5" />}
+                                                    </div>
+                                                    <span>{item.title}</span>
+                                                </Link>
+                                            </SheetClose>
+                                        );
+                                    })}
+                                </div>
+                            </div>
                         ))}
+                        
+                        {/* Profile & Logout Section */}
+                        <div className="pt-2 border-t border-border/60">
+                            <div className="text-[11px] font-bold uppercase text-muted-foreground tracking-wider mb-3 mt-2">
+                                Pengaturan Akun
+                            </div>
+                            <div className="space-y-2">
+                                <SheetClose asChild>
+                                    <Link href="/profile" className="flex items-center gap-3 px-4 py-3 bg-muted/40 rounded-xl hover:bg-muted/60 transition text-foreground">
+                                        <Settings className="h-5 w-5 text-muted-foreground" />
+                                        <span className="text-sm font-semibold">Profil Saya</span>
+                                    </Link>
+                                </SheetClose>
+                                {user_role === 'admin' && (
+                                    <SheetClose asChild>
+                                        <Link href="/appearance" className="flex items-center gap-3 px-4 py-3 bg-muted/40 rounded-xl hover:bg-muted/60 transition text-foreground">
+                                            <Palette className="h-5 w-5 text-muted-foreground" />
+                                            <span className="text-sm font-semibold">Tampilan & Logo</span>
+                                        </Link>
+                                    </SheetClose>
+                                )}
+                                <SheetClose asChild>
+                                    <Link href="/logout" method="post" as="button" type="button" className="w-full flex items-center gap-3 px-4 py-3 bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 rounded-xl hover:bg-red-100 dark:hover:bg-red-950/40 transition">
+                                        <LogOut className="h-5 w-5" />
+                                        <span className="text-sm font-semibold">Keluar / Logout</span>
+                                    </Link>
+                                </SheetClose>
+                            </div>
+                        </div>
                     </div>
                 </SheetContent>
             </Sheet>
