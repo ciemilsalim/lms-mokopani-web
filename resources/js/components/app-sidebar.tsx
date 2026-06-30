@@ -168,15 +168,17 @@ export function AppSidebar() {
             </SidebarContent>
 
             <SidebarFooter className="border-t border-sidebar-border/50">
-                <div className="p-2">
-                    <a
-                        href={sipada_url || 'http://localhost:8000'}
-                        className="flex w-full items-center gap-2 rounded-lg bg-sky-50 px-3 py-2 text-sm font-semibold text-sky-600 transition-colors hover:bg-sky-100 dark:bg-sky-950/30 dark:text-sky-400 dark:hover:bg-sky-950/50"
-                    >
-                        <ExternalLink className="h-4 w-4" />
-                        <span>Portal Data SIPADA</span>
-                    </a>
-                </div>
+                {user_role === 'admin' && (
+                    <div className="p-2">
+                        <a
+                            href={sipada_url || 'http://localhost:8000'}
+                            className="flex w-full items-center gap-2 rounded-lg bg-sky-50 px-3 py-2 text-sm font-semibold text-sky-600 transition-colors hover:bg-sky-100 dark:bg-sky-950/30 dark:text-sky-400 dark:hover:bg-sky-950/50"
+                        >
+                            <ExternalLink className="h-4 w-4" />
+                            <span>Portal Data SIPADA</span>
+                        </a>
+                    </div>
+                )}
                 <NavUser />
             </SidebarFooter>
         </Sidebar>
