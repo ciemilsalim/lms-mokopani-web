@@ -1,12 +1,13 @@
 import { Breadcrumbs } from '@/components/breadcrumbs';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { type BreadcrumbItem as BreadcrumbItemType, type SharedData } from '@/types';
-import { usePage } from '@inertiajs/react';
+import { Link, usePage } from '@inertiajs/react';
 import AppearanceToggleDropdown from './appearance-dropdown';
 import NotificationBell from './notification-bell';
+import AppLogo from './app-logo';
 
 export function AppSidebarHeader({ breadcrumbs = [] }: { breadcrumbs?: BreadcrumbItemType[] }) {
-    const { auth, user_role } = usePage<SharedData>().props;
+    const { auth, user_role, school_name } = usePage<SharedData>().props;
     const initials = (auth?.user?.name ?? '')
         .split(' ')
         .map((n: string) => n[0])
@@ -23,11 +24,17 @@ export function AppSidebarHeader({ breadcrumbs = [] }: { breadcrumbs?: Breadcrum
     const roleLabel = roleLabels[user_role] || 'Pengguna';
 
     return (
-        <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-4 border-b border-border/60 bg-card px-6 shadow-sm">
+        <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-4 border-b border-border/60 bg-card px-4 md:px-6 shadow-sm">
             <div className="flex items-center gap-2">
-                <SidebarTrigger className="text-sidebar-foreground hover:bg-slate-100 dark:hover:bg-slate-800 transition" />
+                <SidebarTrigger className="text-sidebar-foreground hover:bg-slate-100 dark:hover:bg-slate-800 transition hidden md:flex" />
                 <div className="hidden md:flex">
                     <Breadcrumbs breadcrumbs={breadcrumbs} />
+                </div>
+                {/* Mobile Logo & App Name */}
+                <div className="md:hidden flex items-center gap-2">
+                    <Link href="/dashboard" className="flex items-center gap-2">
+                        <AppLogo />
+                    </Link>
                 </div>
             </div>
 

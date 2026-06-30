@@ -133,7 +133,7 @@ const parentNavSections: NavSection[] = [
     },
 ];
 
-function getNavSections(role: string): NavSection[] {
+export function getNavSections(role: string): NavSection[] {
     switch (role) {
         case 'teacher': return teacherNavSections;
         case 'student': return studentNavSections;
