@@ -25,7 +25,6 @@ const teacherNavSections: NavSection[] = [
     {
         label: 'Perencanaan',
         items: [
-            { title: 'Capaian Pembelajaran',  url: '/cp',                     icon: Target },
             { title: 'Tujuan Pembelajaran',   url: '/learning-objectives',    icon: GraduationCap },
             { title: 'Materi',                url: '/materials',              icon: Library },
             { title: 'Asesmen',               url: '/assignments',            icon: ClipboardList },
@@ -96,6 +95,7 @@ const adminNavSections: NavSection[] = [
     {
         label: 'Data Master',
         items: [
+            { title: 'Capaian Pembelajaran', url: '/cp',       icon: Target },
             { title: 'Mata Pelajaran',      url: '/subjects',  icon: BookOpen },
             { title: 'Data Guru',           url: '/teachers',  icon: Users },
             { title: 'Data Siswa',          url: '/students',  icon: Users },
