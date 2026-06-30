@@ -19,11 +19,18 @@ class AnalyticsController extends Controller
     public function index(AnalyticsService $analytics, EarlyWarningService $earlyWarning)
     {
         $user = Auth::user();
-        $teacher = $user->teacher;
+        
+        $query = TeachingAssignment::with(['subject', 'schoolClass']);
+        
+        if ($user->role !== 'admin') {
+            $teacher = $user->teacher;
+            if (!$teacher) {
+                abort(403, 'Akses ditolak.');
+            }
+            $query->where('teacher_id', $teacher->id);
+        }
 
-        $teachings = TeachingAssignment::with(['subject', 'schoolClass'])
-            ->where('teacher_id', $teacher->id)
-            ->get()
+        $teachings = $query->get()
             ->map(fn($t) => [
                 'subject_id'   => $t->subject_id,
                 'subject_name' => $t->subject->name,
@@ -38,10 +45,15 @@ class AnalyticsController extends Controller
         $activeSemester = Semester::getActive();
 
         $allStudents = Student::whereIn('school_class_id', $teachings->pluck('class_id')->unique())->count();
-        $allAssignments = LmsAssignment::where('teacher_id', $teacher->id)
-            ->where('academic_year_id', $activeYear?->id)
-            ->where('semester_id', $activeSemester?->id)
-            ->count();
+        
+        $assignmentsQuery = LmsAssignment::where('academic_year_id', $activeYear?->id)
+            ->where('semester_id', $activeSemester?->id);
+            
+        if ($user->role !== 'admin') {
+            $assignmentsQuery->where('teacher_id', $user->teacher->id);
+        }
+        
+        $allAssignments = $assignmentsQuery->count();
 
         $totalAtRisk = 0;
         foreach ($teachings as $t) {

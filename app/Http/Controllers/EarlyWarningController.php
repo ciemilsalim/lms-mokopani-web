@@ -18,11 +18,19 @@ class EarlyWarningController extends Controller
 
     public function index()
     {
-        $teacher = Auth::user()->teacher;
+        $user = Auth::user();
+        
+        $query = TeachingAssignment::with(['subject', 'schoolClass']);
+        
+        if ($user->role !== 'admin') {
+            $teacher = $user->teacher;
+            if (!$teacher) {
+                abort(403, 'Akses ditolak.');
+            }
+            $query->where('teacher_id', $teacher->id);
+        }
 
-        $teachings = TeachingAssignment::with(['subject', 'schoolClass'])
-            ->where('teacher_id', $teacher->id)
-            ->get()
+        $teachings = $query->get()
             ->map(fn ($t) => [
                 'subject_id'   => $t->subject_id,
                 'subject_name' => $t->subject->name,
