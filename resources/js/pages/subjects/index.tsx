@@ -69,60 +69,80 @@ export default function Subjects({ subjects }: SubjectsProps) {
                     />
                 </div>
 
-                {/* Grid */}
+                {/* Table */}
                 {filtered.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
                         <BookOpen className="h-14 w-14 mb-4 opacity-25" />
                         <p className="text-sm font-medium">Tidak ada mata pelajaran ditemukan</p>
                     </div>
                 ) : (
-                    <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                        {filtered.map((subject) => (
-                            <div
-                                key={subject.id}
-                                onClick={() => router.visit(`/subjects/${subject.id}`)}
-                                className="group cursor-pointer rounded-xl border border-border bg-card p-5 shadow-sm hover:shadow-md hover:border-primary/30 dark:hover:border-primary/70 transition-shadow"
-                            >
-                                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-muted text-muted-foreground shadow-sm">
-                                    <BookOpen className="h-6 w-6 text-muted-foreground" />
-                                </div>
-                                {subject.code && subject.code.toLowerCase() !== subject.name.toLowerCase() && (
-                                    <p className="text-xs font-semibold uppercase tracking-wider text-primary">{subject.code}</p>
-                                )}
-                                <h3 className="mt-1 font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-2">
-                                    {subject.name}
-                                </h3>
-                                {subject.description && subject.description.toLowerCase() !== subject.name.toLowerCase() && subject.description.toLowerCase() !== subject.code?.toLowerCase() && (
-                                    <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{subject.description}</p>
-                                )}
-
-                                {subject.teacher && (
-                                    <div className="mt-4 flex items-center gap-3 rounded-xl bg-muted/50 p-2.5 border border-border/50 group/teacher transition-colors hover:bg-muted">
-                                        <Avatar className="h-9 w-9 border-2 border-white dark:border-slate-700 shadow-sm">
-                                            <AvatarImage src={subject.teacher.photo ?? ''} alt={subject.teacher.name} />
-                                            <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-sky-500 text-[10px] font-bold text-white uppercase">
-                                                {subject.teacher.name.split(' ').map(n => n[0]).join('').substring(0, 2)}
-                                            </AvatarFallback>
-                                        </Avatar>
-                                        <div className="flex flex-col min-w-0">
-                                            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Guru Pengampu</span>
-                                            <span className="text-xs font-bold text-foreground line-clamp-1 group-hover/teacher:text-primary transition-colors">
-                                                {subject.teacher.name}
+                    <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm overflow-x-auto">
+                        <table className="min-w-full divide-y divide-border">
+                            <thead className="bg-muted">
+                                <tr>
+                                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Mata Pelajaran</th>
+                                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Kode</th>
+                                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Deskripsi</th>
+                                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Materi & Tugas</th>
+                                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Pengampu</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-border">
+                                {filtered.map((subject) => (
+                                    <tr 
+                                        key={subject.id} 
+                                        onClick={() => router.visit(`/subjects/${subject.id}`)}
+                                        className="hover:bg-muted/50 transition-colors cursor-pointer group"
+                                    >
+                                        <td className="px-6 py-3">
+                                            <div className="flex items-center gap-3">
+                                                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted text-muted-foreground flex-shrink-0 group-hover:bg-primary/10 group-hover:text-primary transition-colors">
+                                                    <BookOpen className="h-4 w-4" />
+                                                </div>
+                                                <span className="font-semibold text-sm text-foreground group-hover:text-primary transition-colors line-clamp-1">{subject.name}</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-3 text-sm text-muted-foreground font-mono">
+                                            {subject.code && subject.code.toLowerCase() !== subject.name.toLowerCase() ? subject.code : '-'}
+                                        </td>
+                                        <td className="px-6 py-3 text-sm text-muted-foreground">
+                                            <span className="line-clamp-1 max-w-[200px]">
+                                                {subject.description && subject.description.toLowerCase() !== subject.name.toLowerCase() && subject.description.toLowerCase() !== subject.code?.toLowerCase() 
+                                                    ? subject.description 
+                                                    : '-'}
                                             </span>
-                                        </div>
-                                    </div>
-                                )}
-
-                                <div className="mt-4 flex flex-wrap gap-2 sm:gap-3">
-                                    <span className="flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
-                                        📄 {subject.materials_count} Materi
-                                    </span>
-                                    <span className="flex items-center gap-1 rounded-full bg-destructive/10 px-2.5 py-1 text-xs font-medium text-destructive">
-                                        📝 {subject.assignments_count} Tugas
-                                    </span>
-                                </div>
-                            </div>
-                        ))}
+                                        </td>
+                                        <td className="px-6 py-3">
+                                            <div className="flex items-center gap-2">
+                                                <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
+                                                    {subject.materials_count} Materi
+                                                </span>
+                                                <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-[11px] font-medium text-destructive">
+                                                    {subject.assignments_count} Tugas
+                                                </span>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-3">
+                                            {subject.teacher ? (
+                                                <div className="flex items-center gap-2">
+                                                    <Avatar className="h-7 w-7">
+                                                        <AvatarImage src={subject.teacher.photo ?? ''} alt={subject.teacher.name} />
+                                                        <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-sky-500 text-[9px] font-bold text-white uppercase">
+                                                            {subject.teacher.name.split(' ').map(n => n[0]).join('').substring(0, 2)}
+                                                        </AvatarFallback>
+                                                    </Avatar>
+                                                    <span className="text-xs font-medium text-muted-foreground line-clamp-1 max-w-[120px]">
+                                                        {subject.teacher.name}
+                                                    </span>
+                                                </div>
+                                            ) : (
+                                                <span className="text-xs text-muted-foreground">-</span>
+                                            )}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
                     </div>
                 )}
             </div>

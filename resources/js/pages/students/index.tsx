@@ -2,7 +2,7 @@ import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/react';
 import { GraduationCap, Search } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: '/dashboard' },
@@ -41,14 +41,22 @@ const avatarColors = [
 ];
 
 export default function Students({ students }: StudentsProps) {
-    const [search, setSearch] = useState('');
+    const [filterClass, setFilterClass] = useState('all');
 
-    const filtered = (students ?? []).filter(
-        (s) =>
-            s.name.toLowerCase().includes(search.toLowerCase()) ||
-            s.nis.toLowerCase().includes(search.toLowerCase()) ||
-            (s.class_name ?? '').toLowerCase().includes(search.toLowerCase()),
-    );
+    const classes = useMemo(() => {
+        const uniqueClasses = new Set((students ?? []).map(s => s.class_name).filter(Boolean));
+        return Array.from(uniqueClasses).sort();
+    }, [students]);
+
+    const filtered = (students ?? []).filter((s) => {
+        const matchesSearch = s.name.toLowerCase().includes(search.toLowerCase()) ||
+                              s.nis.toLowerCase().includes(search.toLowerCase()) ||
+                              (s.class_name ?? '').toLowerCase().includes(search.toLowerCase());
+                              
+        const matchesClass = filterClass === 'all' || s.class_name === filterClass;
+        
+        return matchesSearch && matchesClass;
+    });
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -65,17 +73,29 @@ export default function Students({ students }: StudentsProps) {
                     </div>
                 </div>
 
-                {/* Search */}
-                <div className="relative max-w-sm">
-                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <input
-                        id="input-search-student"
-                        type="text"
-                        placeholder="Cari nama, NIS, atau kelas..."
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        className="w-full rounded-lg border border-border bg-white py-2 pl-9 pr-4 text-sm text-foreground placeholder:text-muted-foreground shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 dark:bg-slate-900 dark:text-slate-200"
-                    />
+                {/* Filters */}
+                <div className="flex flex-col sm:flex-row gap-3">
+                    <div className="relative w-full sm:max-w-sm">
+                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <input
+                            id="input-search-student"
+                            type="text"
+                            placeholder="Cari nama, NIS, atau kelas..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="w-full rounded-lg border border-border bg-white py-2 pl-9 pr-4 text-sm text-foreground placeholder:text-muted-foreground shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 dark:bg-slate-900 dark:text-slate-200"
+                        />
+                    </div>
+                    <select
+                        value={filterClass}
+                        onChange={(e) => setFilterClass(e.target.value)}
+                        className="w-full sm:w-auto rounded-lg border border-border bg-white py-2 px-3 text-sm text-foreground shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 dark:bg-slate-900 dark:text-slate-200"
+                    >
+                        <option value="all">Semua Kelas</option>
+                        {classes.map(c => (
+                            <option key={c as string} value={c as string}>{c as string}</option>
+                        ))}
+                    </select>
                 </div>
 
                 {/* Table */}
