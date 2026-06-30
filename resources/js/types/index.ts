@@ -30,6 +30,7 @@ export interface SharedData {
     auth: Auth;
     user_role: 'admin' | 'teacher' | 'student' | 'parent' | 'user' | 'guest';
     unread_count: number;
+    sipada_url?: string;
     [key: string]: unknown;
 }
 
