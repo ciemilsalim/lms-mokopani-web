@@ -41,6 +41,7 @@ const avatarColors = [
 ];
 
 export default function Students({ students }: StudentsProps) {
+    const [search, setSearch] = useState('');
     const [filterClass, setFilterClass] = useState('all');
 
     const classes = useMemo(() => {
