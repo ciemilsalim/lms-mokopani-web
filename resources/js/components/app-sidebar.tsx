@@ -5,7 +5,7 @@ import { type NavItem, type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
 import {
     Book, BookOpen, ClipboardList, GraduationCap, LayoutDashboard, Library, Target, FileBarChart, Bell, Compass,
-    Heart, FileWarning, MessageSquare, BarChart3, Brain, Users,
+    Heart, FileWarning, MessageSquare, BarChart3, Brain, Users, ExternalLink,
 } from 'lucide-react';
 import AppLogo from './app-logo';
 
@@ -168,6 +168,15 @@ export function AppSidebar() {
             </SidebarContent>
 
             <SidebarFooter className="border-t border-sidebar-border/50">
+                <div className="p-2">
+                    <a
+                        href={import.meta.env.VITE_SIPADA_URL || 'http://localhost:8000'}
+                        className="flex w-full items-center gap-2 rounded-lg bg-sky-50 px-3 py-2 text-sm font-semibold text-sky-600 transition-colors hover:bg-sky-100 dark:bg-sky-950/30 dark:text-sky-400 dark:hover:bg-sky-950/50"
+                    >
+                        <ExternalLink className="h-4 w-4" />
+                        <span>Portal Data SIPADA</span>
+                    </a>
+                </div>
                 <NavUser />
             </SidebarFooter>
         </Sidebar>

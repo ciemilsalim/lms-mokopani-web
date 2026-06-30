@@ -51,19 +51,9 @@ export default function Subjects({ subjects }: SubjectsProps) {
                             {isStudent ? 'Pelajaran Saya' : 'Mata Pelajaran'}
                         </h1>
                         <p className="text-sm text-muted-foreground">
-                            {isStudent ? 'Akses semua materi dan asesmen pembelajaranmu' : 'Kelola semua mata pelajaran yang tersedia'}
+                            {isStudent ? 'Akses semua materi dan asesmen pembelajaranmu' : 'Lihat semua mata pelajaran (dikelola melalui SIPADA)'}
                         </p>
                     </div>
-                    {!isStudent && (
-                        <button
-                            id="btn-add-subject"
-                            onClick={() => router.visit('/subjects/create')}
-                            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-primary to-primary/70 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-primary/20 dark:shadow-lg dark:shadow-black/20 hover:opacity-90 transition active:scale-95 cursor-pointer"
-                        >
-                            <Plus className="h-4 w-4" />
-                            Tambah Mata Pelajaran
-                        </button>
-                    )}
                 </div>
 
                 {/* Search */}
