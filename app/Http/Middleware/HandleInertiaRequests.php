@@ -50,7 +50,7 @@ class HandleInertiaRequests extends Middleware
             ],
             'user_role' => $user?->role ?? ($user?->teacher ? 'teacher' : ($user?->student ? 'student' : 'guest')),
             'unread_count' => $user ? \App\Models\Notification::where('user_id', $user->id)->unread()->count() : 0,
-            'sipada_url' => env('SIPADA_URL', 'http://localhost:8000'),
+            'sipada_url' => env('SIPADA_URL', env('VITE_SIPADA_URL', 'http://localhost:8000')),
         ]);
     }
 }
