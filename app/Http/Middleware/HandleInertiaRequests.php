@@ -51,6 +51,15 @@ class HandleInertiaRequests extends Middleware
             'user_role' => $user?->role ?? ($user?->teacher ? 'teacher' : ($user?->student ? 'student' : 'guest')),
             'unread_count' => $user ? \App\Models\Notification::where('user_id', $user->id)->unread()->count() : 0,
             'sipada_url' => env('SIPADA_URL', env('VITE_SIPADA_URL', 'http://localhost:8000')),
+            'activeSemesterId' => session('active_semester_id') ?? \App\Models\Semester::where('is_active', true)->value('id'),
+            'semestersList' => \App\Models\Semester::with('academicYear')->orderByDesc('id')->get()->map(function ($s) {
+                return [
+                    'id' => $s->id,
+                    'name' => $s->name,
+                    'academic_year' => $s->academicYear ? $s->academicYear->name : '',
+                    'is_active' => $s->is_active
+                ];
+            }),
         ]);
     }
 }

@@ -31,6 +31,8 @@ export interface SharedData {
     user_role: 'admin' | 'teacher' | 'student' | 'parent' | 'user' | 'guest';
     unread_count: number;
     sipada_url?: string;
+    activeSemesterId?: number;
+    semestersList?: Array<{id: number, name: string, academic_year: string, is_active: boolean}>;
     [key: string]: unknown;
 }
 

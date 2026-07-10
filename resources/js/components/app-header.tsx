@@ -1,15 +1,15 @@
 import { Breadcrumbs } from '@/components/breadcrumbs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { NavigationMenu, NavigationMenuItem, NavigationMenuList, navigationMenuTriggerStyle } from '@/components/ui/navigation-menu';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { UserMenuContent } from '@/components/user-menu-content';
 import { useInitials } from '@/hooks/use-initials';
 import { cn } from '@/lib/utils';
 import { type BreadcrumbItem, type NavItem, type SharedData } from '@/types';
-import { Link, usePage } from '@inertiajs/react';
-import { LayoutGrid, Menu, BookOpen, Library, ClipboardList, Target, FileBarChart, Bell, GraduationCap, Compass, BarChart3, Heart } from 'lucide-react';
+import { Link, usePage, router } from '@inertiajs/react';
+import { LayoutGrid, Menu, BookOpen, Library, ClipboardList, Target, FileBarChart, Bell, GraduationCap, Compass, BarChart3, Heart, ChevronDown } from 'lucide-react';
 import AppLogo from './app-logo';
 import AppLogoIcon from './app-logo-icon';
 import AppearanceToggleDropdown from './appearance-dropdown';
@@ -52,10 +52,19 @@ interface AppHeaderProps {
 
 export function AppHeader({ breadcrumbs = [] }: AppHeaderProps) {
     const page = usePage<SharedData>();
-    const { auth, user_role } = page.props;
+    const { auth, user_role, semestersList, activeSemesterId } = page.props;
     const getInitials = useInitials();
 
     const mobileItems = user_role === 'teacher' ? teacherMobileNavItems : user_role === 'parent' ? parentMobileNavItems : studentMobileNavItems;
+
+    const activeSemester = semestersList?.find(s => s.id === activeSemesterId);
+    const activeSemesterName = activeSemester ? `${activeSemester.name} ${activeSemester.academic_year ? `(${activeSemester.academic_year})` : ''}` : 'Pilih Semester';
+
+    const switchSemester = (id: number) => {
+        router.post(route('academic-periods.switch'), { semester_id: id }, {
+            preserveScroll: true
+        });
+    };
 
     return (
         <>
@@ -77,6 +86,35 @@ export function AppHeader({ breadcrumbs = [] }: AppHeaderProps) {
                                 <div className="mt-6 flex h-full flex-1 flex-col space-y-4">
                                     <div className="flex h-full flex-col justify-between text-sm">
                                         <div className="flex flex-col space-y-1">
+                                            {/* Mobile Semester Selector */}
+                                            {semestersList && semestersList.length > 0 && (
+                                                <div className="mb-4">
+                                                    <p className="px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Semester</p>
+                                                    <div className="space-y-1 px-1">
+                                                        {semestersList.map(semester => (
+                                                            <button
+                                                                key={semester.id}
+                                                                onClick={() => switchSemester(semester.id)}
+                                                                className={cn(
+                                                                    'w-full flex items-center justify-between rounded-lg px-3 py-2.5 font-medium transition-colors text-left text-sm',
+                                                                    semester.id === activeSemesterId
+                                                                        ? 'bg-[#5E6AD2]/10 text-[#5E6AD2] dark:bg-[#1F1F2E] dark:text-[#F1F1F4]'
+                                                                        : 'text-[#8A8F98] hover:bg-[#F1F1F4]/50 dark:text-[#8A8F98] dark:hover:bg-[#1F1F2E]'
+                                                                )}
+                                                            >
+                                                                <span className="truncate">{semester.name} {semester.academic_year ? `(${semester.academic_year})` : ''}</span>
+                                                                {semester.is_active && (
+                                                                    <span className="inline-flex items-center rounded-sm bg-green-500/10 px-1.5 py-0.5 text-[10px] font-medium text-green-600 dark:text-green-400">
+                                                                        Aktif
+                                                                    </span>
+                                                                )}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+                                            
+                                            <p className="px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 mt-2">Menu</p>
                                             {mobileItems.map((item) => {
                                                 const Icon = item.icon;
                                                 const isItemActive = item.url === '/dashboard'
@@ -135,6 +173,39 @@ export function AppHeader({ breadcrumbs = [] }: AppHeaderProps) {
                     </div>
 
                     <div className="ml-auto flex items-center space-x-1">
+                        {/* Semester Switch Dropdown */}
+                        {semestersList && semestersList.length > 0 && (
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="outline" className="hidden lg:flex mr-2 h-9 items-center justify-between gap-2 border-border/60 bg-transparent px-3 text-sm font-medium shadow-none hover:bg-accent/50 hover:text-accent-foreground focus-visible:ring-1 focus-visible:ring-ring">
+                                        <span className="max-w-[140px] truncate">{activeSemesterName}</span>
+                                        <ChevronDown className="h-4 w-4 opacity-50" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-[220px]">
+                                    <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                                        Pilih Semester
+                                    </div>
+                                    {semestersList.map(semester => (
+                                        <DropdownMenuItem 
+                                            key={semester.id} 
+                                            onClick={() => switchSemester(semester.id)}
+                                            className={cn(
+                                                "cursor-pointer justify-between",
+                                                semester.id === activeSemesterId && "bg-accent text-accent-foreground font-semibold"
+                                            )}
+                                        >
+                                            <span className="truncate">{semester.name} {semester.academic_year ? `(${semester.academic_year})` : ''}</span>
+                                            {semester.is_active && (
+                                                <span className="ml-2 inline-flex items-center rounded-sm bg-green-500/10 px-1.5 py-0.5 text-[10px] font-medium text-green-600 dark:text-green-400">
+                                                    Aktif
+                                                </span>
+                                            )}
+                                        </DropdownMenuItem>
+                                    ))}
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        )}
                         <NotificationBell />
                         <AppearanceToggleDropdown />
                         <DropdownMenu>

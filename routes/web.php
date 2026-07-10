@@ -15,6 +15,7 @@ use App\Http\Controllers\P5ProjectController;
 use App\Http\Controllers\RaporController;
 use App\Http\Controllers\CapaianPembelajaranController;
 use App\Http\Controllers\LmsPromptController;
+use App\Http\Controllers\AcademicPeriodController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -32,6 +33,9 @@ Route::middleware(['auth'])->group(function () {
     Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.index');
     Route::post('notifications/{notification}/read', [NotificationController::class, 'read'])->name('notifications.read');
     Route::post('notifications/read-all', [NotificationController::class, 'readAll'])->name('notifications.read-all');
+
+    // ── Global Semester Switch ──────────────────────────────────────
+    Route::post('/academic-periods/switch', [AcademicPeriodController::class, 'switch'])->name('academic-periods.switch');
 
     // ── Shared (all authenticated roles) ────────────────────────────
     Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
