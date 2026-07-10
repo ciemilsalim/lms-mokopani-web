@@ -15,7 +15,7 @@ Platform ini dibangun menggunakan arsitektur modern bertaraf industri:
 * **Frontend Framework**: [React v19](https://react.dev) + [TypeScript](https://www.typescriptlang.org)
 * **Styling & Design System**: [Tailwind CSS v4](https://tailwindcss.com) (Modern utility-first & lightning-fast compilation)
 * **Build Tool**: [Vite](https://vite.dev)
-* **Database**: SQLite (Sangat portabel & cepat untuk deployment lokal)
+* **Database**: MySQL (Menggunakan arsitektur *Shared Database* `db_absen` yang terintegrasi dengan ekosistem SIASEK lainnya)
 * **AI Orchestrator**: [Google Gemini AI v2.0 Flash](https://aistudio.google.com/) (Melalui `GeminiApiService`)
 
 ---
@@ -69,11 +69,16 @@ Salin file `.env.example` menjadi file `.env`:
 copy .env.example .env
 ```
 
-Buka file `.env` di editor Anda dan pastikan setelan database menggunakan **SQLite**:
+Buka file `.env` di editor Anda dan pastikan setelan database terhubung ke database terpusat SIASEK (`db_absen`):
 ```env
-DB_CONNECTION=sqlite
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=db_absen
+DB_USERNAME=root
+DB_PASSWORD=
 ```
-*(Secara default Laravel akan menggunakan file database di `database/database.sqlite` yang sudah disertakan dalam proyek).*
+*(Catatan: LMS ini berbagi database yang sama dengan aplikasi SIPADA dan Presensi. Anda WAJIB menginstal SIPADA terlebih dahulu untuk menjalankan migrasi tabel utama).*
 
 ### 5. Generate Application Key
 ```bash
