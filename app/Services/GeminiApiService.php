@@ -32,6 +32,14 @@ class GeminiApiService implements AiProviderInterface
         return count($this->apiKeys) > 0;
     }
 
+    public function setCustomApiKey(string $key): self
+    {
+        // Replace existing keys with the single custom key
+        $this->apiKeys = [$key];
+        $this->currentKeyIndex = 0;
+        return $this;
+    }
+
     public function getProviderName(): string
     {
         return 'gemini';

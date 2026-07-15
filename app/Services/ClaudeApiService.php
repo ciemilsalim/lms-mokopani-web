@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\LmsAiPrompt;
 use App\Contracts\AiProviderInterface;
 
-class GroqApiService implements AiProviderInterface
+class ClaudeApiService implements AiProviderInterface
 {
     private array $apiKeys;
     private int $currentKeyIndex = 0;
@@ -17,10 +17,11 @@ class GroqApiService implements AiProviderInterface
 
     public function __construct()
     {
-        $keysString = env('GROQ_API_KEYS', '');
+        $keysString = env('CLAUDE_API_KEY', '');
         $this->apiKeys = array_filter(array_map('trim', explode(',', $keysString)));
-        $this->model   = env('GROQ_MODEL', 'llama3-70b-8192');
-        $this->baseUrl = 'https://api.groq.com/openai/v1';
+        // Default to claude-3-5-sonnet which is the current flagship
+        $this->model   = env('CLAUDE_MODEL', 'claude-3-5-sonnet-20240620');
+        $this->baseUrl = 'https://api.anthropic.com/v1';
     }
 
     public function isConfigured(): bool
@@ -37,7 +38,7 @@ class GroqApiService implements AiProviderInterface
 
     public function getProviderName(): string
     {
-        return 'groq';
+        return 'claude';
     }
 
     public function suggestLearningExperiences(
@@ -47,7 +48,7 @@ class GroqApiService implements AiProviderInterface
         ?string $pedagogicalModel = null,
         bool $regenerate = false
     ): array {
-        $hash = md5('groq_experiences_' . $tpDescription . $content . $subjectName . $pedagogicalModel);
+        $hash = md5('claude_experiences_' . $tpDescription . $content . $subjectName . $pedagogicalModel);
 
         if (!$regenerate) {
             $cached = \App\Models\LmsAiCache::getCache($hash);
@@ -87,7 +88,7 @@ class GroqApiService implements AiProviderInterface
         ?string $observationMode = null,
         ?string $quizMode = null
     ): array {
-        $hash = md5('groq_assessment_' . $tpDescription . $content . $instrumentType . ($observationMode ?? '') . ($quizMode ?? ''));
+        $hash = md5('claude_assessment_' . $tpDescription . $content . $instrumentType . ($observationMode ?? '') . ($quizMode ?? ''));
 
         if (!$regenerate) {
             $cached = \App\Models\LmsAiCache::getCache($hash);
@@ -131,7 +132,7 @@ class GroqApiService implements AiProviderInterface
         ?string $pedagogicalModel = null,
         bool $regenerate = false
     ): array {
-        $hash = md5('groq_orchestrator_' . $subjectName . $className . $tpDescription . $pedagogicalModel);
+        $hash = md5('claude_orchestrator_' . $subjectName . $className . $tpDescription . $pedagogicalModel);
 
         if (!$regenerate) {
             $cached = \App\Models\LmsAiCache::getCache($hash);
@@ -170,52 +171,54 @@ class GroqApiService implements AiProviderInterface
             $currentKey = $this->apiKeys[$this->currentKeyIndex];
             
             try {
-                $url = "{$this->baseUrl}/chat/completions";
+                $url = "{$this->baseUrl}/messages";
 
-                $response = Http::withToken($currentKey)->timeout(60)->post($url, [
+                $response = Http::withHeaders([
+                    'x-api-key' => $currentKey,
+                    'anthropic-version' => '2023-06-01',
+                    'content-type' => 'application/json',
+                ])->timeout(60)->post($url, [
                     'model' => $this->model,
+                    'max_tokens' => 4096,
+                    'temperature' => 0.7,
                     'messages' => [
                         ['role' => 'user', 'content' => $prompt]
                     ],
-                    'temperature' => 0.7,
-                    'top_p' => 0.9,
-                    'max_tokens' => 8192,
                 ]);
 
                 if ($response->successful()) {
                     $data = $response->json();
-                    return $data['choices'][0]['message']['content'] ?? null;
+                    return $data['content'][0]['text'] ?? null;
                 }
 
                 if ($response->status() === 429 || $response->status() === 403) {
-                    Log::warning('Groq API rate limit/quota reached on key index ' . $this->currentKeyIndex);
+                    Log::warning('Claude API rate limit/quota reached on key index ' . $this->currentKeyIndex);
                     $this->currentKeyIndex = ($this->currentKeyIndex + 1) % $maxAttempts;
                     $attempts++;
                     continue; 
                 }
 
-                Log::warning('Groq API request failed', [
+                Log::warning('Claude API request failed', [
                     'status' => $response->status(),
                     'body'   => $response->body(),
                 ]);
                 return null;
 
             } catch (\Exception $e) {
-                Log::error('Groq API error', [
+                Log::error('Claude API error', [
                     'message' => $e->getMessage(),
                 ]);
                 return null;
             }
         }
         
-        Log::error('Groq API all keys exhausted or rate limited.');
+        Log::error('Claude API all keys exhausted or rate limited.');
         return null;
     }
 
     private function parseLearningExperiencesResponse(string $text): array
     {
         $result = ['understanding' => '', 'application' => '', 'reflection' => ''];
-        // Supports both HTML <h2> and Markdown ## headers
         $sections = preg_split('/<h2>\s*(Memahami|Mengaplikasi|Merefleksi)\s*<\/h2>|##\s+(Memahami|Mengaplikasi|Merefleksi)/i', $text, -1, PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY);
         if ($sections && count($sections) > 1) {
             for ($i = 0; $i < count($sections); $i++) {
@@ -242,7 +245,7 @@ class GroqApiService implements AiProviderInterface
         $text = trim($text);
         $decoded = json_decode($text, true);
         if (json_last_error() !== JSON_ERROR_NONE) {
-            Log::warning('Failed to parse Groq JSON response', [
+            Log::warning('Failed to parse Claude JSON response', [
                 'error' => json_last_error_msg(),
                 'text'  => substr($text, 0, 500),
             ]);

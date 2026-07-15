@@ -10,6 +10,11 @@ interface AiProviderInterface
     public function isConfigured(): bool;
 
     /**
+     * Set a custom API key dynamically (e.g. from user profile).
+     */
+    public function setCustomApiKey(string $key): self;
+
+    /**
      * Get the active provider name (e.g. 'gemini', 'groq').
      */
     public function getProviderName(): string;

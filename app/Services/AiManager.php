@@ -3,29 +3,53 @@
 namespace App\Services;
 
 use App\Contracts\AiProviderInterface;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 
 class AiManager
 {
     private AiProviderInterface $provider;
 
-    public function __construct(GeminiApiService $gemini, GroqApiService $groq)
-    {
+    public function __construct(
+        GeminiApiService $gemini, 
+        GroqApiService $groq, 
+        OpenAiApiService $openai, 
+        ClaudeApiService $claude
+    ) {
+        $user = Auth::user();
+        
         $activeProvider = env('ACTIVE_AI_PROVIDER', 'gemini');
+        $customApiKey = null;
 
-        if ($activeProvider === 'groq' && $groq->isConfigured()) {
+        // Jika user sedang login dan memiliki preferensi AI Provider
+        if ($user && $user->ai_provider) {
+            $activeProvider = $user->ai_provider;
+            $customApiKey = $user->ai_api_key;
+        }
+
+        // Resolusi provider
+        if ($activeProvider === 'groq') {
             $this->provider = $groq;
-        } elseif ($activeProvider === 'gemini' && $gemini->isConfigured()) {
-            $this->provider = $gemini;
+        } elseif ($activeProvider === 'openai') {
+            $this->provider = $openai;
+        } elseif ($activeProvider === 'claude') {
+            $this->provider = $claude;
         } else {
-            // Fallback logic
+            // Default ke gemini jika provider lain tidak tersedia/didukung
+            $this->provider = $gemini;
+        }
+
+        // Inject custom API key jika ada
+        if (!empty($customApiKey)) {
+            $this->provider->setCustomApiKey($customApiKey);
+        }
+
+        // Fallback jika provider tidak terkonfigurasi (baik dengan custom key maupun .env key)
+        if (!$this->provider->isConfigured()) {
             if ($gemini->isConfigured()) {
                 $this->provider = $gemini;
             } elseif ($groq->isConfigured()) {
                 $this->provider = $groq;
-            } else {
-                // Return default (will fail gracefully since it's not configured)
-                $this->provider = $gemini;
             }
         }
     }

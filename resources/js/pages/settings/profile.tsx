@@ -9,6 +9,7 @@ import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
 
@@ -25,6 +26,8 @@ export default function Profile({ mustVerifyEmail, status }: { mustVerifyEmail: 
     const { data, setData, patch, errors, processing, recentlySuccessful } = useForm({
         name: auth.user.name,
         email: auth.user.email,
+        ai_provider: auth.user.ai_provider || 'gemini',
+        ai_api_key: auth.user.ai_api_key || '',
     });
 
     const submit: FormEventHandler = (e) => {
@@ -73,6 +76,43 @@ export default function Profile({ mustVerifyEmail, status }: { mustVerifyEmail: 
                             />
 
                             <InputError className="mt-2" message={errors.email} />
+                        </div>
+
+                        <div className="grid gap-2">
+                            <Label htmlFor="ai_provider">Pilih Penyedia AI</Label>
+                            <Select value={data.ai_provider} onValueChange={(value) => setData('ai_provider', value)}>
+                                <SelectTrigger className="w-full">
+                                    <SelectValue placeholder="Pilih AI" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="gemini">Google Gemini</SelectItem>
+                                    <SelectItem value="openai">OpenAI (ChatGPT)</SelectItem>
+                                    <SelectItem value="claude">Anthropic Claude</SelectItem>
+                                    <SelectItem value="groq">Groq (Llama 3)</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <InputError className="mt-2" message={errors.ai_provider} />
+                        </div>
+
+                        <div className="grid gap-2">
+                            <Label htmlFor="ai_api_key">AI API Key (Opsional)</Label>
+                            <Input
+                                id="ai_api_key"
+                                type="text"
+                                className="mt-1 block w-full"
+                                value={data.ai_api_key}
+                                onChange={(e) => setData('ai_api_key', e.target.value)}
+                                placeholder={
+                                    data.ai_provider === 'openai' ? 'Contoh: sk-proj-...' :
+                                    data.ai_provider === 'claude' ? 'Contoh: sk-ant-api03-...' :
+                                    data.ai_provider === 'groq' ? 'Contoh: gsk_...' :
+                                    'Contoh: AIzaSyB...'
+                                }
+                            />
+                            <p className="mt-1 text-sm text-neutral-500">
+                                Masukkan API Key Anda sendiri jika Anda ingin menggunakan fitur AI tanpa batasan kuota sistem. Key ini disimpan secara aman (terenkripsi).
+                            </p>
+                            <InputError className="mt-2" message={errors.ai_api_key} />
                         </div>
 
                         {mustVerifyEmail && auth.user.email_verified_at === null && (

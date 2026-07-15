@@ -27,6 +27,8 @@ class ProfileUpdateRequest extends FormRequest
                 'max:255',
                 Rule::unique(User::class)->ignore($this->user()->id),
             ],
+            'ai_provider' => ['nullable', 'string', 'in:gemini,openai,claude,groq'],
+            'ai_api_key' => ['nullable', 'string', 'max:255'],
         ];
     }
 }

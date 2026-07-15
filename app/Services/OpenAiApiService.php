@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\LmsAiPrompt;
 use App\Contracts\AiProviderInterface;
 
-class GroqApiService implements AiProviderInterface
+class OpenAiApiService implements AiProviderInterface
 {
     private array $apiKeys;
     private int $currentKeyIndex = 0;
@@ -17,10 +17,11 @@ class GroqApiService implements AiProviderInterface
 
     public function __construct()
     {
-        $keysString = env('GROQ_API_KEYS', '');
+        $keysString = env('OPENAI_API_KEY', '');
         $this->apiKeys = array_filter(array_map('trim', explode(',', $keysString)));
-        $this->model   = env('GROQ_MODEL', 'llama3-70b-8192');
-        $this->baseUrl = 'https://api.groq.com/openai/v1';
+        // Default to gpt-4o-mini as it's the cost-effective model, or gpt-3.5-turbo
+        $this->model   = env('OPENAI_MODEL', 'gpt-4o-mini');
+        $this->baseUrl = 'https://api.openai.com/v1';
     }
 
     public function isConfigured(): bool
@@ -37,7 +38,7 @@ class GroqApiService implements AiProviderInterface
 
     public function getProviderName(): string
     {
-        return 'groq';
+        return 'openai';
     }
 
     public function suggestLearningExperiences(
@@ -47,7 +48,7 @@ class GroqApiService implements AiProviderInterface
         ?string $pedagogicalModel = null,
         bool $regenerate = false
     ): array {
-        $hash = md5('groq_experiences_' . $tpDescription . $content . $subjectName . $pedagogicalModel);
+        $hash = md5('openai_experiences_' . $tpDescription . $content . $subjectName . $pedagogicalModel);
 
         if (!$regenerate) {
             $cached = \App\Models\LmsAiCache::getCache($hash);
@@ -87,7 +88,7 @@ class GroqApiService implements AiProviderInterface
         ?string $observationMode = null,
         ?string $quizMode = null
     ): array {
-        $hash = md5('groq_assessment_' . $tpDescription . $content . $instrumentType . ($observationMode ?? '') . ($quizMode ?? ''));
+        $hash = md5('openai_assessment_' . $tpDescription . $content . $instrumentType . ($observationMode ?? '') . ($quizMode ?? ''));
 
         if (!$regenerate) {
             $cached = \App\Models\LmsAiCache::getCache($hash);
@@ -131,7 +132,7 @@ class GroqApiService implements AiProviderInterface
         ?string $pedagogicalModel = null,
         bool $regenerate = false
     ): array {
-        $hash = md5('groq_orchestrator_' . $subjectName . $className . $tpDescription . $pedagogicalModel);
+        $hash = md5('openai_orchestrator_' . $subjectName . $className . $tpDescription . $pedagogicalModel);
 
         if (!$regenerate) {
             $cached = \App\Models\LmsAiCache::getCache($hash);
@@ -179,7 +180,7 @@ class GroqApiService implements AiProviderInterface
                     ],
                     'temperature' => 0.7,
                     'top_p' => 0.9,
-                    'max_tokens' => 8192,
+                    'max_tokens' => 4096,
                 ]);
 
                 if ($response->successful()) {
@@ -188,34 +189,33 @@ class GroqApiService implements AiProviderInterface
                 }
 
                 if ($response->status() === 429 || $response->status() === 403) {
-                    Log::warning('Groq API rate limit/quota reached on key index ' . $this->currentKeyIndex);
+                    Log::warning('OpenAI API rate limit/quota reached on key index ' . $this->currentKeyIndex);
                     $this->currentKeyIndex = ($this->currentKeyIndex + 1) % $maxAttempts;
                     $attempts++;
                     continue; 
                 }
 
-                Log::warning('Groq API request failed', [
+                Log::warning('OpenAI API request failed', [
                     'status' => $response->status(),
                     'body'   => $response->body(),
                 ]);
                 return null;
 
             } catch (\Exception $e) {
-                Log::error('Groq API error', [
+                Log::error('OpenAI API error', [
                     'message' => $e->getMessage(),
                 ]);
                 return null;
             }
         }
         
-        Log::error('Groq API all keys exhausted or rate limited.');
+        Log::error('OpenAI API all keys exhausted or rate limited.');
         return null;
     }
 
     private function parseLearningExperiencesResponse(string $text): array
     {
         $result = ['understanding' => '', 'application' => '', 'reflection' => ''];
-        // Supports both HTML <h2> and Markdown ## headers
         $sections = preg_split('/<h2>\s*(Memahami|Mengaplikasi|Merefleksi)\s*<\/h2>|##\s+(Memahami|Mengaplikasi|Merefleksi)/i', $text, -1, PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY);
         if ($sections && count($sections) > 1) {
             for ($i = 0; $i < count($sections); $i++) {
@@ -242,7 +242,7 @@ class GroqApiService implements AiProviderInterface
         $text = trim($text);
         $decoded = json_decode($text, true);
         if (json_last_error() !== JSON_ERROR_NONE) {
-            Log::warning('Failed to parse Groq JSON response', [
+            Log::warning('Failed to parse OpenAI JSON response', [
                 'error' => json_last_error_msg(),
                 'text'  => substr($text, 0, 500),
             ]);
