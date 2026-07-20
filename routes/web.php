@@ -26,7 +26,8 @@ Route::get('/', function () {
     return redirect()->route('login');
 })->name('home');
 
-Route::get('/sso/login', [\App\Http\Controllers\Auth\SsoLoginController::class, 'login'])->name('sso.login');
+Route::get('/sso/login', [\App\Http\Controllers\SSOController::class, 'login'])->name('sso.login');
+Route::get('/sso/presensi', [\App\Http\Controllers\SSOController::class, 'redirectToPresensi'])->name('sso.presensi');
 
 Route::middleware(['auth'])->group(function () {
     // ── Notifications ──────────────────────────────────────────────
