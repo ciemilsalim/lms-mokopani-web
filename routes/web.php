@@ -29,6 +29,11 @@ Route::get('/', function () {
 Route::get('/sso/login', [\App\Http\Controllers\Auth\SsoLoginController::class, 'login'])->name('sso.login');
 Route::get('/sso/presensi', [\App\Http\Controllers\SSOController::class, 'redirectToPresensi'])->name('sso.presensi');
 
+Route::get('/clear-cache', function() {
+    \Illuminate\Support\Facades\Artisan::call('optimize:clear');
+    return 'Cache cleared successfully! Silakan refresh halaman utama LMS.';
+});
+
 Route::middleware(['auth'])->group(function () {
     // ── Notifications ──────────────────────────────────────────────
     Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.index');
