@@ -3,13 +3,14 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use App\Models\User;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 
 class SSOController extends Controller
 {
     /**
-     * Redirect to Presensi with SSO signature.
+     * Redirect to Presensi using secure database token SSO.
      */
     public function redirectToPresensi(Request $request)
     {
@@ -18,51 +19,29 @@ class SSOController extends Controller
             abort(403, 'Unauthorized');
         }
 
-        $timestamp = now()->timestamp;
-        $userId = $user->id;
-        $secret = env('SSO_SECRET_KEY', 'default_sso_secret_key_123');
-
-        $signature = hash_hmac('sha256', $userId . '|' . $timestamp, $secret);
-
-        // LMS uses VITE_SIPADA_URL or SIPADA_URL, let's use env
-        $presensiUrl = env('VITE_SIPADA_URL', env('SIPADA_URL', 'http://localhost:8000'));
+        // Secure role check in LMS
+        $role = $user->role ?: ($user->teacher ? 'teacher' : ($user->student ? 'student' : 'guest'));
         
-        $url = rtrim($presensiUrl, '/') . '/sso/login?user_id=' . $userId . '&timestamp=' . $timestamp . '&signature=' . $signature;
-
-        return redirect()->away($url);
-    }
-
-    /**
-     * Handle incoming SSO login from Presensi.
-     */
-    public function login(Request $request)
-    {
-        $userId = $request->query('user_id');
-        $timestamp = $request->query('timestamp');
-        $signature = $request->query('signature');
-        $secret = env('SSO_SECRET_KEY', 'default_sso_secret_key_123');
-
-        if (!$userId || !$timestamp || !$signature) {
-            abort(403, 'Missing SSO parameters.');
+        if ($role !== 'teacher' && $role !== 'admin') {
+            abort(403, 'Anda tidak memiliki hak akses untuk SSO ke Aplikasi Presensi.');
         }
 
-        // Check if token is expired (e.g., older than 60 seconds)
-        if (now()->timestamp - $timestamp > 60) {
-            abort(403, 'SSO Token has expired.');
-        }
+        // 1. Generate a secure random token
+        $token = Str::random(60);
 
-        $expectedSignature = hash_hmac('sha256', $userId . '|' . $timestamp, $secret);
+        // 2. Store the token in the shared database with a 1-minute expiration
+        DB::table('sso_tokens')->insert([
+            'user_id' => $user->id,
+            'token' => $token,
+            'expires_at' => Carbon::now('UTC')->addMinute(),
+            'created_at' => Carbon::now('UTC'),
+            'updated_at' => Carbon::now('UTC'),
+        ]);
 
-        if (!hash_equals($expectedSignature, $signature)) {
-            abort(403, 'Invalid SSO Signature.');
-        }
+        // 3. Get target Absensi URL
+        $presensiUrl = env('ABSENSI_URL', 'http://localhost:8000');
 
-        $user = User::findOrFail($userId);
-        
-        // Log the user in
-        Auth::login($user);
-
-        // Redirect to dashboard or intended route
-        return redirect()->route('dashboard');
+        // 4. Redirect to the target Absensi SSO login route
+        return redirect()->away(rtrim($presensiUrl, '/') . '/sso/login?token=' . $token);
     }
 }
