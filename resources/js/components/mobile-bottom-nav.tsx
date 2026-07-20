@@ -1,6 +1,6 @@
 import { type NavItem, type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
-import { Menu, LogOut, Settings, Palette } from 'lucide-react';
+import { Menu, LogOut, Settings, Palette, ExternalLink } from 'lucide-react';
 import { getNavSections } from './app-sidebar';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose } from './ui/sheet';
 import AppLogo from './app-logo';
@@ -124,6 +124,14 @@ export function MobileBottomNav() {
                                             <Palette className="h-5 w-5 text-muted-foreground" />
                                             <span className="text-sm font-semibold">Tampilan & Logo</span>
                                         </Link>
+                                    </SheetClose>
+                                )}
+                                {(user_role === 'admin' || user_role === 'teacher') && (
+                                    <SheetClose asChild>
+                                        <a href="/sso/presensi" className="flex items-center gap-3 px-4 py-3 bg-sky-50 dark:bg-sky-950/20 border border-sky-100 dark:border-sky-900/50 text-sky-600 dark:text-sky-400 rounded-xl hover:bg-sky-100 dark:hover:bg-sky-950/40 transition">
+                                            <ExternalLink className="h-5 w-5" />
+                                            <span className="text-sm font-semibold">Aplikasi Presensi</span>
+                                        </a>
                                     </SheetClose>
                                 )}
                                 <SheetClose asChild>
