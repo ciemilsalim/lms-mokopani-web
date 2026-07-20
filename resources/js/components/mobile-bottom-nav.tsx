@@ -1,6 +1,6 @@
 import { type NavItem, type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
-import { Menu, LogOut, Settings, Palette, ExternalLink } from 'lucide-react';
+import { Menu, LogOut, Settings, Palette, ExternalLink, CalendarCheck } from 'lucide-react';
 import { getNavSections } from './app-sidebar';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose } from './ui/sheet';
 import AppLogo from './app-logo';
@@ -57,6 +57,19 @@ export function MobileBottomNav() {
                     </Link>
                 );
             })}
+
+            {/* Tombol Presensi - langsung di bottom bar */}
+            {(user_role === 'admin' || user_role === 'teacher') && (
+                <a
+                    href="/sso/presensi"
+                    className="flex flex-col items-center justify-center w-full h-full gap-1 text-sky-600 dark:text-sky-400 hover:text-sky-700 dark:hover:text-sky-300 transition-colors"
+                >
+                    <CalendarCheck className="h-5 w-5" />
+                    <span className="text-[10px] font-semibold tracking-tight truncate max-w-[72px] text-center">
+                        Presensi
+                    </span>
+                </a>
+            )}
 
             {/* Menu Lainnya */}
             <Sheet>
@@ -126,14 +139,7 @@ export function MobileBottomNav() {
                                         </Link>
                                     </SheetClose>
                                 )}
-                                {(user_role === 'admin' || user_role === 'teacher') && (
-                                    <SheetClose asChild>
-                                        <a href="/sso/presensi" className="flex items-center gap-3 px-4 py-3 bg-sky-50 dark:bg-sky-950/20 border border-sky-100 dark:border-sky-900/50 text-sky-600 dark:text-sky-400 rounded-xl hover:bg-sky-100 dark:hover:bg-sky-950/40 transition">
-                                            <ExternalLink className="h-5 w-5" />
-                                            <span className="text-sm font-semibold">Aplikasi Presensi</span>
-                                        </a>
-                                    </SheetClose>
-                                )}
+
                                 <SheetClose asChild>
                                     <Link href="/logout" method="post" as="button" type="button" className="w-full flex items-center gap-3 px-4 py-3 bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 rounded-xl hover:bg-red-100 dark:hover:bg-red-950/40 transition">
                                         <LogOut className="h-5 w-5" />
