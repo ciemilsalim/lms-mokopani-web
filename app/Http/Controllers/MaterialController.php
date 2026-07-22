@@ -186,6 +186,8 @@ class MaterialController extends Controller
             'content'               => 'nullable|string',
             'external_link'         => 'nullable|url|max:255',
             'file'                  => 'nullable|file|max:10240', // 10MB
+            'thumbnail'             => 'nullable|image|max:2048',
+            'resources'             => 'nullable|array',
         ]);
 
         $filePath = null;
@@ -193,6 +195,11 @@ class MaterialController extends Controller
         if ($request->hasFile('file')) {
             $filePath = $request->file('file')->store('lms/materials', 'public');
             $fileType = $request->file('file')->getClientOriginalExtension();
+        }
+
+        $thumbnailPath = null;
+        if ($request->hasFile('thumbnail')) {
+            $thumbnailPath = $request->file('thumbnail')->store('lms/thumbnails', 'public');
         }
 
         $material = \App\Models\LmsMaterial::create([
@@ -203,12 +210,43 @@ class MaterialController extends Controller
             'semester_id'           => $activeSemester?->id,
             'title'                 => $validated['title'],
             'content'               => $validated['content'] ?? null,
+            'thumbnail'             => $thumbnailPath,
             'external_link'         => $validated['external_link'] ?? null,
             'file_path'             => $filePath,
             'file_type'             => $fileType,
         ]);
 
         $material->schoolClasses()->sync($validated['school_classes']);
+
+        // Handle new resources
+        if (!empty($validated['resources'])) {
+            foreach ($validated['resources'] as $index => $resData) {
+                $type = $resData['type'] ?? 'link';
+                $title = $resData['title'] ?? null;
+                $path = null;
+                $fileType = null;
+
+                if ($type === 'link' || $type === 'youtube') {
+                    $path = $resData['value'] ?? null;
+                } else if ($type === 'file') {
+                    if ($request->hasFile("resources.{$index}.file")) {
+                        $file = $request->file("resources.{$index}.file");
+                        $path = $file->store('lms/materials', 'public');
+                        $fileType = $file->getClientOriginalExtension();
+                    }
+                }
+
+                if ($path) {
+                    \App\Models\LmsMaterialResource::create([
+                        'material_id' => $material->id,
+                        'type'        => $type,
+                        'title'       => $title,
+                        'path'        => $path,
+                        'file_type'   => $fileType,
+                    ]);
+                }
+            }
+        }
 
         return redirect()->route('materials.index')->with('success', 'Materi berhasil diterbitkan.');
     }

@@ -156,7 +156,7 @@ export default function CreateMaterial({ teachings, objectives }: CreateMaterial
     const [fullDraftClickCount, setFullDraftClickCount] = useState(0);
     const [isPromptModalOpen, setIsPromptModalOpen] = useState(false);
 
-    const { data, setData, post, processing, errors } = useForm({
+    const { data, setData, post, processing, errors, transform } = useForm({
         subject_id: '',
         school_classes: [] as number[],
         learning_objective_id: '',
@@ -217,6 +217,10 @@ export default function CreateMaterial({ teachings, objectives }: CreateMaterial
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        transform((data) => ({
+            ...data,
+            resources: resources,
+        }));
         post(route('materials.store'), {
             forceFormData: true,
         });
