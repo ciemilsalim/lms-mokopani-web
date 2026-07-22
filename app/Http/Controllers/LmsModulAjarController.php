@@ -63,6 +63,8 @@ class LmsModulAjarController extends Controller
         // Ambil data penugasan mengajar (Mapel & Kelas)
         $teachings = TeachingAssignment::with(['subject', 'schoolClass'])
             ->where('teacher_id', $teacher->id)
+            ->where('academic_year_id', $activeYear?->id)
+            ->where('semester_id', $activeSemester?->id)
             ->get()
             ->map(fn ($t) => [
                 'id'              => $t->id,
@@ -345,6 +347,8 @@ class LmsModulAjarController extends Controller
         // Ambil data penugasan mengajar (Mapel & Kelas)
         $teachings = TeachingAssignment::with(['subject', 'schoolClass'])
             ->where('teacher_id', $teacher->id)
+            ->where('academic_year_id', $activeYear?->id)
+            ->where('semester_id', $activeSemester?->id)
             ->get()
             ->map(fn ($t) => [
                 'id'              => $t->id,

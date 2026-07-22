@@ -18,8 +18,13 @@ class RemedialRecordController extends Controller
     protected function getTeacherTeachings()
     {
         $teacher = Auth::user()->teacher;
+        $activeYear = AcademicYear::getActive();
+        $activeSemester = Semester::getActive();
+        
         return TeachingAssignment::with(['subject', 'schoolClass'])
             ->where('teacher_id', $teacher->id)
+            ->where('academic_year_id', $activeYear?->id)
+            ->where('semester_id', $activeSemester?->id)
             ->get()
             ->map(fn ($t) => [
                 'subject_id'   => $t->subject_id,

@@ -34,8 +34,13 @@ class LearningObjectiveController extends Controller
             ->orderBy('order')
             ->get();
 
+        $activeYear = \App\Models\AcademicYear::getActive();
+        $activeSemester = \App\Models\Semester::getActive();
+
         $subjects = TeachingAssignment::with('subject')
             ->where('teacher_id', $teacher->id)
+            ->where('academic_year_id', $activeYear?->id)
+            ->where('semester_id', $activeSemester?->id)
             ->get()
             ->pluck('subject')
             ->unique('id');
