@@ -14,28 +14,34 @@ class AiManager
         GeminiApiService $gemini, 
         GroqApiService $groq, 
         OpenAiApiService $openai, 
-        ClaudeApiService $claude
+        ClaudeApiService $claude,
+        OpenRouterApiService $openrouter
     ) {
         $user = Auth::user();
         
-        $activeProvider = env('ACTIVE_AI_PROVIDER', 'gemini');
+        // Ambil provider utama dari pusat data SIPADA
+        $globalProvider = \Illuminate\Support\Facades\DB::table('settings')->where('key', 'global_ai_provider')->value('value') ?: 'gemini';
+        
+        $activeProvider = $globalProvider;
         $customApiKey = null;
 
-        // Jika user sedang login dan memiliki preferensi AI Provider
-        if ($user && $user->ai_provider) {
+        // Jika user sedang login dan memiliki preferensi AI Provider (jika masih digunakan di LMS)
+        if ($user && isset($user->ai_provider) && !empty($user->ai_provider)) {
             $activeProvider = $user->ai_provider;
-            $customApiKey = $user->ai_api_key;
+            $customApiKey = $user->ai_api_key ?? null;
         }
 
         // Resolusi provider
-        if ($activeProvider === 'groq') {
+        if ($activeProvider === 'openrouter') {
+            $this->provider = $openrouter;
+        } elseif ($activeProvider === 'groq') {
             $this->provider = $groq;
         } elseif ($activeProvider === 'openai') {
             $this->provider = $openai;
         } elseif ($activeProvider === 'claude') {
             $this->provider = $claude;
         } else {
-            // Default ke gemini jika provider lain tidak tersedia/didukung
+            // Default ke gemini
             $this->provider = $gemini;
         }
 
@@ -46,7 +52,9 @@ class AiManager
 
         // Fallback jika provider tidak terkonfigurasi (baik dengan custom key maupun .env key)
         if (!$this->provider->isConfigured()) {
-            if ($gemini->isConfigured()) {
+            if ($openrouter->isConfigured()) {
+                $this->provider = $openrouter;
+            } elseif ($gemini->isConfigured()) {
                 $this->provider = $gemini;
             } elseif ($groq->isConfigured()) {
                 $this->provider = $groq;
