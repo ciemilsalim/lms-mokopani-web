@@ -151,8 +151,10 @@ class MaterialController extends Controller
         // Ambil data pengampuan
         $teachings = \App\Models\TeachingAssignment::with(['subject', 'schoolClass'])
             ->where('teacher_id', $teacher->id)
-            ->where('academic_year_id', $activeYear?->id)
-            ->where('semester_id', $activeSemester?->id)
+            ->whereHas('schoolClass', function($q) use ($activeYear, $activeSemester) {
+                $q->where('academic_year_id', $activeYear?->id)
+                  ->where('semester_id', $activeSemester?->id);
+            })
             ->get();
 
         // Ambil TP
@@ -412,8 +414,10 @@ class MaterialController extends Controller
         // Ambil data pengampuan
         $teachings = \App\Models\TeachingAssignment::with(['subject', 'schoolClass'])
             ->where('teacher_id', $teacher->id)
-            ->where('academic_year_id', $activeYear?->id)
-            ->where('semester_id', $activeSemester?->id)
+            ->whereHas('schoolClass', function($q) use ($activeYear, $activeSemester) {
+                $q->where('academic_year_id', $activeYear?->id)
+                  ->where('semester_id', $activeSemester?->id);
+            })
             ->get();
 
         // Ambil TP

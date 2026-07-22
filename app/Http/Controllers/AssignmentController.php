@@ -222,8 +222,10 @@ class AssignmentController extends Controller
         // Ambil data pengampuan (Subject + Class) dari tabel teaching_assignments di Absensi
         $teachings = \App\Models\TeachingAssignment::with(['subject', 'schoolClass'])
             ->where('teacher_id', $teacher->id)
-            ->where('academic_year_id', $activeYear?->id)
-            ->where('semester_id', $activeSemester?->id)
+            ->whereHas('schoolClass', function($q) use ($activeYear, $activeSemester) {
+                $q->where('academic_year_id', $activeYear?->id)
+                  ->where('semester_id', $activeSemester?->id);
+            })
             ->get()
             ->map(fn ($t) => [
                 'subject_id'   => $t->subject_id,
@@ -822,8 +824,10 @@ class AssignmentController extends Controller
 
         $teachings = \App\Models\TeachingAssignment::with(['subject', 'schoolClass'])
             ->where('teacher_id', $teacher->id)
-            ->where('academic_year_id', $activeYear?->id)
-            ->where('semester_id', $activeSemester?->id)
+            ->whereHas('schoolClass', function($q) use ($activeYear, $activeSemester) {
+                $q->where('academic_year_id', $activeYear?->id)
+                  ->where('semester_id', $activeSemester?->id);
+            })
             ->get()
             ->map(fn ($t) => [
                 'subject_id'   => $t->subject_id,
