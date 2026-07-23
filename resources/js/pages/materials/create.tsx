@@ -264,6 +264,18 @@ export default function CreateMaterial({ teachings, objectives }: CreateMaterial
 
                 <form onSubmit={handleSubmit} className="grid gap-6 lg:grid-cols-3">
                     <div className="lg:col-span-2 space-y-6">
+                        {Object.keys(errors).length > 0 && (
+                            <div className="rounded-xl bg-destructive/10 p-4 border border-destructive/20 text-destructive text-sm font-medium flex flex-col gap-1">
+                                <p className="font-bold flex items-center gap-2">
+                                    <AlertTriangle className="h-4 w-4" /> Gagal menyimpan materi. Silakan periksa kesalahan berikut:
+                                </p>
+                                <ul className="list-disc pl-5 mt-1">
+                                    {Object.values(errors).map((err, i) => (
+                                        <li key={i}>{err}</li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
                         {/* Header Section */}
                         <div className="rounded-xl bg-primary/5 p-4 sm:p-5 border border-primary/10">
                             <div className="flex items-center gap-3 sm:gap-4">

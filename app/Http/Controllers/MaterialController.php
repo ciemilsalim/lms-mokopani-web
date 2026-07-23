@@ -153,9 +153,8 @@ class MaterialController extends Controller
             ->where('teacher_id', $teacher->id)
             ->where('academic_year_id', $activeYear?->id)
             ->where('semester_id', $activeSemester?->id)
-            ->whereHas('schoolClass', function($q) use ($activeYear, $activeSemester) {
-                $q->where('academic_year_id', $activeYear?->id)
-                  ->where('semester_id', $activeSemester?->id);
+            ->whereHas('schoolClass', function($q) use ($activeYear) {
+                $q->where('academic_year_id', $activeYear?->id);
             })
             ->get();
 
@@ -192,7 +191,7 @@ class MaterialController extends Controller
                 'resources'             => 'nullable|array',
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
-            dd($e->errors());
+            \Illuminate\Support\Facades\Log::error('Material Store Validation Failed: ', $e->errors());
             throw $e;
         }
 
@@ -462,9 +461,8 @@ class MaterialController extends Controller
             ->where('teacher_id', $teacher->id)
             ->where('academic_year_id', $activeYear?->id)
             ->where('semester_id', $activeSemester?->id)
-            ->whereHas('schoolClass', function($q) use ($activeYear, $activeSemester) {
-                $q->where('academic_year_id', $activeYear?->id)
-                  ->where('semester_id', $activeSemester?->id);
+            ->whereHas('schoolClass', function($q) use ($activeYear) {
+                $q->where('academic_year_id', $activeYear?->id);
             })
             ->get();
 

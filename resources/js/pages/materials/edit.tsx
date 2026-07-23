@@ -1,6 +1,6 @@
 import AppLayout from '@/layouts/app-layout';
 import { Head, Link, useForm } from '@inertiajs/react';
-import { ChevronLeft, Save, Zap, Image as ImageIcon, X, Link as LinkIcon, Upload } from 'lucide-react';
+import { ChevronLeft, Save, Zap, Image as ImageIcon, X, Link as LinkIcon, Upload, AlertTriangle } from 'lucide-react';
 import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
 
@@ -86,6 +86,18 @@ export default function EditMaterial({ material, teachings, objectives }: EditMa
             <Head title={`Edit ${material.title} – LMS Mokopani`} />
 
             <div className="flex h-full flex-1 flex-col gap-4 sm:gap-6 md:max-w-7xl mx-auto">
+                {Object.keys(errors).length > 0 && (
+                    <div className="rounded-xl bg-destructive/10 p-4 border border-destructive/20 text-destructive text-sm font-medium flex flex-col gap-1">
+                        <p className="font-bold flex items-center gap-2">
+                            <AlertTriangle className="h-4 w-4" /> Gagal memperbarui materi. Silakan periksa kesalahan berikut:
+                        </p>
+                        <ul className="list-disc pl-5 mt-1">
+                            {Object.values(errors).map((err, i) => (
+                                <li key={i}>{err}</li>
+                            ))}
+                        </ul>
+                    </div>
+                )}
                 <div className="flex items-center justify-between">
                     <Link 
                         href={`/materials/${material.id}`}

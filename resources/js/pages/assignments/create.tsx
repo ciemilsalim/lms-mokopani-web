@@ -186,7 +186,18 @@ export default function CreateAssignment({ teachings, objectives, assessment_typ
 
                     if (suggestion.stimulus !== undefined) newConfig.stimulus = suggestion.stimulus;
                     if (suggestion.criteria !== undefined) newConfig.criteria = suggestion.criteria;
-                    if (suggestion.questions !== undefined) newConfig.questions = suggestion.questions;
+                    let suggestedQuestions = suggestion.questions || suggestion.pertanyaan;
+                    if (suggestedQuestions !== undefined && Array.isArray(suggestedQuestions)) {
+                        newConfig.questions = suggestedQuestions.map((q: any) => ({
+                            ...q,
+                            text: q.text || q.question || q.pertanyaan || q.description || '',
+                            answer: q.answer || q.correct_answer || q.jawaban || '',
+                            options: Array.isArray(q.options || q.pilihan) ? (q.options || q.pilihan).map((o: any) => ({
+                                ...o,
+                                text: o.text || o.option || o.label || o.teks || ''
+                            })) : undefined
+                        }));
+                    }
                     if (suggestion.indicators !== undefined) newConfig.indicators = suggestion.indicators;
                     if (suggestion.focus !== undefined) newConfig.focus = suggestion.focus;
                     if (suggestion.context !== undefined) newConfig.context = suggestion.context;
