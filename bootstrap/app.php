@@ -24,6 +24,10 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
+        $exceptions->reportable(function (\Illuminate\Validation\ValidationException $e) {
+            \Illuminate\Support\Facades\Log::error('Validation Failed: ', $e->errors());
+        });
+        
         $exceptions->respond(function (\Symfony\Component\HttpFoundation\Response $response, \Throwable $exception, \Illuminate\Http\Request $request) {
             if ($response->getStatusCode() === 403) {
                 return \Inertia\Inertia::render('errors/403', ['status' => $response->getStatusCode()])

@@ -312,21 +312,21 @@ export default function CreateMaterial({ teachings, objectives }: CreateMaterial
                                         {classesForSubject.length === 0 && (
                                             <p className="text-xs text-muted-foreground italic col-span-2">Pilih mata pelajaran terlebih dahulu</p>
                                         )}
-                                        {classesForSubject.map(t => (
-                                            <label key={t.school_class_id} className="flex items-center gap-2 text-sm border p-2 rounded-lg cursor-pointer hover:bg-muted/50">
+                                        {classesForSubject.map(c => (
+                                            <label key={c.school_class_id} className="flex items-center gap-2 text-sm border p-2 rounded-lg cursor-pointer hover:bg-muted/50">
                                                 <input
                                                     type="checkbox"
-                                                    checked={data.school_classes.includes(t.school_class_id)}
+                                                    checked={data.school_classes.includes(c.school_class_id)}
                                                     onChange={(e) => {
-                                                        const id = t.school_class_id;
+                                                        const id = c.school_class_id;
                                                         setData('school_classes', e.target.checked 
                                                             ? [...data.school_classes, id]
-                                                            : data.school_classes.filter(c => c !== id)
+                                                            : data.school_classes.filter(classId => classId !== id)
                                                         );
                                                     }}
                                                     className="rounded border-input text-primary focus:ring-primary"
                                                 />
-                                                {t.school_class?.name}
+                                                {c.class_name}
                                             </label>
                                         ))}
                                     </div>
