@@ -173,22 +173,29 @@ class MaterialController extends Controller
 
     public function store(Request $request)
     {
+        dd($request->all());
+        \Illuminate\Support\Facades\Log::info('Store Material Request: ', $request->all());
         $teacher = Auth::user()->teacher;
         $activeYear = \App\Models\AcademicYear::getActive();
         $activeSemester = \App\Models\Semester::getActive();
 
-        $validated = $request->validate([
-            'subject_id'            => 'required|exists:mysql_absensi.subjects,id',
-            'school_classes'        => 'required|array|min:1',
-            'school_classes.*'      => 'exists:mysql_absensi.school_classes,id',
-            'learning_objective_id' => 'nullable|exists:lms_learning_objectives,id',
-            'title'                 => 'required|string|max:255',
-            'content'               => 'nullable|string',
-            'external_link'         => 'nullable|url|max:255',
-            'file'                  => 'nullable|file|max:10240', // 10MB
-            'thumbnail'             => 'nullable|image|max:2048',
-            'resources'             => 'nullable|array',
-        ]);
+        try {
+            $validated = $request->validate([
+                'subject_id'            => 'required|exists:mysql_absensi.subjects,id',
+                'school_classes'        => 'required|array|min:1',
+                'school_classes.*'      => 'exists:mysql_absensi.school_classes,id',
+                'learning_objective_id' => 'nullable|exists:lms_learning_objectives,id',
+                'title'                 => 'required|string|max:255',
+                'content'               => 'nullable|string',
+                'external_link'         => 'nullable|url|max:255',
+                'file'                  => 'nullable|file|max:10240', // 10MB
+                'thumbnail'             => 'nullable|image|max:2048',
+                'resources'             => 'nullable|array',
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            dd($e->errors());
+            throw $e;
+        }
 
         $filePath = null;
         $fileType = null;
