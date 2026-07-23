@@ -188,10 +188,15 @@ export default function CreateAssignment({ teachings, objectives, assessment_typ
                     if (suggestion.criteria !== undefined) newConfig.criteria = suggestion.criteria;
                     let suggestedQuestions = suggestion.questions || suggestion.pertanyaan;
                     if (suggestedQuestions !== undefined && Array.isArray(suggestedQuestions)) {
-                        newConfig.questions = suggestedQuestions.map((q: any) => ({
+                        const totalQuestions = suggestedQuestions.length;
+                        const basePoints = totalQuestions > 0 ? Math.floor(100 / totalQuestions) : 0;
+                        const remainder = totalQuestions > 0 ? 100 % totalQuestions : 0;
+
+                        newConfig.questions = suggestedQuestions.map((q: any, idx: number) => ({
                             ...q,
                             text: q.text || q.question || q.pertanyaan || q.description || '',
-                            answer: q.answer || q.correct_answer || q.jawaban || '',
+                            answer: q.answer || q.correct_answer || q.jawaban || q.kunci_jawaban || q.pembahasan || q.pedoman_penskoran || q.rubrik || '',
+                            points: idx < remainder ? basePoints + 1 : basePoints,
                             options: Array.isArray(q.options || q.pilihan) ? (q.options || q.pilihan).map((o: any) => ({
                                 ...o,
                                 text: o.text || o.option || o.label || o.teks || ''
