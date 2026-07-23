@@ -173,7 +173,6 @@ class MaterialController extends Controller
 
     public function store(Request $request)
     {
-        dd($request->all());
         \Illuminate\Support\Facades\Log::info('Store Material Request: ', $request->all());
         $teacher = Auth::user()->teacher;
         $activeYear = \App\Models\AcademicYear::getActive();
