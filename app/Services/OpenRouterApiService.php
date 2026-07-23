@@ -116,7 +116,14 @@ class OpenRouterApiService implements AiProviderInterface
         ], $template);
 
         $response = $this->generateContent($prompt);
+        \Illuminate\Support\Facades\Log::info('AI Assessment Generation Log:', [
+            'prompt' => $prompt,
+            'raw_response' => $response,
+        ]);
         $result = $response ? $this->parseJsonResponse($response) : [];
+        \Illuminate\Support\Facades\Log::info('AI Assessment Parsed JSON:', [
+            'result' => $result
+        ]);
 
         \App\Models\LmsAiCache::setCache($hash, 'assessment', [
             'tp' => $tpDescription, 'content' => $content, 'instrument_type' => $instrumentType
