@@ -193,8 +193,10 @@ Route::middleware(['auth'])->group(function () {
         // Class Sessions (PPA 2025 Execution)
         Route::get('class-sessions', [\App\Http\Controllers\ClassSessionController::class, 'index'])->name('class-sessions.index');
         Route::post('class-sessions', [\App\Http\Controllers\ClassSessionController::class, 'store'])->name('class-sessions.store');
+        Route::get('class-sessions/{id}/live', [\App\Http\Controllers\ClassSessionController::class, 'live'])->name('class-sessions.live');
         Route::get('class-sessions/{id}', [\App\Http\Controllers\ClassSessionController::class, 'show'])->name('class-sessions.show');
         Route::put('class-sessions/{id}', [\App\Http\Controllers\ClassSessionController::class, 'update'])->name('class-sessions.update');
+        Route::post('api/ai/generate-learning-steps', [\App\Http\Controllers\ClassSessionController::class, 'generateLearningSteps'])->name('ai.generate-learning-steps');
 
         // Rapor Processing (PPA 2025 Summative Calculation)
         Route::post('rapor/generate', [\App\Http\Controllers\RaporReportController::class, 'generate'])->name('rapor.generate');
