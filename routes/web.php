@@ -184,6 +184,15 @@ Route::middleware(['auth'])->group(function () {
         Route::get('analytics', [AnalyticsController::class, 'index'])->name('analytics.index');
         Route::get('analytics/{subjectId}/{classId}', [AnalyticsController::class, 'show'])->name('analytics.show');
 
+        // Class Sessions (PPA 2025 Execution)
+        Route::get('class-sessions', [\App\Http\Controllers\ClassSessionController::class, 'index'])->name('class-sessions.index');
+        Route::post('class-sessions', [\App\Http\Controllers\ClassSessionController::class, 'store'])->name('class-sessions.store');
+        Route::get('class-sessions/{id}', [\App\Http\Controllers\ClassSessionController::class, 'show'])->name('class-sessions.show');
+        Route::put('class-sessions/{id}', [\App\Http\Controllers\ClassSessionController::class, 'update'])->name('class-sessions.update');
+
+        // Rapor Processing (PPA 2025 Summative Calculation)
+        Route::post('rapor/generate', [\App\Http\Controllers\RaporReportController::class, 'generate'])->name('rapor.generate');
+        Route::get('rapor/{id}', [\App\Http\Controllers\RaporReportController::class, 'show'])->name('rapor.show');
     });
 
     // ── Parent-only ─────────────────────────────────────────────────
