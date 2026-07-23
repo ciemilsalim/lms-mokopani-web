@@ -95,6 +95,12 @@ Route::middleware(['auth'])->group(function () {
         Route::post('lesson-plans/prompts/save', [LmsPromptController::class, 'store'])->name('lesson-plans.prompts.save');
         Route::post('lesson-plans/prompts/reset', [LmsPromptController::class, 'reset'])->name('lesson-plans.prompts.reset');
 
+        // Wizard Modul Ajar (Shadcn UI & PPA 2025)
+        Route::get('modul-ajar/wizard', [LmsModulAjarController::class, 'wizard'])->name('modul-ajar.wizard');
+        Route::post('api/ai/suggest-tp', [\App\Http\Controllers\LmsAiWizardController::class, 'suggestTp'])->name('ai.suggest-tp');
+        Route::post('api/ai/suggest-atp', [\App\Http\Controllers\LmsAiWizardController::class, 'suggestAtp'])->name('ai.suggest-atp');
+        Route::post('api/ai/generate-kktp', [\App\Http\Controllers\LmsAiWizardController::class, 'generateKktp'])->name('ai.generate-kktp');
+
         // Materi CRUD (create/delete)
         Route::post('materials', [MaterialController::class, 'store'])->name('materials.store');
         Route::get('materials/{material}/edit', [MaterialController::class, 'edit'])->name('materials.edit');

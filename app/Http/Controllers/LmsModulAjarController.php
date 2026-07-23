@@ -52,6 +52,43 @@ class LmsModulAjarController extends Controller
     }
 
     /**
+     * Tampilkan wizard generator Modul Ajar baru (Shadcn UI & PPA 2025).
+     */
+    public function wizard()
+    {
+        $teacher = Auth::user()->teacher;
+        $activeYear = AcademicYear::getActive();
+        $activeSemester = Semester::getActive();
+
+        $cpList = LmsCapaianPembelajaran::all()->map(fn ($cp) => [
+            'id' => $cp->id,
+            'nama' => $cp->nama ?? $cp->capaian_pembelajaran,
+            'elemen' => $cp->elemen ?? 'Umum',
+            'fase' => $cp->fase ?? 'D',
+            'capaian_pembelajaran' => $cp->capaian_pembelajaran,
+        ]);
+
+        $teachings = TeachingAssignment::with(['subject', 'schoolClass'])
+            ->where('teacher_id', $teacher->id ?? 1)
+            ->where('academic_year_id', $activeYear?->id)
+            ->where('semester_id', $activeSemester?->id)
+            ->get()
+            ->map(fn ($t) => [
+                'id'              => $t->id,
+                'subject_id'      => $t->subject_id,
+                'subject_name'    => $t->subject?->name,
+                'school_class_id' => $t->school_class_id,
+                'class_name'      => $t->schoolClass?->name,
+            ]);
+
+        return Inertia::render('modul-ajar/wizard', [
+            'cpList'    => $cpList,
+            'teachings' => $teachings,
+            'period'    => $activeYear?->name . ' - ' . $activeSemester?->name,
+        ]);
+    }
+
+    /**
      * Tampilkan halaman generator Modul Ajar baru.
      */
     public function create()
