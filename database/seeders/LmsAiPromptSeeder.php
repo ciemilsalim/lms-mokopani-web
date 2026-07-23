@@ -147,6 +147,7 @@ Konteks:
 - PERTANYAAN MCQ: Harus sangat singkat, padat, langsung pada inti pertanyaan, maksimal 2 kalimat sederhana. HINDARI narasi stimulus/kasus pengantar yang terlalu bertele-tele dan panjang.
 - PILIHAN JAWABAN (OPTIONS): Harus sangat singkat, berupa kata atau frasa pendek (maksimal 5-8 kata per opsi), sejajar panjangnya, jelas, dan tidak ambigu. HINDARI pilihan jawaban berupa kalimat panjang bertele-tele yang membingungkan siswa.
 - EXIT TICKET ("exit_ticket"): Pertanyaan refleksi wajib sangat pendek (maksimal 1 kalimat tanya sederhana per butir), santai, akrab, dan mudah dipahami siswa SMP. Hindari kalimat berbelit-belit, bertele-tele, atau teoretis.
+- KUNCI JAWABAN & PEDOMAN PENSKORAN: Untuk setiap butir pertanyaan (isian singkat, pilihan ganda, maupun uraian/esai), Anda WAJIB membuat kunci jawaban yang benar atau pedoman penskoran (kunci jawaban ideal/rubrik penilaian esai) yang jelas dan realistis pada field "correct_answer" atau "answer". Ini sangat penting bagi guru sebagai panduan penilaian.
 - FORMAT OUTPUT: Seluruh output JSON WAJIB menyertakan field "description" yang berisi deskripsi/instruksi tugas untuk siswa dalam bahasa Indonesia sederhana, ramah, dan mudah dipahami (1-3 kalimat). Field "description" ini berada di level ROOT objek JSON.
 =================================================================
 
