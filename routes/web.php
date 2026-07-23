@@ -199,8 +199,12 @@ Route::middleware(['auth'])->group(function () {
         Route::post('api/ai/generate-learning-steps', [\App\Http\Controllers\ClassSessionController::class, 'generateLearningSteps'])->name('ai.generate-learning-steps');
 
         // Rapor Processing (PPA 2025 Summative Calculation)
+        Route::get('rapor/wizard', [\App\Http\Controllers\RaporReportController::class, 'wizard'])->name('rapor.wizard');
         Route::post('rapor/generate', [\App\Http\Controllers\RaporReportController::class, 'generate'])->name('rapor.generate');
         Route::get('rapor/{id}', [\App\Http\Controllers\RaporReportController::class, 'show'])->name('rapor.show');
+        Route::get('rapor/{id}/export/pdf', [\App\Http\Controllers\RaporReportController::class, 'exportPdf'])->name('rapor.export-pdf');
+        Route::get('rapor/{id}/export/csv', [\App\Http\Controllers\RaporReportController::class, 'exportCsv'])->name('rapor.export-csv');
+        Route::post('api/rapor/generate-description', [\App\Http\Controllers\RaporReportController::class, 'generateAiDescription'])->name('api.rapor.generate-description');
     });
 
     // ── Parent-only ─────────────────────────────────────────────────

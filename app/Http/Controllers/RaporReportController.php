@@ -3,9 +3,16 @@
 namespace App\Http\Controllers;
 
 use App\Models\LmsRaporReport;
+use App\Models\Student;
+use App\Models\Subject;
+use App\Models\LmsModulAjar;
 use App\Services\RaporCalculationService;
+use App\Services\AiManager;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+use Inertia\Inertia;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class RaporReportController extends Controller
 {
@@ -14,6 +21,31 @@ class RaporReportController extends Controller
     public function __construct(RaporCalculationService $calculationService)
     {
         $this->calculationService = $calculationService;
+    }
+
+    /**
+     * Display Rapor Calculation Wizard page.
+     */
+    public function wizard()
+    {
+        $students = Student::with('schoolClass')->take(50)->get()->map(fn($s) => [
+            'id' => $s->id,
+            'name' => $s->name,
+            'nis' => $s->nis ?? $s->nisn ?? '-',
+            'class_name' => $s->schoolClass?->name ?? 'VII-A',
+            'school_class_id' => $s->school_class_id,
+        ]);
+
+        $subjects = Subject::all()->map(fn($sb) => [
+            'id' => $sb->id,
+            'name' => $sb->name,
+            'code' => $sb->code ?? $sb->name,
+        ]);
+
+        return Inertia::render('rapor/wizard', [
+            'students' => $students,
+            'subjects' => $subjects,
+        ]);
     }
 
     /**
@@ -32,6 +64,7 @@ class RaporReportController extends Controller
             'weights' => 'nullable|array', // [0.2, 0.2, 0.2, 0.4]
             'threshold' => 'nullable|numeric',
             'student_name' => 'nullable|string',
+            'custom_description' => 'nullable|string',
         ]);
 
         $method = $validated['calculation_method'];
@@ -62,7 +95,10 @@ class RaporReportController extends Controller
             }
         }
 
-        $description = $this->calculationService->generateQualitativeDescription($tpDetails, $threshold, $studentName);
+        $description = $validated['custom_description'] ?? null;
+        if (!$description) {
+            $description = $this->calculationService->generateQualitativeDescription($tpDetails, $threshold, $studentName);
+        }
 
         // Store or update report record
         $report = LmsRaporReport::updateOrCreate(
@@ -86,23 +122,109 @@ class RaporReportController extends Controller
             ]
         );
 
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Nilai rapor berhasil dihitung dan disimpan.',
-            'data' => $report
-        ]);
+        return redirect()->route('rapor.show', $report->id)
+            ->with('success', 'Nilai Rapor berhasil dihitung dan disimpan.');
     }
 
     /**
-     * Download or retrieve Rapor report.
+     * Show Rapor Report page (Pratinjau HTML & Cetak).
      */
     public function show($id)
     {
         $report = LmsRaporReport::with(['student', 'modulAjar', 'subject', 'schoolClass'])->findOrFail($id);
 
-        return response()->json([
-            'status' => 'success',
-            'data' => $report
+        return Inertia::render('rapor/show', [
+            'report' => $report
         ]);
+    }
+
+    /**
+     * Generate AI Qualitative Description for Rapor via OpenRouter.
+     */
+    public function generateAiDescription(Request $request, AiManager $aiManager)
+    {
+        $validated = $request->validate([
+            'tp_details' => 'required|array',
+            'student_name' => 'nullable|string',
+        ]);
+
+        $tpDetails = $validated['tp_details'];
+        $studentName = $validated['student_name'] ?? 'Ananda';
+
+        try {
+            $aiDesc = $aiManager->generateRaporDescription($tpDetails, $studentName);
+            return response()->json([
+                'status' => 'success',
+                'description' => $aiDesc
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('AI generateRaporDescription error: ' . $e->getMessage());
+            $fallback = $this->calculationService->generateQualitativeDescription($tpDetails, 75.0, $studentName);
+            return response()->json([
+                'status' => 'fallback',
+                'description' => $fallback
+            ]);
+        }
+    }
+
+    /**
+     * Export Rapor Report to PDF (Laravel DomPDF).
+     */
+    public function exportPdf($id)
+    {
+        $report = LmsRaporReport::with(['student', 'subject', 'schoolClass', 'creator'])->findOrFail($id);
+
+        $pdf = Pdf::loadView('reports.rapor_pdf', [
+            'report' => $report,
+            'school_name' => school_setting('school_name', 'SMP Negeri 1 Biau'),
+            'headmaster_name' => school_setting('school_headmaster_name', 'Hj. Sitti Rahma, S.Pd., M.Pd.'),
+            'headmaster_nip' => school_setting('school_headmaster_nip', '19750812 200003 2 001'),
+        ]);
+
+        return $pdf->download("Rapor_{$report->student?->name}_{$report->id}.pdf");
+    }
+
+    /**
+     * Export Rapor Report to CSV.
+     */
+    public function exportCsv($id)
+    {
+        $report = LmsRaporReport::with(['student', 'subject', 'schoolClass'])->findOrFail($id);
+
+        $headers = [
+            "Content-type"        => "text/csv",
+            "Content-Disposition" => "attachment; filename=Rapor_{$report->student?->name}_{$report->id}.csv",
+            "Pragma"              => "no-cache",
+            "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
+            "Expires"             => "0"
+        ];
+
+        $callback = function() use ($report) {
+            $file = fopen('php://output', 'w');
+            fputcsv($file, ['Nama Siswa', 'NIS', 'Kelas', 'Mata Pelajaran', 'Metode Perhitungan', 'Nilai Akhir Rapor', 'Deskripsi Capaian Kompetensi']);
+            fputcsv($file, [
+                $report->student?->name ?? 'Siswa',
+                $report->student?->nis ?? '-',
+                $report->schoolClass?->name ?? '-',
+                $report->subject?->name ?? '-',
+                strtoupper($report->calculation_method),
+                $report->final_score,
+                $report->description
+            ]);
+            fputcsv($file, []);
+            fputcsv($file, ['Kode TP', 'Deskripsi TP', 'Nilai Sumatif']);
+
+            $details = $report->tp_scores_breakdown['details'] ?? [];
+            foreach ($details as $tp) {
+                fputcsv($file, [
+                    $tp['code'] ?? '-',
+                    $tp['title'] ?? '-',
+                    $tp['score'] ?? 0
+                ]);
+            }
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
     }
 }
