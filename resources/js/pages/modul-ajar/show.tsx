@@ -155,15 +155,15 @@ const getKktpDescription = (asm: any) => {
 }
 
 const getFaseFromClass = (className: string) => {
-    if (!className) return '-';
+    if (!className) return 'D';
     const name = className.toUpperCase();
-    if (name.match(/\b(?:XI|XII|11|12)\b/)) return 'F';
-    if (name.match(/\b(?:X|10)\b/)) return 'E';
-    if (name.match(/\b(?:VII|VIII|IX|7|8|9)\b/)) return 'D';
-    if (name.match(/\b(?:V|VI|5|6)\b/)) return 'C';
-    if (name.match(/\b(?:III|IV|3|4)\b/)) return 'B';
-    if (name.match(/\b(?:I|II|1|2)\b/)) return 'A';
-    return '-';
+    if (/11|12|XI|XII/.test(name)) return 'F';
+    if (/10|\bX\b/.test(name)) return 'E';
+    if (/7|8|9|VII|VIII|IX/.test(name)) return 'D';
+    if (/5|6|V|VI/.test(name)) return 'C';
+    if (/3|4|III|IV/.test(name)) return 'B';
+    if (/1|2|I|II/.test(name)) return 'A';
+    return 'D';
 };
 
 export default function Show({ modulAjar, assignments }: any) {
@@ -183,6 +183,7 @@ export default function Show({ modulAjar, assignments }: any) {
     const alokasiWaktu = parsedData.alokasi_waktu || '-';
     const jumlahPertemuan = parsedData.jumlah_pertemuan || '-';
     const dimensiProfil = parsedData.dimensi_profil || '-';
+    const dimensiProfilText = Array.isArray(dimensiProfil) ? dimensiProfil.join(', ') : (typeof dimensiProfil === 'string' ? dimensiProfil : '-');
     const lingkunganPembelajaran = parsedData.lingkungan_pembelajaran || '-';
     const kemitraanPembelajaran = parsedData.kemitraan_pembelajaran || '-';
     const pemanfaatanDigital = parsedData.pemanfaatan_digital || '-';
@@ -396,6 +397,10 @@ export default function Show({ modulAjar, assignments }: any) {
                                         <td className="border border-black p-2">{modulAjar.subject_name}</td>
                                     </tr>
                                     <tr>
+                                        <td className="border border-black p-2 font-bold bg-gray-50">Topik / Materi</td>
+                                        <td className="border border-black p-2 font-semibold">{modulAjar.material_title?.replace(/&nbsp;/g, ' ')}</td>
+                                    </tr>
+                                    <tr>
                                         <td className="border border-black p-2 font-bold bg-gray-50">Kurikulum</td>
                                         <td className="border border-black p-2">Kurikulum Nasional</td>
                                     </tr>
@@ -408,12 +413,8 @@ export default function Show({ modulAjar, assignments }: any) {
                                         <td className="border border-black p-2">{modulAjar.academic_year_name} ({modulAjar.semester_name})</td>
                                     </tr>
                                     <tr>
-                                        <td className="border border-black p-2 font-bold bg-gray-50">Alokasi Waktu</td>
-                                        <td className="border border-black p-2">{alokasiWaktu}</td>
-                                    </tr>
-                                    <tr>
-                                        <td className="border border-black p-2 font-bold bg-gray-50">Jumlah Pertemuan</td>
-                                        <td className="border border-black p-2">{jumlahPertemuan}</td>
+                                        <td className="border border-black p-2 font-bold bg-gray-50">Alokasi Waktu / Pertemuan</td>
+                                        <td className="border border-black p-2">{alokasiWaktu} / {jumlahPertemuan}</td>
                                     </tr>
                                     <tr>
                                         <td className="border border-black p-2 font-bold bg-gray-50">Nama Guru</td>
@@ -421,7 +422,7 @@ export default function Show({ modulAjar, assignments }: any) {
                                     </tr>
                                     <tr>
                                         <td className="border border-black p-2 font-bold bg-gray-50">Dimensi Profil Lulusan</td>
-                                        <td className="border border-black p-2">{dimensiProfil}</td>
+                                        <td className="border border-black p-2">{dimensiProfilText}</td>
                                     </tr>
                                 </tbody>
                             </table>
