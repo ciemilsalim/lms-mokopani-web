@@ -99,16 +99,27 @@ export default function LearningObjectiveIndex({ objectives, subjects, cpList }:
 
     useEffect(() => {
         if (isAtpMode) {
-            setTempObjectives([...objectives]);
-            // If they already have sequencing_method, put them in canvas, else in available
-            const inCanvas = objectives.filter(o => o.sequencing_method);
-            const inAvailable = objectives.filter(o => !o.sequencing_method);
+            // Extract Sub-TPs if they exist, otherwise fallback to parent TP
+            let allTps: Objective[] = [];
+            objectives.forEach(parent => {
+                if (parent.sub_objectives && parent.sub_objectives.length > 0) {
+                    // Include parent info for UI context if needed, but we mainly need the sub-tp objects
+                    allTps = [...allTps, ...parent.sub_objectives.map(sub => ({
+                        ...sub,
+                        subject: parent.subject,
+                        capaian_pembelajaran: parent.capaian_pembelajaran
+                    }))];
+                } else {
+                    allTps = [...allTps, parent];
+                }
+            });
+
+            setTempObjectives([...objectives]); // Still keep this just in case
             
-            // If none have sequencing_method, maybe we put all in available?
-            // Actually, let's just put all in available if user hasn't ordered them yet, 
-            // but if they already have an order > 0, they might have been ordered before. 
-            // Wait, previous logic just used `order` and `sequencing_method`.
-            // Let's rely on sequencing_method. If it's not null, it's in canvas.
+            // If they already have sequencing_method, put them in canvas, else in available
+            const inCanvas = allTps.filter(o => o.sequencing_method);
+            const inAvailable = allTps.filter(o => !o.sequencing_method);
+            
             setCanvasTps(inCanvas.length > 0 ? inCanvas.sort((a,b) => a.order - b.order) : []);
             setAvailableTps(inAvailable);
         }
