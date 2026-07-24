@@ -197,7 +197,19 @@ Format output harus berupa JSON valid tanpa code fence (```json ... ```), mengan
 - understanding: Kegiatan memahami (Understanding). Langkah operasional guru memicu rasa ingin tahu murid. Gunakan format HTML semantik. PENTING: Jika jumlah_pertemuan lebih dari 1, pisahkan skenario menggunakan <h3>Pertemuan 1</h3>, <h3>Pertemuan 2</h3>, dst.
 - application: Kegiatan mengaplikasikan (Application). Skenario aktivitas praktis, studi kasus nyata. Gunakan format HTML semantik. PENTING: Pisahkan menggunakan <h3>Pertemuan 1</h3>, <h3>Pertemuan 2</h3>, dst, jika lebih dari 1 pertemuan.
 - reflection: Kegiatan merefleksikan (Reflection). Aktivitas metakognisi murid. Gunakan format HTML semantik. PENTING: Pisahkan menggunakan <h3>Pertemuan 1</h3>, <h3>Pertemuan 2</h3>, dst, jika lebih dari 1 pertemuan.
-- lkpd: Lembar Kerja Peserta Didik lengkap dengan petunjuk, tugas, refleksi, dan rubrik. Gunakan format HTML semantik. PENTING: Pada bagian identitas LKPD, cantumkan kelas persis dengan '{class}'. Buat desain LKPD serapih dan semenarik mungkin dengan emoji (📝, 👥, 🎯, dll). PENTING: Untuk bagian Identitas (Nama Kelompok, Anggota), susun RAPIH ke bawah menggunakan list (<ul> atau <ol>) atau layout yang lega, JANGAN berjejal ke samping.
+- lkpd: Lembar Kerja Peserta Didik lengkap dengan petunjuk, tugas, refleksi, dan rubrik. Gunakan format HTML semantik. PENTING: Pada bagian identitas LKPD, cantumkan kelas persis dengan '{class}'. Buat desain LKPD serapih dan semenarik mungkin dengan emoji.
+SANGAT PENTING: Untuk bagian Identitas, WAJIB susun Anggota Kelompok ke bawah menggunakan tag <ol> seperti format berikut:
+<div style='border: 1px solid black; padding: 15px; margin-bottom: 20px;'>
+  <p><strong>Nama Kelompok:</strong> ............................................</p>
+  <p><strong>Anggota Kelompok:</strong></p>
+  <ol>
+    <li>............................................</li>
+    <li>............................................</li>
+    <li>............................................</li>
+    <li>............................................</li>
+  </ol>
+</div>
+JANGAN SEKALI-KALI MENYUSUN NAMA ANGGOTA KE SAMPING!
 
 ===== ATURAN FORMAT HTML WAJIB =====
 Field yang wajib menggunakan HTML (understanding, application, reflection, lkpd) harus ditulis menggunakan HTML semantik yang bersih dan profesional.
