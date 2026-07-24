@@ -248,6 +248,7 @@ class LmsModulAjarController extends Controller
             'pedagogical_model'     => 'nullable|string',
             'custom_prompt'         => 'nullable|string',
             'regenerate'            => 'nullable|boolean',
+            'school_class_id'       => 'nullable|exists:mysql_absensi.school_classes,id',
         ]);
 
         $regenerate = $request->boolean('regenerate', false);
@@ -257,7 +258,8 @@ class LmsModulAjarController extends Controller
             $request->material_id,
             $request->pedagogical_model,
             $request->custom_prompt,
-            $regenerate
+            $regenerate,
+            $request->school_class_id
         );
 
         if (is_array($draft)) {

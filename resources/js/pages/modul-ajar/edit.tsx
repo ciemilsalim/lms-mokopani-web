@@ -177,6 +177,7 @@ export default function Edit({ modulAjar, teachings, objectives, materials, peri
                 material_id: modulAjar.material_id,
                 pedagogical_model: pedagogicalModel,
                 custom_prompt: customPrompt,
+                school_class_id: modulAjar.school_class_id,
                 regenerate: true // Force bypass cache
             });
 
