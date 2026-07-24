@@ -284,7 +284,8 @@ export default function LearningObjectiveIndex({ objectives, subjects, cpList }:
             const response = await axios.post(route('learning-objectives.auto-sequence'), {
                 subject_id: canvasTps[0].subject_id,
                 school_class_id: canvasTps[0].school_class_id,
-                method: sequencingMethod || 'Otomatis'
+                method: sequencingMethod || 'Otomatis',
+                ids: canvasTps.map(tp => tp.id)
             });
             
             const sequenced = response.data.sequenced.map((obj: any, index: number) => ({

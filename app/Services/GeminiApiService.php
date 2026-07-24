@@ -243,6 +243,34 @@ class GeminiApiService implements AiProviderInterface
         return is_array($result) ? $result : [];
     }
 
+    public function suggestSequence(array $tps, string $method, bool $regenerate = false): array
+    {
+        $hash = md5('sequence_' . json_encode($tps) . '_' . $method);
+
+        if (!$regenerate) {
+            $cached = \App\Models\LmsAiCache::getCache($hash);
+            if ($cached) {
+                return json_decode($cached, true) ?? [];
+            }
+        }
+
+        $list = "";
+        foreach ($tps as $tp) {
+            $list .= "- ID: " . $tp['id'] . " | " . $tp['description'] . "\n";
+        }
+
+        $prompt = "Berikut adalah daftar Tujuan Pembelajaran (TP):\n" . $list . "\nUrutkan TP tersebut menggunakan metode '{$method}'. Keluarkan HANYA array JSON (tanpa markdown) berisi urutan ID saja, contoh: [5, 2, 8, 1].";
+
+        $response = $this->generateContent($prompt);
+        $result = $response ? $this->parseJsonResponse($response) : [];
+
+        if (!empty($result)) {
+            \App\Models\LmsAiCache::setCache($hash, 'sequence_tp', ['method' => $method], json_encode($result));
+        }
+
+        return is_array($result) ? $result : [];
+    }
+
     /**
      * Kirim prompt ke Gemini API dan terima respons teks.
      */

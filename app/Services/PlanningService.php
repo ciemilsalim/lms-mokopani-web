@@ -140,6 +140,31 @@ class PlanningService
      */
     public function suggestSequence($objectives, $method = 'Otomatis')
     {
+        $this->isLastRequestOnline = false;
+        
+        try {
+            $gemini = app(\App\Services\GeminiApiService::class);
+            if ($gemini->isConfigured()) {
+                // Pass a simplified array to Gemini
+                $tps = $objectives->map(fn($o) => ['id' => $o->id, 'description' => $o->description])->toArray();
+                $orderedIds = $gemini->suggestSequence($tps, $method);
+                
+                if (!empty($orderedIds)) {
+                    $this->isLastRequestOnline = true;
+                    // Sort the collection based on the ordered IDs
+                    return $objectives->sortBy(function($obj) use ($orderedIds) {
+                        $pos = array_search($obj->id, $orderedIds);
+                        return $pos !== false ? $pos : 999;
+                    })->values();
+                }
+            }
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('AI suggestSequence failed', [
+                'message' => $e->getMessage()
+            ]);
+        }
+
+        // Fallback to offline heuristic
         $levels = ['C1' => 1, 'C2' => 2, 'C3' => 3, 'C4' => 4, 'C5' => 5, 'C6' => 6];
 
         return $objectives->sort(function($a, $b) use ($levels, $method) {

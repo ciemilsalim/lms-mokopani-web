@@ -231,13 +231,19 @@ class LearningObjectiveController extends Controller
         $subjectId = $request->input('subject_id');
         $classId = $request->input('school_class_id');
         $method = $request->input('method', 'Otomatis');
+        $ids = $request->input('ids');
 
-        $objectives = LmsLearningObjective::with(['subject', 'capaianPembelajaran'])
-            ->whereNull('parent_id')
-            ->where('teacher_id', $teacher->id)
-            ->where('subject_id', $subjectId)
-            ->where('school_class_id', $classId)
-            ->get();
+        $query = LmsLearningObjective::with(['subject', 'capaianPembelajaran']);
+        
+        if (!empty($ids) && is_array($ids)) {
+            $objectives = $query->whereIn('id', $ids)->get();
+        } else {
+            $objectives = $query->whereNull('parent_id')
+                ->where('teacher_id', $teacher->id)
+                ->where('subject_id', $subjectId)
+                ->where('school_class_id', $classId)
+                ->get();
+        }
 
         $sequenced = $this->planningService->suggestSequence($objectives, $method);
 
