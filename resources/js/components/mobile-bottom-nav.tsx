@@ -38,7 +38,7 @@ export function MobileBottomNav() {
         .filter(Boolean) as NavItem[];
 
     return (
-        <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 flex h-16 items-center justify-around border-t border-border/60 bg-card px-2 shadow-[0_-4px_10px_rgba(0,0,0,0.05)] dark:shadow-[0_-4px_10px_rgba(0,0,0,0.2)] pb-safe">
+        <div className="md:hidden print:hidden fixed bottom-0 left-0 right-0 z-40 flex h-16 items-center justify-around border-t border-border/60 bg-card px-2 shadow-[0_-4px_10px_rgba(0,0,0,0.05)] dark:shadow-[0_-4px_10px_rgba(0,0,0,0.2)] pb-safe">
             {primaryItems.map((item) => {
                 const isActive = window.location.pathname.startsWith(item.url || '#') && item.url !== '/';
                 const isDashboard = item.url === '/dashboard' && window.location.pathname === '/dashboard';

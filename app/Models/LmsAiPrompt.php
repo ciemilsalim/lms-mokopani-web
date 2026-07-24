@@ -197,19 +197,7 @@ Format output harus berupa JSON valid tanpa code fence (```json ... ```), mengan
 - understanding: Kegiatan memahami (Understanding). Langkah operasional guru memicu rasa ingin tahu murid. Gunakan format HTML semantik. PENTING: Jika jumlah_pertemuan lebih dari 1, pisahkan skenario menggunakan <h3>Pertemuan 1</h3>, <h3>Pertemuan 2</h3>, dst.
 - application: Kegiatan mengaplikasikan (Application). Skenario aktivitas praktis, studi kasus nyata. Gunakan format HTML semantik. PENTING: Pisahkan menggunakan <h3>Pertemuan 1</h3>, <h3>Pertemuan 2</h3>, dst, jika lebih dari 1 pertemuan.
 - reflection: Kegiatan merefleksikan (Reflection). Aktivitas metakognisi murid. Gunakan format HTML semantik. PENTING: Pisahkan menggunakan <h3>Pertemuan 1</h3>, <h3>Pertemuan 2</h3>, dst, jika lebih dari 1 pertemuan.
-- lkpd: Lembar Kerja Peserta Didik lengkap dengan petunjuk, tugas, refleksi, dan rubrik. Gunakan format HTML semantik. PENTING: Pada bagian identitas LKPD, cantumkan kelas persis dengan '{class}'. Buat desain LKPD serapih dan semenarik mungkin dengan emoji.
-SANGAT PENTING: Untuk bagian Identitas, WAJIB susun Anggota Kelompok ke bawah menggunakan tag <ol> seperti format berikut:
-<div style='border: 1px solid black; padding: 15px; margin-bottom: 20px;'>
-  <p><strong>Nama Kelompok:</strong> ............................................</p>
-  <p><strong>Anggota Kelompok:</strong></p>
-  <ol>
-    <li>............................................</li>
-    <li>............................................</li>
-    <li>............................................</li>
-    <li>............................................</li>
-  </ol>
-</div>
-JANGAN SEKALI-KALI MENYUSUN NAMA ANGGOTA KE SAMPING!
+- lkpd: Lembar Kerja Peserta Didik lengkap dengan petunjuk, tugas, refleksi, dan rubrik. Gunakan format HTML semantik. PENTING: Pada bagian awal LKPD, cantumkan Judul LKPD (<h2>LEMBAR KERJA PESERTA DIDIK (LKPD)</h2>). Lalu susun informasi Mata Pelajaran, Kelas persis '{class}', Materi, dan Model Pembelajaran RAPIH DAN LURUS menggunakan tabel tanpa border dengan titik dua (:) yang sejajar lurus (contoh: gunakan <table style='border:none;'> dengan td label width 180px, td titik dua, td isi). PENTING: JANGAN buatkan lagi kotak isi Nama Kelompok / Anggota Kelompok, karena kotak identitas Nama/Kelompok dan 5 kolom Anggota sudah disediakan secara otomatis oleh sistem di bagian paling atas LKPD. Fokus buatkan isi aktivitas belajar, pertanyaan/studi kasus, dan rubrik penilaian yang rapih & menarik.
 
 ===== ATURAN FORMAT HTML WAJIB =====
 Field yang wajib menggunakan HTML (understanding, application, reflection, lkpd) harus ditulis menggunakan HTML semantik yang bersih dan profesional.

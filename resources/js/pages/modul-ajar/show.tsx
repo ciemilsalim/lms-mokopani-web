@@ -653,12 +653,13 @@ export default function Show({ modulAjar, assignments }: any) {
                     }
                     @media print {
                         body { background: white; }
+                        nav, header, .md\\:hidden, .print\\:hidden, [role="navigation"] { display: none !important; }
                         .print-lkpd-mode section:not(.lkpd-section) { display: none !important; }
                         .print-lkpd-mode .hide-in-lkpd-print { display: none !important; }
-                        .print\\:hidden { display: none !important; }
-                        .print-avoid-break { page-break-inside: avoid; }
-                        table { page-break-inside: auto; }
-                        tr { page-break-inside: avoid; page-break-after: auto; }
+                        .print-avoid-break { page-break-inside: auto !important; break-inside: auto !important; }
+                        section { page-break-inside: auto !important; page-break-before: auto !important; page-break-after: auto !important; break-inside: auto !important; break-before: auto !important; break-after: auto !important; margin-bottom: 1.5rem !important; }
+                        table { page-break-inside: auto !important; break-inside: auto !important; }
+                        tr { page-break-inside: auto !important; page-break-after: auto !important; break-inside: auto !important; }
                         .prose { max-width: 100% !important; }
                     }
                 `}} />
