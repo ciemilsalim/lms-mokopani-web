@@ -146,13 +146,18 @@ class LearningObjectiveController extends Controller
             'orders'   => 'required|array',
             'orders.*.id'    => 'required|exists:lms_learning_objectives,id',
             'orders.*.order' => 'required|integer',
-            'sequencing_method' => 'nullable|string',
+            'orders.*.time_allocation' => 'nullable|integer',
+            'orders.*.notes' => 'nullable|string',
+            'orders.*.sequencing_method' => 'nullable|string',
+            'sequencing_method' => 'nullable|string', // Global fallback
         ]);
 
         foreach ($request->orders as $item) {
             LmsLearningObjective::where('id', $item['id'])->update([
                 'order' => $item['order'],
-                'sequencing_method' => $request->sequencing_method
+                'time_allocation' => $item['time_allocation'] ?? null,
+                'notes' => $item['notes'] ?? null,
+                'sequencing_method' => $item['sequencing_method'] ?? $request->sequencing_method
             ]);
         }
 

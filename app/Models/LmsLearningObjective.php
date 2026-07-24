@@ -27,6 +27,8 @@ class LmsLearningObjective extends Model
         'formulation_method',
         'sequencing_method',
         'sequencing_notes',
+        'time_allocation',
+        'notes',
     ];
 
     public function schoolClass()

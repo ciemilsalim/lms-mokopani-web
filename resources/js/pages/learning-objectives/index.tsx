@@ -85,6 +85,8 @@ export default function LearningObjectiveIndex({ objectives, subjects, cpList }:
     const [deleteId, setDeleteId] = useState<number | null>(null);
     const [isAtpMode, setIsAtpMode] = useState(false);
     const [tempObjectives, setTempObjectives] = useState<Objective[]>([]);
+    const [availableTps, setAvailableTps] = useState<Objective[]>([]);
+    const [canvasTps, setCanvasTps] = useState<Objective[]>([]);
     const [activeTab, setActiveTab] = useState<'direct' | 'analysis' | 'cross_element'>('direct');
     const [isGenerating, setIsGenerating] = useState(false);
     const [selectedCps, setSelectedCps] = useState<number[]>([]);
@@ -93,10 +95,22 @@ export default function LearningObjectiveIndex({ objectives, subjects, cpList }:
     const [highlights, setHighlights] = useState<HighlightItem[]>([]);
     const [breakdownTarget, setBreakdownTarget] = useState<Objective | null>(null);
     const [subTps, setSubTps] = useState<string[]>(['']);
+    const [draggedTpId, setDraggedTpId] = useState<number | null>(null);
 
     useEffect(() => {
         if (isAtpMode) {
             setTempObjectives([...objectives]);
+            // If they already have sequencing_method, put them in canvas, else in available
+            const inCanvas = objectives.filter(o => o.sequencing_method);
+            const inAvailable = objectives.filter(o => !o.sequencing_method);
+            
+            // If none have sequencing_method, maybe we put all in available?
+            // Actually, let's just put all in available if user hasn't ordered them yet, 
+            // but if they already have an order > 0, they might have been ordered before. 
+            // Wait, previous logic just used `order` and `sequencing_method`.
+            // Let's rely on sequencing_method. If it's not null, it's in canvas.
+            setCanvasTps(inCanvas.length > 0 ? inCanvas.sort((a,b) => a.order - b.order) : []);
+            setAvailableTps(inAvailable);
         }
     }, [isAtpMode, objectives]);
 
@@ -252,13 +266,13 @@ export default function LearningObjectiveIndex({ objectives, subjects, cpList }:
     };
 
     const handleAutoSequence = async () => {
-        if (tempObjectives.length === 0) return;
+        if (canvasTps.length === 0) return;
         
         setIsGenerating(true);
         try {
             const response = await axios.post(route('learning-objectives.auto-sequence'), {
-                subject_id: tempObjectives[0].subject_id,
-                school_class_id: tempObjectives[0].school_class_id,
+                subject_id: canvasTps[0].subject_id,
+                school_class_id: canvasTps[0].school_class_id,
                 method: sequencingMethod || 'Otomatis'
             });
             
@@ -266,7 +280,7 @@ export default function LearningObjectiveIndex({ objectives, subjects, cpList }:
                 ...obj,
                 order: index + 1
             }));
-            setTempObjectives(sequenced);
+            setCanvasTps(sequenced);
             if (!sequencingMethod) setSequencingMethod('Otomatis (Taksonomi Bloom)');
         } catch (error) {
             console.error("Auto sequence failed", error);
@@ -277,11 +291,92 @@ export default function LearningObjectiveIndex({ objectives, subjects, cpList }:
 
     const saveAtpOrder = () => {
         router.post(route('learning-objectives.update-order'), {
-            orders: tempObjectives.map((obj, index) => ({ id: obj.id, order: index + 1 })),
+            orders: canvasTps.map((obj, index) => ({ 
+                id: obj.id, 
+                order: index + 1,
+                time_allocation: obj.time_allocation,
+                notes: obj.notes,
+                sequencing_method: obj.sequencing_method
+            })),
             sequencing_method: sequencingMethod || 'Manual'
         }, {
             onSuccess: () => setIsAtpMode(false)
         });
+    };
+
+    const handleDragStart = (e: React.DragEvent, id: number) => {
+        setDraggedTpId(id);
+        e.dataTransfer.effectAllowed = 'move';
+        // Add a slight delay to allow the drag image to be generated before hiding the original
+        setTimeout(() => {
+            const el = document.getElementById(`tp-${id}`);
+            if (el) el.classList.add('opacity-50');
+        }, 0);
+    };
+
+    const handleDragEnd = (e: React.DragEvent, id: number) => {
+        setDraggedTpId(null);
+        const el = document.getElementById(`tp-${id}`);
+        if (el) el.classList.remove('opacity-50');
+    };
+
+    const handleDragOver = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+    };
+
+    const handleDropToCanvas = (e: React.DragEvent) => {
+        e.preventDefault();
+        if (!draggedTpId) return;
+
+        const tpToMove = availableTps.find(t => t.id === draggedTpId) || canvasTps.find(t => t.id === draggedTpId);
+        if (!tpToMove) return;
+
+        // If it comes from availableTps, move it to canvasTps
+        if (availableTps.some(t => t.id === draggedTpId)) {
+            setAvailableTps(availableTps.filter(t => t.id !== draggedTpId));
+            setCanvasTps([...canvasTps, tpToMove]);
+        }
+        // If it's already in canvas, reordering is handled in a separate function
+    };
+
+    const handleDropToAvailable = (e: React.DragEvent) => {
+        e.preventDefault();
+        if (!draggedTpId) return;
+
+        const tpToMove = canvasTps.find(t => t.id === draggedTpId);
+        if (!tpToMove) return;
+
+        setCanvasTps(canvasTps.filter(t => t.id !== draggedTpId));
+        setAvailableTps([...availableTps, tpToMove]);
+    };
+
+    const handleCanvasReorder = (e: React.DragEvent, targetIndex: number) => {
+        e.preventDefault();
+        e.stopPropagation(); // Prevent firing handleDropToCanvas
+        if (!draggedTpId) return;
+
+        const isFromAvailable = availableTps.some(t => t.id === draggedTpId);
+        const tpToMove = isFromAvailable ? availableTps.find(t => t.id === draggedTpId) : canvasTps.find(t => t.id === draggedTpId);
+        if (!tpToMove) return;
+
+        const newCanvasTps = [...canvasTps];
+        
+        if (isFromAvailable) {
+            setAvailableTps(availableTps.filter(t => t.id !== draggedTpId));
+            newCanvasTps.splice(targetIndex, 0, tpToMove);
+        } else {
+            const currentIndex = canvasTps.findIndex(t => t.id === draggedTpId);
+            if (currentIndex === targetIndex) return;
+            newCanvasTps.splice(currentIndex, 1);
+            newCanvasTps.splice(targetIndex, 0, tpToMove);
+        }
+        
+        setCanvasTps(newCanvasTps);
+    };
+
+    const handleCanvasTpChange = (id: number, field: 'time_allocation' | 'notes' | 'sequencing_method', value: any) => {
+        setCanvasTps(canvasTps.map(tp => tp.id === id ? { ...tp, [field]: value } : tp));
     };
 
     const openBreakdownModal = (obj: Objective) => {
@@ -401,7 +496,7 @@ export default function LearningObjectiveIndex({ objectives, subjects, cpList }:
                                 </div>
                                 <div className="min-w-0">
                                     <h3 className="text-sm font-bold truncate">Penyusunan Alur Tujuan Pembelajaran (ATP)</h3>
-                                    <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-tight truncate sm:whitespace-normal">Urutkan TP secara logis untuk mencapai kompetensi fase</p>
+                                    <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-tight truncate sm:whitespace-normal">Tarik TP dari kiri ke kanan untuk menyusun alur</p>
                                 </div>
                             </div>
                             <div className="flex flex-wrap items-center gap-2">
@@ -436,24 +531,109 @@ export default function LearningObjectiveIndex({ objectives, subjects, cpList }:
                             </div>
                         </div>
 
-                        <div className="space-y-2">
-                            {tempObjectives.map((obj, index) => (
-                                <div key={obj.id} className="flex items-center gap-4 p-4 bg-card border rounded-xl shadow-sm group hover:border-primary/30 transition">
-                                    <div className="flex flex-col items-center gap-1">
-                                        <button onClick={() => moveObjective(index, 'up')} disabled={index === 0} className="p-1 rounded hover:bg-muted disabled:opacity-30"><ArrowUpDown className="h-3 w-3 rotate-180" /></button>
-                                        <span className="text-xs font-black text-primary/40 group-hover:text-primary transition">{index + 1}</span>
-                                        <button onClick={() => moveObjective(index, 'down')} disabled={index === tempObjectives.length - 1} className="p-1 rounded hover:bg-muted disabled:opacity-30"><ArrowUpDown className="h-3 w-3" /></button>
-                                    </div>
-                                    <GripVertical className="h-4 w-4 text-muted-foreground/30" />
-                                    <div className="flex-1">
-                                        <div className="flex flex-wrap items-center gap-2 mb-1">
-                                            <span className="text-[10px] font-bold text-muted-foreground uppercase">{obj.subject?.name}</span>
-                                            {obj.capaian_pembelajaran && <span className="text-[10px] font-bold text-primary/60 truncate max-w-[150px]">{obj.capaian_pembelajaran?.elemen}</span>}
-                                        </div>
-                                        <p className="text-sm font-medium text-foreground">{obj.description}</p>
-                                    </div>
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[600px]">
+                            {/* Panel Kiri: TP Tersedia */}
+                            <div 
+                                className="col-span-1 border border-border bg-muted/10 rounded-2xl flex flex-col overflow-hidden"
+                                onDragOver={handleDragOver}
+                                onDrop={handleDropToAvailable}
+                            >
+                                <div className="p-4 bg-muted/30 border-b border-border">
+                                    <h4 className="text-sm font-black text-foreground uppercase tracking-widest">Daftar TP</h4>
+                                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Tersedia: {availableTps.length} TP</p>
                                 </div>
-                            ))}
+                                <div className="flex-1 p-4 overflow-y-auto space-y-3">
+                                    {availableTps.length === 0 ? (
+                                        <div className="flex flex-col items-center justify-center h-full text-center p-4">
+                                            <Target className="h-10 w-10 text-muted-foreground/30 mb-3" />
+                                            <p className="text-sm font-bold text-muted-foreground">Semua TP telah digunakan di Kanvas.</p>
+                                        </div>
+                                    ) : (
+                                        availableTps.map((obj) => (
+                                            <div 
+                                                key={obj.id} 
+                                                id={`tp-${obj.id}`}
+                                                draggable 
+                                                onDragStart={(e) => handleDragStart(e, obj.id)}
+                                                onDragEnd={(e) => handleDragEnd(e, obj.id)}
+                                                className="cursor-move p-4 bg-card border border-border shadow-sm rounded-xl hover:border-primary/40 transition active:cursor-grabbing"
+                                            >
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <GripVertical className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0" />
+                                                    <span className="text-[10px] font-black text-primary uppercase tracking-widest">{obj.code || 'TP'}</span>
+                                                </div>
+                                                <p className="text-xs font-medium text-foreground leading-relaxed line-clamp-3">{obj.description}</p>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Panel Kanan: Kanvas */}
+                            <div 
+                                className="col-span-1 lg:col-span-2 border-2 border-dashed border-border bg-card rounded-2xl flex flex-col relative overflow-hidden"
+                                onDragOver={handleDragOver}
+                                onDrop={handleDropToCanvas}
+                            >
+                                <div className="p-4 bg-muted/30 border-b border-border sticky top-0 z-10">
+                                    <h4 className="text-sm font-black text-foreground uppercase tracking-widest">Kanvas Alur (ATP)</h4>
+                                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Total: {canvasTps.length} TP Terurut</p>
+                                </div>
+                                <div className="flex-1 p-6 overflow-y-auto space-y-4">
+                                    {canvasTps.length === 0 ? (
+                                        <div className="flex flex-col items-center justify-center h-full text-center">
+                                            <ArrowUpDown className="h-12 w-12 text-muted-foreground/20 mb-4" />
+                                            <p className="text-lg font-black text-foreground/50">Kanvas Masih Kosong</p>
+                                            <p className="text-xs font-medium text-muted-foreground mt-2 max-w-sm">Tarik dan lepaskan TP dari panel sebelah kiri ke area ini untuk mulai menyusun alur.</p>
+                                        </div>
+                                    ) : (
+                                        canvasTps.map((obj, index) => (
+                                            <div 
+                                                key={obj.id}
+                                                id={`tp-${obj.id}`}
+                                                draggable
+                                                onDragStart={(e) => handleDragStart(e, obj.id)}
+                                                onDragEnd={(e) => handleDragEnd(e, obj.id)}
+                                                onDragOver={handleDragOver}
+                                                onDrop={(e) => handleCanvasReorder(e, index)}
+                                                className="cursor-move flex flex-col sm:flex-row gap-4 p-4 bg-background border border-border shadow-sm rounded-xl hover:border-primary/40 transition group relative"
+                                            >
+                                                <div className="absolute -left-3 top-1/2 -translate-y-1/2 flex items-center justify-center h-6 w-6 rounded-full bg-primary text-[10px] font-black text-white shadow-sm border-2 border-card">
+                                                    {index + 1}
+                                                </div>
+                                                <div className="flex flex-col items-center justify-center pl-2">
+                                                    <GripVertical className="h-5 w-5 text-muted-foreground/30 group-hover:text-primary/50 transition" />
+                                                </div>
+                                                <div className="flex-1 flex flex-col">
+                                                    <p className="text-sm font-medium text-foreground leading-relaxed">{obj.description}</p>
+                                                    <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                                        <div className="col-span-1">
+                                                            <label className="text-[10px] font-black uppercase text-muted-foreground">Alokasi Waktu (JP)</label>
+                                                            <input 
+                                                                type="number"
+                                                                value={obj.time_allocation || ''}
+                                                                onChange={(e) => handleCanvasTpChange(obj.id, 'time_allocation', e.target.value)}
+                                                                placeholder="Misal: 4"
+                                                                className="w-full mt-1 px-3 py-1.5 text-xs bg-muted/50 border border-border rounded-lg outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
+                                                            />
+                                                        </div>
+                                                        <div className="col-span-1 sm:col-span-2">
+                                                            <label className="text-[10px] font-black uppercase text-muted-foreground">Catatan / Fokus Materi</label>
+                                                            <input 
+                                                                type="text"
+                                                                value={obj.notes || ''}
+                                                                onChange={(e) => handleCanvasTpChange(obj.id, 'notes', e.target.value)}
+                                                                placeholder="Materi inti yang diajarkan..."
+                                                                className="w-full mt-1 px-3 py-1.5 text-xs bg-muted/50 border border-border rounded-lg outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            </div>
                         </div>
                     </div>
                 ) : (
