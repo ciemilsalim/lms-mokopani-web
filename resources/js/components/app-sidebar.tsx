@@ -19,42 +19,42 @@ const teacherNavSections: NavSection[] = [
         label: 'Utama',
         items: [
             { title: 'Dashboard',           url: '/dashboard', icon: LayoutDashboard },
-            { title: 'Petunjuk Penggunaan', url: '/guide',     icon: Book },
+            { title: 'Pengumuman',          url: '/announcements', icon: Bell },
         ],
     },
     {
-        label: 'Perencanaan & Pelaksanaan',
+        label: 'Tahap 1: Perencanaan',
         items: [
-            { title: 'Tujuan Pembelajaran',   url: '/learning-objectives',    icon: GraduationCap },
-            { title: 'Materi',                url: '/materials',              icon: Library },
-            { title: 'Asesmen',               url: '/assignments',            icon: ClipboardList },
-            { title: 'Pembelajaran (RPP/MA)', url: '/lesson-plans',           icon: BookOpen },
+            { title: 'Analisis CP & TP',      url: '/learning-objectives',    icon: Target },
+            { title: 'Modul Ajar / RPP',      url: '/lesson-plans',           icon: BookOpen },
+        ],
+    },
+    {
+        label: 'Tahap 2: Pelaksanaan',
+        items: [
             { title: 'Sesi Kelas (Live)',     url: '/class-sessions',         icon: Compass },
+            { title: 'Bank Asesmen',          url: '/assignments',            icon: ClipboardList },
+        ],
+    },
+    {
+        label: 'Tahap 3: Pengolahan',
+        items: [
+            { title: 'Nilai & Rapor PPA',     url: '/rapor/wizard',           icon: FileBarChart },
             { title: 'Projek P5',             url: '/p5',                     icon: Heart },
         ],
     },
     {
-        label: 'Penilaian & Diagnostik',
+        label: 'Tahap 4: Refleksi',
         items: [
-            { title: 'Nilai & Rapor',            url: '/gradebook',          icon: FileBarChart },
-            { title: 'Rapor PPA 2025 (Wizard)',  url: '/rapor/wizard',       icon: FileBarChart },
-            { title: 'Remedial & Pengayaan',     url: '/remedial',           icon: FileWarning },
-            { title: 'Diagnostik Non-Kognitif',  url: '/non-cognitive',      icon: Users },
-            { title: 'Diagnostik Adaptif',       url: '/adaptive-learning',  icon: Brain },
+            { title: 'Remedial & Pengayaan',  url: '/remedial',               icon: GraduationCap },
+            { title: 'Early Warning System',  url: '/early-warning',          icon: FileWarning },
+            { title: 'Analitik Pembelajaran', url: '/analytics',              icon: BarChart3 },
         ],
     },
     {
-        label: 'Analitik & Monitoring',
+        label: 'Bantuan',
         items: [
-            { title: 'Analitik Pembelajaran', url: '/analytics',      icon: BarChart3 },
-            { title: 'Early Warning System',  url: '/early-warning',  icon: FileWarning },
-        ],
-    },
-    {
-        label: 'Komunikasi',
-        items: [
-            { title: 'Feedback & Revisi', url: '/feedback-revisions', icon: MessageSquare },
-            { title: 'Pengumuman',       url: '/announcements',       icon: Bell },
+            { title: 'Petunjuk Penggunaan', url: '/guide',     icon: Book },
         ],
     },
 ];
@@ -64,24 +64,26 @@ const studentNavSections: NavSection[] = [
         label: 'Utama',
         items: [
             { title: 'Dashboard',           url: '/dashboard', icon: LayoutDashboard },
-            { title: 'Pelajaran Saya',      url: '/subjects',  icon: BookOpen },
-            { title: 'Petunjuk Penggunaan', url: '/guide',     icon: Book },
+            { title: 'Pengumuman',          url: '/announcements', icon: Bell },
         ],
     },
     {
         label: 'Belajar',
         items: [
-            { title: 'Materi',   url: '/materials',   icon: Library },
-            { title: 'Asesmen', url: '/assignments', icon: ClipboardList },
-            { title: 'Nilai Saya',           url: '/gradebook',          icon: FileBarChart },
-            { title: 'Diagnostik Adaptif',   url: '/adaptive-learning',  icon: Brain },
-            { title: 'Projek P5',            url: '/p5/saya',            icon: Heart },
+            { title: 'Kelas Saya',          url: '/class-sessions',  icon: Compass },
+            { title: 'Projek P5',           url: '/p5/saya',         icon: Heart },
         ],
     },
     {
-        label: 'Informasi',
+        label: 'Hasil Belajar',
         items: [
-            { title: 'Pengumuman', url: '/announcements', icon: Bell },
+            { title: 'Rapor Saya',          url: '/rapor/wizard',    icon: FileBarChart },
+        ],
+    },
+    {
+        label: 'Bantuan',
+        items: [
+            { title: 'Petunjuk Penggunaan', url: '/guide',     icon: Book },
         ],
     },
 ];
@@ -123,14 +125,19 @@ const parentNavSections: NavSection[] = [
         label: 'Utama',
         items: [
             { title: 'Dashboard',           url: '/dashboard',       icon: LayoutDashboard },
-            { title: 'Anak Saya',           url: '/parent/dashboard', icon: Heart },
-            { title: 'Petunjuk Penggunaan', url: '/guide',           icon: Book },
+            { title: 'Pengumuman',          url: '/announcements',   icon: Bell },
         ],
     },
     {
-        label: 'Informasi',
+        label: 'Pantau Anak',
         items: [
-            { title: 'Pengumuman', url: '/announcements', icon: Bell },
+            { title: 'Perkembangan Belajar',url: '/parent/dashboard', icon: Heart },
+        ],
+    },
+    {
+        label: 'Bantuan',
+        items: [
+            { title: 'Petunjuk Penggunaan', url: '/guide',           icon: Book },
         ],
     },
 ];

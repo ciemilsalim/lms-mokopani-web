@@ -92,6 +92,7 @@ const statCards = (stats: DashboardStats, role: string) => {
             icon: GraduationCap,
             color: 'primary',
             roles: ['admin', 'teacher'],
+            url: '/students',
         },
         {
             key: 'teachers',
@@ -100,6 +101,7 @@ const statCards = (stats: DashboardStats, role: string) => {
             icon: Users,
             color: 'info',
             roles: ['admin'],
+            url: '/teachers',
         },
         {
             key: 'subjects',
@@ -108,6 +110,7 @@ const statCards = (stats: DashboardStats, role: string) => {
             icon: BookOpen,
             color: 'success',
             roles: ['admin', 'teacher', 'student'],
+            url: '/subjects',
         },
         {
             key: 'materials',
@@ -116,6 +119,7 @@ const statCards = (stats: DashboardStats, role: string) => {
             icon: Library,
             color: 'warning',
             roles: ['admin', 'teacher', 'student'],
+            url: '/materials',
         },
         {
             key: 'assignments',
@@ -124,6 +128,7 @@ const statCards = (stats: DashboardStats, role: string) => {
             icon: ClipboardList,
             color: 'destructive',
             roles: ['admin', 'teacher', 'student'],
+            url: '/assignments',
         },
         {
             key: 'pending',
@@ -132,6 +137,7 @@ const statCards = (stats: DashboardStats, role: string) => {
             icon: ClipboardCheck,
             color: 'info',
             roles: ['admin', 'teacher'],
+            url: '/assignments',
         },
         {
             key: 'pending_student',
@@ -140,6 +146,7 @@ const statCards = (stats: DashboardStats, role: string) => {
             icon: ClipboardCheck,
             color: 'info',
             roles: ['student'],
+            url: '/assignments',
         },
         {
             key: 'p5',
@@ -148,6 +155,7 @@ const statCards = (stats: DashboardStats, role: string) => {
             icon: Heart,
             color: 'destructive',
             roles: ['student'],
+            url: '/p5',
         },
     ];
     return cards.filter(c => c.roles.includes(role));
@@ -311,9 +319,9 @@ export default function Dashboard({ stats, identity, subjects, classes, recentAc
                     {cards.map((card) => {
                         const Icon = card.icon;
                         const c = colorMap[card.color] || colorMap.primary;
-                        return (
-                            <Card key={card.key} className="border border-border/50 card-hover shadow-sm bg-card overflow-hidden">
-                                <CardContent className="p-4 sm:p-5">
+                        const cardContent = (
+                            <Card className="border border-border/50 card-hover shadow-sm bg-card overflow-hidden h-full">
+                                <CardContent className="p-4 sm:p-5 h-full">
                                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-0">
                                         <div>
                                             <p className="text-[10px] sm:text-[11px] text-muted-foreground font-semibold uppercase tracking-wider">{card.label}</p>
@@ -325,6 +333,16 @@ export default function Dashboard({ stats, identity, subjects, classes, recentAc
                                     </div>
                                 </CardContent>
                             </Card>
+                        );
+
+                        return card.url ? (
+                            <Link key={card.key} href={card.url} className="block w-full h-full">
+                                {cardContent}
+                            </Link>
+                        ) : (
+                            <div key={card.key} className="block w-full h-full">
+                                {cardContent}
+                            </div>
                         );
                     })}
                 </div>
@@ -425,7 +443,7 @@ export default function Dashboard({ stats, identity, subjects, classes, recentAc
 
                     {/* Teacher Only: Pending Grading */}
                     {user_role === 'teacher' && (
-                        <Card className="xl:col-span-1 card-hover shadow-sm border border-border/80 overflow-hidden">
+                        <Card className="xl:col-span-2 card-hover shadow-sm border border-border/80 overflow-hidden">
                             <div className="flex items-center justify-between border-b px-6 py-4">
                                 <div>
                                     <h2 className="font-semibold text-foreground">Tugas Perlu Dinilai</h2>
@@ -457,7 +475,7 @@ export default function Dashboard({ stats, identity, subjects, classes, recentAc
                     )}
 
                     {/* Teacher Only: Class Performance */}
-                    {user_role === 'teacher' && (
+                    {false && user_role === 'teacher' && (
                         <Card className="xl:col-span-1 card-hover shadow-sm border border-border/80 overflow-hidden">
                             <div className="flex items-center justify-between border-b px-6 py-4">
                                 <div>
@@ -547,7 +565,7 @@ export default function Dashboard({ stats, identity, subjects, classes, recentAc
                     )}
 
                     {/* Today's Schedule */}
-                    <Card className="xl:col-span-1 card-hover shadow-sm border border-border/80 overflow-hidden">
+                    <Card className={`card-hover shadow-sm border border-border/80 overflow-hidden ${user_role === 'teacher' ? 'xl:col-span-2' : 'xl:col-span-1'}`}>
                         <div className="flex items-center justify-between border-b px-6 py-4">
                             <div>
                                 <h2 className="font-semibold text-foreground">Jadwal Hari Ini</h2>
@@ -597,7 +615,8 @@ export default function Dashboard({ stats, identity, subjects, classes, recentAc
                     </Card>
 
                     {/* Assignment Progress */}
-                    <Card className="xl:col-span-1 card-hover shadow-sm border border-border/80 overflow-hidden">
+                    {user_role !== 'teacher' && (
+                        <Card className="xl:col-span-1 card-hover shadow-sm border border-border/80 overflow-hidden">
                         <div className="flex items-center justify-between border-b px-6 py-4">
                             <div>
                                 <h2 className="font-semibold text-foreground">Progress Asesmen</h2>
@@ -654,6 +673,7 @@ export default function Dashboard({ stats, identity, subjects, classes, recentAc
                             })()}
                         </CardContent>
                     </Card>
+                    )}
                 </div>
 
                 {/* P5 Progress (Student Only) */}
@@ -701,7 +721,8 @@ export default function Dashboard({ stats, identity, subjects, classes, recentAc
                 {/* Bottom Row: Course Table + Recent Activity */}
                 <div className="grid gap-6 xl:grid-cols-3">
                     {/* Course Progress Table */}
-                    <Card className="xl:col-span-2 shadow-sm border border-border/80 overflow-hidden">
+                    {user_role !== 'teacher' && (
+                        <Card className="xl:col-span-2 shadow-sm border border-border/80 overflow-hidden">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b px-6 py-4">
                             <div>
                                 <h2 className="font-semibold text-foreground">Progress Siswa</h2>
@@ -860,9 +881,10 @@ export default function Dashboard({ stats, identity, subjects, classes, recentAc
                             )}
                         </div>
                     </Card>
+                    )}
 
                     {/* Recent Activity */}
-                    <Card className="xl:col-span-1 shadow-sm border border-border/80 overflow-hidden">
+                    <Card className={`shadow-sm border border-border/80 overflow-hidden ${user_role === 'teacher' ? 'xl:col-span-3' : 'xl:col-span-1'}`}>
                         <div className="flex items-center justify-between border-b px-6 py-4">
                             <div>
                                 <h2 className="font-semibold text-foreground">Aktivitas Terbaru</h2>

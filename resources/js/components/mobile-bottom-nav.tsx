@@ -16,10 +16,10 @@ export function MobileBottomNav() {
     let primaryUrls: string[] = [];
     switch (user_role) {
         case 'teacher':
-            primaryUrls = ['/dashboard', '/materials', '/gradebook'];
+            primaryUrls = ['/dashboard', '/class-sessions', '/rapor/wizard'];
             break;
         case 'student':
-            primaryUrls = ['/dashboard', '/subjects', '/gradebook'];
+            primaryUrls = ['/dashboard', '/class-sessions', '/rapor/wizard'];
             break;
         case 'admin':
             primaryUrls = ['/dashboard', '/teachers', '/students'];

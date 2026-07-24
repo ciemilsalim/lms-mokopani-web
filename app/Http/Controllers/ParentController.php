@@ -17,7 +17,7 @@ class ParentController extends Controller
     public function dashboard()
     {
         $parent = Auth::user()->parent;
-        $children = $parent->students()->with(['schoolClass'])->get();
+        $children = $parent ? $parent->students()->with(['schoolClass'])->get() : collect();
 
         $activeYear = AcademicYear::getActive();
         $activeSemester = Semester::getActive();
@@ -88,7 +88,7 @@ class ParentController extends Controller
     public function child(Student $student)
     {
         $parent = Auth::user()->parent;
-        $childIds = $parent->students()->pluck('students.id');
+        $childIds = $parent ? $parent->students()->pluck('students.id') : collect();
 
         if (!$childIds->contains($student->id)) {
             abort(403, 'Anda tidak memiliki akses ke data siswa ini.');
