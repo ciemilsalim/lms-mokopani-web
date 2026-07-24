@@ -23,12 +23,13 @@ const teacherNavSections: NavSection[] = [
         ],
     },
     {
-        label: 'Perencanaan',
+        label: 'Perencanaan & Pelaksanaan',
         items: [
             { title: 'Tujuan Pembelajaran',   url: '/learning-objectives',    icon: GraduationCap },
             { title: 'Materi',                url: '/materials',              icon: Library },
             { title: 'Asesmen',               url: '/assignments',            icon: ClipboardList },
-            { title: 'Pembelajaran',          url: '/lesson-plans',           icon: BookOpen },
+            { title: 'Pembelajaran (RPP/MA)', url: '/lesson-plans',           icon: BookOpen },
+            { title: 'Sesi Kelas (Live)',     url: '/class-sessions',         icon: Compass },
             { title: 'Projek P5',             url: '/p5',                     icon: Heart },
         ],
     },
@@ -36,6 +37,7 @@ const teacherNavSections: NavSection[] = [
         label: 'Penilaian & Diagnostik',
         items: [
             { title: 'Nilai & Rapor',            url: '/gradebook',          icon: FileBarChart },
+            { title: 'Rapor PPA 2025 (Wizard)',  url: '/rapor/wizard',       icon: FileBarChart },
             { title: 'Remedial & Pengayaan',     url: '/remedial',           icon: FileWarning },
             { title: 'Diagnostik Non-Kognitif',  url: '/non-cognitive',      icon: Users },
             { title: 'Diagnostik Adaptif',       url: '/adaptive-learning',  icon: Brain },

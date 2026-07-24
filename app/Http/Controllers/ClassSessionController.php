@@ -73,23 +73,36 @@ class ClassSessionController extends Controller
     {
         $session = LmsClassSession::with(['modulAjar', 'schoolClass'])->findOrFail($id);
         
-        // Fetch Attendance records directly from subject_attendances table (Aplikasi Absensi)
+        // Fetch Attendance records directly from subject_attendances table (Aplikasi Absensi) & fallback to daily attendances
         $attendances = [];
         if ($session->school_class_id) {
             $students = Student::where('school_class_id', $session->school_class_id)->get();
-            $attendanceRecords = SubjectAttendance::whereIn('student_id', $students->pluck('id'))
+            $studentIds = $students->pluck('id');
+            
+            $subjectAttendanceRecords = SubjectAttendance::whereIn('student_id', $studentIds)
                 ->whereDate('created_at', now()->toDateString())
                 ->get()
                 ->keyBy('student_id');
 
-            $attendances = $students->map(function ($student) use ($attendanceRecords) {
-                $rec = $attendanceRecords->get($student->id);
+            // Daily attendance from Aplikasi Absensi (attendances table)
+            $dailyAttendanceRecords = \App\Models\Attendance::whereIn('student_id', $studentIds)
+                ->whereDate('attendance_time', now()->toDateString())
+                ->get()
+                ->keyBy('student_id');
+
+            $attendances = $students->map(function ($student) use ($subjectAttendanceRecords, $dailyAttendanceRecords) {
+                $subRec = $subjectAttendanceRecords->get($student->id);
+                $dailyRec = $dailyAttendanceRecords->get($student->id);
+                
+                // Determine initial status: prefer subject attendance, then daily attendance status, else 'hadir'
+                $status = $subRec?->status ?? $dailyRec?->status ?? 'hadir';
+                
                 return [
                     'student_id' => $student->id,
                     'student_name' => $student->name,
                     'nis' => $student->nis ?? $student->nisn ?? '-',
-                    'status' => $rec?->status ?? 'hadir', // default to hadir if no record
-                    'notes' => $rec?->notes ?? '',
+                    'status' => strtolower($status),
+                    'notes' => $subRec?->notes ?? ($dailyRec ? 'Absensi Harian SIPADA' : ''),
                 ];
             });
         }
