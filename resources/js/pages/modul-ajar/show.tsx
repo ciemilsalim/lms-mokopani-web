@@ -191,13 +191,16 @@ export default function Show({ modulAjar, assignments }: any) {
     const applicationActivity = parsedData.application || modulAjar.application_activity || '-';
     const reflectionActivity = parsedData.reflection || modulAjar.reflection_activity || '-';
     const lkpdContent = parsedData.lkpd || modulAjar.lkpd || '-';
+    const rencanaAsesmenAwal = parsedData.rencana_asesmen_awal || '';
+    const asesmenFormatif = parsedData.asesmen_formatif || '';
+    const asesmenSumatif = parsedData.asesmen_sumatif || '';
 
     const schoolName = modulAjar.school_name || 'SMA Negeri 1 Mokopani';
     const headmasterName = modulAjar.headmaster_name || 'Nama Kepala Sekolah';
     const headmasterNip = modulAjar.headmaster_nip || '-';
 
-    const initialAssignments = assignments.filter((a: any) => a.assessment_type === 'initial');
-    const processAssignments = assignments.filter((a: any) => a.assessment_type === 'formative' || a.assessment_type === 'summative');
+    const initialAssignments = assignments?.filter((a: any) => a.assessment_type === 'initial') || [];
+    const processAssignments = assignments?.filter((a: any) => a.assessment_type === 'formative' || a.assessment_type === 'summative') || [];
 
     const handlePrint = (mode: 'all' | 'lkpd' = 'all') => {
         setPrintMode(mode);
@@ -495,6 +498,10 @@ export default function Show({ modulAjar, assignments }: any) {
                                         </li>
                                     ))}
                                 </ul>
+                            ) : rencanaAsesmenAwal ? (
+                                <div className="text-sm">
+                                    <HtmlContent html={rencanaAsesmenAwal} />
+                                </div>
                             ) : (
                                 <p className="text-sm italic text-gray-500">Tidak ada asesmen awal yang didefinisikan secara eksplisit.</p>
                             )}
@@ -512,6 +519,21 @@ export default function Show({ modulAjar, assignments }: any) {
                                         </li>
                                     ))}
                                 </ul>
+                            ) : asesmenFormatif || asesmenSumatif ? (
+                                <div className="space-y-4 text-sm">
+                                    {asesmenFormatif && (
+                                        <div>
+                                            <h4 className="font-bold border-b border-gray-300 pb-1 mb-2">Asesmen Formatif (Selama Proses)</h4>
+                                            <HtmlContent html={asesmenFormatif} />
+                                        </div>
+                                    )}
+                                    {asesmenSumatif && (
+                                        <div>
+                                            <h4 className="font-bold border-b border-gray-300 pb-1 mb-2">Asesmen Sumatif (Akhir)</h4>
+                                            <HtmlContent html={asesmenSumatif} />
+                                        </div>
+                                    )}
+                                </div>
                             ) : (
                                 <p className="text-sm italic text-gray-500">Tidak ada asesmen formatif/sumatif yang didefinisikan secara eksplisit.</p>
                             )}
@@ -532,7 +554,11 @@ export default function Show({ modulAjar, assignments }: any) {
                                                     <strong>{asm.title} - {assessmentType} ({formattedType}):</strong> {getKktpDescription(asm)}
                                                 </li>
                                             );
-                                        }) : (
+                                        }) : (asesmenFormatif || asesmenSumatif) ? (
+                                            <li>
+                                                <strong>Berdasarkan Rubrik / Kriteria:</strong> Ketuntasan peserta didik dinilai berdasarkan rubrik dan kriteria yang tercantum pada instrumen asesmen formatif atau sumatif di atas.
+                                            </li>
+                                        ) : (
                                             <li>Pendekatan KKTP mengacu pada standar sekolah dengan kriteria ketuntasan (KKM): <strong className="text-lg">{modulAjar.subject_kktp || 70}</strong>.</li>
                                         )}
                                     </ul>
