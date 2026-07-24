@@ -298,8 +298,8 @@ class LmsModulAjarController extends Controller
             'semester_id'      => $activeSemester?->id,
         ]));
 
-        return redirect()->route('lesson-plans.index')
-            ->with('success', 'Modul Ajar berhasil disimpan.');
+        return redirect()->route('lesson-plans.edit', $modulAjar->id)
+            ->with('success', 'Referensi berhasil dipilih. Silakan lengkapi rancangan Modul Ajar Anda pada Wizard ini.');
     }
 
     /**

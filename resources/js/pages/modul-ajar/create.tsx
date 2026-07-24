@@ -203,7 +203,7 @@ export default function Create({ teachings, objectives, materials, period }: Cre
                                     ) : (
                                         <>
                                             <Save className="h-4 w-4" />
-                                            Rakit & Pratinjau RPP
+                                            Lanjut ke Wizard Modul Ajar
                                         </>
                                     )}
                                 </button>
