@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { 
     ChevronLeft, Sparkles, Settings, Save, Loader2, BookOpen, 
-    Layers, ClipboardList, Eye, CheckCircle2, AlertCircle, ImagePlus, X
+    Layers, ClipboardList, Eye, CheckCircle2, AlertCircle, ImagePlus, X, Trash2
 } from 'lucide-react';
 import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
@@ -245,6 +245,15 @@ export default function Edit({ modulAjar, teachings, objectives, materials, peri
             alert('Gagal menghasilkan gambar. Pastikan AI terkonfigurasi dengan benar.');
         } finally {
             setIsGeneratingImage(false);
+        }
+    };
+
+    const handleRemoveImages = () => {
+        if (confirm('Apakah Anda yakin ingin menghapus SEMUA gambar dari LKPD ini? Teks tidak akan terhapus.')) {
+            // Remove <img> tags and empty <p></p> tags that might be left behind
+            let cleanedLkpd = lkpd.replace(/<img[^>]*>/gi, '');
+            cleanedLkpd = cleanedLkpd.replace(/<p>\s*<\/p>/gi, '');
+            setLkpd(cleanedLkpd);
         }
     };
 
@@ -661,14 +670,25 @@ export default function Edit({ modulAjar, teachings, objectives, materials, peri
                                         <div className="space-y-2 animate-in fade-in duration-200">
                                             <div className="flex items-center justify-between">
                                                 <label className="text-xs font-bold text-foreground block">Lembar Kerja Peserta Didik (LKPD)</label>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setIsImageModalOpen(true)}
-                                                    className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 transition"
-                                                >
-                                                    <ImagePlus className="w-3.5 h-3.5" />
-                                                    ✨ Generate Gambar Ilustrasi AI
-                                                </button>
+                                                <div className="flex gap-2">
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleRemoveImages}
+                                                        className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 dark:bg-red-900/30 dark:hover:bg-red-900/50 rounded-md transition"
+                                                        title="Hapus Semua Gambar"
+                                                    >
+                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                        Bersihkan Gambar
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setIsImageModalOpen(true)}
+                                                        className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 transition"
+                                                    >
+                                                        <ImagePlus className="w-3.5 h-3.5" />
+                                                        ✨ Generate Gambar Ilustrasi AI
+                                                    </button>
+                                                </div>
                                             </div>
                                             <ReactQuill theme="snow" modules={quillModules} value={lkpd} onChange={setLkpd} className="h-[400px]" />
                                             <div className="h-12" />
