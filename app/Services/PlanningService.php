@@ -190,4 +190,35 @@ class PlanningService
         }
         return $score;
     }
+
+    /**
+     * Break down a general TP into specific Sub-TPs (ATP).
+     */
+    public function breakdownTp($tpDescription, bool $regenerate = false)
+    {
+        $this->isLastRequestOnline = false;
+        if (empty($tpDescription)) return [];
+
+        try {
+            $gemini = app(\App\Services\GeminiApiService::class);
+            if ($gemini->isConfigured()) {
+                $subTps = $gemini->breakdownTp($tpDescription, $regenerate);
+                if (!empty($subTps)) {
+                    $this->isLastRequestOnline = true;
+                    return $subTps;
+                }
+            }
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('AI breakdownTp failed', [
+                'message' => $e->getMessage()
+            ]);
+        }
+
+        // Fallback offline (sederhana)
+        return [
+            "Memahami konsep dasar terkait: " . strtolower(strtok($tpDescription, " ")),
+            "Menerapkan konsep tersebut dalam konteks sederhana",
+            "Mengevaluasi hasil penerapan konsep"
+        ];
+    }
 }
