@@ -63,6 +63,12 @@ interface Suggestion {
     is_used: boolean;
 }
 
+interface HighlightItem {
+    id: string;
+    text: string;
+    type: 'competence' | 'content';
+}
+
 interface LearningObjectiveIndexProps {
     objectives: Objective[];
     subjects: Subject[];
@@ -80,6 +86,7 @@ export default function LearningObjectiveIndex({ objectives, subjects, cpList }:
     const [selectedCps, setSelectedCps] = useState<number[]>([]);
     const [sequencingMethod, setSequencingMethod] = useState('');
     const [directSuggestions, setDirectSuggestions] = useState<Suggestion[]>([]);
+    const [highlights, setHighlights] = useState<HighlightItem[]>([]);
 
     useEffect(() => {
         if (isAtpMode) {
@@ -106,6 +113,44 @@ export default function LearningObjectiveIndex({ objectives, subjects, cpList }:
         setTpClickCount(0);
     }, [activeTab, data.cp_id, selectedCps]);
 
+    useEffect(() => {
+        const comps = highlights.filter(h => h.type === 'competence').map(h => h.text).join(', ');
+        const conts = highlights.filter(h => h.type === 'content').map(h => h.text).join(', ');
+        setData(d => ({ ...d, competence: comps, content: conts }));
+    }, [highlights]);
+
+    const handleSelection = (type: 'competence' | 'content') => {
+        const selection = window.getSelection();
+        if (!selection || selection.toString().trim() === '') return;
+        
+        const text = selection.toString().trim();
+        
+        if (!highlights.find(h => h.text === text)) {
+            setHighlights([...highlights, { id: Math.random().toString(36).substring(2, 9), text, type }]);
+        }
+        
+        selection.removeAllRanges();
+    };
+
+    const removeHighlight = (id: string) => {
+        setHighlights(highlights.filter(h => h.id !== id));
+    };
+
+    const renderCpText = () => {
+        const cp = cpList.find(c => c.id.toString() === data.cp_id);
+        if (!cp) return null;
+        
+        let html = cp.deskripsi;
+        const sortedHighlights = [...highlights].sort((a, b) => b.text.length - a.text.length);
+        
+        sortedHighlights.forEach(h => {
+            const colorClass = h.type === 'competence' ? 'bg-blue-500/20 text-blue-700 dark:text-blue-300 font-semibold px-1 rounded' : 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-semibold px-1 rounded';
+            html = html.split(h.text).join(`<mark class="${colorClass}">${h.text}</mark>`);
+        });
+        
+        return <div dangerouslySetInnerHTML={{ __html: html }} />;
+    };
+
     const openAddModal = () => {
         setEditingId(null);
         reset();
@@ -113,6 +158,7 @@ export default function LearningObjectiveIndex({ objectives, subjects, cpList }:
         setActiveTab('direct');
         setSelectedCps([]);
         setDirectSuggestions([]);
+        setHighlights([]);
         setShowModal(true);
     };
 
@@ -132,6 +178,15 @@ export default function LearningObjectiveIndex({ objectives, subjects, cpList }:
         setActiveTab(obj.formulation_method);
         setSelectedCps(obj.capaian_pembelajarans?.map(cp => cp.id) || []);
         setDirectSuggestions([]);
+        
+        if (obj.formulation_method === 'analysis') {
+            const comps = obj.competence ? obj.competence.split(', ').filter(Boolean).map(text => ({ id: Math.random().toString(36).substring(2, 9), text, type: 'competence' as const })) : [];
+            const conts = obj.content ? obj.content.split(', ').filter(Boolean).map(text => ({ id: Math.random().toString(36).substring(2, 9), text, type: 'content' as const })) : [];
+            setHighlights([...comps, ...conts]);
+        } else {
+            setHighlights([]);
+        }
+        
         clearErrors();
         setShowModal(true);
     };
@@ -530,25 +585,80 @@ export default function LearningObjectiveIndex({ objectives, subjects, cpList }:
                             )}
 
                             {activeTab === 'analysis' && (
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 p-4 sm:p-6 bg-primary/5 rounded-xl border border-primary/10">
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-black text-primary uppercase tracking-widest">Kompetensi (Kata Kerja)</label>
-                                        <input 
-                                            value={data.competence} 
-                                            onChange={e => setData('competence', e.target.value)} 
-                                            placeholder="Misal: Menyajikan, Memahami" 
-                                            className="w-full bg-background border border-border rounded-xl px-4 py-2 text-xs font-bold outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-black text-primary uppercase tracking-widest">Konten (Materi Pokok)</label>
-                                        <input 
-                                            value={data.content} 
-                                            onChange={e => setData('content', e.target.value)} 
-                                            placeholder="Misal: Nilai tempat bilangan" 
-                                            className="w-full bg-background border border-border rounded-xl px-4 py-2 text-xs font-bold outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition"
-                                        />
-                                    </div>
+                                <div className="flex flex-col gap-4 p-4 sm:p-6 bg-primary/5 rounded-xl border border-primary/10">
+                                    {!data.cp_id ? (
+                                        <div className="p-8 bg-card border border-dashed rounded-xl text-center">
+                                            <p className="text-sm text-muted-foreground font-medium">Silakan pilih rujukan Capaian Pembelajaran (CP) di atas terlebih dahulu.</p>
+                                        </div>
+                                    ) : (
+                                        <div className="flex flex-col lg:flex-row gap-4">
+                                            {/* Left Panel: CP Text */}
+                                            <div className="flex-1 flex flex-col border border-border rounded-xl overflow-hidden bg-card shadow-sm">
+                                                <div className="p-3 bg-muted/30 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                                    <span className="text-[10px] font-black uppercase tracking-widest text-foreground">Teks Capaian Pembelajaran</span>
+                                                    <div className="flex items-center gap-2">
+                                                        <button type="button" onClick={() => handleSelection('competence')} className="text-[10px] font-black uppercase px-2 py-1.5 bg-blue-500/10 text-blue-700 hover:bg-blue-500/20 rounded-lg border border-blue-500/20 transition">+ Kompetensi</button>
+                                                        <button type="button" onClick={() => handleSelection('content')} className="text-[10px] font-black uppercase px-2 py-1.5 bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20 rounded-lg border border-emerald-500/20 transition">+ Konten</button>
+                                                    </div>
+                                                </div>
+                                                <div className="p-4 text-sm leading-relaxed overflow-y-auto max-h-60 selection:bg-primary/20 selection:text-primary">
+                                                    {renderCpText()}
+                                                </div>
+                                                <div className="p-2.5 bg-primary/5 text-[10px] text-primary font-bold text-center border-t border-primary/10">
+                                                    Blok teks di atas lalu klik tombol [+ Kompetensi] atau [+ Konten]
+                                                </div>
+                                            </div>
+                                            
+                                            {/* Right Panel: Analysis Table */}
+                                            <div className="flex-1 flex flex-col border border-border rounded-xl overflow-hidden bg-card shadow-sm">
+                                                <div className="p-3 bg-muted/30 border-b border-border">
+                                                    <span className="text-[10px] font-black uppercase tracking-widest text-foreground">Hasil Analisis</span>
+                                                </div>
+                                                <div className="flex-1 overflow-y-auto max-h-60">
+                                                    <table className="w-full text-left text-sm">
+                                                        <thead className="bg-muted/10 text-[10px] uppercase text-muted-foreground sticky top-0 backdrop-blur-md z-10">
+                                                            <tr>
+                                                                <th className="px-3 py-2.5 font-bold border-b border-border">Kompetensi (Kata Kerja)</th>
+                                                                <th className="px-3 py-2.5 font-bold border-b border-border">Lingkup Materi (Konten)</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody className="divide-y divide-border/50">
+                                                            {Array.from({ length: Math.max(highlights.filter(h => h.type === 'competence').length, highlights.filter(h => h.type === 'content').length, 1) }).map((_, i) => {
+                                                                const comp = highlights.filter(h => h.type === 'competence')[i];
+                                                                const cont = highlights.filter(h => h.type === 'content')[i];
+                                                                if (!comp && !cont && highlights.length > 0) return null;
+                                                                return (
+                                                                    <tr key={i} className="hover:bg-muted/20 transition-colors">
+                                                                        <td className="px-3 py-2.5 align-top w-1/2">
+                                                                            {comp && (
+                                                                                <div className="flex items-start justify-between gap-2 group/item">
+                                                                                    <span className="text-blue-700 dark:text-blue-400 font-medium text-xs leading-relaxed">{comp.text}</span>
+                                                                                    <button type="button" onClick={() => removeHighlight(comp.id)} className="opacity-0 group-hover/item:opacity-100 text-muted-foreground hover:text-destructive transition p-0.5"><X className="h-3 w-3" /></button>
+                                                                                </div>
+                                                                            )}
+                                                                        </td>
+                                                                        <td className="px-3 py-2.5 align-top w-1/2 border-l border-border/50">
+                                                                            {cont && (
+                                                                                <div className="flex items-start justify-between gap-2 group/item">
+                                                                                    <span className="text-emerald-700 dark:text-emerald-400 font-medium text-xs leading-relaxed">{cont.text}</span>
+                                                                                    <button type="button" onClick={() => removeHighlight(cont.id)} className="opacity-0 group-hover/item:opacity-100 text-muted-foreground hover:text-destructive transition p-0.5"><X className="h-3 w-3" /></button>
+                                                                                </div>
+                                                                            )}
+                                                                        </td>
+                                                                    </tr>
+                                                                );
+                                                            })}
+                                                            {highlights.length === 0 && (
+                                                                <tr>
+                                                                    <td colSpan={2} className="px-4 py-8 text-center text-xs text-muted-foreground font-medium italic">Belum ada hasil analisis.<br/>Mulai sorot teks CP!</td>
+                                                                </tr>
+                                                            )}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             )}
 
