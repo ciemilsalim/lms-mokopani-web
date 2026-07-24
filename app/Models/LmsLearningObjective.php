@@ -21,6 +21,7 @@ class LmsLearningObjective extends Model
         'description',
         'order',
         'cp_id',
+        'parent_id',
         'competence',
         'content',
         'formulation_method',
@@ -56,5 +57,15 @@ class LmsLearningObjective extends Model
     public function capaianPembelajarans()
     {
         return $this->belongsToMany(LmsCapaianPembelajaran::class, 'lms_tp_cp', 'tp_id', 'cp_id')->withTimestamps();
+    }
+
+    public function parent()
+    {
+        return $this->belongsTo(self::class, 'parent_id');
+    }
+
+    public function subObjectives()
+    {
+        return $this->hasMany(self::class, 'parent_id')->orderBy('order');
     }
 }

@@ -16,7 +16,9 @@ import {
     GripVertical,
     Save,
     RefreshCw,
-    Check
+    Check,
+    SplitSquareHorizontal,
+    CornerDownRight
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { ConfirmDialog } from '@/components/confirm-dialog';
@@ -51,6 +53,8 @@ interface Objective {
     formulation_method: 'direct' | 'analysis' | 'cross_element';
     order: number;
     sequencing_method?: string;
+    parent_id?: number | null;
+    sub_objectives?: Objective[];
 }
 
 interface Subject {
@@ -87,6 +91,8 @@ export default function LearningObjectiveIndex({ objectives, subjects, cpList }:
     const [sequencingMethod, setSequencingMethod] = useState('');
     const [directSuggestions, setDirectSuggestions] = useState<Suggestion[]>([]);
     const [highlights, setHighlights] = useState<HighlightItem[]>([]);
+    const [breakdownTarget, setBreakdownTarget] = useState<Objective | null>(null);
+    const [subTps, setSubTps] = useState<string[]>(['']);
 
     useEffect(() => {
         if (isAtpMode) {
@@ -104,6 +110,7 @@ export default function LearningObjectiveIndex({ objectives, subjects, cpList }:
         competence: '',
         content: '',
         formulation_method: 'direct' as 'direct' | 'analysis' | 'cross_element',
+        parent_id: null as number | null,
     });
 
     const [tpClickCount, setTpClickCount] = useState(0);
@@ -277,6 +284,68 @@ export default function LearningObjectiveIndex({ objectives, subjects, cpList }:
         });
     };
 
+    const openBreakdownModal = (obj: Objective) => {
+        setBreakdownTarget(obj);
+        setSubTps(['', '']);
+    };
+
+    const closeBreakdownModal = () => {
+        setBreakdownTarget(null);
+        setSubTps(['']);
+    };
+
+    const handleAutoBreakdown = async () => {
+        if (!breakdownTarget) return;
+        setIsGenerating(true);
+        try {
+            const response = await axios.post(route('learning-objectives.auto-breakdown'), {
+                description: breakdownTarget.description,
+                regenerate: tpClickCount > 0
+            });
+            setTpClickCount(prev => prev + 1);
+            if (response.data.sub_tps && response.data.sub_tps.length > 0) {
+                setSubTps(response.data.sub_tps);
+            }
+        } catch (error) {
+            console.error("Auto breakdown failed", error);
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
+    const handleSaveBreakdown = () => {
+        if (!breakdownTarget) return;
+        
+        const validTps = subTps.filter(tp => tp.trim() !== '');
+        if (validTps.length === 0) {
+            closeBreakdownModal();
+            return;
+        }
+
+        // Simpan setiap Sub-TP satu per satu menggunakan Inertia
+        validTps.forEach((tpDesc, index) => {
+            router.post(route('learning-objectives.store'), {
+                subject_id: breakdownTarget.subject_id.toString(),
+                school_class_id: breakdownTarget.school_class_id.toString(),
+                code: `${breakdownTarget.code || `TP ${breakdownTarget.order}`}.${index + 1}`,
+                description: tpDesc,
+                cp_id: breakdownTarget.cp_id?.toString() || '',
+                cp_ids: breakdownTarget.capaian_pembelajarans?.map(cp => cp.id) || [],
+                competence: '',
+                content: '',
+                formulation_method: 'direct',
+                parent_id: breakdownTarget.id,
+            }, {
+                preserveScroll: true,
+                onSuccess: () => {
+                    if (index === validTps.length - 1) {
+                        closeBreakdownModal();
+                    }
+                }
+            });
+        });
+    };
+
     const moveObjective = (index: number, direction: 'up' | 'down') => {
         const newObjs = [...tempObjectives];
         const targetIndex = direction === 'up' ? index - 1 : index + 1;
@@ -415,14 +484,24 @@ export default function LearningObjectiveIndex({ objectives, subjects, cpList }:
                                         </div>
                                         <div className="flex gap-2 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition duration-300">
                                             <button 
+                                                onClick={() => openBreakdownModal(obj)}
+                                                className="h-8 flex items-center justify-center gap-1.5 px-3 rounded-xl bg-primary/10 text-primary hover:bg-primary/20 transition shadow-sm"
+                                                title="Pecah menjadi Sub-TP"
+                                            >
+                                                <SplitSquareHorizontal className="h-3.5 w-3.5" />
+                                                <span className="text-[10px] font-black uppercase">Pecah Sub-TP</span>
+                                            </button>
+                                            <button 
                                                 onClick={() => openEditModal(obj)}
                                                 className="h-8 w-8 flex items-center justify-center rounded-xl bg-muted text-muted-foreground hover:text-primary transition shadow-sm"
+                                                title="Edit"
                                             >
                                                 <Edit2 className="h-3.5 w-3.5" />
                                             </button>
                                             <button 
                                                 onClick={() => setDeleteId(obj.id)}
                                                 className="h-8 w-8 flex items-center justify-center rounded-xl bg-muted text-muted-foreground hover:text-destructive transition shadow-sm"
+                                                title="Hapus"
                                             >
                                                 <Trash2 className="h-3.5 w-3.5" />
                                             </button>
@@ -439,6 +518,25 @@ export default function LearningObjectiveIndex({ objectives, subjects, cpList }:
                                             {obj.description}
                                         </p>
                                     </div>
+                                    {obj.sub_objectives && obj.sub_objectives.length > 0 && (
+                                        <div className="mt-4 pt-4 border-t border-border/50 flex flex-col gap-2">
+                                            {obj.sub_objectives.map((sub) => (
+                                                <div key={sub.id} className="flex items-start gap-3 pl-2 py-2 border-l-2 border-primary/20 bg-muted/20 rounded-r-lg group/sub">
+                                                    <CornerDownRight className="h-4 w-4 text-primary/40 shrink-0 mt-0.5" />
+                                                    <div className="flex-1">
+                                                        <div className="flex items-center justify-between">
+                                                            <span className="text-xs font-black text-foreground">{sub.code}</span>
+                                                            <div className="flex gap-1 opacity-0 group-hover/sub:opacity-100 transition">
+                                                                <button onClick={() => openEditModal(sub)} className="p-1 text-muted-foreground hover:text-primary"><Edit2 className="h-3 w-3" /></button>
+                                                                <button onClick={() => setDeleteId(sub.id)} className="p-1 text-muted-foreground hover:text-destructive"><Trash2 className="h-3 w-3" /></button>
+                                                            </div>
+                                                        </div>
+                                                        <p className="text-xs text-muted-foreground mt-0.5">{sub.description}</p>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
                                     {obj.sequencing_method && (
                                         <div className="mt-4 pt-4 border-t border-dashed flex items-center gap-2">
                                             <CheckCircle2 className="h-3 w-3 text-success" />
@@ -715,6 +813,84 @@ export default function LearningObjectiveIndex({ objectives, subjects, cpList }:
                 requireInput="DELETE"
                 inputPlaceholder="Ketik DELETE untuk konfirmasi"
             />
+
+            {/* Breakdown Modal */}
+            {breakdownTarget && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-200">
+                    <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={closeBreakdownModal} />
+                    <div className="relative w-full max-w-2xl rounded-2xl bg-card border border-border shadow-2xl flex flex-col max-h-[90vh]">
+                        <div className="flex items-center justify-between p-4 sm:p-6 border-b border-border">
+                            <div>
+                                <h3 className="text-lg font-black text-foreground tracking-tight">Pecah Sub-TP (ATP)</h3>
+                                <p className="text-xs text-muted-foreground font-medium mt-1">Jabarkan TP utama menjadi langkah-langkah yang lebih spesifik</p>
+                            </div>
+                            <button onClick={closeBreakdownModal} className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-muted text-muted-foreground transition"><X className="h-4 w-4" /></button>
+                        </div>
+                        
+                        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+                            <div className="p-4 bg-primary/5 rounded-xl border border-primary/10">
+                                <span className="text-[10px] font-black text-primary uppercase tracking-widest">Tujuan Utama (Parent)</span>
+                                <p className="text-sm font-medium mt-1 leading-relaxed">{breakdownTarget.description}</p>
+                            </div>
+
+                            <div className="space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <label className="text-xs font-black text-foreground uppercase tracking-widest">Daftar Sub-TP</label>
+                                    <button 
+                                        type="button"
+                                        onClick={handleAutoBreakdown}
+                                        disabled={isGenerating}
+                                        className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 text-primary hover:bg-primary/20 rounded-lg text-[10px] font-black uppercase tracking-widest transition disabled:opacity-50"
+                                    >
+                                        {isGenerating ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                                        Pecah dengan AI
+                                    </button>
+                                </div>
+                                
+                                {subTps.map((tp, index) => (
+                                    <div key={index} className="flex items-start gap-3">
+                                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted text-foreground">
+                                            <span className="text-xs font-black">{index + 1}</span>
+                                        </div>
+                                        <textarea
+                                            value={tp}
+                                            onChange={(e) => {
+                                                const newTps = [...subTps];
+                                                newTps[index] = e.target.value;
+                                                setSubTps(newTps);
+                                            }}
+                                            placeholder="Rumusan Sub-TP..."
+                                            rows={2}
+                                            className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm font-medium outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition resize-none"
+                                        />
+                                        <button 
+                                            onClick={() => setSubTps(subTps.filter((_, i) => i !== index))}
+                                            className="h-10 w-10 shrink-0 flex items-center justify-center rounded-xl text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition"
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                        </button>
+                                    </div>
+                                ))}
+                                
+                                <button 
+                                    onClick={() => setSubTps([...subTps, ''])}
+                                    className="w-full py-3 rounded-xl border border-dashed border-border text-xs font-bold text-muted-foreground hover:bg-muted/50 hover:text-foreground transition"
+                                >
+                                    + Tambah Baris Sub-TP
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="p-4 sm:p-6 border-t border-border bg-muted/20 flex justify-end gap-3 rounded-b-2xl">
+                            <button onClick={closeBreakdownModal} className="px-5 py-2.5 rounded-xl text-sm font-bold text-muted-foreground hover:bg-muted transition">Batal</button>
+                            <button onClick={handleSaveBreakdown} disabled={isGenerating || subTps.every(t => t.trim() === '')} className="px-6 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-black shadow-lg shadow-primary/20 hover:opacity-90 transition disabled:opacity-50 flex items-center gap-2">
+                                <Save className="h-4 w-4" />
+                                Simpan Sub-TP
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </AppLayout>
     );
 }

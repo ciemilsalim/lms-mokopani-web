@@ -123,6 +123,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('learning-objectives/order', [\App\Http\Controllers\LearningObjectiveController::class, 'updateOrder'])->name('learning-objectives.update-order');
         Route::post('learning-objectives/auto-suggest', [\App\Http\Controllers\LearningObjectiveController::class, 'autoSuggest'])->name('learning-objectives.auto-suggest');
         Route::post('learning-objectives/auto-sequence', [\App\Http\Controllers\LearningObjectiveController::class, 'autoSequence'])->name('learning-objectives.auto-sequence');
+        Route::post('learning-objectives/auto-breakdown', [\App\Http\Controllers\LearningObjectiveController::class, 'autoBreakdown'])->name('learning-objectives.auto-breakdown');
 
         // Laporan Nilai (Gradebook) — detail views teacher-only
         Route::get('gradebook/show', [\App\Http\Controllers\GradebookController::class, 'show'])->name('gradebook.show');

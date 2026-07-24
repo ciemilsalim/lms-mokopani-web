@@ -27,7 +27,8 @@ class LearningObjectiveController extends Controller
         $activeYear = AcademicYear::getActive();
         $activeSemester = Semester::getActive();
 
-        $objectives = LmsLearningObjective::with(['subject', 'schoolClass', 'capaianPembelajaran', 'capaianPembelajarans'])
+        $objectives = LmsLearningObjective::with(['subject', 'schoolClass', 'capaianPembelajaran', 'capaianPembelajarans', 'subObjectives'])
+            ->whereNull('parent_id')
             ->where('teacher_id', $teacher->id)
             ->where('academic_year_id', $activeYear?->id)
             ->where('semester_id', $activeSemester?->id)
@@ -73,10 +74,12 @@ class LearningObjectiveController extends Controller
             'competence'         => 'nullable|string',
             'content'            => 'nullable|string',
             'formulation_method' => 'required|in:direct,analysis,cross_element',
+            'parent_id'          => 'nullable|exists:lms_learning_objectives,id',
         ]);
 
         $order = LmsLearningObjective::where('subject_id', $validated['subject_id'])
                             ->where('school_class_id', $validated['school_class_id'])
+                            ->where('parent_id', $validated['parent_id'] ?? null)
                             ->count() + 1;
 
         $objective = LmsLearningObjective::create([
@@ -91,6 +94,7 @@ class LearningObjectiveController extends Controller
             'competence'         => $validated['competence'],
             'content'            => $validated['content'],
             'formulation_method' => $validated['formulation_method'],
+            'parent_id'          => $validated['parent_id'] ?? null,
             'order'              => $order,
         ]);
 
@@ -98,16 +102,14 @@ class LearningObjectiveController extends Controller
             $objective->capaianPembelajarans()->sync($validated['cp_ids']);
         }
 
-        return back()->with('success', 'Tujuan Pembelajaran berhasil ditambahkan.');
+        return redirect()->back()->with('success', 'Tujuan Pembelajaran berhasil ditambahkan.');
     }
 
     public function update(Request $request, LmsLearningObjective $objective)
     {
-        if ($objective->teacher_id !== Auth::user()->teacher->id) {
-            abort(403);
-        }
-
         $validated = $request->validate([
+            'subject_id'         => 'required|exists:mysql_absensi.subjects,id',
+            'school_class_id'    => 'required|exists:mysql_absensi.school_classes,id',
             'code'               => 'nullable|string',
             'description'        => 'required|string',
             'cp_id'              => 'nullable|exists:lms_capaian_pembelajaran,id',
@@ -116,15 +118,26 @@ class LearningObjectiveController extends Controller
             'competence'         => 'nullable|string',
             'content'            => 'nullable|string',
             'formulation_method' => 'required|in:direct,analysis,cross_element',
+            'parent_id'          => 'nullable|exists:lms_learning_objectives,id',
         ]);
 
-        $objective->update($validated);
+        $objective->update([
+            'subject_id'         => $validated['subject_id'],
+            'school_class_id'    => $validated['school_class_id'],
+            'code'               => $validated['code'],
+            'description'        => $validated['description'],
+            'cp_id'              => $validated['cp_id'],
+            'competence'         => $validated['competence'],
+            'content'            => $validated['content'],
+            'formulation_method' => $validated['formulation_method'],
+            'parent_id'          => $validated['parent_id'] ?? null,
+        ]);
 
         if (!empty($validated['cp_ids'])) {
             $objective->capaianPembelajarans()->sync($validated['cp_ids']);
         }
 
-        return back()->with('success', 'Tujuan Pembelajaran berhasil diperbarui.');
+        return redirect()->back()->with('success', 'Tujuan Pembelajaran berhasil diperbarui.');
     }
 
     public function updateOrder(Request $request)
@@ -215,6 +228,7 @@ class LearningObjectiveController extends Controller
         $method = $request->input('method', 'Otomatis');
 
         $objectives = LmsLearningObjective::with(['subject', 'capaianPembelajaran'])
+            ->whereNull('parent_id')
             ->where('teacher_id', $teacher->id)
             ->where('subject_id', $subjectId)
             ->where('school_class_id', $classId)
@@ -223,6 +237,24 @@ class LearningObjectiveController extends Controller
         $sequenced = $this->planningService->suggestSequence($objectives, $method);
 
         return response()->json(['sequenced' => $sequenced]);
+    }
+
+    public function autoBreakdown(Request $request)
+    {
+        $request->validate([
+            'description' => 'required|string',
+            'regenerate'  => 'nullable|boolean',
+        ]);
+
+        $description = $request->input('description');
+        $regenerate = $request->boolean('regenerate', false);
+
+        $subTps = $this->planningService->breakdownTp($description, $regenerate);
+
+        return response()->json([
+            'sub_tps' => $subTps,
+            'ai_active' => $this->planningService->isLastRequestOnline
+        ]);
     }
 
     public function destroy(LmsLearningObjective $objective)

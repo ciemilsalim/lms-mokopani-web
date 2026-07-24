@@ -218,6 +218,32 @@ class GeminiApiService implements AiProviderInterface
     }
 
     /**
+     * Break down a general TP into specific Sub-TPs.
+     */
+    public function breakdownTp(string $tpDescription, bool $regenerate = false): array
+    {
+        $hash = md5('breakdown_' . $tpDescription);
+
+        if (!$regenerate) {
+            $cached = \App\Models\LmsAiCache::getCache($hash);
+            if ($cached) {
+                return json_decode($cached, true) ?? [];
+            }
+        }
+
+        $prompt = "Tujuan Pembelajaran utama: \"{$tpDescription}\".\n\nTujuan ini masih terlalu umum. Tolong pecah menjadi 2 hingga 5 Sub-Tujuan Pembelajaran (Alur Tujuan Pembelajaran) yang lebih spesifik, logis, dan berurutan dari yang paling dasar hingga paling kompleks (taksonomi Bloom).\nKeluarkan HANYA array JSON (tanpa markdown), format: [\"Sub-TP 1\", \"Sub-TP 2\", ...]. Pastikan setiap kalimat jelas dan operasional.";
+
+        $response = $this->generateContent($prompt);
+        $result = $response ? $this->parseJsonResponse($response) : [];
+
+        if (!empty($result)) {
+            \App\Models\LmsAiCache::setCache($hash, 'breakdown_tp', ['tp' => $tpDescription], json_encode($result));
+        }
+
+        return is_array($result) ? $result : [];
+    }
+
+    /**
      * Kirim prompt ke Gemini API dan terima respons teks.
      */
     public function generateContent(string $prompt): ?string
