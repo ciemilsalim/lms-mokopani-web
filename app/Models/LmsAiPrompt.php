@@ -184,9 +184,9 @@ Gunakan data Asesmen yang sudah ditentukan sebagai referensi:
 - Asesmen Sumatif: {summative_assessments}
 
 Format output harus berupa JSON valid tanpa code fence (```json ... ```), mengandung key:
-- alokasi_waktu: Alokasi waktu pembelajaran (contoh: '2 x 40 menit'). Teks biasa.
-- jumlah_pertemuan: Perkiraan jumlah pertemuan (contoh: '1 Pertemuan'). Teks biasa.
-- dimensi_profil: Dimensi profil pelajar pancasila yang relevan (contoh: 'Bernalar Kritis, Kreatif, Gotong Royong'). Teks biasa.
+- alokasi_waktu: Alokasi waktu pembelajaran dalam JP (contoh: '4 JP'). Sesuaikan dengan kompleksitas materi. Teks biasa.
+- jumlah_pertemuan: Hitung otomatis dari alokasi_waktu (Rumus: 2 JP = 1 Pertemuan). Jika 4 JP, maka isikan '2 Pertemuan'. Teks biasa.
+- dimensi_profil: Array of strings berisi profil P5 yang sangat relevan dengan materi & kegiatan belajar. Pilih HANYA dari opsi baku berikut (maksimal 3): ["Beriman, Bertakwa kepada Tuhan YME, dan Berakhlak Mulia", "Berkebinekaan Global", "Bergotong Royong", "Mandiri", "Bernalar Kritis", "Kreatif"].
 - rencana_asesmen_awal: Rencana singkat asesmen awal berdasarkan referensi. Teks biasa.
 - lingkungan_pembelajaran: Deskripsi lingkungan pembelajaran (contoh: 'Ruang Kelas dan Perpustakaan'). Teks biasa.
 - kemitraan_pembelajaran: Bentuk kemitraan (contoh: 'Diskusi kelompok antar teman sebaya'). Teks biasa.
@@ -194,15 +194,15 @@ Format output harus berupa JSON valid tanpa code fence (```json ... ```), mengan
 - media_ilustrasi: Deskripsi gambar/media ilustrasi ajar (image prompt visual). WAJIB sertakan instruksi style: 'style ilustrasi gaya Flat 2D Vector minimalis'. Teks biasa.
 - asesmen_formatif: Deskripsi/Rencana detail instrumen asesmen formatif berdasarkan referensi. Gunakan format HTML semantik.
 - asesmen_sumatif: Deskripsi/Rencana detail instrumen asesmen sumatif berdasarkan referensi. Gunakan format HTML semantik.
-- understanding: Kegiatan memahami (Understanding). Langkah operasional guru memicu rasa ingin tahu murid. Gunakan format HTML semantik.
-- application: Kegiatan mengaplikasikan (Application). Skenario aktivitas praktis, studi kasus nyata. Gunakan format HTML semantik.
-- reflection: Kegiatan merefleksikan (Reflection). Aktivitas metakognisi murid menilai pemahaman. Gunakan format HTML semantik.
-- lkpd: Lembar Kerja Peserta Didik lengkap dengan petunjuk, tugas, pertanyaan eksploratif, refleksi, dan rubrik. Gunakan format HTML semantik.
+- understanding: Kegiatan memahami (Understanding). Langkah operasional guru memicu rasa ingin tahu murid. Gunakan format HTML semantik. PENTING: Jika jumlah_pertemuan lebih dari 1, pisahkan skenario menggunakan <h3>Pertemuan 1</h3>, <h3>Pertemuan 2</h3>, dst.
+- application: Kegiatan mengaplikasikan (Application). Skenario aktivitas praktis, studi kasus nyata. Gunakan format HTML semantik. PENTING: Pisahkan menggunakan <h3>Pertemuan 1</h3>, <h3>Pertemuan 2</h3>, dst, jika lebih dari 1 pertemuan.
+- reflection: Kegiatan merefleksikan (Reflection). Aktivitas metakognisi murid. Gunakan format HTML semantik. PENTING: Pisahkan menggunakan <h3>Pertemuan 1</h3>, <h3>Pertemuan 2</h3>, dst, jika lebih dari 1 pertemuan.
+- lkpd: Lembar Kerja Peserta Didik lengkap dengan petunjuk, tugas, refleksi, dan rubrik. Gunakan format HTML semantik.
 
 ===== ATURAN FORMAT HTML WAJIB =====
 Field yang wajib menggunakan HTML (understanding, application, reflection, lkpd) harus ditulis menggunakan HTML semantik yang bersih dan profesional.
+- Gunakan <h3> untuk memisahkan setiap Pertemuan.
 - <h2> untuk judul utama
-- <h3> untuk sub-judul
 - <p> untuk paragraf teks penjelasan
 - <strong> untuk menebalkan kata/frasa penting
 - <ul> dan <li> untuk daftar tidak berurutan (bullet points)
@@ -214,7 +214,7 @@ JANGAN gunakan Markdown (###, **, -, dll). WAJIB gunakan HTML tags.
 
 PENTING:
 - Gunakan bahasa yang sederhana, komunikatif, dan mudah dimengerti anak SMP.
-- Output HANYA berupa objek JSON valid dengan tepat 11 key di atas tanpa markdown code fence."
+- Output HANYA berupa objek JSON valid dengan tepat 14 key di atas tanpa markdown code fence."
         ];
 
         return $fallbacks[$key] ?? "Buatkan rancangan untuk {tp} pada mata pelajaran {subject}.";
