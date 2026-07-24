@@ -182,4 +182,48 @@ class LmsAiWizardController extends Controller
             ]);
         }
     }
+
+    /**
+     * Generate illustration using AI for LKPD.
+     */
+    public function generateIllustration(Request $request, AiManager $aiManager)
+    {
+        $validated = $request->validate([
+            'description' => 'required|string|max:500',
+        ]);
+
+        try {
+            $provider = $aiManager->getActiveProvider();
+            
+            // Ask AI to translate and formulate a good English image prompt
+            $prompt = "Tugas Anda adalah merumuskan prompt berbahasa Inggris untuk Image Generator (seperti Midjourney atau DALL-E).
+Terjemahkan dan sempurnakan deskripsi gambar berikut menjadi prompt berbahasa Inggris yang sangat deskriptif, fokus pada visual, pencahayaan, gaya ilustrasi pendidikan yang menarik (colorful, flat design, atau cartoon style), dan bebas teks. 
+HANYA KELUARKAN TEKS PROMPT BAHASA INGGRIS-NYA SAJA (TANPA PENDAHULUAN/PENUTUP):
+
+Deskripsi: " . $validated['description'];
+            
+            $aiPrompt = $provider->generateContent($prompt);
+            $englishPrompt = trim($aiPrompt ?? '');
+            
+            if (empty($englishPrompt)) {
+                $englishPrompt = "Educational illustration of " . $validated['description'] . ", cartoon style, colorful, 8k resolution";
+            }
+            
+            // Use Pollinations.ai for free image generation (size 800x450 for landscape A4 fit)
+            $imageUrl = "https://image.pollinations.ai/prompt/" . urlencode($englishPrompt) . "?width=800&height=450&nologo=true";
+
+            return response()->json([
+                'status' => 'success',
+                'url' => $imageUrl,
+                'prompt' => $englishPrompt
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('AI generateIllustration error: ' . $e->getMessage());
+
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Layanan AI gagal memproses permintaan gambar.',
+            ], 500);
+        }
+    }
 }

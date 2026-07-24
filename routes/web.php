@@ -100,6 +100,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('api/ai/suggest-tp', [\App\Http\Controllers\LmsAiWizardController::class, 'suggestTp'])->name('ai.suggest-tp');
         Route::post('api/ai/suggest-atp', [\App\Http\Controllers\LmsAiWizardController::class, 'suggestAtp'])->name('ai.suggest-atp');
         Route::post('api/ai/generate-kktp', [\App\Http\Controllers\LmsAiWizardController::class, 'generateKktp'])->name('ai.generate-kktp');
+        Route::post('api/ai/generate-illustration', [\App\Http\Controllers\LmsAiWizardController::class, 'generateIllustration'])->name('ai.generate-illustration');
 
         // Materi CRUD (create/delete)
         Route::post('materials', [MaterialController::class, 'store'])->name('materials.store');

@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { 
     ChevronLeft, Sparkles, Settings, Save, Loader2, BookOpen, 
-    Layers, ClipboardList, Eye, CheckCircle2, AlertCircle
+    Layers, ClipboardList, Eye, CheckCircle2, AlertCircle, ImagePlus, X
 } from 'lucide-react';
 import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
@@ -95,6 +95,11 @@ export default function Edit({ modulAjar, teachings, objectives, materials, peri
     // AI Generation state
     const [isGenerating, setIsGenerating] = useState(false);
     const [aiNotification, setAiNotification] = useState<{ message: string; type: 'info' | 'warning' | 'error' } | null>(null);
+
+    // AI Image Generation State
+    const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+    const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+    const [imageDescription, setImageDescription] = useState('');
 
     // Parse JSON from general_info if possible
     let parsedData: any = {};
@@ -219,6 +224,27 @@ export default function Edit({ modulAjar, teachings, objectives, materials, peri
             });
         } finally {
             setIsGenerating(false);
+        }
+    };
+
+    const handleGenerateImage = async () => {
+        if (!imageDescription) return;
+        setIsGeneratingImage(true);
+        try {
+            const response = await axios.post(route('ai.generate-illustration'), {
+                description: imageDescription
+            });
+            if (response.data?.status === 'success') {
+                const imgTag = `<p><img src="${response.data.url}" alt="AI Illustration" style="max-width:100%; border-radius: 8px; margin: 10px 0;" /></p>`;
+                setLkpd((prev) => prev + imgTag);
+                setIsImageModalOpen(false);
+                setImageDescription('');
+            }
+        } catch (error) {
+            console.error('Failed to generate image', error);
+            alert('Gagal menghasilkan gambar. Pastikan AI terkonfigurasi dengan benar.');
+        } finally {
+            setIsGeneratingImage(false);
         }
     };
 
@@ -633,7 +659,17 @@ export default function Edit({ modulAjar, teachings, objectives, materials, peri
 
                                     {activeTab === 'lkpd' && (
                                         <div className="space-y-2 animate-in fade-in duration-200">
-                                            <label className="text-xs font-bold text-foreground block">Lembar Kerja Peserta Didik (LKPD)</label>
+                                            <div className="flex items-center justify-between">
+                                                <label className="text-xs font-bold text-foreground block">Lembar Kerja Peserta Didik (LKPD)</label>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setIsImageModalOpen(true)}
+                                                    className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 transition"
+                                                >
+                                                    <ImagePlus className="w-3.5 h-3.5" />
+                                                    ✨ Generate Gambar Ilustrasi AI
+                                                </button>
+                                            </div>
                                             <ReactQuill theme="snow" modules={quillModules} value={lkpd} onChange={setLkpd} className="h-[400px]" />
                                             <div className="h-12" />
                                         </div>
@@ -666,6 +702,66 @@ export default function Edit({ modulAjar, teachings, objectives, materials, peri
                     </div>
                 </div>
             </div>
+
+            {/* Modal Generate Image */}
+            {isImageModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                    <div className="bg-background rounded-xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="flex items-center justify-between p-4 border-b border-border">
+                            <h3 className="font-bold text-lg flex items-center gap-2">
+                                <ImagePlus className="w-5 h-5 text-indigo-600" />
+                                Generate Ilustrasi AI
+                            </h3>
+                            <button onClick={() => setIsImageModalOpen(false)} className="p-1 rounded-md hover:bg-muted text-muted-foreground">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        <div className="p-4 space-y-4">
+                            <div className="bg-indigo-50 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-400 p-3 text-xs rounded border border-indigo-100 dark:border-indigo-900">
+                                Ketikkan deskripsi gambar yang Anda inginkan. AI akan otomatis menerjemahkan dan merender gambar (landscape) untuk LKPD Anda!
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-sm font-bold text-foreground block">Deskripsi Gambar</label>
+                                <textarea
+                                    value={imageDescription}
+                                    onChange={(e) => setImageDescription(e.target.value)}
+                                    placeholder="Contoh: Anak-anak SD sedang menanam pohon di kebun sekolah yang cerah, gaya kartun berwarna-warni"
+                                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-indigo-500/20"
+                                    rows={4}
+                                />
+                            </div>
+                        </div>
+                        <div className="p-4 border-t border-border bg-muted/10 flex justify-end gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setIsImageModalOpen(false)}
+                                className="px-4 py-2 text-sm font-medium rounded-md hover:bg-muted"
+                                disabled={isGeneratingImage}
+                            >
+                                Batal
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleGenerateImage}
+                                disabled={!imageDescription || isGeneratingImage}
+                                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:opacity-50"
+                            >
+                                {isGeneratingImage ? (
+                                    <>
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                        Menciptakan...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Sparkles className="w-4 h-4" />
+                                        Generate
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </AppLayout>
     );
 }
