@@ -390,12 +390,12 @@ export default function Edit({ modulAjar, teachings, objectives, materials, peri
                                     {isGenerating ? (
                                         <>
                                             <Loader2 className="h-4.5 w-4.5 animate-spin" />
-                                            Meregenerasi...
+                                            Menyusun Draft...
                                         </>
                                     ) : (
                                         <>
                                             <Sparkles className="h-4.5 w-4.5 animate-pulse" />
-                                            Regenerasi dengan AI
+                                            Isi Otomatis Semua Form dengan AI
                                         </>
                                     )}
                                 </button>

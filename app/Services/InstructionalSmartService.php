@@ -927,6 +927,9 @@ class InstructionalSmartService
             'understanding' => "<p><strong>Orientasi Masalah:</strong> Guru menyajikan ilustrasi kontekstual mengenai " . htmlspecialchars($materialTitle) . " (misal dari kasus sehari-hari).</p>",
             'application' => "<p><strong>Penyelidikan Mandiri/Kelompok:</strong> Siswa berkolaborasi mengumpulkan data dan mencari solusi pemecahan masalah dengan dipandu LKPD.</p>",
             'reflection' => "<p><strong>Penyajian Hasil & Evaluasi:</strong> Perwakilan kelompok mempresentasikan hasil analisis mereka di depan kelas. Guru memberikan umpan balik konstruktif.</p>",
+            'rencana_asesmen_awal' => 'Melakukan survei singkat atau tanya jawab lisan untuk mengetahui pemahaman awal murid.',
+            'asesmen_formatif' => '<p>Memonitor aktivitas diskusi kelompok dan memberikan umpan balik langsung menggunakan rubrik observasi.</p>',
+            'asesmen_sumatif' => '<p>Penugasan proyek akhir atau kuis tertulis di akhir pertemuan.</p>',
             'lkpd' => "<h2>Lembar Kerja Peserta Didik (LKPD)</h2>" .
                 "<h3>Langkah Kegiatan Kelompok:</h3>" .
                 "<p><strong>Nama Anggota Kelompok:</strong> ____________________________________</p>" .

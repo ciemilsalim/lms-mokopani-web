@@ -172,6 +172,14 @@ export default function Create({ teachings, objectives, materials, period }: Cre
                                         <option key={m.id} value={m.id}>{m.title}</option>
                                     ))}
                                 </select>
+                                {selectedObjectiveId && filteredMaterials.length === 0 && (
+                                    <div className="mt-2 text-xs text-amber-600 dark:text-amber-400 font-medium p-3 bg-amber-50 dark:bg-amber-900/20 rounded border border-amber-200 dark:border-amber-800">
+                                        <p>Belum ada materi untuk TP ini.</p>
+                                        <a href={route('materials.create')} className="text-primary hover:underline font-bold mt-1 inline-block">
+                                            + Buat Materi Ajar Baru
+                                        </a>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>

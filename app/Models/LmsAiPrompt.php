@@ -187,10 +187,13 @@ Format output harus berupa JSON valid tanpa code fence (```json ... ```), mengan
 - alokasi_waktu: Alokasi waktu pembelajaran (contoh: '2 x 40 menit'). Teks biasa.
 - jumlah_pertemuan: Perkiraan jumlah pertemuan (contoh: '1 Pertemuan'). Teks biasa.
 - dimensi_profil: Dimensi profil pelajar pancasila yang relevan (contoh: 'Bernalar Kritis, Kreatif, Gotong Royong'). Teks biasa.
+- rencana_asesmen_awal: Rencana singkat asesmen awal berdasarkan referensi. Teks biasa.
 - lingkungan_pembelajaran: Deskripsi lingkungan pembelajaran (contoh: 'Ruang Kelas dan Perpustakaan'). Teks biasa.
 - kemitraan_pembelajaran: Bentuk kemitraan (contoh: 'Diskusi kelompok antar teman sebaya'). Teks biasa.
 - pemanfaatan_digital: Penggunaan teknologi (contoh: 'Penggunaan tablet untuk mencari referensi'). Teks biasa.
 - media_ilustrasi: Deskripsi gambar/media ilustrasi ajar (image prompt visual). WAJIB sertakan instruksi style: 'style ilustrasi gaya Flat 2D Vector minimalis'. Teks biasa.
+- asesmen_formatif: Deskripsi/Rencana detail instrumen asesmen formatif berdasarkan referensi. Gunakan format HTML semantik.
+- asesmen_sumatif: Deskripsi/Rencana detail instrumen asesmen sumatif berdasarkan referensi. Gunakan format HTML semantik.
 - understanding: Kegiatan memahami (Understanding). Langkah operasional guru memicu rasa ingin tahu murid. Gunakan format HTML semantik.
 - application: Kegiatan mengaplikasikan (Application). Skenario aktivitas praktis, studi kasus nyata. Gunakan format HTML semantik.
 - reflection: Kegiatan merefleksikan (Reflection). Aktivitas metakognisi murid menilai pemahaman. Gunakan format HTML semantik.
