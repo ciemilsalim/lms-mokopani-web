@@ -197,7 +197,7 @@ Format output harus berupa JSON valid tanpa code fence (```json ... ```), mengan
 - understanding: Kegiatan memahami (Understanding). Langkah operasional guru memicu rasa ingin tahu murid. Gunakan format HTML semantik. PENTING: Jika jumlah_pertemuan lebih dari 1, pisahkan skenario menggunakan <h3>Pertemuan 1</h3>, <h3>Pertemuan 2</h3>, dst.
 - application: Kegiatan mengaplikasikan (Application). Skenario aktivitas praktis, studi kasus nyata. Gunakan format HTML semantik. PENTING: Pisahkan menggunakan <h3>Pertemuan 1</h3>, <h3>Pertemuan 2</h3>, dst, jika lebih dari 1 pertemuan.
 - reflection: Kegiatan merefleksikan (Reflection). Aktivitas metakognisi murid. Gunakan format HTML semantik. PENTING: Pisahkan menggunakan <h3>Pertemuan 1</h3>, <h3>Pertemuan 2</h3>, dst, jika lebih dari 1 pertemuan.
-- lkpd: Lembar Kerja Peserta Didik lengkap dengan petunjuk, tugas, refleksi, dan rubrik. Gunakan format HTML semantik. PENTING: Pada bagian identitas LKPD, cantumkan kelas secara spesifik dan persis dengan parameter '{class}'. Buat desain yang menarik, rapih, dan profesional dengan menyematkan icon/emoji yang relevan (seperti 📝, 👥, 🎯, 💡, 📊) pada setiap bagian. Sertakan kotak identitas (Nama Kelompok, Anggota, Kelas) yang jelas di bagian atas.
+- lkpd: Lembar Kerja Peserta Didik lengkap dengan petunjuk, tugas, refleksi, dan rubrik. Gunakan format HTML semantik. PENTING: Pada bagian identitas LKPD, cantumkan kelas persis dengan '{class}'. Buat desain LKPD serapih dan semenarik mungkin dengan emoji (📝, 👥, 🎯, dll). PENTING: Untuk bagian Identitas (Nama Kelompok, Anggota), susun RAPIH ke bawah menggunakan list (<ul> atau <ol>) atau layout yang lega, JANGAN berjejal ke samping.
 
 ===== ATURAN FORMAT HTML WAJIB =====
 Field yang wajib menggunakan HTML (understanding, application, reflection, lkpd) harus ditulis menggunakan HTML semantik yang bersih dan profesional.
@@ -208,7 +208,7 @@ Field yang wajib menggunakan HTML (understanding, application, reflection, lkpd)
 - <ul> dan <li> untuk daftar tidak berurutan (bullet points)
 - <ol> dan <li> untuk daftar berurutan (numbered list)
 - <blockquote> untuk kutipan atau pertanyaan pemantik
-- <table>, <thead>, <tbody>, <tr>, <th>, <td> untuk tabel (sangat wajib untuk kriteria/rubrik di LKPD). Berikan style CSS inline pada tabel agar rapih (contoh: <table style='width: 100%; border-collapse: collapse;' border='1'> dan padding pada cell). Gunakan styling yang menarik untuk tabel (header tebal, latar belakang header abu-abu muda).
+- <table>, <thead>, <tbody>, <tr>, <th>, <td> untuk tabel (sangat wajib untuk kriteria/rubrik di LKPD). PENTING: Jangan gabungkan teks header ke dalam satu kolom! Tiap tingkat pencapaian (misal: Kriteria, Berkembang, Mahir) WAJIB berada di kolom <th> yang berbeda-beda. Berikan style CSS inline pada tabel agar rapih (contoh: <table style='width: 100%; border-collapse: collapse;' border='1'> dan padding pada cell). Gunakan styling yang menarik (header tebal, latar belakang header #f3f4f6).
 JANGAN gunakan Markdown (###, **, -, dll). WAJIB gunakan HTML tags.
 =======================================
 

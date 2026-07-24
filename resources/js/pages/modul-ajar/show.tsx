@@ -560,23 +560,6 @@ export default function Show({ modulAjar, assignments }: any) {
                                     <p className="text-sm">Bagi peserta didik yang telah mencapai/melampaui KKTP, diberikan tantangan analisis studi kasus atau perannya sebagai tutor sebaya.</p>
                                 </div>
                             </div>
-                            
-                            <div className="mt-6 grid grid-cols-2 gap-4 pt-4 text-sm hide-in-lkpd-print">
-                                <div>
-                                    <p className="font-bold">Mengetahui,</p>
-                                    <p>Kepala Sekolah</p>
-                                    <br /><br /><br />
-                                    <p className="font-bold underline">{headmasterName}</p>
-                                    <p>NIP. {headmasterNip}</p>
-                                </div>
-                                <div>
-                                    <p>Mokopani, {new Date().toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
-                                    <p className="font-bold">Guru Mata Pelajaran</p>
-                                    <br /><br /><br />
-                                    <p className="font-bold underline">{modulAjar.teacher_name}</p>
-                                    <p>NIP. {modulAjar.teacher_nip}</p>
-                                </div>
-                            </div>
                         </section>
 
                         {/* VI. LKPD */}
