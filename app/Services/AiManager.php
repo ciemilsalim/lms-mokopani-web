@@ -20,7 +20,12 @@ class AiManager
         $user = Auth::user();
         
         // Ambil provider utama dari pusat data SIPADA
-        $globalProvider = \Illuminate\Support\Facades\DB::table('settings')->where('key', 'global_ai_provider')->value('value') ?: 'gemini';
+        $globalProvider = 'gemini';
+        try {
+            $globalProvider = \Illuminate\Support\Facades\DB::table('settings')->where('key', 'global_ai_provider')->value('value') ?: 'gemini';
+        } catch (\Exception $e) {
+            // Silently ignore if table doesn't exist
+        }
         
         $activeProvider = $globalProvider;
         $customApiKey = null;

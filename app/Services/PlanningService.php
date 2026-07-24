@@ -15,7 +15,7 @@ class PlanningService
         if (empty($description)) return [];
 
         try {
-            $gemini = app(\App\Services\GeminiApiService::class);
+            $gemini = app(\App\Services\AiManager::class)->getActiveProvider();
             if ($gemini->isConfigured()) {
                 $suggestions = $gemini->suggestDirectTp($description, $regenerate);
                 if (!empty($suggestions)) {
@@ -63,7 +63,7 @@ class PlanningService
         }
 
         try {
-            $gemini = app(\App\Services\GeminiApiService::class);
+            $gemini = app(\App\Services\AiManager::class)->getActiveProvider();
             if ($gemini->isConfigured()) {
                 $analysis = $gemini->analyzeCompetenceAndContent($text, $regenerate);
                 if (!empty($analysis)) {
@@ -118,7 +118,7 @@ class PlanningService
         if (empty($cpDescriptions)) return "";
 
         try {
-            $gemini = app(\App\Services\GeminiApiService::class);
+            $gemini = app(\App\Services\AiManager::class)->getActiveProvider();
             if ($gemini->isConfigured()) {
                 $suggestion = $gemini->suggestCrossElementTp($cpDescriptions, $regenerate);
                 if (!empty($suggestion)) {
@@ -143,7 +143,7 @@ class PlanningService
         $this->isLastRequestOnline = false;
         
         try {
-            $gemini = app(\App\Services\GeminiApiService::class);
+            $gemini = app(\App\Services\AiManager::class)->getActiveProvider();
             if ($gemini->isConfigured()) {
                 // Pass a simplified array to Gemini
                 $tps = $objectives->map(fn($o) => ['id' => $o->id, 'description' => $o->description])->toArray();
@@ -225,7 +225,7 @@ class PlanningService
         if (empty($tpDescription)) return [];
 
         try {
-            $gemini = app(\App\Services\GeminiApiService::class);
+            $gemini = app(\App\Services\AiManager::class)->getActiveProvider();
             if ($gemini->isConfigured()) {
                 $subTps = $gemini->breakdownTp($tpDescription, $regenerate);
                 if (!empty($subTps)) {

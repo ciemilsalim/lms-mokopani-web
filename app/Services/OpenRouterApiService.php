@@ -18,9 +18,17 @@ class OpenRouterApiService implements AiProviderInterface
 
     public function __construct()
     {
-        $keysString = DB::table('settings')->where('key', 'global_ai_api_key')->value('value') ?? '';
+        $keysString = '';
+        $model = 'openrouter/free';
+        try {
+            $keysString = DB::table('settings')->where('key', 'global_ai_api_key')->value('value') ?? '';
+            $model = DB::table('settings')->where('key', 'global_ai_model')->value('value') ?: 'openrouter/free';
+        } catch (\Exception $e) {
+            // Silently ignore if table doesn't exist
+        }
+
         $this->apiKeys = array_filter(array_map('trim', explode(',', $keysString)));
-        $this->model   = DB::table('settings')->where('key', 'global_ai_model')->value('value') ?: 'openrouter/free';
+        $this->model   = $model;
         $this->baseUrl = 'https://openrouter.ai/api/v1';
     }
 

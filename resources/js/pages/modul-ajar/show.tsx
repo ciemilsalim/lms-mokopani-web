@@ -327,17 +327,22 @@ export default function Show({ modulAjar, assignments }: any) {
                         .print-avoid-break {
                             page-break-inside: avoid;
                         }
-                        .print-footer {
-                            display: block !important;
-                            position: fixed !important;
-                            bottom: 0 !important;
-                            left: 0 !important;
-                            width: 100% !important;
-                            z-index: 9999 !important;
-                        }
                         @page {
                             size: A4;
-                            margin: 15mm 15mm 25mm 15mm;
+                            margin: 15mm 15mm 22mm 15mm;
+                            @bottom-left {
+                                content: "Modul Ajar/RPP di cetak melalui LMS-Mokopani";
+                                font-size: 8pt;
+                                color: #666;
+                                font-family: sans-serif;
+                            }
+                            @bottom-right {
+                                content: "Halaman " counter(page);
+                                font-size: 8pt;
+                                font-weight: bold;
+                                color: #000;
+                                font-family: sans-serif;
+                            }
                         }
                     }
                 `}</style>
@@ -381,7 +386,6 @@ export default function Show({ modulAjar, assignments }: any) {
                     <div className="p-8 border-b border-border bg-muted/10 print:bg-white print:border-b-2 print:border-black text-center space-y-2 hide-in-lkpd-print">
                         <h1 className="text-xl font-bold uppercase tracking-wider text-black">MODUL AJAR / RPP DEEP LEARNING</h1>
                         <h2 className="text-lg font-bold text-black">{modulAjar.subject_name} - {classNameToDisplay}</h2>
-                        <p className="text-sm text-gray-600">{modulAjar.material_title?.replace(/&nbsp;/g, ' ')}</p>
                     </div>
 
                     <div className="p-8 space-y-10 bg-white text-black print:p-0 print:py-6">
@@ -631,13 +635,6 @@ export default function Show({ modulAjar, assignments }: any) {
                             </table>
                         </section>
 
-                    </div>
-                    
-                    {/* Print Footer */}
-                    <div className="hidden print:block print-footer fixed bottom-0 left-0 w-full text-center text-[10px] text-black/50 pb-1 bg-white z-[9999]" style={{ position: 'fixed', bottom: 0, left: 0, width: '100%', zIndex: 9999 }}>
-                        <div className="border-t border-gray-300 pt-1">
-                            Modul Ajar/RPP di cetak melalui LMS-Mokopani
-                        </div>
                     </div>
                 </div>
                 
