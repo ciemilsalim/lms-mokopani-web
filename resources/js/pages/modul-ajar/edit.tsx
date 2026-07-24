@@ -108,6 +108,7 @@ export default function Edit({ modulAjar, teachings, objectives, materials, peri
 
     const [alokasiWaktu, setAlokasiWaktu] = useState(parsedData.alokasi_waktu || '');
     const [jumlahPertemuan, setJumlahPertemuan] = useState(parsedData.jumlah_pertemuan || '');
+    const [customClassName, setCustomClassName] = useState(parsedData.custom_class_name || '');
     const [dimensiProfil, setDimensiProfil] = useState<string[]>(Array.isArray(parsedData.dimensi_profil) ? parsedData.dimensi_profil : (parsedData.dimensi_profil ? [parsedData.dimensi_profil] : []));
     const [rencanaAsesmenAwal, setRencanaAsesmenAwal] = useState((parsedData.rencana_asesmen_awal || '').replace(/&nbsp;/g, ' '));
     const [lingkunganPembelajaran, setLingkunganPembelajaran] = useState(parsedData.lingkungan_pembelajaran || '');
@@ -232,6 +233,7 @@ export default function Edit({ modulAjar, teachings, objectives, materials, peri
             material_id: modulAjar.material_id,
             pedagogical_model: pedagogicalModel,
             general_info: JSON.stringify({
+                custom_class_name: customClassName,
                 alokasi_waktu: alokasiWaktu,
                 jumlah_pertemuan: jumlahPertemuan,
                 dimensi_profil: dimensiProfil,
@@ -475,6 +477,16 @@ export default function Edit({ modulAjar, teachings, objectives, materials, peri
                                 <div className="p-4 sm:p-6">
                                     {activeTab === 'identifikasi' && (
                                         <div className="space-y-4 animate-in fade-in duration-200">
+                                            <div className="space-y-1">
+                                                <label className="text-xs font-bold text-foreground block">Label / Kombinasi Kelas Sasaran (Opsional)</label>
+                                                <input 
+                                                    value={customClassName} 
+                                                    onChange={e => setCustomClassName(e.target.value)} 
+                                                    placeholder={`Default: ${subjectInfo?.class_name || 'Kelas 8A'} (Contoh gabungan: Kelas 8 (8A, 8B, 8C, 8D))`}
+                                                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary/20"
+                                                />
+                                                <p className="text-[11px] text-muted-foreground">Isi jika Modul Ajar ini ditujukan untuk beberapa kelas paralel sekaligus (misal: 8A, 8B, 8C, 8D).</p>
+                                            </div>
                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                                 <div className="space-y-1">
                                                     <label className="text-xs font-bold text-foreground block">Alokasi Waktu</label>

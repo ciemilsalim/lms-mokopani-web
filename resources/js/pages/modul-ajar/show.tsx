@@ -196,6 +196,7 @@ export default function Show({ modulAjar, assignments }: any) {
     const asesmenFormatif = parsedData.asesmen_formatif || '';
     const asesmenSumatif = parsedData.asesmen_sumatif || '';
 
+    const classNameToDisplay = parsedData.custom_class_name || modulAjar.class_name || '-';
     const schoolName = modulAjar.school_name || 'SMA Negeri 1 Mokopani';
     const headmasterName = modulAjar.headmaster_name || 'Nama Kepala Sekolah';
     const headmasterNip = modulAjar.headmaster_nip || '-';
@@ -330,11 +331,13 @@ export default function Show({ modulAjar, assignments }: any) {
                             display: block !important;
                             position: fixed !important;
                             bottom: 0 !important;
+                            left: 0 !important;
                             width: 100% !important;
                             z-index: 9999 !important;
                         }
                         @page {
-                            margin-bottom: 20mm;
+                            size: A4;
+                            margin: 15mm 15mm 25mm 15mm;
                         }
                     }
                 `}</style>
@@ -377,7 +380,7 @@ export default function Show({ modulAjar, assignments }: any) {
                     {/* Header Document */}
                     <div className="p-8 border-b border-border bg-muted/10 print:bg-white print:border-b-2 print:border-black text-center space-y-2 hide-in-lkpd-print">
                         <h1 className="text-xl font-bold uppercase tracking-wider text-black">MODUL AJAR / RPP DEEP LEARNING</h1>
-                        <h2 className="text-lg font-bold text-black">{modulAjar.subject_name} - {modulAjar.class_name}</h2>
+                        <h2 className="text-lg font-bold text-black">{modulAjar.subject_name} - {classNameToDisplay}</h2>
                         <p className="text-sm text-gray-600">{modulAjar.material_title?.replace(/&nbsp;/g, ' ')}</p>
                     </div>
 
@@ -389,7 +392,11 @@ export default function Show({ modulAjar, assignments }: any) {
                             <table className="w-full border-collapse border border-black text-sm">
                                 <tbody>
                                     <tr>
-                                        <td className="border border-black p-2 font-bold w-1/3 bg-gray-50">Nama Sekolah</td>
+                                        <td className="border border-black p-2 font-bold w-1/3 bg-gray-50">Nama Penyusun</td>
+                                        <td className="border border-black p-2 font-semibold">{modulAjar.teacher_name}</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="border border-black p-2 font-bold bg-gray-50">Nama Sekolah</td>
                                         <td className="border border-black p-2">{schoolName}</td>
                                     </tr>
                                     <tr>
@@ -406,7 +413,7 @@ export default function Show({ modulAjar, assignments }: any) {
                                     </tr>
                                     <tr>
                                         <td className="border border-black p-2 font-bold bg-gray-50">Kelas / Fase</td>
-                                        <td className="border border-black p-2">{modulAjar.class_name} / Fase {getFaseFromClass(modulAjar.class_name)}</td>
+                                        <td className="border border-black p-2">{classNameToDisplay} / Fase {getFaseFromClass(classNameToDisplay)}</td>
                                     </tr>
                                     <tr>
                                         <td className="border border-black p-2 font-bold bg-gray-50">Tahun Ajaran</td>
@@ -415,10 +422,6 @@ export default function Show({ modulAjar, assignments }: any) {
                                     <tr>
                                         <td className="border border-black p-2 font-bold bg-gray-50">Alokasi Waktu / Pertemuan</td>
                                         <td className="border border-black p-2">{alokasiWaktu} / {jumlahPertemuan}</td>
-                                    </tr>
-                                    <tr>
-                                        <td className="border border-black p-2 font-bold bg-gray-50">Nama Guru</td>
-                                        <td className="border border-black p-2">{modulAjar.teacher_name}</td>
                                     </tr>
                                     <tr>
                                         <td className="border border-black p-2 font-bold bg-gray-50">Dimensi Profil Lulusan</td>
@@ -657,10 +660,16 @@ export default function Show({ modulAjar, assignments }: any) {
                         nav, header, .md\\:hidden, .print\\:hidden, [role="navigation"] { display: none !important; }
                         .print-lkpd-mode section:not(.lkpd-section) { display: none !important; }
                         .print-lkpd-mode .hide-in-lkpd-print { display: none !important; }
-                        .print-avoid-break { page-break-inside: auto !important; break-inside: auto !important; }
-                        section { page-break-inside: auto !important; page-break-before: auto !important; page-break-after: auto !important; break-inside: auto !important; break-before: auto !important; break-after: auto !important; margin-bottom: 1.5rem !important; }
+                        
+                        section { page-break-inside: auto !important; break-inside: auto !important; margin-bottom: 1.5rem !important; }
                         table { page-break-inside: auto !important; break-inside: auto !important; }
-                        tr { page-break-inside: auto !important; page-break-after: auto !important; break-inside: auto !important; }
+                        
+                        /* Prevent text lines, list items, paragraphs and table rows from being sliced horizontally across page boundaries */
+                        p, li, tr, th, td, h1, h2, h3, h4, h5, h6, blockquote {
+                            break-inside: avoid !important;
+                            page-break-inside: avoid !important;
+                        }
+                        
                         .prose { max-width: 100% !important; }
                     }
                 `}} />
