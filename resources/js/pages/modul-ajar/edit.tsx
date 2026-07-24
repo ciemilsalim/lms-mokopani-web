@@ -108,10 +108,13 @@ export default function Edit({ modulAjar, teachings, objectives, materials, peri
 
     const [alokasiWaktu, setAlokasiWaktu] = useState(parsedData.alokasi_waktu || '');
     const [jumlahPertemuan, setJumlahPertemuan] = useState(parsedData.jumlah_pertemuan || '');
-    const [dimensiProfil, setDimensiProfil] = useState(parsedData.dimensi_profil || '');
+    const [dimensiProfil, setDimensiProfil] = useState<string[]>(Array.isArray(parsedData.dimensi_profil) ? parsedData.dimensi_profil : (parsedData.dimensi_profil ? [parsedData.dimensi_profil] : []));
+    const [rencanaAsesmenAwal, setRencanaAsesmenAwal] = useState((parsedData.rencana_asesmen_awal || '').replace(/&nbsp;/g, ' '));
     const [lingkunganPembelajaran, setLingkunganPembelajaran] = useState(parsedData.lingkungan_pembelajaran || '');
     const [kemitraanPembelajaran, setKemitraanPembelajaran] = useState(parsedData.kemitraan_pembelajaran || '');
     const [pemanfaatanDigital, setPemanfaatanDigital] = useState(parsedData.pemanfaatan_digital || '');
+    const [asesmenFormatif, setAsesmenFormatif] = useState((parsedData.asesmen_formatif || '').replace(/&nbsp;/g, ' '));
+    const [asesmenSumatif, setAsesmenSumatif] = useState((parsedData.asesmen_sumatif || '').replace(/&nbsp;/g, ' '));
     const [mediaIlustrasi, setMediaIlustrasi] = useState(parsedData.media_ilustrasi || '');
     
     const [understanding, setUnderstanding] = useState((parsedData.understanding || '').replace(/&nbsp;/g, ' '));
@@ -119,7 +122,7 @@ export default function Edit({ modulAjar, teachings, objectives, materials, peri
     const [reflection, setReflection] = useState((parsedData.reflection || '').replace(/&nbsp;/g, ' '));
     const [lkpd, setLkpd] = useState((parsedData.lkpd || modulAjar.lkpd || '').replace(/&nbsp;/g, ' '));
 
-    const [activeTab, setActiveTab] = useState<string>('info');
+    const [activeTab, setActiveTab] = useState<string>('identifikasi');
     const [isSaving, setIsSaving] = useState(false);
 
     // Get current parameters
@@ -181,11 +184,14 @@ export default function Edit({ modulAjar, teachings, objectives, materials, peri
             if (data) {
                 setAlokasiWaktu(data.alokasi_waktu || '');
                 setJumlahPertemuan(data.jumlah_pertemuan || '');
-                setDimensiProfil(data.dimensi_profil || '');
+                setDimensiProfil(Array.isArray(data.dimensi_profil) ? data.dimensi_profil : (data.dimensi_profil ? [data.dimensi_profil] : []));
+                setRencanaAsesmenAwal((data.rencana_asesmen_awal || '').replace(/&nbsp;/g, ' '));
                 setLingkunganPembelajaran(data.lingkungan_pembelajaran || '');
                 setKemitraanPembelajaran(data.kemitraan_pembelajaran || '');
                 setPemanfaatanDigital(data.pemanfaatan_digital || '');
                 setMediaIlustrasi(data.media_ilustrasi || '');
+                setAsesmenFormatif((data.asesmen_formatif || '').replace(/&nbsp;/g, ' '));
+                setAsesmenSumatif((data.asesmen_sumatif || '').replace(/&nbsp;/g, ' '));
                 setUnderstanding((data.understanding || '').replace(/&nbsp;/g, ' '));
                 setApplication((data.application || '').replace(/&nbsp;/g, ' '));
                 setReflection((data.reflection || '').replace(/&nbsp;/g, ' '));
@@ -228,10 +234,13 @@ export default function Edit({ modulAjar, teachings, objectives, materials, peri
                 alokasi_waktu: alokasiWaktu,
                 jumlah_pertemuan: jumlahPertemuan,
                 dimensi_profil: dimensiProfil,
+                rencana_asesmen_awal: rencanaAsesmenAwal,
                 lingkungan_pembelajaran: lingkunganPembelajaran,
                 kemitraan_pembelajaran: kemitraanPembelajaran,
                 pemanfaatan_digital: pemanfaatanDigital,
                 media_ilustrasi: mediaIlustrasi,
+                asesmen_formatif: asesmenFormatif,
+                asesmen_sumatif: asesmenSumatif,
                 understanding: understanding,
                 application: application,
                 reflection: reflection,
@@ -252,9 +261,11 @@ export default function Edit({ modulAjar, teachings, objectives, materials, peri
     };
 
     const tabs = [
-        { id: 'info', label: '1. Info & Desain' },
-        { id: 'steps', label: '2. Langkah Pembelajaran' },
-        { id: 'lkpd', label: '3. LKPD' },
+        { id: 'identifikasi', label: '1. Identifikasi' },
+        { id: 'desain', label: '2. Desain Pembelajaran' },
+        { id: 'asesmen', label: '3. Asesmen' },
+        { id: 'skenario', label: '4. Skenario' },
+        { id: 'lkpd', label: '5. LKPD' },
     ];
 
     return (
@@ -461,7 +472,7 @@ export default function Edit({ modulAjar, teachings, objectives, materials, peri
 
                                 {/* Form Box */}
                                 <div className="p-4 sm:p-6">
-                                    {activeTab === 'info' && (
+                                    {activeTab === 'identifikasi' && (
                                         <div className="space-y-4 animate-in fade-in duration-200">
                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                                 <div className="space-y-1">
@@ -482,39 +493,83 @@ export default function Edit({ modulAjar, teachings, objectives, materials, peri
                                                 </div>
                                             </div>
                                             <div className="space-y-1">
-                                                <label className="text-xs font-bold text-foreground block">Dimensi Profil Pelajar Pancasila</label>
-                                                <input 
-                                                    value={dimensiProfil} 
-                                                    onChange={e => setDimensiProfil(e.target.value)} 
+                                                <label className="text-xs font-bold text-foreground block">Dimensi Profil Pelajar Pancasila (P5)</label>
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+                                                    {['Beriman, bertakwa kepada Tuhan YME', 'Berkebinekaan Global', 'Bergotong Royong', 'Mandiri', 'Bernalar Kritis', 'Kreatif'].map(dim => (
+                                                        <label key={dim} className="flex items-center gap-2 text-sm cursor-pointer">
+                                                            <input 
+                                                                type="checkbox"
+                                                                checked={dimensiProfil.includes(dim)}
+                                                                onChange={(e) => {
+                                                                    if (e.target.checked) {
+                                                                        setDimensiProfil([...dimensiProfil, dim]);
+                                                                    } else {
+                                                                        setDimensiProfil(dimensiProfil.filter(d => d !== dim));
+                                                                    }
+                                                                }}
+                                                                className="rounded border-border text-primary focus:ring-primary/20"
+                                                            />
+                                                            <span>{dim}</span>
+                                                        </label>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                            <div className="space-y-1 mt-4">
+                                                <label className="text-xs font-bold text-foreground block">Rencana Asesmen Awal Murid (Diagnostik)</label>
+                                                <textarea 
+                                                    value={rencanaAsesmenAwal} 
+                                                    onChange={e => setRencanaAsesmenAwal(e.target.value)} 
+                                                    rows={3}
+                                                    placeholder="Deskripsikan rencana Anda untuk melakukan asesmen awal..."
                                                     className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary/20"
                                                 />
                                             </div>
+                                        </div>
+                                    )}
+
+                                    {activeTab === 'desain' && (
+                                        <div className="space-y-4 animate-in fade-in duration-200">
                                             <div className="space-y-1">
                                                 <label className="text-xs font-bold text-foreground block">Lingkungan Pembelajaran</label>
-                                                <input 
+                                                <select 
                                                     value={lingkunganPembelajaran} 
                                                     onChange={e => setLingkunganPembelajaran(e.target.value)} 
                                                     className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary/20"
-                                                />
+                                                >
+                                                    <option value="">Pilih Lingkungan Pembelajaran</option>
+                                                    <option value="Di dalam kelas (Indoor)">Di dalam kelas (Indoor)</option>
+                                                    <option value="Di luar kelas (Outdoor)">Di luar kelas (Outdoor)</option>
+                                                    <option value="Daring (Online/PJJ)">Daring (Online/PJJ)</option>
+                                                    <option value="Campuran (Hybrid)">Campuran (Hybrid)</option>
+                                                    <option value="Laboratorium / Ruang Praktik">Laboratorium / Ruang Praktik</option>
+                                                </select>
                                             </div>
                                             <div className="space-y-1">
                                                 <label className="text-xs font-bold text-foreground block">Kemitraan Pembelajaran</label>
-                                                <input 
+                                                <select 
                                                     value={kemitraanPembelajaran} 
                                                     onChange={e => setKemitraanPembelajaran(e.target.value)} 
                                                     className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary/20"
-                                                />
+                                                >
+                                                    <option value="">Pilih Kemitraan Pembelajaran</option>
+                                                    <option value="Mandiri (Guru Utama)">Mandiri (Guru Utama)</option>
+                                                    <option value="Team Teaching (Guru Serumpun)">Team Teaching (Guru Serumpun)</option>
+                                                    <option value="Kolaborasi Antar Mata Pelajaran">Kolaborasi Antar Mata Pelajaran</option>
+                                                    <option value="Melibatkan Orang Tua / Wali Murid">Melibatkan Orang Tua / Wali Murid</option>
+                                                    <option value="Mengundang Praktisi / Ahli Luar">Mengundang Praktisi / Ahli Luar</option>
+                                                </select>
                                             </div>
                                             <div className="space-y-1">
-                                                <label className="text-xs font-bold text-foreground block">Pemanfaatan Digital</label>
+                                                <label className="text-xs font-bold text-foreground block">Pemanfaatan Teknologi Digital</label>
                                                 <input 
                                                     value={pemanfaatanDigital} 
                                                     onChange={e => setPemanfaatanDigital(e.target.value)} 
+                                                    placeholder="Contoh: Penggunaan LMS, Quizizz, Proyektor Interaktif, dll"
                                                     className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary/20"
                                                 />
                                             </div>
                                             <div className="space-y-1">
-                                                <label className="text-xs font-bold text-foreground block">Media / Ilustrasi (Prompt Gambar)</label>
+                                                <label className="text-xs font-bold text-foreground block">Media / Ilustrasi Pembelajaran</label>
                                                 <textarea 
                                                     value={mediaIlustrasi} 
                                                     onChange={e => setMediaIlustrasi(e.target.value)} 
@@ -525,8 +580,26 @@ export default function Edit({ modulAjar, teachings, objectives, materials, peri
                                         </div>
                                     )}
 
-                                    {activeTab === 'steps' && (
+                                    {activeTab === 'asesmen' && (
                                         <div className="space-y-6 animate-in fade-in duration-200">
+                                            <div className="space-y-2">
+                                                <label className="text-xs font-bold text-foreground block">Asesmen Formatif (Selama Proses)</label>
+                                                <ReactQuill theme="snow" modules={quillModules} value={asesmenFormatif} onChange={setAsesmenFormatif} className="h-[200px]" />
+                                            </div>
+                                            <div className="h-10" />
+                                            <div className="space-y-2">
+                                                <label className="text-xs font-bold text-foreground block">Asesmen Sumatif (Akhir)</label>
+                                                <ReactQuill theme="snow" modules={quillModules} value={asesmenSumatif} onChange={setAsesmenSumatif} className="h-[200px]" />
+                                            </div>
+                                            <div className="h-12" />
+                                        </div>
+                                    )}
+
+                                    {activeTab === 'skenario' && (
+                                        <div className="space-y-6 animate-in fade-in duration-200">
+                                            <div className="bg-indigo-50 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-400 p-3 text-xs rounded border border-indigo-100 dark:border-indigo-900 mb-4">
+                                                <strong>Pengingat (PPA 2025):</strong> Pastikan langkah pembelajaran dan skenario aktivitas Anda mencerminkan prinsip <strong>berkesadaran (mindful)</strong>, <strong>bermakna (meaningful)</strong>, dan <strong>menggembirakan (joyful)</strong>.
+                                            </div>
                                             <div className="space-y-2">
                                                 <label className="text-xs font-bold text-foreground block">1. Memahami (Understanding)</label>
                                                 <ReactQuill theme="snow" modules={quillModules} value={understanding} onChange={setUnderstanding} className="h-[200px]" />
