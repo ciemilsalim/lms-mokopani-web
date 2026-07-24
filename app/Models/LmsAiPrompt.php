@@ -186,10 +186,10 @@ Gunakan data Asesmen yang sudah ditentukan sebagai referensi:
 Format output harus berupa JSON valid tanpa code fence (```json ... ```), mengandung key:
 - alokasi_waktu: Alokasi waktu pembelajaran dalam JP (contoh: '4 JP'). Sesuaikan dengan kompleksitas materi. Teks biasa.
 - jumlah_pertemuan: Hitung otomatis dari alokasi_waktu (Rumus: 2 JP = 1 Pertemuan). Jika 4 JP, maka isikan '2 Pertemuan'. Teks biasa.
-- dimensi_profil: Array of strings berisi profil P5 yang sangat relevan dengan materi & kegiatan belajar. Pilih HANYA dari opsi baku berikut (maksimal 3): ["Beriman, Bertakwa kepada Tuhan YME, dan Berakhlak Mulia", "Berkebinekaan Global", "Bergotong Royong", "Mandiri", "Bernalar Kritis", "Kreatif"].
+- dimensi_profil: Array of strings berisi profil P5 yang sangat relevan dengan materi & kegiatan belajar. Pilih HANYA dari opsi baku berikut (maksimal 3): ['Beriman, Bertakwa kepada Tuhan YME, dan Berakhlak Mulia', 'Berkebinekaan Global', 'Bergotong Royong', 'Mandiri', 'Bernalar Kritis', 'Kreatif'].
 - rencana_asesmen_awal: Rencana singkat asesmen awal berdasarkan referensi. Teks biasa.
-- lingkungan_pembelajaran: Deskripsi lingkungan pembelajaran (contoh: 'Ruang Kelas dan Perpustakaan'). Teks biasa.
-- kemitraan_pembelajaran: Bentuk kemitraan (contoh: 'Diskusi kelompok antar teman sebaya'). Teks biasa.
+- lingkungan_pembelajaran: Deskripsi lingkungan pembelajaran. Pilih HANYA dari opsi baku berikut yang relevan: ['Di dalam kelas (Indoor)', 'Di luar kelas (Outdoor)', 'Daring (Online/PJJ)', 'Campuran (Hybrid)', 'Laboratorium / Ruang Praktik']. Teks biasa.
+- kemitraan_pembelajaran: Bentuk kemitraan. Pilih HANYA dari opsi baku berikut yang relevan: ['Mandiri (Guru Utama)', 'Team Teaching (Guru Serumpun)', 'Kolaborasi Antar Mata Pelajaran', 'Melibatkan Orang Tua / Wali Murid', 'Mengundang Praktisi / Ahli Luar']. Teks biasa.
 - pemanfaatan_digital: Penggunaan teknologi (contoh: 'Penggunaan tablet untuk mencari referensi'). Teks biasa.
 - media_ilustrasi: Deskripsi gambar/media ilustrasi ajar (image prompt visual). WAJIB sertakan instruksi style: 'style ilustrasi gaya Flat 2D Vector minimalis'. Teks biasa.
 - asesmen_formatif: Deskripsi/Rencana detail instrumen asesmen formatif berdasarkan referensi. Gunakan format HTML semantik.
