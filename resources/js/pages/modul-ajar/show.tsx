@@ -509,7 +509,7 @@ export default function Show({ modulAjar, assignments }: any) {
 
                         {/* V. Asesmen Formatif / Sumatif */}
                         <section className="print-avoid-break">
-                            <h3 className="font-bold text-lg mb-3 uppercase border-b-2 border-black pb-1">V. PENILAIAN/ASESMEN FORMATIF & SUMATIF</h3>
+                            <h3 className="font-bold text-lg mb-3 uppercase border-b-2 border-black pb-1">V. PENILAIAN/ASESMEN FORMATIF, SUMATIF & KKTP</h3>
                             {processAssignments.length > 0 ? (
                                 <ul className="list-disc pl-5 text-sm space-y-2">
                                     {processAssignments.map((asm: any) => (
@@ -537,100 +537,71 @@ export default function Show({ modulAjar, assignments }: any) {
                             ) : (
                                 <p className="text-sm italic text-gray-500">Tidak ada asesmen formatif/sumatif yang didefinisikan secara eksplisit.</p>
                             )}
-                        </section>
 
-                        {/* VI. KKTP */}
-                        <section className="print-avoid-break">
-                            <h3 className="font-bold text-lg mb-3 uppercase border-b-2 border-black pb-1">VI. KRITERIA KETUNTASAN TUJUAN PEMBELAJARAN (KKTP)</h3>
-                            <div className="text-sm border border-black p-4 rounded bg-gray-50 hide-in-lkpd-print">
-                                <div className="mb-4">
-                                    <p className="mb-2">Pendekatan Kriteria Ketuntasan Tujuan Pembelajaran (KKTP) yang digunakan disesuaikan dengan jenis asesmen:</p>
-                                    <ul className="list-disc pl-5 space-y-1">
-                                        {processAssignments.length > 0 ? processAssignments.map((asm: any) => {
-                                            const formattedType = asm.instrument_type?.split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') || 'Instrumen';
-                                            const assessmentType = asm.assessment_type === 'formative' ? 'Formatif' : asm.assessment_type === 'summative' ? 'Sumatif' : asm.assessment_type;
-                                            return (
-                                                <li key={asm.id}>
-                                                    <strong>{asm.title} - {assessmentType} ({formattedType}):</strong> {getKktpDescription(asm)}
-                                                </li>
-                                            );
-                                        }) : (asesmenFormatif || asesmenSumatif) ? (
-                                            <li>
-                                                <strong>Berdasarkan Rubrik / Kriteria:</strong> Ketuntasan peserta didik dinilai berdasarkan rubrik dan kriteria yang tercantum pada instrumen asesmen formatif atau sumatif di atas.
-                                            </li>
-                                        ) : (
-                                            <li>Pendekatan KKTP mengacu pada standar sekolah dengan kriteria ketuntasan (KKM): <strong className="text-lg">{modulAjar.subject_kktp || 70}</strong>.</li>
-                                        )}
-                                    </ul>
+                            {processAssignments.length > 0 && (
+                                <div className="mt-4 pt-4 border-t border-black">
+                                    <h4 className="font-bold mb-2 text-sm">Lampiran Instrumen & Rubrik KKTP:</h4>
+                                    {processAssignments.map((asm: any) => (
+                                        <div key={asm.id} className="mb-4 bg-white p-3 border border-gray-300 rounded shadow-sm text-sm">
+                                            <p className="font-semibold text-base mb-2 border-b pb-1 border-gray-100">{asm.title} <span className="uppercase text-xs px-1 py-0.5 bg-gray-200 rounded font-bold ml-1">({asm.instrument_type})</span></p>
+                                            <InstrumentRenderer config={asm.instrument_config} type={asm.instrument_type} />
+                                        </div>
+                                    ))}
                                 </div>
-                                
-                                {processAssignments.length > 0 && (
-                                    <div className="mt-4 pt-4 border-t border-black">
-                                        <h4 className="font-bold mb-2">Instrumen Asesmen KKTP:</h4>
-                                        {processAssignments.map((asm: any) => (
-                                            <div key={asm.id} className="mb-4 bg-white p-3 border border-gray-300 rounded shadow-sm">
-                                                <p className="font-semibold text-base mb-2 border-b pb-1 border-gray-100">{asm.title} <span className="uppercase text-xs px-1 py-0.5 bg-gray-200 rounded font-bold ml-1">({asm.instrument_type})</span></p>
-                                                <InstrumentRenderer config={asm.instrument_config} type={asm.instrument_type} />
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                                
-                                <div className="mt-4 grid grid-cols-2 gap-4 pt-4 border-t border-black">
-                                    <div>
-                                        <p className="font-bold border-b border-black pb-1 mb-1 text-red-700">Tindak Lanjut Remedial</p>
-                                        <p className="text-sm">Bagi peserta didik yang belum mencapai KKTP, diberikan pendampingan personal dan tugas tambahan terkait pemahaman konsep dasar.</p>
-                                    </div>
-                                    <div>
-                                        <p className="font-bold border-b border-black pb-1 mb-1 text-green-700">Tindak Lanjut Pengayaan</p>
-                                        <p className="text-sm">Bagi peserta didik yang telah mencapai/melampaui KKTP, diberikan tantangan analisis studi kasus atau perannya sebagai tutor sebaya.</p>
-                                    </div>
+                            )}
+
+                            <div className="mt-4 grid grid-cols-2 gap-4 pt-4 border-t border-black hide-in-lkpd-print">
+                                <div>
+                                    <p className="font-bold border-b border-black pb-1 mb-1 text-red-700 text-sm">Tindak Lanjut Remedial</p>
+                                    <p className="text-sm">Bagi peserta didik yang belum mencapai KKTP, diberikan pendampingan personal dan tugas tambahan terkait pemahaman konsep dasar.</p>
+                                </div>
+                                <div>
+                                    <p className="font-bold border-b border-black pb-1 mb-1 text-green-700 text-sm">Tindak Lanjut Pengayaan</p>
+                                    <p className="text-sm">Bagi peserta didik yang telah mencapai/melampaui KKTP, diberikan tantangan analisis studi kasus atau perannya sebagai tutor sebaya.</p>
+                                </div>
+                            </div>
+                            
+                            <div className="mt-6 grid grid-cols-2 gap-4 pt-4 text-sm hide-in-lkpd-print">
+                                <div>
+                                    <p className="font-bold">Mengetahui,</p>
+                                    <p>Kepala Sekolah</p>
+                                    <br /><br /><br />
+                                    <p className="font-bold underline">{headmasterName}</p>
+                                    <p>NIP. {headmasterNip}</p>
+                                </div>
+                                <div>
+                                    <p>Mokopani, {new Date().toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                                    <p className="font-bold">Guru Mata Pelajaran</p>
+                                    <br /><br /><br />
+                                    <p className="font-bold underline">{modulAjar.teacher_name}</p>
+                                    <p>NIP. {modulAjar.teacher_nip}</p>
                                 </div>
                             </div>
                         </section>
 
-                        {/* VII. LKPD */}
-                        <section className="print-avoid-break lkpd-section">
-                            <h3 className="font-bold text-lg mb-3 uppercase border-b-2 border-black pb-1">VII. LEMBAR KERJA PESERTA DIDIK (LKPD)</h3>
+                        {/* VI. LKPD */}
+                        <section className="print-avoid-break lkpd-section relative">
+                            <div className="flex justify-between items-center mb-4 border-b-2 border-black pb-2">
+                                <h3 className="font-bold text-lg uppercase m-0">VI. LEMBAR KERJA PESERTA DIDIK (LKPD) / LAMPIRAN</h3>
+                                <div className="print:hidden hide-in-word text-right">
+                                    <button 
+                                        onClick={() => handlePrint('lkpd')}
+                                        className="inline-flex items-center justify-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg shadow hover:bg-indigo-700 transition font-bold text-sm"
+                                    >
+                                        <Printer className="h-4 w-4" />
+                                        Cetak Khusus LKPD
+                                    </button>
+                                </div>
+                            </div>
                             
-                            <table className="w-full border-collapse mb-4 bg-gray-50 print:bg-white print:border-none print:mb-6" style={{ border: '1px solid black' }}>
-                                <tbody>
-                                    <tr>
-                                        <td className="w-1/2 p-4 align-top" style={{ border: 'none' }}>
-                                            <div className="border border-black p-4 rounded print:border-2">
-                                                <p className="font-bold border-b border-black inline-block mb-2">Kelompok: ..............................................................</p>
-                                                <p className="font-semibold text-sm mb-1">Nama Anggota:</p>
-                                                <ol className="list-decimal pl-5 space-y-1 text-sm font-semibold">
-                                                    <li>........................................................................</li>
-                                                    <li>........................................................................</li>
-                                                    <li>........................................................................</li>
-                                                    <li>........................................................................</li>
-                                                    <li>........................................................................</li>
-                                                </ol>
-                                            </div>
-                                        </td>
-                                        <td className="w-1/2 p-4 align-bottom text-right print:hidden hide-in-word" style={{ border: 'none' }}>
-                                            <button 
-                                                onClick={() => handlePrint('lkpd')}
-                                                className="inline-flex items-center justify-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-lg shadow hover:bg-indigo-700 transition font-bold"
-                                            >
-                                                <Printer className="h-5 w-5" />
-                                                Cetak Khusus LKPD
-                                            </button>
-                                            <p className="text-xs text-gray-500 mt-2 text-right">Tombol ini hanya akan mencetak bagian LKPD saja untuk dibagikan ke siswa.</p>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                            
-                            <div className="border border-black p-6 bg-white min-h-[300px]">
+                            <div className="border border-black p-6 bg-white min-h-[300px] print:border-none print:p-0">
                                 <HtmlContent html={lkpdContent} />
                             </div>
                         </section>
 
-                        {/* VIII. Sumber Belajar */}
+                        {/* VII. Sumber Belajar */}
                         <section className="print-avoid-break">
-                            <h3 className="font-bold text-lg mb-3 uppercase border-b-2 border-black pb-1">VIII. SUMBER BELAJAR</h3>
+                            <h3 className="font-bold text-lg mb-3 uppercase border-b-2 border-black pb-1">VII. SUMBER BELAJAR</h3>
                             {modulAjar.material_resources && modulAjar.material_resources.length > 0 ? (
                                 <ul className="list-decimal pl-5 text-sm space-y-2">
                                     {modulAjar.material_resources.map((res: any) => (
