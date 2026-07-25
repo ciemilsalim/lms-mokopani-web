@@ -1,6 +1,6 @@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
-import { Head, router, useForm } from '@inertiajs/react';
+import { Head, Link, router, useForm } from '@inertiajs/react';
 import { 
     Calendar, 
     ChevronLeft, 
@@ -48,8 +48,7 @@ import {
     Minimize2,
     ZoomIn,
     ZoomOut,
-    ClipboardCheck,
-    Camera
+    ClipboardCheck
 } from 'lucide-react';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { ConfirmDialog } from '@/components/confirm-dialog';

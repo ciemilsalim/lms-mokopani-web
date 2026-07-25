@@ -166,6 +166,7 @@ export default function CreateAssignment({ teachings, objectives, assessment_typ
             const response = await axios.post(route('instructional-design.auto-suggest'), {
                 learning_objective_id: data.learning_objective_id,
                 suggest_type: 'assessment',
+                assessment_type: data.assessment_type || 'summative',
                 instrument_type: data.instrument_type,
                 subject_id: data.subject_id,
                 regenerate: clickCount > 0
@@ -245,7 +246,7 @@ export default function CreateAssignment({ teachings, objectives, assessment_typ
                     } else {
                         const selObj = objectives.find(o => o.id === Number(prev.learning_objective_id));
                         if (selObj) {
-                            suggestedTitle = `Asesmen ${selObj.code ? `[${selObj.code}]` : ''} ${selObj.description.slice(0, 45)}`;
+                            suggestedTitle = `Asesmen ${selObj.code ? `[${selObj.code}]` : ''} ${selObj.description}`;
                         } else {
                             suggestedTitle = 'Asesmen Pembelajaran';
                         }
@@ -437,6 +438,39 @@ export default function CreateAssignment({ teachings, objectives, assessment_typ
                                         <CheckCircle2 className="w-3.5 h-3.5" /> Modul Ajar Terhubung
                                     </Badge>
                                 )}
+                            </div>
+
+                            {/* Jenis Asesmen Target Selector */}
+                            <div>
+                                <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-2">
+                                    Target Jenis Asesmen dari Modul Ajar
+                                </label>
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                    {[
+                                        { id: 'initial', label: '🔍 Asesmen Awal (Diagnostik)', desc: 'Kesiapan belajar murid' },
+                                        { id: 'formative', label: '🎯 Asesmen Formatif (Proses)', desc: 'Umpan balik saat KBM' },
+                                        { id: 'summative', label: '🏆 Asesmen Sumatif (Akhir TP)', desc: 'Penilaian capaian modul/rapor' }
+                                    ].map((t) => {
+                                        const isSelected = (data.assessment_type || 'summative') === t.id;
+                                        return (
+                                            <button
+                                                key={t.id}
+                                                type="button"
+                                                onClick={() => setData('assessment_type', t.id)}
+                                                className={`p-3 rounded-xl border text-left transition-all ${
+                                                    isSelected
+                                                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                                                        : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-indigo-300'
+                                                }`}
+                                            >
+                                                <div className="font-bold text-xs">{t.label}</div>
+                                                <div className={`text-[11px] mt-0.5 ${isSelected ? 'text-indigo-100' : 'text-slate-500'}`}>
+                                                    {t.desc}
+                                                </div>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

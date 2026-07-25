@@ -216,6 +216,14 @@ class LmsModulAjarController extends Controller
             // Cari Modul Ajar / RPP terkait untuk menyelaraskan Rencana Asesmen & KKTP
             $modulAjar = LmsModulAjar::where('learning_objective_id', $request->learning_objective_id)->first();
             $hasModulAjar = false;
+
+            $targetAssessmentType = $request->input('assessment_type', 'summative');
+            $typeLabel = match($targetAssessmentType) {
+                'initial' => 'Asesmen Awal / Diagnostik (Mengecek kesiapan belajar awal)',
+                'formative' => 'Asesmen Formatif / Proses (Memantau perkembangan & umpan balik saat KBM)',
+                default => 'Asesmen Sumatif / Akhir (Penilaian capaian akhir TP)',
+            };
+
             if ($modulAjar) {
                 $hasModulAjar = true;
                 $materialContent .= "\n\n[DOKUMEN MODUL AJAR TERHUBUNG]:\n" .
@@ -224,6 +232,10 @@ class LmsModulAjarController extends Controller
                     "- Detail KKTP Modul: " . (is_string($modulAjar->kktp_details) ? $modulAjar->kktp_details : json_encode($modulAjar->kktp_details)) . "\n" .
                     "- Langkah Pembelajaran: " . (is_string($modulAjar->learning_steps) ? $modulAjar->learning_steps : json_encode($modulAjar->learning_steps));
             }
+
+            $materialContent .= "\n\n[SPESIFIKASI ASESMEN YANG WAJIB DIHASILKAN]:\n" .
+                "- JENIS ASESMEN TARGET: " . $typeLabel . "\n" .
+                "- HARAP RANCANG JUDUL, INSTRUKSI, SOAL/RUBRIK KHUSUS UNTUK " . strtoupper($typeLabel) . ".";
 
             $suggestions = $service->suggestAssessment(
                 $request->learning_objective_id,

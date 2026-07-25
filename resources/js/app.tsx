@@ -25,5 +25,14 @@ createInertiaApp({
     },
 });
 
+// Auto-reload page when 419 Page Expired occurs (CSRF Token timeout)
+import { router } from '@inertiajs/react';
+router.on('invalid', (event) => {
+    if (event.detail.response.status === 419) {
+        event.preventDefault();
+        window.location.reload();
+    }
+});
+
 // This will set light / dark mode on load...
 initializeTheme();
