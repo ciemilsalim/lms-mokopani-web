@@ -21,11 +21,15 @@ import {
     Printer,
     Lock,
     Unlock,
-    AlertTriangle
+    AlertTriangle,
+    MonitorPlay,
+    X,
+    Sparkles,
+    Image as ImageIcon
 } from 'lucide-react';
 
 import { ConfirmDialog } from '@/components/confirm-dialog';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import CommentSection from '@/components/CommentSection';
 import ReflectionForm from '@/components/ReflectionForm';
 
@@ -510,6 +514,27 @@ export default function ShowMaterial({
     const { delete: destroy } = useForm();
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [isRppMode, setIsRppMode] = useState(false);
+    const [isTeachingMode, setIsTeachingMode] = useState(false);
+    const [teachingTab, setTeachingTab] = useState<'content' | 'lkpd' | 'illustration' | 'resources' | 'assessments'>('content');
+
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape' && isTeachingMode) {
+                setIsTeachingMode(false);
+            }
+        };
+        const handleFullscreenChange = () => {
+            if (!document.fullscreenElement && isTeachingMode) {
+                setIsTeachingMode(false);
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+            document.removeEventListener('fullscreenchange', handleFullscreenChange);
+        };
+    }, [isTeachingMode]);
     
     // Auto-detect if this is the Informatika structured data example to load the exact content from the user request
     const isStructuredDataMaterial = 
@@ -685,6 +710,356 @@ export default function ShowMaterial({
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
     };
+
+    if (isTeachingMode) {
+        return (
+            <div className="fixed inset-0 z-[100] flex flex-col bg-slate-900 text-slate-100 font-sans overflow-hidden select-none">
+                <Head title={`[Mode Mengajar] ${material.title} – LMS Mokopani`} />
+                
+                {/* ── Floating Kendali Header ── */}
+                <header className="flex h-16 w-full items-center justify-between border-b border-slate-800 bg-slate-900/95 px-6 backdrop-blur-md shrink-0 shadow-lg">
+                    <div className="flex items-center gap-3 min-w-0">
+                        <span className="shrink-0 rounded-lg bg-indigo-500/20 border border-indigo-500/30 px-2.5 py-1 text-xs font-extrabold text-indigo-400 uppercase tracking-wider">
+                            {material.subject_name}
+                        </span>
+                        <h1 className="text-base sm:text-lg font-black tracking-tight text-white truncate max-w-md md:max-w-xl">
+                            {material.title}
+                        </h1>
+                    </div>
+
+                    <div className="hidden md:flex items-center gap-1 rounded-xl bg-slate-800/80 p-1 border border-slate-700/60">
+                        <button
+                            onClick={() => setTeachingTab('content')}
+                            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition cursor-pointer ${
+                                teachingTab === 'content' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
+                            }`}
+                        >
+                            <BookOpen className="h-3.5 w-3.5" /> Materi
+                        </button>
+                        {(material.lkpd || material.application_activity || material.reflection_activity) && (
+                            <button
+                                onClick={() => setTeachingTab('lkpd')}
+                                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition cursor-pointer ${
+                                    teachingTab === 'lkpd' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
+                                }`}
+                            >
+                                <FileText className="h-3.5 w-3.5" /> LKPD & Langkah
+                            </button>
+                        )}
+                        {material.thumbnail && (
+                            <button
+                                onClick={() => setTeachingTab('illustration')}
+                                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition cursor-pointer ${
+                                    teachingTab === 'illustration' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
+                                }`}
+                            >
+                                <ImageIcon className="h-3.5 w-3.5" /> Ilustrasi AI
+                            </button>
+                        )}
+                        {(material.resources?.length > 0 || material.file_path || material.external_link) && (
+                            <button
+                                onClick={() => setTeachingTab('resources')}
+                                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition cursor-pointer ${
+                                    teachingTab === 'resources' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
+                                }`}
+                            >
+                                <FolderOpen className="h-3.5 w-3.5" /> Media & Lampiran
+                            </button>
+                        )}
+                        {assignments?.length > 0 && (
+                            <button
+                                onClick={() => setTeachingTab('assessments')}
+                                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition cursor-pointer ${
+                                    teachingTab === 'assessments' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
+                                }`}
+                            >
+                                <Target className="h-3.5 w-3.5" /> Asesmen ({assignments.length})
+                            </button>
+                        )}
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => {
+                                setIsTeachingMode(false);
+                                if (document.fullscreenElement) document.exitFullscreen()?.catch(() => {});
+                            }}
+                            className="flex items-center gap-1.5 rounded-xl bg-rose-500/20 border border-rose-500/30 px-3.5 py-2 text-xs font-bold text-rose-300 transition hover:bg-rose-500/30 active:scale-95 cursor-pointer"
+                        >
+                            <X className="h-4 w-4" />
+                            <span>Keluar <span className="hidden sm:inline">[Esc]</span></span>
+                        </button>
+                    </div>
+                </header>
+
+                {/* ── Mobile Navigation Pills (If Screen < MD) ── */}
+                <div className="flex md:hidden items-center justify-center gap-1 overflow-x-auto bg-slate-900/90 p-2 border-b border-slate-800 shrink-0">
+                    <button
+                        onClick={() => setTeachingTab('content')}
+                        className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold shrink-0 ${
+                            teachingTab === 'content' ? 'bg-indigo-600 text-white' : 'text-slate-400'
+                        }`}
+                    >
+                        <BookOpen className="h-3.5 w-3.5" /> Materi
+                    </button>
+                    {(material.lkpd || material.application_activity || material.reflection_activity) && (
+                        <button
+                            onClick={() => setTeachingTab('lkpd')}
+                            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold shrink-0 ${
+                                teachingTab === 'lkpd' ? 'bg-indigo-600 text-white' : 'text-slate-400'
+                            }`}
+                        >
+                            <FileText className="h-3.5 w-3.5" /> LKPD
+                        </button>
+                    )}
+                    {material.thumbnail && (
+                        <button
+                            onClick={() => setTeachingTab('illustration')}
+                            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold shrink-0 ${
+                                teachingTab === 'illustration' ? 'bg-indigo-600 text-white' : 'text-slate-400'
+                            }`}
+                        >
+                            <ImageIcon className="h-3.5 w-3.5" /> Ilustrasi
+                        </button>
+                    )}
+                    {(material.resources?.length > 0 || material.file_path || material.external_link) && (
+                        <button
+                            onClick={() => setTeachingTab('resources')}
+                            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold shrink-0 ${
+                                teachingTab === 'resources' ? 'bg-indigo-600 text-white' : 'text-slate-400'
+                            }`}
+                        >
+                            <FolderOpen className="h-3.5 w-3.5" /> Media
+                        </button>
+                    )}
+                    {assignments?.length > 0 && (
+                        <button
+                            onClick={() => setTeachingTab('assessments')}
+                            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold shrink-0 ${
+                                teachingTab === 'assessments' ? 'bg-indigo-600 text-white' : 'text-slate-400'
+                            }`}
+                        >
+                            <Target className="h-3.5 w-3.5" /> Asesmen
+                        </button>
+                    )}
+                </div>
+
+                {/* ── Main Content Area (Scrollable) ── */}
+                <main className="flex-1 overflow-y-auto px-6 py-8 sm:px-12 sm:py-12 md:px-20 md:py-16 bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 text-slate-100 selection:bg-indigo-500 selection:text-white">
+                    <div className="max-w-5xl mx-auto space-y-10 animate-in fade-in zoom-in-95 duration-300">
+                        {teachingTab === 'content' && (
+                            <div className="space-y-10 pb-20">
+                                <div className="p-6 rounded-2xl bg-slate-800/60 border border-slate-700/80 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xl">
+                                    <div>
+                                        <div className="text-xs font-extrabold uppercase tracking-wider text-indigo-400 mb-1 flex items-center gap-1.5">
+                                            <Sparkles className="h-3.5 w-3.5" />
+                                            Tujuan Pembelajaran ({material.tp_code || 'TP'})
+                                        </div>
+                                        <div className="text-base sm:text-lg font-bold text-slate-200 leading-snug">
+                                            {material.tp_desc || 'Tanpa deskripsi khusus'}
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-3 shrink-0 text-xs text-slate-400 bg-slate-800 px-4 py-2.5 rounded-xl border border-slate-700">
+                                        <User className="h-4 w-4 text-indigo-400" />
+                                        <span>Dibuat oleh <strong className="text-slate-200">{material.teacher_name}</strong></span>
+                                    </div>
+                                </div>
+
+                                <div 
+                                    className="prose prose-invert max-w-none prose-p:text-xl sm:prose-p:text-2xl prose-p:leading-relaxed prose-headings:text-indigo-300 prose-h1:text-4xl sm:prose-h1:text-5xl prose-h2:text-3xl sm:prose-h2:text-4xl prose-h3:text-2xl sm:prose-h3:text-3xl prose-li:text-xl sm:prose-li:text-2xl prose-img:rounded-2xl prose-img:shadow-2xl prose-a:text-indigo-400 prose-blockquote:border-indigo-500 prose-blockquote:bg-indigo-950/20 prose-blockquote:p-6 prose-blockquote:rounded-r-2xl prose-blockquote:text-xl sm:prose-blockquote:text-2xl prose-strong:text-white font-normal tracking-wide"
+                                    dangerouslySetInnerHTML={{ __html: material.content || '<p class="text-slate-500 italic text-center py-12">Belum ada teks konten pada materi ini.</p>' }}
+                                />
+                            </div>
+                        )}
+
+                        {teachingTab === 'lkpd' && (
+                            <div className="space-y-8 pb-20">
+                                <div className="text-center space-y-2">
+                                    <h2 className="text-3xl sm:text-4xl font-black tracking-tight text-white">📑 LKPD Terstruktur & Langkah Aktivitas</h2>
+                                    <p className="text-base sm:text-lg text-slate-400">Alur pembelajaran kolaboratif dan instruksi kerja peserta didik.</p>
+                                </div>
+
+                                <div className="grid md:grid-cols-2 gap-6">
+                                    {material.application_activity && (
+                                        <div className="p-8 rounded-3xl bg-gradient-to-br from-indigo-950/50 to-slate-900 border border-indigo-500/30 space-y-4 shadow-2xl">
+                                            <div className="flex items-center gap-3 text-indigo-400 font-extrabold text-lg uppercase tracking-wider">
+                                                <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 font-black">1</span>
+                                                Aktivitas Mengaplikasi
+                                            </div>
+                                            <div className="prose prose-invert prose-p:text-lg prose-p:leading-relaxed text-slate-200" dangerouslySetInnerHTML={{ __html: material.application_activity }} />
+                                        </div>
+                                    )}
+                                    {material.reflection_activity && (
+                                        <div className="p-8 rounded-3xl bg-gradient-to-br from-emerald-950/50 to-slate-900 border border-emerald-500/30 space-y-4 shadow-2xl">
+                                            <div className="flex items-center gap-3 text-emerald-400 font-extrabold text-lg uppercase tracking-wider">
+                                                <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 font-black">2</span>
+                                                Aktivitas Merefleksi
+                                            </div>
+                                            <div className="prose prose-invert prose-p:text-lg prose-p:leading-relaxed text-slate-200" dangerouslySetInnerHTML={{ __html: material.reflection_activity }} />
+                                        </div>
+                                    )}
+                                </div>
+
+                                {material.lkpd && (
+                                    <div className="p-8 rounded-3xl bg-slate-800/60 border border-slate-700/80 space-y-6 shadow-2xl">
+                                        <h3 className="text-2xl font-bold text-white flex items-center gap-3">
+                                            <FileText className="h-7 w-7 text-amber-400" /> Lembar Kerja Peserta Didik (LKPD)
+                                        </h3>
+                                        <div className="prose prose-invert max-w-none prose-p:text-xl prose-li:text-xl text-slate-200" dangerouslySetInnerHTML={{ __html: material.lkpd }} />
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {teachingTab === 'illustration' && (
+                            <div className="flex flex-col items-center justify-center space-y-6 pb-20 text-center">
+                                <div className="space-y-2">
+                                    <h2 className="text-3xl sm:text-4xl font-black tracking-tight text-white">🖼️ Ilustrasi Pembelajaran AI</h2>
+                                    {material.image_prompt && <p className="text-base text-slate-400 max-w-2xl mx-auto italic">"{material.image_prompt}"</p>}
+                                </div>
+                                <div className="relative rounded-3xl overflow-hidden border-2 border-slate-700/80 shadow-2xl max-w-4xl w-full bg-slate-950">
+                                    <img src={material.thumbnail!} alt={material.title} className="w-full h-auto max-h-[72vh] object-contain mx-auto" />
+                                </div>
+                            </div>
+                        )}
+
+                        {teachingTab === 'resources' && (
+                            <div className="space-y-8 pb-20">
+                                <div className="text-center space-y-2">
+                                    <h2 className="text-3xl sm:text-4xl font-black tracking-tight text-white">📦 Media & Lampiran Materi</h2>
+                                    <p className="text-base sm:text-lg text-slate-400">Berkas pendukung, presentasi slide, dan video pembelajaran.</p>
+                                </div>
+
+                                <div className="grid gap-6 sm:grid-cols-2">
+                                    {material.file_path && (
+                                        <a
+                                            href={`/storage/${material.file_path}`}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="flex items-center gap-4 p-6 rounded-3xl bg-slate-800/80 border border-slate-700 hover:bg-slate-800 hover:border-indigo-500 transition group shadow-xl"
+                                        >
+                                            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-500/20 text-indigo-400 group-hover:scale-110 transition">
+                                                <Download className="h-7 w-7" />
+                                            </div>
+                                            <div>
+                                                <div className="text-sm font-bold text-slate-400 uppercase tracking-wider">Unduh Berkas Utama</div>
+                                                <div className="text-lg font-extrabold text-white group-hover:text-indigo-300 transition">Klik untuk Membuka / Unduh</div>
+                                            </div>
+                                        </a>
+                                    )}
+
+                                    {material.external_link && (
+                                        <a
+                                            href={material.external_link}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="flex items-center gap-4 p-6 rounded-3xl bg-slate-800/80 border border-slate-700 hover:bg-slate-800 hover:border-emerald-500 transition group shadow-xl"
+                                        >
+                                            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500/20 text-emerald-400 group-hover:scale-110 transition">
+                                                <Globe className="h-7 w-7" />
+                                            </div>
+                                            <div>
+                                                <div className="text-sm font-bold text-slate-400 uppercase tracking-wider">Tautan Eksternal</div>
+                                                <div className="text-lg font-extrabold text-white group-hover:text-emerald-300 transition line-clamp-1">{material.external_link}</div>
+                                            </div>
+                                        </a>
+                                    )}
+                                </div>
+
+                                {material.resources && material.resources.length > 0 && (
+                                    <div className="space-y-6 pt-4">
+                                        <h3 className="text-xl font-bold text-slate-300">Daftar Media Terlampir ({material.resources.length})</h3>
+                                        <div className="space-y-8">
+                                            {material.resources.map((res, idx) => {
+                                                if (res.type === 'youtube' || res.path.includes('youtube.com') || res.path.includes('youtu.be')) {
+                                                    let videoId = '';
+                                                    const match = res.path.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/);
+                                                    if (match && match[1]) videoId = match[1];
+                                                    if (videoId) {
+                                                        return (
+                                                            <div key={idx} className="space-y-3 bg-slate-800/50 p-6 rounded-3xl border border-slate-700">
+                                                                <h4 className="text-lg font-bold text-white flex items-center gap-2">
+                                                                    <Youtube className="h-6 w-6 text-rose-500" /> {res.title || 'Video Pembelajaran YouTube'}
+                                                                </h4>
+                                                                <div className="aspect-video w-full rounded-2xl overflow-hidden border border-slate-700 shadow-2xl">
+                                                                    <iframe width="100%" height="100%" src={`https://www.youtube.com/embed/${videoId}`} title={res.title || "YouTube video"} frameBorder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen></iframe>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    }
+                                                }
+                                                if (res.path.includes('docs.google.com/presentation') || res.path.includes('docs.google.com/document')) {
+                                                    const embedUrl = res.path.replace(/\/edit.*$/, '/preview');
+                                                    return (
+                                                        <div key={idx} className="space-y-3 bg-slate-800/50 p-6 rounded-3xl border border-slate-700">
+                                                            <h4 className="text-lg font-bold text-white flex items-center gap-2">
+                                                                <FileText className="h-6 w-6 text-sky-400" /> {res.title || 'Dokumen Presentasi Google Slides/Docs'}
+                                                            </h4>
+                                                            <div className="aspect-video w-full rounded-2xl overflow-hidden border border-slate-700 shadow-2xl">
+                                                                <iframe src={embedUrl} width="100%" height="100%" frameBorder="0" allowFullScreen></iframe>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                }
+                                                return (
+                                                    <a
+                                                        key={idx}
+                                                        href={res.path}
+                                                        target="_blank"
+                                                        rel="noreferrer"
+                                                        className="flex items-center justify-between p-6 rounded-2xl bg-slate-800/70 border border-slate-700 hover:border-indigo-500 transition group"
+                                                    >
+                                                        <div className="flex items-center gap-4">
+                                                            <FolderOpen className="h-6 w-6 text-indigo-400 group-hover:scale-110 transition" />
+                                                            <span className="text-lg font-bold text-white group-hover:text-indigo-300 transition">{res.title || res.path}</span>
+                                                        </div>
+                                                        <ExternalLink className="h-5 w-5 text-slate-400 group-hover:text-white transition" />
+                                                    </a>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {teachingTab === 'assessments' && (
+                            <div className="space-y-8 pb-20">
+                                <div className="text-center space-y-2">
+                                    <h2 className="text-3xl sm:text-4xl font-black tracking-tight text-white">📝 Asesmen & Penugasan Terkait</h2>
+                                    <p className="text-base sm:text-lg text-slate-400">Daftar evaluasi belajar yang dikaitkan dengan materi ini.</p>
+                                </div>
+
+                                <div className="grid gap-6 sm:grid-cols-2">
+                                    {assignments.map((ass, i) => (
+                                        <div key={i} className="p-6 rounded-3xl bg-slate-800/80 border border-slate-700 flex flex-col justify-between gap-6 shadow-xl">
+                                            <div className="space-y-3">
+                                                <div className="flex items-center justify-between gap-2">
+                                                    <span className="px-3 py-1 rounded-lg bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 text-xs font-extrabold uppercase tracking-wide">
+                                                        {ass.assessment_type === 'initial' ? 'Awal (Diagnostik)' : ass.assessment_type === 'formative' ? 'Formatif' : 'Sumatif'}
+                                                    </span>
+                                                    <span className="text-xs text-slate-400">{ass.questions_count} Soal</span>
+                                                </div>
+                                                <h4 className="text-xl font-bold text-white leading-snug">{ass.title}</h4>
+                                                {ass.description && <p className="text-sm text-slate-400 line-clamp-2">{ass.description}</p>}
+                                            </div>
+                                            <Link
+                                                href={route('assignments.show', ass.id)}
+                                                className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm transition shadow-lg shadow-indigo-600/30"
+                                            >
+                                                <span>Buka Asesmen</span>
+                                                <ArrowRight className="h-4 w-4" />
+                                            </Link>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </main>
+            </div>
+        );
+    }
 
     if (isRppMode) {
         return (
@@ -1521,55 +1896,67 @@ export default function ShowMaterial({
                         <ChevronLeft className="h-4 w-4" />
                         Kembali
                     </button>
-                    {(user_role === 'teacher' || user_role === 'admin') && (
-                        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                            <button
-                                onClick={(e) => {
-                                    e.preventDefault();
-                                    const current = material.access_status || 'auto';
-                                    const next = current === 'auto' ? 'open' : (current === 'open' ? 'locked' : 'auto');
-                                    router.post(route('materials.toggle-lock', material.id), { status: next }, { preserveScroll: true });
-                                }}
-                                title="Klik untuk mengubah status akses siswa"
-                                className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition cursor-pointer shadow-sm ${
-                                    material.access_status === 'open' ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 hover:bg-emerald-500/20 dark:bg-emerald-500/20 dark:text-emerald-300' :
-                                    material.access_status === 'locked' ? 'bg-rose-500/10 text-rose-600 border border-rose-500/20 hover:bg-rose-500/20 dark:bg-rose-500/20 dark:text-rose-300' :
-                                    'bg-blue-500/10 text-blue-600 border border-blue-500/20 hover:bg-blue-500/20 dark:bg-blue-500/20 dark:text-blue-300'
-                                }`}
-                            >
-                                {material.access_status === 'open' && (
-                                    <>
-                                        <Unlock className="h-3.5 w-3.5 shrink-0" />
-                                        <span>Akses Siswa: Terbuka</span>
-                                    </>
-                                )}
-                                {material.access_status === 'locked' && (
-                                    <>
-                                        <Lock className="h-3.5 w-3.5 shrink-0" />
-                                        <span>Akses Siswa: Terkunci</span>
-                                    </>
-                                )}
-                                {(!material.access_status || material.access_status === 'auto') && (
-                                    <>
-                                        <span className="h-2 w-2 rounded-full bg-blue-500 animate-pulse shrink-0" />
-                                        <span>Akses Siswa: Otomatis (Alur AI)</span>
-                                    </>
-                                )}
-                            </button>
-                            <Link
-                                href={route('materials.edit', material.id)}
-                                className="flex items-center gap-2 rounded-xl bg-[#5E6AD2]/10 px-4 py-2 text-xs font-bold text-[#5E6AD2] transition hover:bg-[#5E6AD2]/20 dark:bg-[#5E6AD2]/10 dark:text-[#5E6AD2]"
-                            >
-                                <Pencil className="h-3.5 w-3.5" /> Edit Materi
-                            </Link>
-                            <button
-                                onClick={() => setShowDeleteConfirm(true)}
-                                className="flex items-center gap-2 rounded-xl bg-[#EB5757]/10 px-4 py-2 text-xs font-bold text-[#EB5757] transition hover:bg-[#EB5757]/20 dark:bg-[#EB5757]/10 dark:text-[#EB5757]"
-                            >
-                                <Trash2 className="h-3.5 w-3.5" /> Hapus
-                            </button>
-                        </div>
-                    )}
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                        <button
+                            onClick={() => {
+                                setIsTeachingMode(true);
+                                document.documentElement.requestFullscreen()?.catch(() => {});
+                            }}
+                            className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 px-4 py-2 text-xs font-bold text-white shadow-md shadow-indigo-500/20 transition hover:from-violet-500 hover:to-indigo-500 active:scale-95 cursor-pointer"
+                        >
+                            <MonitorPlay className="h-3.5 w-3.5" />
+                            {user_role === 'teacher' || user_role === 'admin' ? 'Mode Mengajar' : 'Mode Fokus'}
+                        </button>
+                        {(user_role === 'teacher' || user_role === 'admin') && (
+                            <>
+                                <button
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        const current = material.access_status || 'auto';
+                                        const next = current === 'auto' ? 'open' : (current === 'open' ? 'locked' : 'auto');
+                                        router.post(route('materials.toggle-lock', material.id), { status: next }, { preserveScroll: true });
+                                    }}
+                                    title="Klik untuk mengubah status akses siswa"
+                                    className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition cursor-pointer shadow-sm ${
+                                        material.access_status === 'open' ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 hover:bg-emerald-500/20 dark:bg-emerald-500/20 dark:text-emerald-300' :
+                                        material.access_status === 'locked' ? 'bg-rose-500/10 text-rose-600 border border-rose-500/20 hover:bg-rose-500/20 dark:bg-rose-500/20 dark:text-rose-300' :
+                                        'bg-blue-500/10 text-blue-600 border border-blue-500/20 hover:bg-blue-500/20 dark:bg-blue-500/20 dark:text-blue-300'
+                                    }`}
+                                >
+                                    {material.access_status === 'open' && (
+                                        <>
+                                            <Unlock className="h-3.5 w-3.5 shrink-0" />
+                                            <span>Akses Siswa: Terbuka</span>
+                                        </>
+                                    )}
+                                    {material.access_status === 'locked' && (
+                                        <>
+                                            <Lock className="h-3.5 w-3.5 shrink-0" />
+                                            <span>Akses Siswa: Terkunci</span>
+                                        </>
+                                    )}
+                                    {(!material.access_status || material.access_status === 'auto') && (
+                                        <>
+                                            <span className="h-2 w-2 rounded-full bg-blue-500 animate-pulse shrink-0" />
+                                            <span>Akses Siswa: Otomatis (Alur AI)</span>
+                                        </>
+                                    )}
+                                </button>
+                                <Link
+                                    href={route('materials.edit', material.id)}
+                                    className="flex items-center gap-2 rounded-xl bg-[#5E6AD2]/10 px-4 py-2 text-xs font-bold text-[#5E6AD2] transition hover:bg-[#5E6AD2]/20 dark:bg-[#5E6AD2]/10 dark:text-[#5E6AD2]"
+                                >
+                                    <Pencil className="h-3.5 w-3.5" /> Edit Materi
+                                </Link>
+                                <button
+                                    onClick={() => setShowDeleteConfirm(true)}
+                                    className="flex items-center gap-2 rounded-xl bg-[#EB5757]/10 px-4 py-2 text-xs font-bold text-[#EB5757] transition hover:bg-[#EB5757]/20 dark:bg-[#EB5757]/10 dark:text-[#EB5757]"
+                                >
+                                    <Trash2 className="h-3.5 w-3.5" /> Hapus
+                                </button>
+                            </>
+                        )}
+                    </div>
                 </div>
 
                 <div className="grid gap-6 lg:grid-cols-3">
