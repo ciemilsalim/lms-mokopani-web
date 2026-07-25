@@ -16,6 +16,8 @@ import {
     ChevronRight,
     FolderOpen,
     FilePlus,
+    Lock,
+    Unlock,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { ConfirmDialog } from '@/components/confirm-dialog';
@@ -33,6 +35,7 @@ interface Material {
     file_type: string | null;
     created_at: string;
     is_accessible?: boolean;
+    access_status?: 'auto' | 'open' | 'locked';
 }
 
 interface TpGroup {
@@ -98,7 +101,7 @@ const getFileTypeBadge = (type: string | null) => {
     return { bg: 'bg-sky-50 text-sky-700 border border-sky-100 dark:bg-sky-950/30 dark:text-sky-350 dark:border-sky-900/30', label: t.toUpperCase() };
 };
 
-function MaterialCard({ m, onDelete }: { m: Material; onDelete?: (id: number) => void }) {
+function MaterialCard({ m, onDelete, isTeacher }: { m: Material; onDelete?: (id: number) => void; isTeacher?: boolean }) {
     const Icon = getFileIcon(m.file_type);
     const isAccessible = m.is_accessible !== false;
     const badge = getFileTypeBadge(m.file_type);
@@ -110,7 +113,7 @@ function MaterialCard({ m, onDelete }: { m: Material; onDelete?: (id: number) =>
                     <Icon className="h-6 w-6" />
                     {!isAccessible && (
                         <div className="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-muted border border-border text-muted-foreground">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-lock"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                            <Lock className="h-2.5 w-2.5" />
                         </div>
                     )}
                 </div>
@@ -139,7 +142,46 @@ function MaterialCard({ m, onDelete }: { m: Material; onDelete?: (id: number) =>
                 <p className="text-xs text-muted-foreground">Dibuat oleh {m.teacher_name}</p>
             </div>
 
-            <div className="mt-6 flex items-center justify-between border-t border-slate-100 dark:border-slate-800/80 pt-4">
+            {isTeacher && (
+                <div className="mt-4 pt-3 border-t border-dashed border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2">
+                    <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider">Akses Siswa:</span>
+                    <button
+                        onClick={(e) => {
+                            e.preventDefault();
+                            const current = m.access_status || 'auto';
+                            const next = current === 'auto' ? 'open' : (current === 'open' ? 'locked' : 'auto');
+                            router.post(route('materials.toggle-lock', m.id), { status: next }, { preserveScroll: true });
+                        }}
+                        title="Klik untuk mengubah status akses siswa"
+                        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[9.5px] font-extrabold tracking-wide uppercase transition cursor-pointer shadow-sm ${
+                            m.access_status === 'open' ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 hover:bg-emerald-500/20 dark:bg-emerald-500/20 dark:text-emerald-300' :
+                            m.access_status === 'locked' ? 'bg-rose-500/10 text-rose-600 border border-rose-500/20 hover:bg-rose-500/20 dark:bg-rose-500/20 dark:text-rose-300' :
+                            'bg-blue-500/10 text-blue-600 border border-blue-500/20 hover:bg-blue-500/20 dark:bg-blue-500/20 dark:text-blue-300'
+                        }`}
+                    >
+                        {m.access_status === 'open' && (
+                            <>
+                                <Unlock className="h-3 w-3 shrink-0" />
+                                <span>Terbuka (Bebas)</span>
+                            </>
+                        )}
+                        {m.access_status === 'locked' && (
+                            <>
+                                <Lock className="h-3 w-3 shrink-0" />
+                                <span>Terkunci</span>
+                            </>
+                        )}
+                        {(!m.access_status || m.access_status === 'auto') && (
+                            <>
+                                <span className="h-2 w-2 rounded-full bg-blue-500 animate-pulse shrink-0" />
+                                <span>Otomatis (Alur AI)</span>
+                            </>
+                        )}
+                    </button>
+                </div>
+            )}
+
+            <div className="mt-4 flex items-center justify-between border-t border-slate-100 dark:border-slate-800/80 pt-3">
                 <span className="text-[10px] font-medium text-muted-foreground">{m.created_at}</span>
                 {isAccessible ? (
                     <Link
@@ -261,7 +303,7 @@ function TeacherGroupedView({ groups, search }: { groups: TeacherClassGroup[]; s
                                                                 </div>
                                                                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                                                                     {tp.materials.map(m => (
-                                                                        <MaterialCard key={m.id} m={m} onDelete={setDeleteId} />
+                                                                        <MaterialCard key={m.id} m={m} onDelete={setDeleteId} isTeacher={true} />
                                                                     ))}
                                                                 </div>
                                                             </div>

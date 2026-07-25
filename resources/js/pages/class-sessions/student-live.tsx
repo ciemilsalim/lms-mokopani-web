@@ -1,96 +1,104 @@
-import React, { useState, useEffect } from 'react';
-import { Head, router } from '@inertiajs/react';
+import React, { useState } from 'react';
+import { Head, Link } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { BookOpen, Edit3, HeartHandshake, CheckCircle2, MessageSquare } from 'lucide-react';
-import { Textarea } from '@/components/ui/textarea';
+import { BookOpen, Edit3, HeartHandshake, CheckCircle2, FileText, ClipboardList, Youtube, Link as LinkIcon, Download, Lightbulb } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface ModulAjar {
     id: number;
     general_info: string;
-    learning_steps: string; // JSON string containing memahami, mengaplikasi, merefleksi
-}
-
-interface ClassSession {
-    id: number;
-    modul_ajar_id: number;
-    teacher_id: number;
-    school_class_id: number;
-    start_time: string;
-    end_time?: string | null;
-    modul_ajar?: ModulAjar;
+    learning_steps: string; // JSON string
+    material?: any;
+    subject?: any;
     teacher?: any;
+    learning_objective?: any;
 }
 
 interface StudentLiveProps {
-    session: ClassSession;
+    modulAjar: ModulAjar;
 }
 
-export default function StudentLiveSessionPage({ session }: StudentLiveProps) {
+export default function StudentLiveSessionPage({ modulAjar }: StudentLiveProps) {
     const [activeZone, setActiveZone] = useState<'memahami' | 'mengaplikasi' | 'merefleksi'>('memahami');
-    const [reflectionText, setReflectionText] = useState('');
-    const [workspaceText, setWorkspaceText] = useState('');
     
     // Parse learning steps
-    let steps = { memahami: [], mengaplikasi: [], merefleksi: [] };
-    if (session.modul_ajar?.learning_steps) {
+    let steps: any = { memahami: [], mengaplikasi: [], merefleksi: [] };
+    
+    if (modulAjar?.learning_steps) {
         try {
-            const parsed = typeof session.modul_ajar.learning_steps === 'string' 
-                ? JSON.parse(session.modul_ajar.learning_steps) 
-                : session.modul_ajar.learning_steps;
-            
-            // Map common AI output structures
-            steps = {
-                memahami: parsed.memahami?.activities || parsed.memahami || [],
-                mengaplikasi: parsed.mengaplikasi?.activities || parsed.mengaplikasi || [],
-                merefleksi: parsed.merefleksi?.activities || parsed.merefleksi || [],
-            };
+            const parsed = typeof modulAjar.learning_steps === 'string' 
+                ? JSON.parse(modulAjar.learning_steps) 
+                : modulAjar.learning_steps;
+            steps = parsed;
         } catch (e) {
             console.error('Failed to parse learning steps:', e);
         }
     }
 
     const zones = [
-        { id: 'memahami', label: '1. Zona Memahami', icon: <BookOpen className="w-4 h-4 mr-2" />, color: 'text-blue-600 bg-blue-50 dark:bg-blue-900/30' },
-        { id: 'mengaplikasi', label: '2. Zona Mengaplikasi', icon: <Edit3 className="w-4 h-4 mr-2" />, color: 'text-amber-600 bg-amber-50 dark:bg-amber-900/30' },
-        { id: 'merefleksi', label: '3. Zona Merefleksi', icon: <HeartHandshake className="w-4 h-4 mr-2" />, color: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30' },
+        { id: 'memahami', label: 'Zona Memahami & Materi', icon: <BookOpen className="w-4 h-4 mr-2" />, color: 'text-blue-600 bg-blue-50 dark:bg-blue-900/30' },
+        { id: 'mengaplikasi', label: 'Zona Praktik & Tugas', icon: <Edit3 className="w-4 h-4 mr-2" />, color: 'text-amber-600 bg-amber-50 dark:bg-amber-900/30' },
+        { id: 'merefleksi', label: 'Zona Refleksi', icon: <HeartHandshake className="w-4 h-4 mr-2" />, color: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30' },
     ];
 
-    return (
-        <AppLayout title="Alur Belajar Aktif">
-            <Head title="Alur Belajar Aktif" />
+    const renderActivities = (stepData: any) => {
+        if (!stepData) return <p className="text-slate-500 text-sm">Belum ada aktivitas di zona ini.</p>;
+        const activities = stepData.activities || stepData;
+        if (!Array.isArray(activities) || activities.length === 0) {
+            return <p className="text-slate-500 text-sm">Belum ada aktivitas di zona ini.</p>;
+        }
+        return (
+            <ul className="space-y-3 mt-4">
+                {activities.map((act: string, idx: number) => (
+                    <li key={idx} className="flex gap-3 text-sm text-slate-700 dark:text-slate-300 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-100 dark:border-slate-800">
+                        <CheckCircle2 className="w-5 h-5 text-indigo-500 shrink-0 mt-0.5" />
+                        <span>{act}</span>
+                    </li>
+                ))}
+            </ul>
+        );
+    };
 
-            <div className="max-w-5xl mx-auto py-8 px-4 sm:px-6">
+    return (
+        <AppLayout title="Materi & Alur Belajar">
+            <Head title="Materi & Alur Belajar" />
+
+            <div className="max-w-5xl mx-auto py-8 px-4 sm:px-6 space-y-8">
                 {/* Header Section */}
-                <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
                     <div>
-                        <div className="flex items-center gap-2 mb-1">
-                            <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950 dark:border-indigo-800 dark:text-indigo-300">
-                                Sesi Aktif
+                        <div className="flex items-center gap-2 mb-2">
+                            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+                                Alur Belajar Siswa
+                            </h1>
+                            <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
+                                {modulAjar?.subject?.name || 'Mata Pelajaran'}
                             </Badge>
-                            <span className="text-xs text-slate-500 font-medium">Guru: {session.teacher?.user?.name || 'Guru'}</span>
                         </div>
-                        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-                            Dasbor Alur Belajar
-                        </h1>
-                        <p className="text-sm text-slate-500 mt-1">
-                            Ikuti alur pembelajaran berikut sesuai instruksi dari guru.
+                        <p className="text-sm text-slate-500 font-medium">
+                            Topik: <span className="text-slate-800 dark:text-slate-200">{modulAjar?.material?.title || 'Modul Pembelajaran'}</span> • Guru: {modulAjar?.teacher?.name || 'Guru'}
                         </p>
+                    </div>
+                    <div>
+                        <Link href="/assignments" className="inline-flex items-center justify-center rounded-xl text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-12 px-6 py-2 bg-indigo-600 text-white hover:bg-indigo-700 shadow-lg shadow-indigo-200 dark:shadow-none hover:scale-105 transform duration-200">
+                            <ClipboardList className="w-5 h-5 mr-2" />
+                            Buka Tugas & Asesmen
+                        </Link>
                     </div>
                 </div>
 
                 {/* Zone Navigation */}
-                <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
-                    {zones.map(zone => (
+                <div className="flex gap-2 overflow-x-auto pb-2">
+                    {zones.map((zone) => (
                         <button
                             key={zone.id}
                             onClick={() => setActiveZone(zone.id as any)}
-                            className={`flex items-center px-5 py-3 rounded-xl font-bold transition-all whitespace-nowrap ${
+                            className={`flex items-center px-4 py-3 rounded-xl border font-bold text-sm transition-all whitespace-nowrap ${
                                 activeZone === zone.id
-                                    ? `ring-2 ring-offset-2 ring-indigo-500 shadow-md ${zone.color}`
-                                    : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 border border-slate-200 dark:border-slate-700'
+                                    ? `${zone.color} border-transparent ring-2 ring-offset-2 ring-indigo-500`
+                                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800'
                             }`}
                         >
                             {zone.icon}
@@ -99,168 +107,202 @@ export default function StudentLiveSessionPage({ session }: StudentLiveProps) {
                     ))}
                 </div>
 
-                {/* Zone Content */}
-                <div className="min-h-[500px]">
-                    {/* ZONA MEMAHAMI */}
-                    {activeZone === 'memahami' && (
-                        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                            <Card className="border-blue-200 dark:border-blue-900 shadow-md">
-                                <CardHeader className="bg-blue-50/50 dark:bg-blue-900/10 rounded-t-xl border-b border-blue-100 dark:border-blue-900">
-                                    <CardTitle className="text-blue-800 dark:text-blue-300 flex items-center">
-                                        <BookOpen className="w-5 h-5 mr-2" />
-                                        Materi & Eksplorasi
-                                    </CardTitle>
-                                    <CardDescription>
-                                        Pahami konsep dasar melalui instruksi dan pertanyaan pemantik berikut.
-                                    </CardDescription>
-                                </CardHeader>
-                                <CardContent className="p-6">
-                                    {steps.memahami && Array.isArray(steps.memahami) && steps.memahami.length > 0 ? (
-                                        <div className="space-y-4">
-                                            {steps.memahami.map((act: any, idx: number) => (
-                                                <div key={idx} className="flex gap-4 p-4 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
-                                                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-blue-700 dark:text-blue-300 font-bold">
-                                                        {idx + 1}
+                {/* Main Content Area */}
+                <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden min-h-[400px]">
+                    <div className="h-2 w-full bg-gradient-to-r from-indigo-500 to-purple-500"></div>
+                    <div className="p-6 sm:p-8">
+                        {/* Zone: Memahami */}
+                        {activeZone === 'memahami' && (
+                            <div className="animate-in fade-in slide-in-from-bottom-4 space-y-8">
+                                <div>
+                                    <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-6 flex items-center">
+                                        <BookOpen className="w-6 h-6 mr-2 text-blue-600" />
+                                        Materi & Memahami Konsep
+                                    </h2>
+                                    
+                                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                                        <div className="lg:col-span-2 space-y-6">
+                                            <div className="prose prose-slate dark:prose-invert max-w-none prose-sm sm:prose-base prose-headings:text-indigo-950 dark:prose-headings:text-indigo-50 prose-a:text-indigo-600">
+                                                {modulAjar?.material?.content ? (
+                                                    <div dangerouslySetInnerHTML={{ __html: modulAjar.material.content }} />
+                                                ) : (
+                                                    <div className="text-slate-500 text-center py-10 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-dashed border-slate-200 dark:border-slate-700">
+                                                        Materi belum diunggah secara terperinci. Silakan ikuti instruksi guru Anda.
                                                     </div>
-                                                    <div>
-                                                        <h4 className="font-semibold text-slate-800 dark:text-slate-200">{act.activity || act.description || act}</h4>
-                                                        {act.duration && <span className="text-xs text-slate-500 flex items-center mt-1">⏱️ Estimasi: {act.duration} menit</span>}
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    ) : (
-                                        <div className="text-center py-10 text-slate-500">
-                                            Kegiatan spesifik belum dijabarkan oleh AI/Guru. Silakan perhatikan instruksi langsung dari guru.
-                                        </div>
-                                    )}
-                                </CardContent>
-                            </Card>
-                            <div className="flex justify-end">
-                                <Button onClick={() => setActiveZone('mengaplikasi')} className="bg-blue-600 hover:bg-blue-700">
-                                    Lanjut ke Zona Mengaplikasi <CheckCircle2 className="w-4 h-4 ml-2" />
-                                </Button>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* ZONA MENGAPLIKASI */}
-                    {activeZone === 'mengaplikasi' && (
-                        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                            <Card className="border-amber-200 dark:border-amber-900 shadow-md">
-                                <CardHeader className="bg-amber-50/50 dark:bg-amber-900/10 rounded-t-xl border-b border-amber-100 dark:border-amber-900">
-                                    <CardTitle className="text-amber-800 dark:text-amber-300 flex items-center">
-                                        <Edit3 className="w-5 h-5 mr-2" />
-                                        Ruang Kerja (Aplikasi Konsep)
-                                    </CardTitle>
-                                    <CardDescription>
-                                        Terapkan apa yang sudah dipahami. Kerjakan instruksi di bawah ini.
-                                    </CardDescription>
-                                </CardHeader>
-                                <CardContent className="p-6 space-y-6">
-                                    {steps.mengaplikasi && Array.isArray(steps.mengaplikasi) && steps.mengaplikasi.length > 0 ? (
-                                        <div className="space-y-3 mb-6">
-                                            {steps.mengaplikasi.map((act: any, idx: number) => (
-                                                <div key={idx} className="text-sm p-3 bg-amber-50 dark:bg-amber-900/20 rounded-md border border-amber-100 dark:border-amber-800/50">
-                                                    <span className="font-semibold text-amber-800 dark:text-amber-300 mr-2">Tugas {idx + 1}:</span>
-                                                    {act.activity || act.description || act}
-                                                </div>
-                                            ))}
-                                        </div>
-                                    ) : null}
-
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                                            Lembar Kerja Digital
-                                        </label>
-                                        <Textarea 
-                                            placeholder="Ketik hasil kerjamu, jawaban LKPD, atau letakkan link tugasmu di sini..."
-                                            className="min-h-[200px] bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800"
-                                            value={workspaceText}
-                                            onChange={(e) => setWorkspaceText(e.target.value)}
-                                        />
-                                        <div className="flex justify-between items-center mt-3">
-                                            <span className="text-xs text-slate-500">Otomatis tersimpan sebagai draft lokal.</span>
-                                            <Button variant="outline" size="sm" className="border-amber-200 text-amber-700 hover:bg-amber-50">
-                                                Simpan ke Portfolio
-                                            </Button>
-                                        </div>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                            <div className="flex justify-end">
-                                <Button onClick={() => setActiveZone('merefleksi')} className="bg-amber-600 hover:bg-amber-700">
-                                    Selesai? Lanjut ke Refleksi <HeartHandshake className="w-4 h-4 ml-2" />
-                                </Button>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* ZONA MEREFLEKSI */}
-                    {activeZone === 'merefleksi' && (
-                        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                            <Card className="border-emerald-200 dark:border-emerald-900 shadow-md">
-                                <CardHeader className="bg-emerald-50/50 dark:bg-emerald-900/10 rounded-t-xl border-b border-emerald-100 dark:border-emerald-900">
-                                    <CardTitle className="text-emerald-800 dark:text-emerald-300 flex items-center">
-                                        <HeartHandshake className="w-5 h-5 mr-2" />
-                                        Evaluasi Diri
-                                    </CardTitle>
-                                    <CardDescription>
-                                        Bagaimana perasaanmu tentang materi hari ini? Apa yang paling menarik?
-                                    </CardDescription>
-                                </CardHeader>
-                                <CardContent className="p-6">
-                                    {steps.merefleksi && Array.isArray(steps.merefleksi) && steps.merefleksi.length > 0 ? (
-                                         <div className="space-y-3 mb-6 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                                            <h4 className="font-semibold text-slate-800 dark:text-slate-200 mb-2">Pertanyaan Refleksi dari Modul:</h4>
-                                            <ul className="list-disc pl-5 text-sm text-slate-600 dark:text-slate-400 space-y-1">
-                                                {steps.merefleksi.map((act: any, idx: number) => (
-                                                    <li key={idx}>{act.activity || act.description || act}</li>
-                                                ))}
-                                            </ul>
-                                         </div>
-                                    ) : null}
-
-                                    <div className="space-y-6">
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">
-                                                Pilih Emoji yang mewakili perasaan belajarmu hari ini:
-                                            </label>
-                                            <div className="flex gap-4">
-                                                {['🤩 Senang', '🤔 Bingung', '🤯 Sulit'].map((emoji) => (
-                                                    <button key={emoji} className="px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 hover:scale-105 transition-transform bg-white dark:bg-slate-900 shadow-sm text-sm font-medium">
-                                                        {emoji}
-                                                    </button>
-                                                ))}
+                                                )}
                                             </div>
                                         </div>
 
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                                                Jurnal Singkat (Exit Ticket)
-                                            </label>
-                                            <Textarea 
-                                                placeholder="Tuliskan 1 hal baru yang kamu pelajari dan 1 hal yang masih membingungkan..."
-                                                className="min-h-[100px]"
-                                                value={reflectionText}
-                                                onChange={(e) => setReflectionText(e.target.value)}
-                                            />
-                                        </div>
+                                        <div className="space-y-6">
+                                            {/* Tujuan Pembelajaran */}
+                                            <Card className="bg-indigo-50/50 dark:bg-indigo-950/20 border-indigo-100 dark:border-indigo-900 shadow-sm rounded-2xl">
+                                                <CardHeader className="pb-3">
+                                                    <CardTitle className="text-base text-indigo-900 dark:text-indigo-300">
+                                                        Tujuan Pembelajaran
+                                                    </CardTitle>
+                                                </CardHeader>
+                                                <CardContent>
+                                                    <div className="space-y-1">
+                                                        <span className="inline-block px-2 py-1 rounded bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200 text-xs font-bold mb-2">
+                                                            {modulAjar?.learning_objective?.code ? modulAjar.learning_objective.code.replace('-', ' ') : 'Sub TP'}
+                                                        </span>
+                                                        <p className="text-sm text-slate-700 dark:text-slate-300 font-medium leading-relaxed">
+                                                            {modulAjar?.learning_objective?.description || 'Belum ada Sub TP terpilih.'}
+                                                        </p>
+                                                    </div>
+                                                </CardContent>
+                                            </Card>
 
-                                        <Button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white">
-                                            Kirim Refleksi ke Guru
-                                        </Button>
+                                            {/* Sumber Tambahan */}
+                                            <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-sm rounded-2xl">
+                                                <CardHeader className="pb-3 border-b border-slate-100 dark:border-slate-800">
+                                                    <CardTitle className="text-base flex items-center gap-2">
+                                                        <LinkIcon className="w-4 h-4 text-slate-500" />
+                                                        Sumber Tambahan
+                                                    </CardTitle>
+                                                </CardHeader>
+                                                <CardContent className="pt-4 space-y-3">
+                                                    {(!modulAjar?.material?.file_path && !modulAjar?.material?.youtube_url && !modulAjar?.material?.link_url) && (
+                                                        <p className="text-sm text-slate-500 text-center py-4">Tidak ada lampiran.</p>
+                                                    )}
+
+                                                    {modulAjar?.material?.file_path && (
+                                                        <a
+                                                            href={`/storage/${modulAjar.material.file_path}`}
+                                                            target="_blank"
+                                                            rel="noreferrer"
+                                                            className="flex items-center justify-between p-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors group"
+                                                        >
+                                                            <div className="flex items-center gap-3 overflow-hidden">
+                                                                <div className="w-10 h-10 rounded bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center shrink-0">
+                                                                    <FileText className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                                                                </div>
+                                                                <div className="truncate">
+                                                                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">Dokumen Materi</p>
+                                                                    <p className="text-xs text-slate-500 truncate">Unduh file</p>
+                                                                </div>
+                                                            </div>
+                                                            <Download className="w-4 h-4 text-slate-400 group-hover:text-blue-600 transition-colors" />
+                                                        </a>
+                                                    )}
+
+                                                    {modulAjar?.material?.youtube_url && (
+                                                        <a
+                                                            href={modulAjar.material.youtube_url}
+                                                            target="_blank"
+                                                            rel="noreferrer"
+                                                            className="flex items-center justify-between p-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors group"
+                                                        >
+                                                            <div className="flex items-center gap-3 overflow-hidden">
+                                                                <div className="w-10 h-10 rounded bg-red-100 dark:bg-red-900/50 flex items-center justify-center shrink-0">
+                                                                    <Youtube className="w-5 h-5 text-red-600 dark:text-red-400" />
+                                                                </div>
+                                                                <div className="truncate">
+                                                                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">Video YouTube</p>
+                                                                    <p className="text-xs text-slate-500 truncate">Tonton video</p>
+                                                                </div>
+                                                            </div>
+                                                            <LinkIcon className="w-4 h-4 text-slate-400 group-hover:text-red-600 transition-colors" />
+                                                        </a>
+                                                    )}
+
+                                                    {modulAjar?.material?.link_url && (
+                                                        <a
+                                                            href={modulAjar.material.link_url}
+                                                            target="_blank"
+                                                            rel="noreferrer"
+                                                            className="flex items-center justify-between p-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors group"
+                                                        >
+                                                            <div className="flex items-center gap-3 overflow-hidden">
+                                                                <div className="w-10 h-10 rounded bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center shrink-0">
+                                                                    <LinkIcon className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                                                                </div>
+                                                                <div className="truncate">
+                                                                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">Tautan Luar</p>
+                                                                    <p className="text-xs text-slate-500 truncate">Kunjungi situs</p>
+                                                                </div>
+                                                            </div>
+                                                            <LinkIcon className="w-4 h-4 text-slate-400 group-hover:text-indigo-600 transition-colors" />
+                                                        </a>
+                                                    )}
+                                                </CardContent>
+                                            </Card>
+                                        </div>
                                     </div>
-                                </CardContent>
-                            </Card>
-                        </div>
-                    )}
+                                </div>
+                                
+                                <div className="mt-8 pt-8 border-t border-slate-100 dark:border-slate-800">
+                                    <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 mb-4 flex items-center">
+                                        <Lightbulb className="w-5 h-5 mr-2 text-amber-500" />
+                                        Instruksi Pembelajaran
+                                    </h3>
+                                    <p className="text-sm text-slate-500 mb-4">Pahami dengan saksama langkah-langkah di bawah ini.</p>
+                                    
+                                    {steps?.memahami?.scenario && (
+                                        <div className="p-4 bg-blue-50/50 dark:bg-blue-900/20 rounded-xl border border-blue-100 dark:border-blue-900 mb-6 text-sm text-blue-900 dark:text-blue-100">
+                                            <span className="font-bold block mb-1">Skenario:</span>
+                                            {steps.memahami.scenario}
+                                        </div>
+                                    )}
+
+                                    {renderActivities(steps?.memahami)}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Zone: Mengaplikasi */}
+                        {activeZone === 'mengaplikasi' && (
+                            <div className="animate-in fade-in slide-in-from-bottom-4">
+                                <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 mb-2 flex items-center">
+                                    <Edit3 className="w-5 h-5 mr-2 text-amber-600" />
+                                    Zona Praktik & Tugas (Mengaplikasi)
+                                </h2>
+                                <p className="text-sm text-slate-500 mb-4">Lakukan praktik atau kerjakan tugas sesuai instruksi guru.</p>
+                                
+                                {steps?.mengaplikasi?.scenario && (
+                                    <div className="p-4 bg-amber-50/50 dark:bg-amber-900/20 rounded-xl border border-amber-100 dark:border-amber-900 mb-6 text-sm text-amber-900 dark:text-amber-100">
+                                        <span className="font-bold block mb-1">Skenario:</span>
+                                        {steps.mengaplikasi.scenario}
+                                    </div>
+                                )}
+
+                                {renderActivities(steps?.mengaplikasi)}
+
+                                <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800">
+                                    <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                                        <div>
+                                            <h4 className="font-bold text-sm text-slate-800 dark:text-slate-200">Lembar Kerja Peserta Didik (LKPD) / Tugas</h4>
+                                            <p className="text-xs text-slate-500 mt-1">Periksa tugas yang ditugaskan oleh guru pada modul ini.</p>
+                                        </div>
+                                        <Link href="/assignments">
+                                            <Button className="bg-indigo-600 hover:bg-indigo-700 text-xs text-white">Lihat Tugas</Button>
+                                        </Link>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Zone: Merefleksi */}
+                        {activeZone === 'merefleksi' && (
+                            <div className="animate-in fade-in slide-in-from-bottom-4">
+                                <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 mb-2 flex items-center">
+                                    <HeartHandshake className="w-5 h-5 mr-2 text-emerald-600" />
+                                    Zona Refleksi Pembelajaran
+                                </h2>
+                                <p className="text-sm text-slate-500 mb-4">Refleksikan apa yang telah Anda pelajari pada modul ini.</p>
+
+                                {steps?.merefleksi?.scenario && (
+                                    <div className="p-4 bg-emerald-50/50 dark:bg-emerald-900/20 rounded-xl border border-emerald-100 dark:border-emerald-900 mb-6 text-sm text-emerald-900 dark:text-emerald-100">
+                                        <span className="font-bold block mb-1">Skenario:</span>
+                                        {steps.merefleksi.scenario}
+                                    </div>
+                                )}
+
+                                {renderActivities(steps?.merefleksi)}
+                            </div>
+                        )}
+                    </div>
                 </div>
-            </div>
-            
-            {/* Feedback Toast System (Placeholder for real-time) */}
-            <div className="fixed bottom-4 right-4 z-50 pointer-events-none">
-                 {/* Imagine a toast popping up here when teacher sends feedback */}
             </div>
         </AppLayout>
     );

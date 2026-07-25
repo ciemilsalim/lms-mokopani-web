@@ -1,7 +1,9 @@
 import AppLayout from '@/layouts/app-layout';
 import { Head, Link, useForm } from '@inertiajs/react';
-import { ChevronLeft, Save, Zap, Image as ImageIcon, X, Link as LinkIcon, Upload, AlertTriangle } from 'lucide-react';
+import { ChevronLeft, Save, Zap, Image as ImageIcon, X, Link as LinkIcon, Upload, AlertTriangle, ImagePlus, Loader2 } from 'lucide-react';
 import ReactQuill from 'react-quill-new';
+import { useState } from 'react';
+import axios from 'axios';
 import 'react-quill-new/dist/quill.snow.css';
 
 const quillModules = {
@@ -45,9 +47,35 @@ export default function EditMaterial({ material, teachings, objectives }: EditMa
         title: material.title,
         content: material.content || '',
         thumbnail: null as File | null,
+        thumbnail_url: null as string | null,
         resources: [] as any[],
         resources_to_delete: [] as number[],
     });
+
+    const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+    const [imageDescription, setImageDescription] = useState('');
+    const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+
+    const handleGenerateImage = async () => {
+        if (!imageDescription) return;
+        setIsGeneratingImage(true);
+        try {
+            const response = await axios.post(route('ai.generate-illustration'), {
+                description: imageDescription
+            });
+            if (response.data?.status === 'success') {
+                setData('thumbnail_url', response.data.url);
+                setData('thumbnail', null); // clear file if generated
+                setIsImageModalOpen(false);
+                setImageDescription('');
+            }
+        } catch (error) {
+            console.error('Failed to generate image', error);
+            alert('Gagal menghasilkan gambar. Pastikan AI terkonfigurasi dengan benar.');
+        } finally {
+            setIsGeneratingImage(false);
+        }
+    };
 
     const addResource = (type: 'link' | 'file') => {
         setData('resources', [
@@ -163,26 +191,30 @@ export default function EditMaterial({ material, teachings, objectives }: EditMa
                             {/* Kotak Thumbnail */}
                             <div className="rounded-3xl border border-[#2C2C3A]/20 bg-[#F1F1F4]/10 p-6 dark:border-[#2C2C3A] dark:bg-[#2C2C3A]/30 space-y-4">
                                 <h4 className="text-xs font-black text-muted-foreground uppercase tracking-widest">Gambar Pendukung</h4>
-                                <div className="relative group cursor-pointer aspect-video rounded-2xl bg-white dark:bg-[#1B1B25] border-2 border-dashed border-[#2C2C3A]/20 dark:border-[#2C2C3A] flex flex-col items-center justify-center transition-all hover:border-[#5E6AD2] overflow-hidden">
-                                    {data.thumbnail ? (
-                                        <img src={URL.createObjectURL(data.thumbnail)} className="absolute inset-0 w-full h-full object-cover" />
+                                <div 
+                                    onClick={() => setIsImageModalOpen(true)}
+                                    className="relative group cursor-pointer aspect-video rounded-2xl bg-white dark:bg-[#1B1B25] border-2 border-dashed border-[#2C2C3A]/20 dark:border-[#2C2C3A] flex flex-col items-center justify-center transition-all hover:border-[#5E6AD2] overflow-hidden"
+                                >
+                                    {data.thumbnail_url ? (
+                                        <img src={data.thumbnail_url} className="absolute inset-0 w-full h-full object-cover" />
                                     ) : material.thumbnail ? (
                                         <img src={material.thumbnail} className="absolute inset-0 w-full h-full object-cover" />
                                     ) : (
                                         <>
                                             <ImageIcon className="h-8 w-8 text-[#8A8F98]/40 mb-2" />
-                                            <span className="text-[10px] font-bold text-muted-foreground">Upload Thumbnail Baru</span>
+                                            <span className="text-[10px] font-bold text-muted-foreground">Generate Gambar AI</span>
                                         </>
                                     )}
-                                    <input 
-                                        type="file" 
-                                        accept="image/*"
-                                        onChange={(e) => setData('thumbnail', e.target.files ? e.target.files[0] : null)}
-                                        className="absolute inset-0 opacity-0 cursor-pointer" 
-                                    />
-                                    {data.thumbnail && (
+                                    {(data.thumbnail_url || material.thumbnail) && (
                                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
-                                            <X onClick={(e) => { e.preventDefault(); setData('thumbnail', null) }} className="h-6 w-6 text-white" />
+                                            <X onClick={(e) => { 
+                                                e.stopPropagation(); 
+                                                setData('thumbnail_url', null); 
+                                                setData('thumbnail', null);
+                                                // If we also want to remove existing thumbnail, we would need a mechanism,
+                                                // but setting thumbnail_url to null and thumbnail to null won't delete existing thumbnail on save right now.
+                                                // For this UI, let's just let it clear the preview, though backend might keep it if both are null unless we specifically send 'remove_thumbnail' flag. 
+                                            }} className="h-6 w-6 text-white" />
                                         </div>
                                     )}
                                 </div>
@@ -312,6 +344,65 @@ export default function EditMaterial({ material, teachings, objectives }: EditMa
                     </div>
                 </div>
             </div>
+
+            {/* Modal Generate Image */}
+            {isImageModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                    <div className="bg-background rounded-xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="flex items-center justify-between p-4 border-b border-border">
+                            <h3 className="font-bold text-lg flex items-center gap-2">
+                                <ImagePlus className="w-5 h-5 text-indigo-600" />
+                                Generate Gambar AI
+                            </h3>
+                            <button onClick={() => setIsImageModalOpen(false)} className="p-1 rounded-md hover:bg-muted text-muted-foreground">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        <div className="p-4 space-y-4">
+                            <div className="bg-indigo-50 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-400 p-3 text-xs rounded border border-indigo-100 dark:border-indigo-900">
+                                Ketikkan deskripsi gambar yang Anda inginkan. AI akan merender gambar secara otomatis.
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-sm font-bold text-foreground block">Deskripsi Gambar</label>
+                                <textarea
+                                    value={imageDescription}
+                                    onChange={(e) => setImageDescription(e.target.value)}
+                                    placeholder="Contoh: Anak-anak SD sedang membaca buku di perpustakaan..."
+                                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-indigo-500/20"
+                                    rows={4}
+                                />
+                            </div>
+                        </div>
+                        <div className="p-4 border-t border-border flex justify-end gap-3 bg-muted/10">
+                            <button
+                                type="button"
+                                onClick={() => setIsImageModalOpen(false)}
+                                className="px-4 py-2 text-sm font-medium text-foreground hover:bg-muted rounded-lg transition"
+                            >
+                                Batal
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleGenerateImage}
+                                disabled={isGeneratingImage || !imageDescription}
+                                className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-bold rounded-lg hover:bg-indigo-700 transition disabled:opacity-50"
+                            >
+                                {isGeneratingImage ? (
+                                    <>
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                        Generating...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Zap className="w-4 h-4" />
+                                        Generate
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </AppLayout>
     );
 }

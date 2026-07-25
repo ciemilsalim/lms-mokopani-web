@@ -20,6 +20,7 @@ import {
     Star,
     Printer,
     Lock,
+    Unlock,
     AlertTriangle
 } from 'lucide-react';
 
@@ -62,6 +63,7 @@ interface Material {
         file_type: string | null;
     }>;
     created_at: string;
+    access_status?: 'auto' | 'open' | 'locked';
 }
 
 interface Assignment {
@@ -1521,6 +1523,39 @@ export default function ShowMaterial({
                     </button>
                     {(user_role === 'teacher' || user_role === 'admin') && (
                         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                            <button
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    const current = material.access_status || 'auto';
+                                    const next = current === 'auto' ? 'open' : (current === 'open' ? 'locked' : 'auto');
+                                    router.post(route('materials.toggle-lock', material.id), { status: next }, { preserveScroll: true });
+                                }}
+                                title="Klik untuk mengubah status akses siswa"
+                                className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition cursor-pointer shadow-sm ${
+                                    material.access_status === 'open' ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 hover:bg-emerald-500/20 dark:bg-emerald-500/20 dark:text-emerald-300' :
+                                    material.access_status === 'locked' ? 'bg-rose-500/10 text-rose-600 border border-rose-500/20 hover:bg-rose-500/20 dark:bg-rose-500/20 dark:text-rose-300' :
+                                    'bg-blue-500/10 text-blue-600 border border-blue-500/20 hover:bg-blue-500/20 dark:bg-blue-500/20 dark:text-blue-300'
+                                }`}
+                            >
+                                {material.access_status === 'open' && (
+                                    <>
+                                        <Unlock className="h-3.5 w-3.5 shrink-0" />
+                                        <span>Akses Siswa: Terbuka</span>
+                                    </>
+                                )}
+                                {material.access_status === 'locked' && (
+                                    <>
+                                        <Lock className="h-3.5 w-3.5 shrink-0" />
+                                        <span>Akses Siswa: Terkunci</span>
+                                    </>
+                                )}
+                                {(!material.access_status || material.access_status === 'auto') && (
+                                    <>
+                                        <span className="h-2 w-2 rounded-full bg-blue-500 animate-pulse shrink-0" />
+                                        <span>Akses Siswa: Otomatis (Alur AI)</span>
+                                    </>
+                                )}
+                            </button>
                             <Link
                                 href={route('materials.edit', material.id)}
                                 className="flex items-center gap-2 rounded-xl bg-[#5E6AD2]/10 px-4 py-2 text-xs font-bold text-[#5E6AD2] transition hover:bg-[#5E6AD2]/20 dark:bg-[#5E6AD2]/10 dark:text-[#5E6AD2]"

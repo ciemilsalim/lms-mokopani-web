@@ -1,404 +1,226 @@
-import React, { useState, useEffect } from 'react';
-import { Head, router } from '@inertiajs/react';
-import axios from 'axios';
+import React from 'react';
+import { Head, Link } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
-import { SessionTimer } from '@/components/session/SessionTimer';
-import { AttendanceWidget, AttendanceStudent } from '@/components/session/AttendanceWidget';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { ClipboardCheck, MessageCircle, X, Send } from 'lucide-react';
-
-interface ClassSession {
-    id: number;
-    modul_ajar_id: number;
-    teacher_id: number;
-    school_class_id: number;
-    start_time: string;
-    end_time?: string | null;
-    session_data: {
-        observations?: string[];
-        formative_assessments?: Array<{ student_name: string; note: string; score: number }>;
-        summative_results?: Array<{ student_name: string; score: number }>;
-        reflection?: string;
-    };
-    modul_ajar?: any;
-    school_class?: any;
-}
+import { Button } from '@/components/ui/button';
+import { BookOpen, CheckCircle, Lightbulb, PlayCircle, ClipboardList, FileText, Youtube, Link as LinkIcon, Download } from 'lucide-react';
 
 interface LiveSessionProps {
-    session: ClassSession;
-    attendances: AttendanceStudent[];
+    modulAjar: any;
+    attendances?: any[];
 }
 
-export default function LiveClassSessionPage({ session, attendances }: LiveSessionProps) {
-    const [activeTab, setActiveTab] = useState<'observations' | 'formative' | 'summative' | 'reflection' | 'attendance'>('observations');
-    const [sessionData, setSessionData] = useState(session.session_data || {
-        observations: [],
-        formative_assessments: [],
-        summative_results: [],
-        reflection: ''
-    });
+export default function LiveClassSessionPage({ modulAjar }: LiveSessionProps) {
+    const learningSteps = typeof modulAjar?.learning_steps === 'string'
+        ? JSON.parse(modulAjar.learning_steps)
+        : modulAjar?.learning_steps || {};
 
-    const [newObservation, setNewObservation] = useState('');
-    const [newFormativeName, setNewFormativeName] = useState('');
-    const [newFormativeScore, setNewFormativeScore] = useState('');
-    const [newFormativeNote, setNewFormativeNote] = useState('');
-    const [autosaveStatus, setAutosaveStatus] = useState<'saved' | 'saving' | 'error'>('saved');
-
-    // Quick Assessment Modal States
-    const [isQuickAssessOpen, setIsQuickAssessOpen] = useState(false);
-    const [selectedStudentForFeedback, setSelectedStudentForFeedback] = useState<string | null>(null);
-    const [quickFeedbackText, setQuickFeedbackText] = useState('');
-
-    const handleSendQuickFeedback = (studentName: string) => {
-        if (!quickFeedbackText.trim()) return;
-        const updated = [
-            ...(sessionData.formative_assessments || []),
-            {
-                student_name: studentName,
-                note: `[Umpan Balik Cepat] ${quickFeedbackText.trim()}`,
-                score: 0
-            }
-        ];
-        setSessionData({ ...sessionData, formative_assessments: updated });
-        setQuickFeedbackText('');
-        setSelectedStudentForFeedback(null);
-    };
-
-    // Debounced Autosave
-    useEffect(() => {
-        const timer = setTimeout(async () => {
-            setAutosaveStatus('saving');
-            try {
-                await axios.put(`/class-sessions/${session.id}`, {
-                    session_data: sessionData
-                });
-                setAutosaveStatus('saved');
-            } catch (err) {
-                setAutosaveStatus('error');
-            }
-        }, 1200);
-
-        return () => clearTimeout(timer);
-    }, [sessionData]);
-
-    const handleAddObservation = () => {
-        if (!newObservation.trim()) return;
-        const updated = [...(sessionData.observations || []), newObservation.trim()];
-        setSessionData({ ...sessionData, observations: updated });
-        setNewObservation('');
-    };
-
-    const handleAddFormative = () => {
-        if (!newFormativeName.trim()) return;
-        const updated = [
-            ...(sessionData.formative_assessments || []),
-            {
-                student_name: newFormativeName.trim(),
-                note: newFormativeNote.trim(),
-                score: Number(newFormativeScore) || 0
-            }
-        ];
-        setSessionData({ ...sessionData, formative_assessments: updated });
-        setNewFormativeName('');
-        setNewFormativeScore('');
-        setNewFormativeNote('');
-    };
-
-    const handleEndSession = async () => {
-        if (confirm('Apakah Anda yakin ingin mengakhiri sesi kelas ini?')) {
-            try {
-                await axios.put(`/class-sessions/${session.id}`, {
-                    session_data: sessionData,
-                    end_session: true
-                });
-                router.visit('/class-sessions');
-            } catch (err) {
-                alert('Gagal mengakhiri sesi.');
-            }
-        }
+    const renderStep = (title: string, icon: React.ReactNode, data: any, colorClass: string) => {
+        if (!data || !data.scenario) return null;
+        return (
+            <Card className={`mb-6 border-l-4 ${colorClass} shadow-sm bg-white/80 dark:bg-slate-900/80 backdrop-blur-md`}>
+                <CardHeader className="pb-3 border-b border-slate-100 dark:border-slate-800">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                        {icon}
+                        {title}
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-4 space-y-4">
+                    <div>
+                        <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-2">Skenario Pembelajaran:</h4>
+                        <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed whitespace-pre-wrap">
+                            {data.scenario}
+                        </p>
+                    </div>
+                    
+                    {data.activities && data.activities.length > 0 && (
+                        <div>
+                            <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-2">Aktivitas Siswa:</h4>
+                            <ul className="list-disc pl-5 space-y-1.5">
+                                {data.activities.map((act: string, idx: number) => (
+                                    <li key={idx} className="text-sm text-slate-600 dark:text-slate-400">{act}</li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+        );
     };
 
     return (
-        <AppLayout title="Pelaksanaan Kelas Aktif (PPA 2025)">
-            <Head title="Pelaksanaan Kelas Aktif (PPA 2025)" />
+        <AppLayout title="Pelaksanaan Pembelajaran">
+            <Head title="Pelaksanaan Pembelajaran" />
 
-            <div className="max-w-6xl mx-auto py-6 px-4 sm:px-6 space-y-6">
-                {/* Header Bar with Timer & Status */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+            <div className="max-w-5xl mx-auto py-6 px-4 sm:px-6 space-y-8">
+                {/* Header Bar */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
                     <div>
-                        <div className="flex items-center gap-2">
-                            <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">
-                                Pelaksanaan Kelas Aktif
+                        <div className="flex items-center gap-2 mb-2">
+                            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+                                Pelaksanaan Pembelajaran
                             </h1>
-                            <Badge variant="outline" className="text-xs bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">
-                                PPA 2025
+                            <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
+                                Kurikulum Dinamis
                             </Badge>
                         </div>
-                        <p className="text-xs text-slate-500 mt-0.5">
-                            Modul: {session.modul_ajar?.general_info ? 'Modul Ajar Pembelajaran' : 'Modul Ajar'} | Kelas: {session.school_class?.name || 'VII'}
+                        <p className="text-sm text-slate-500 font-medium">
+                            Topik: <span className="text-slate-800 dark:text-slate-200">{modulAjar?.material?.title || 'Modul Ajar'}</span> • {modulAjar?.subject?.name || 'Mata Pelajaran'}
                         </p>
                     </div>
-
-                    <div className="flex items-center gap-3">
-                        <span className="text-[11px] text-slate-400 font-medium">
-                            {autosaveStatus === 'saving' && '⏳ Menyimpan...'}
-                            {autosaveStatus === 'saved' && '✓ Tersimpan otomatis'}
-                            {autosaveStatus === 'error' && '⚠️ Gagal menyimpan'}
-                        </span>
-                        <SessionTimer
-                            startTime={session.start_time}
-                            endTime={session.end_time}
-                            onEndSession={handleEndSession}
-                        />
+                    <div>
+                        <Link href="/assignments" className="inline-flex items-center justify-center rounded-xl text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-12 px-6 py-2 bg-indigo-600 text-white hover:bg-indigo-700 shadow-lg shadow-indigo-200 dark:shadow-none hover:scale-105 transform duration-200">
+                            <ClipboardList className="w-5 h-5 mr-2" />
+                            Lakukan Asesmen
+                        </Link>
                     </div>
                 </div>
 
-                {/* Main Content Grid */}
+                {/* Materi Reference */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* Left 2 Cols: Skenario & Interactive Tabs */}
                     <div className="lg:col-span-2 space-y-6">
-                        {/* Tab Navigation Header */}
-                        <div className="flex border-b border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 p-1 rounded-lg">
-                            {[
-                                { id: 'observations', label: '1. Observasi' },
-                                { id: 'formative', label: '2. Formatif' },
-                                { id: 'summative', label: '3. Sumatif' },
-                                { id: 'reflection', label: '4. Refleksi Guru' },
-                                { id: 'attendance', label: '5. Presensi (Absensi)' }
-                            ].map((tab) => (
-                                <button
-                                    key={tab.id}
-                                    onClick={() => setActiveTab(tab.id as any)}
-                                    className={`flex-1 py-2 px-3 text-center text-xs font-bold rounded-md transition-all ${
-                                        activeTab === tab.id
-                                            ? 'bg-indigo-600 text-white shadow'
-                                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
-                                    }`}
-                                >
-                                    {tab.label}
-                                </button>
-                            ))}
-                        </div>
-
-                        {/* Tab 1: Observasi */}
-                        {activeTab === 'observations' && (
-                            <Card className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-slate-200 dark:border-slate-800 shadow-sm">
-                                <CardHeader>
-                                    <CardTitle className="text-base">Catatan Observasi Pembelajaran</CardTitle>
-                                    <CardDescription className="text-xs">
-                                        Catat perilaku, partisipasi, dan proses belajar siswa secara berkesadaran.
-                                    </CardDescription>
-                                </CardHeader>
-                                <CardContent className="space-y-4">
-                                    <div className="space-y-2">
-                                        {(sessionData.observations || []).map((obs, idx) => (
-                                            <div key={idx} className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800 border text-xs text-slate-800 dark:text-slate-200 flex justify-between items-center">
-                                                <span>{idx + 1}. {obs}</span>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() => setSessionData({
-                                                        ...sessionData,
-                                                        observations: sessionData.observations?.filter((_, i) => i !== idx)
-                                                    })}
-                                                    className="text-rose-500 h-6 text-[10px]"
-                                                >
-                                                    Hapus
-                                                </Button>
-                                            </div>
-                                        ))}
+                        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden rounded-2xl">
+                            <div className="h-2 w-full bg-gradient-to-r from-indigo-500 to-purple-500"></div>
+                            <CardHeader className="pb-4 bg-slate-50/50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
+                                <CardTitle className="text-lg flex items-center gap-2 text-indigo-950 dark:text-indigo-50">
+                                    <BookOpen className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                                    Materi Pembelajaran
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="pt-6">
+                                {modulAjar?.material?.content ? (
+                                    <div className="prose prose-slate dark:prose-invert max-w-none prose-sm sm:prose-base prose-headings:text-indigo-950 dark:prose-headings:text-indigo-50 prose-a:text-indigo-600">
+                                        <div dangerouslySetInnerHTML={{ __html: modulAjar.material.content }} />
                                     </div>
-
-                                    <div className="flex gap-2 pt-2">
-                                        <Input
-                                            placeholder="Tambah catatan observasi singkat..."
-                                            value={newObservation}
-                                            onChange={(e) => setNewObservation(e.target.value)}
-                                            className="text-xs"
-                                        />
-                                        <Button onClick={handleAddObservation} className="bg-indigo-600 text-white text-xs">
-                                            Tambah
-                                        </Button>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        )}
-
-                        {/* Tab 2: Formatif */}
-                        {activeTab === 'formative' && (
-                            <Card className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-slate-200 dark:border-slate-800 shadow-sm">
-                                <CardHeader>
-                                    <CardTitle className="text-base">Asesmen Formatif Berkelanjutan</CardTitle>
-                                    <CardDescription className="text-xs">
-                                        Berikan umpan balik langsung selama proses belajar untuk penyesuaian strategi mengajar.
-                                    </CardDescription>
-                                </CardHeader>
-                                <CardContent className="space-y-4">
-                                    <div className="space-y-2">
-                                        {(sessionData.formative_assessments || []).map((item, idx) => (
-                                            <div key={idx} className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800 border text-xs flex justify-between items-center">
-                                                <div>
-                                                    <span className="font-bold text-slate-900 dark:text-slate-100">{item.student_name}</span>
-                                                    <span className="ml-2 font-mono text-indigo-600 font-bold">({item.score})</span>
-                                                    {item.note && <p className="text-[11px] text-slate-500 mt-0.5">{item.note}</p>}
-                                                </div>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() => setSessionData({
-                                                        ...sessionData,
-                                                        formative_assessments: sessionData.formative_assessments?.filter((_, i) => i !== idx)
-                                                    })}
-                                                    className="text-rose-500 h-6 text-[10px]"
-                                                >
-                                                    Hapus
-                                                </Button>
-                                            </div>
-                                        ))}
-                                    </div>
-
-                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-2 border-t">
-                                        <Input
-                                            placeholder="Nama Siswa"
-                                            value={newFormativeName}
-                                            onChange={(e) => setNewFormativeName(e.target.value)}
-                                            className="text-xs"
-                                        />
-                                        <Input
-                                            placeholder="Skor (0-100)"
-                                            type="number"
-                                            value={newFormativeScore}
-                                            onChange={(e) => setNewFormativeScore(e.target.value)}
-                                            className="text-xs"
-                                        />
-                                        <Input
-                                            placeholder="Catatan / Umpan Balik"
-                                            value={newFormativeNote}
-                                            onChange={(e) => setNewFormativeNote(e.target.value)}
-                                            className="text-xs"
-                                        />
-                                    </div>
-                                    <Button onClick={handleAddFormative} className="w-full bg-indigo-600 text-white text-xs">
-                                        + Simpan Catatan Formatif
-                                    </Button>
-                                </CardContent>
-                            </Card>
-                        )}
-
-                        {/* Tab 3: Sumatif */}
-                        {activeTab === 'summative' && (
-                            <Card className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-slate-200 dark:border-slate-800 shadow-sm">
-                                <CardHeader>
-                                    <CardTitle className="text-base">Hasil Asesmen Sumatif (Akhir Pembelajaran)</CardTitle>
-                                    <CardDescription className="text-xs">
-                                        Catatan: Hanya nilai sumatif yang diolah untuk Rapor sesuai PPA 2025.
-                                    </CardDescription>
-                                </CardHeader>
-                                <CardContent className="space-y-4">
-                                    <p className="text-xs text-slate-600 dark:text-slate-400">
-                                        Data sumatif diisi saat evaluasi akhir TP atau evaluasi proyek akhir modul.
-                                    </p>
-                                </CardContent>
-                            </Card>
-                        )}
-
-                        {/* Tab 4: Refleksi */}
-                        {activeTab === 'reflection' && (
-                            <Card className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-slate-200 dark:border-slate-800 shadow-sm">
-                                <CardHeader>
-                                    <CardTitle className="text-base">Refleksi & Tindak Lanjut Guru</CardTitle>
-                                    <CardDescription className="text-xs">
-                                        Evaluasi efektivitas pembelajaran untuk perbaikan pada materi selanjutnya.
-                                    </CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    <textarea
-                                        rows={6}
-                                        value={sessionData.reflection || ''}
-                                        onChange={(e) => setSessionData({ ...sessionData, reflection: e.target.value })}
-                                        placeholder="Tuliskan refleksi Anda: Apa yang berjalan baik? Apa tantangan yang dihadapi? Apa tindak lanjut untuk pertemuan berikutnya?"
-                                        className="w-full p-3 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500"
-                                    />
-                                </CardContent>
-                            </Card>
-                        )}
-
-                        {/* Tab 5: Presensi */}
-                        {activeTab === 'attendance' && (
-                            <AttendanceWidget attendances={attendances} />
-                        )}
-                    </div>
-
-                    {/* Right Column: Widget Presensi Direct DB */}
-                    <div className="space-y-6">
-                        <AttendanceWidget attendances={attendances} />
-                    </div>
-                </div>
-            </div>
-
-            {/* Quick Assessment Floating Button */}
-            <div className="fixed bottom-6 right-6 z-40">
-                <Button 
-                    onClick={() => setIsQuickAssessOpen(!isQuickAssessOpen)}
-                    className="w-14 h-14 rounded-full shadow-lg bg-indigo-600 hover:bg-indigo-700 flex items-center justify-center text-white"
-                >
-                    {isQuickAssessOpen ? <X className="w-6 h-6" /> : <ClipboardCheck className="w-6 h-6" />}
-                </Button>
-            </div>
-
-            {/* Quick Assessment Modal / Drawer */}
-            {isQuickAssessOpen && (
-                <div className="fixed bottom-24 right-6 z-40 w-80 sm:w-96 bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 p-4 animate-in slide-in-from-bottom-4">
-                    <div className="flex justify-between items-center mb-4 border-b border-slate-100 dark:border-slate-800 pb-2">
-                        <h3 className="font-bold text-slate-800 dark:text-slate-100 flex items-center">
-                            <ClipboardCheck className="w-4 h-4 mr-2 text-indigo-600" />
-                            Asesmen & Umpan Balik Cepat
-                        </h3>
-                    </div>
-                    
-                    <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
-                        {attendances.map((student) => (
-                            <div key={student.student_id} className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-100 dark:border-slate-800">
-                                <div className="flex justify-between items-center">
-                                    <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">{student.student_name}</span>
-                                    <Button 
-                                        variant="ghost" 
-                                        size="sm" 
-                                        onClick={() => setSelectedStudentForFeedback(selectedStudentForFeedback === student.student_name ? null : student.student_name)}
-                                        className="h-7 text-xs text-indigo-600 dark:text-indigo-400"
-                                    >
-                                        <MessageCircle className="w-3 h-3 mr-1" /> Umpan Balik
-                                    </Button>
-                                </div>
-                                
-                                {selectedStudentForFeedback === student.student_name && (
-                                    <div className="mt-3 flex gap-2 animate-in fade-in">
-                                        <Input 
-                                            placeholder="Tulis pujian atau koreksi..."
-                                            value={quickFeedbackText}
-                                            onChange={(e) => setQuickFeedbackText(e.target.value)}
-                                            className="h-8 text-xs"
-                                        />
-                                        <Button 
-                                            size="sm" 
-                                            className="h-8 bg-indigo-600 text-white px-2"
-                                            onClick={() => handleSendQuickFeedback(student.student_name)}
-                                        >
-                                            <Send className="w-3 h-3" />
-                                        </Button>
+                                ) : (
+                                    <div className="text-center py-10 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-dashed border-slate-200 dark:border-slate-700">
+                                        <p className="text-slate-500 dark:text-slate-400">Ringkasan materi belum tersedia.</p>
                                     </div>
                                 )}
-                            </div>
-                        ))}
-                        {attendances.length === 0 && (
-                            <div className="text-center text-slate-500 text-xs py-4">Data siswa tidak tersedia untuk sesi ini.</div>
-                        )}
+                            </CardContent>
+                        </Card>
+                    </div>
+
+                    <div className="space-y-6">
+                        {/* Tujuan Pembelajaran Card */}
+                        <Card className="bg-indigo-50/50 dark:bg-indigo-950/20 border-indigo-100 dark:border-indigo-900 shadow-sm rounded-2xl">
+                            <CardHeader className="pb-3">
+                                <CardTitle className="text-base text-indigo-900 dark:text-indigo-300">
+                                    Tujuan Pembelajaran
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="space-y-1">
+                                    <span className="inline-block px-2 py-1 rounded bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200 text-xs font-bold mb-2">
+                                        {modulAjar?.learning_objective?.code ? modulAjar.learning_objective.code.replace('-', ' ') : 'Sub TP'}
+                                    </span>
+                                    <p className="text-sm text-slate-700 dark:text-slate-300 font-medium leading-relaxed">
+                                        {modulAjar?.learning_objective?.description || 'Belum ada Sub TP terpilih.'}
+                                    </p>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        {/* Sumber Tambahan Card */}
+                        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-sm rounded-2xl">
+                            <CardHeader className="pb-3 border-b border-slate-100 dark:border-slate-800">
+                                <CardTitle className="text-base flex items-center gap-2">
+                                    <LinkIcon className="w-4 h-4 text-slate-500" />
+                                    Sumber Tambahan
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="pt-4 space-y-3">
+                                {(!modulAjar?.material?.file_path && !modulAjar?.material?.youtube_url && !modulAjar?.material?.link_url) && (
+                                    <p className="text-sm text-slate-500 text-center py-4">Tidak ada lampiran.</p>
+                                )}
+
+                                {modulAjar?.material?.file_path && (
+                                    <a
+                                        href={`/storage/${modulAjar.material.file_path}`}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="flex items-center justify-between p-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors group"
+                                    >
+                                        <div className="flex items-center gap-3 overflow-hidden">
+                                            <div className="w-10 h-10 rounded bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center shrink-0">
+                                                <FileText className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                                            </div>
+                                            <div className="truncate">
+                                                <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">Dokumen Materi</p>
+                                                <p className="text-xs text-slate-500 truncate">Unduh file</p>
+                                            </div>
+                                        </div>
+                                        <Download className="w-4 h-4 text-slate-400 group-hover:text-blue-600 transition-colors" />
+                                    </a>
+                                )}
+
+                                {modulAjar?.material?.youtube_url && (
+                                    <a
+                                        href={modulAjar.material.youtube_url}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="flex items-center justify-between p-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors group"
+                                    >
+                                        <div className="flex items-center gap-3 overflow-hidden">
+                                            <div className="w-10 h-10 rounded bg-red-100 dark:bg-red-900/50 flex items-center justify-center shrink-0">
+                                                <Youtube className="w-5 h-5 text-red-600 dark:text-red-400" />
+                                            </div>
+                                            <div className="truncate">
+                                                <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">Video YouTube</p>
+                                                <p className="text-xs text-slate-500 truncate">Tonton video</p>
+                                            </div>
+                                        </div>
+                                        <LinkIcon className="w-4 h-4 text-slate-400 group-hover:text-red-600 transition-colors" />
+                                    </a>
+                                )}
+
+                                {modulAjar?.material?.link_url && (
+                                    <a
+                                        href={modulAjar.material.link_url}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="flex items-center justify-between p-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors group"
+                                    >
+                                        <div className="flex items-center gap-3 overflow-hidden">
+                                            <div className="w-10 h-10 rounded bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center shrink-0">
+                                                <LinkIcon className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                                            </div>
+                                            <div className="truncate">
+                                                <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">Tautan Luar</p>
+                                                <p className="text-xs text-slate-500 truncate">Kunjungi situs</p>
+                                            </div>
+                                        </div>
+                                        <LinkIcon className="w-4 h-4 text-slate-400 group-hover:text-indigo-600 transition-colors" />
+                                    </a>
+                                )}
+                            </CardContent>
+                        </Card>
                     </div>
                 </div>
-            )}
+
+                {/* Alur Pembelajaran (Memahami, Mengaplikasi, Merefleksi) */}
+                <div className="mt-8 pt-8 border-t border-slate-200 dark:border-slate-800">
+                    <h3 className="text-xl font-bold text-slate-800 dark:text-slate-200 mb-6 px-1 flex items-center gap-2">
+                        <PlayCircle className="w-6 h-6 text-indigo-600" />
+                        Alur Kegiatan Pembelajaran (PPA 2025)
+                    </h3>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {renderStep('Zona 1: Memahami', <Lightbulb className="w-5 h-5 text-amber-500" />, learningSteps.memahami, 'border-l-amber-500')}
+                        {renderStep('Zona 2: Mengaplikasi', <PlayCircle className="w-5 h-5 text-emerald-500" />, learningSteps.mengaplikasi, 'border-l-emerald-500')}
+                        {renderStep('Zona 3: Merefleksi', <CheckCircle className="w-5 h-5 text-indigo-500" />, learningSteps.merefleksi, 'border-l-indigo-500')}
+                    </div>
+                    
+                    {!learningSteps.memahami && !learningSteps.mengaplikasi && !learningSteps.merefleksi && (
+                        <Card className="p-12 text-center bg-slate-50 dark:bg-slate-800/50 border-dashed border-2 rounded-2xl">
+                            <p className="text-slate-500 dark:text-slate-400 text-sm">
+                                Alur pembelajaran belum di-generate untuk Modul Ajar ini. Silakan edit modul ajar untuk menyusun alur belajarnya.
+                            </p>
+                        </Card>
+                    )}
+                </div>
+            </div>
         </AppLayout>
     );
 }

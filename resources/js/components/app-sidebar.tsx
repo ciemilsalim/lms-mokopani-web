@@ -5,7 +5,7 @@ import { type NavItem, type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
 import {
     Book, BookOpen, ClipboardList, GraduationCap, LayoutDashboard, Library, Target, FileBarChart, Bell, Compass,
-    Heart, FileWarning, MessageSquare, BarChart3, Brain, Users, ExternalLink,
+    Heart, FileWarning, MessageSquare, BarChart3, Brain, Users, ExternalLink, FileText,
 } from 'lucide-react';
 import AppLogo from './app-logo';
 
@@ -32,7 +32,7 @@ const teacherNavSections: NavSection[] = [
     {
         label: 'Tahap 2: Pelaksanaan',
         items: [
-            { title: 'Sesi Kelas (Live)',     url: '/class-sessions',         icon: Compass },
+            { title: 'Bahan Materi',          url: '/materials',              icon: Library },
             { title: 'Bank Asesmen',          url: '/assignments',            icon: ClipboardList },
         ],
     },
@@ -70,8 +70,9 @@ const studentNavSections: NavSection[] = [
     {
         label: 'Belajar',
         items: [
-            { title: 'Kelas Saya',          url: '/class-sessions',  icon: Compass },
-            { title: 'Projek P5',           url: '/p5/saya',         icon: Heart },
+            { title: 'Materi Pembelajaran', url: '/materials',     icon: Library },
+            { title: 'Tugas & Asesmen',     url: '/assignments',   icon: FileText },
+            { title: 'Projek P5',           url: '/p5/saya',       icon: Heart },
         ],
     },
     {

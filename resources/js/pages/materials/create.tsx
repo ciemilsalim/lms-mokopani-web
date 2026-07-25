@@ -21,6 +21,8 @@ import {
     Plus,
     Sparkles,
     AlertTriangle,
+    ImagePlus,
+    Loader2,
 } from 'lucide-react';
 import axios from 'axios';
 import ReactQuill from 'react-quill-new';
@@ -164,7 +166,33 @@ export default function CreateMaterial({ teachings, objectives }: CreateMaterial
         content: '',
         file: null as File | null,
         thumbnail: null as File | null,
+        thumbnail_url: null as string | null,
     });
+
+    const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+    const [imageDescription, setImageDescription] = useState('');
+    const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+
+    const handleGenerateImage = async () => {
+        if (!imageDescription) return;
+        setIsGeneratingImage(true);
+        try {
+            const response = await axios.post(route('ai.generate-illustration'), {
+                description: imageDescription
+            });
+            if (response.data?.status === 'success') {
+                setData('thumbnail_url', response.data.url);
+                setData('thumbnail', null); // clear file if generated
+                setIsImageModalOpen(false);
+                setImageDescription('');
+            }
+        } catch (error) {
+            console.error('Failed to generate image', error);
+            alert('Gagal menghasilkan gambar. Pastikan AI terkonfigurasi dengan benar.');
+        } finally {
+            setIsGeneratingImage(false);
+        }
+    };
 
     useEffect(() => {
         if (aiNotification) {
@@ -338,7 +366,7 @@ export default function CreateMaterial({ teachings, objectives }: CreateMaterial
                                                     }}
                                                     className="rounded border-input text-primary focus:ring-primary"
                                                 />
-                                                {c.class_name}
+                                                {c.school_class?.name}
                                             </label>
                                         ))}
                                     </div>
@@ -447,18 +475,31 @@ export default function CreateMaterial({ teachings, objectives }: CreateMaterial
                         {/* Thumbnail Materi */}
                         <div className="rounded-xl border border-border bg-card p-4 sm:p-5 space-y-4">
                             <h3 className="text-xs font-semibold text-foreground">Thumbnail Materi</h3>
-                            <div className="relative aspect-video rounded-lg border-2 border-dashed border-border bg-muted/30 hover:border-primary/50 transition-colors flex flex-col items-center justify-center overflow-hidden group cursor-pointer">
-                                {data.thumbnail ? (
+                            <div 
+                                onClick={() => setIsImageModalOpen(true)}
+                                className="relative aspect-video rounded-lg border-2 border-dashed border-border bg-muted/30 hover:border-primary/50 transition-colors flex flex-col items-center justify-center overflow-hidden group cursor-pointer"
+                            >
+                                {data.thumbnail_url ? (
+                                    <img src={data.thumbnail_url} className="w-full h-full object-cover" />
+                                ) : data.thumbnail ? (
                                     <img src={URL.createObjectURL(data.thumbnail)} className="w-full h-full object-cover" />
                                 ) : (
                                     <div className="flex flex-col items-center gap-2">
                                         <div className="h-10 w-10 rounded-full bg-card flex items-center justify-center shadow-sm group-hover:bg-primary/5 transition-all">
                                             <ImageIcon className="h-5 w-5 text-muted-foreground group-hover:text-primary/60" />
                                         </div>
-                                        <span className="text-[10px] font-medium text-muted-foreground uppercase">Upload Gambar</span>
+                                        <span className="text-[10px] font-medium text-muted-foreground uppercase">Generate Gambar AI</span>
                                     </div>
                                 )}
-                                <input type="file" accept="image/*" className="absolute inset-0 cursor-pointer opacity-0" onChange={(e) => setData('thumbnail', e.target.files ? e.target.files[0] : null)} />
+                                {(data.thumbnail_url || data.thumbnail) && (
+                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                                        <X onClick={(e) => { 
+                                            e.stopPropagation(); 
+                                            setData('thumbnail_url', null); 
+                                            setData('thumbnail', null);
+                                        }} className="h-6 w-6 text-white" />
+                                    </div>
+                                )}
                             </div>
                         </div>
 
@@ -583,6 +624,65 @@ export default function CreateMaterial({ teachings, objectives }: CreateMaterial
                 isOpen={isPromptModalOpen}
                 onClose={() => setIsPromptModalOpen(false)}
             />
+
+            {/* Modal Generate Image */}
+            {isImageModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                    <div className="bg-background rounded-xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="flex items-center justify-between p-4 border-b border-border">
+                            <h3 className="font-bold text-lg flex items-center gap-2">
+                                <ImagePlus className="w-5 h-5 text-indigo-600" />
+                                Generate Gambar AI
+                            </h3>
+                            <button onClick={() => setIsImageModalOpen(false)} className="p-1 rounded-md hover:bg-muted text-muted-foreground">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        <div className="p-4 space-y-4">
+                            <div className="bg-indigo-50 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-400 p-3 text-xs rounded border border-indigo-100 dark:border-indigo-900">
+                                Ketikkan deskripsi gambar yang Anda inginkan. AI akan merender gambar secara otomatis.
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-sm font-bold text-foreground block">Deskripsi Gambar</label>
+                                <textarea
+                                    value={imageDescription}
+                                    onChange={(e) => setImageDescription(e.target.value)}
+                                    placeholder="Contoh: Anak-anak SD sedang membaca buku di perpustakaan..."
+                                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-indigo-500/20"
+                                    rows={4}
+                                />
+                            </div>
+                        </div>
+                        <div className="p-4 border-t border-border flex justify-end gap-3 bg-muted/10">
+                            <button
+                                type="button"
+                                onClick={() => setIsImageModalOpen(false)}
+                                className="px-4 py-2 text-sm font-medium text-foreground hover:bg-muted rounded-lg transition"
+                            >
+                                Batal
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleGenerateImage}
+                                disabled={isGeneratingImage || !imageDescription}
+                                className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-bold rounded-lg hover:bg-indigo-700 transition disabled:opacity-50"
+                            >
+                                {isGeneratingImage ? (
+                                    <>
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                        Generating...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Zap className="w-4 h-4" />
+                                        Generate
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </AppLayout>
     );
 }

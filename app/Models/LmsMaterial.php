@@ -31,6 +31,7 @@ class LmsMaterial extends Model
         'external_link',
         'thumbnail',
         'order',
+        'access_status',
     ];
 
     public function subject()

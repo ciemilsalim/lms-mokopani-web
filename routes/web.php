@@ -68,8 +68,9 @@ Route::middleware(['auth'])->group(function () {
     Route::post('comments', [\App\Http\Controllers\CommentController::class, 'store'])->name('comments.store');
     Route::delete('comments/{comment}', [\App\Http\Controllers\CommentController::class, 'destroy'])->name('comments.destroy');
 
-    // Laporan Nilai (shared — dispatches teacher vs student in controller)
+    // Laporan Nilai & Sesi Kelas (shared — dispatches teacher vs student in controller)
     Route::get('gradebook', [\App\Http\Controllers\GradebookController::class, 'index'])->name('gradebook.index');
+    Route::get('class-sessions', [\App\Http\Controllers\ClassSessionController::class, 'index'])->name('class-sessions.index');
 
     // ── Student-only ────────────────────────────────────────────────
     Route::middleware(['role:student'])->group(function () {
@@ -108,6 +109,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('materials/{material}/edit', [MaterialController::class, 'edit'])->name('materials.edit');
         Route::post('materials/{material}', [MaterialController::class, 'update'])->name('materials.update');
         Route::delete('materials/{material}', [MaterialController::class, 'destroy'])->name('materials.destroy');
+        Route::post('materials/{material}/toggle-lock', [MaterialController::class, 'toggleLock'])->name('materials.toggle-lock');
 
         // Asesmen CRUD (create/edit/delete/grade)
         Route::post('assignments', [AssignmentController::class, 'store'])->name('assignments.store');
@@ -196,11 +198,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('analytics/{subjectId}/{classId}', [AnalyticsController::class, 'show'])->name('analytics.show');
 
         // Class Sessions (PPA 2025 Execution)
-        Route::get('class-sessions', [\App\Http\Controllers\ClassSessionController::class, 'index'])->name('class-sessions.index');
-        Route::post('class-sessions', [\App\Http\Controllers\ClassSessionController::class, 'store'])->name('class-sessions.store');
         Route::get('class-sessions/{id}/live', [\App\Http\Controllers\ClassSessionController::class, 'live'])->name('class-sessions.live');
-        Route::get('class-sessions/{id}', [\App\Http\Controllers\ClassSessionController::class, 'show'])->name('class-sessions.show');
-        Route::put('class-sessions/{id}', [\App\Http\Controllers\ClassSessionController::class, 'update'])->name('class-sessions.update');
         Route::post('api/ai/generate-learning-steps', [\App\Http\Controllers\ClassSessionController::class, 'generateLearningSteps'])->name('ai.generate-learning-steps');
 
         // Rapor Processing (PPA 2025 Summative Calculation)

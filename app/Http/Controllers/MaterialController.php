@@ -71,6 +71,7 @@ class MaterialController extends Controller
                                 'teacher_name' => $m->teacher?->name ?? '-',
                                 'file_type'    => $m->file_type,
                                 'created_at'   => $m->created_at->format('d M Y'),
+                                'access_status'=> $m->access_status ?? 'auto',
                             ])->values(),
                         ];
                     })->values();
@@ -121,7 +122,8 @@ class MaterialController extends Controller
                         'teacher_name' => $m->teacher?->name ?? '-',
                         'file_type'    => $m->file_type,
                         'created_at'   => $m->created_at->format('d M Y'),
-                        'is_accessible'=> $user->role === 'admin' || !$m->learning_objective_id || in_array($m->learning_objective_id, $accessibleTpIds),
+                        'access_status'=> $m->access_status ?? 'auto',
+                        'is_accessible'=> $user->role === 'admin' || ($m->access_status === 'open') || ($m->access_status !== 'locked' && (!$m->learning_objective_id || in_array($m->learning_objective_id, $accessibleTpIds))),
                     ])->values(),
                 ];
             })->values();
@@ -188,6 +190,7 @@ class MaterialController extends Controller
                 'external_link'         => 'nullable|url|max:255',
                 'file'                  => 'nullable|file|max:10240', // 10MB
                 'thumbnail'             => 'nullable|image|max:2048',
+                'thumbnail_url'         => 'nullable|url|max:2048',
                 'resources'             => 'nullable|array',
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
@@ -205,6 +208,16 @@ class MaterialController extends Controller
         $thumbnailPath = null;
         if ($request->hasFile('thumbnail')) {
             $thumbnailPath = $request->file('thumbnail')->store('lms/thumbnails', 'public');
+        } elseif ($request->filled('thumbnail_url')) {
+            try {
+                $contents = file_get_contents($request->thumbnail_url);
+                $name = 'lms/thumbnails/' . uniqid() . '.jpg';
+                Storage::disk('public')->put($name, $contents);
+                $thumbnailPath = $name;
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error('Failed to download thumbnail: ' . $e->getMessage());
+                $thumbnailPath = null;
+            }
         }
 
         $material = \App\Models\LmsMaterial::create([
@@ -268,9 +281,14 @@ class MaterialController extends Controller
         ];
 
         if ($user->student) {
-            $accessibleTpIds = app(\App\Services\AdaptiveLearningService::class)->getStudentAccessibleTpIds($user->student->id, $user->student->school_class_id);
-            if ($material->learning_objective_id && !in_array($material->learning_objective_id, $accessibleTpIds)) {
-                abort(403, 'Akses ditolak. Silakan selesaikan materi atau asesmen sebelumnya terlebih dahulu sesuai alur belajar.');
+            if ($material->access_status === 'locked') {
+                abort(403, 'Maaf, materi ini sedang dikunci oleh guru.');
+            }
+            if ($material->access_status !== 'open') {
+                $accessibleTpIds = app(\App\Services\AdaptiveLearningService::class)->getStudentAccessibleTpIds($user->student->id, $user->student->school_class_id);
+                if ($material->learning_objective_id && !in_array($material->learning_objective_id, $accessibleTpIds)) {
+                    abort(403, 'Akses ditolak. Silakan selesaikan materi atau asesmen sebelumnya terlebih dahulu sesuai alur belajar.');
+                }
             }
 
             if ($material->learning_objective_id) {
@@ -399,7 +417,7 @@ class MaterialController extends Controller
                 'id'                     => $material->id,
                 'title'                  => $material->title,
                 'content'                => $material->content,
-                'thumbnail'              => $material->thumbnail ? asset('storage/' . $material->thumbnail) : null,
+                'thumbnail'              => $material->thumbnail ? (str_starts_with($material->thumbnail, 'http') ? $material->thumbnail : asset('storage/' . $material->thumbnail)) : null,
                 'file_path'              => $material->file_path,
                 'file_type'              => $material->file_type,
                 'external_link'          => $material->external_link,
@@ -429,6 +447,7 @@ class MaterialController extends Controller
                     'file_type' => $r->file_type,
                 ]),
                 'created_at'             => $material->created_at->format('d M Y'),
+                'access_status'          => $material->access_status ?? 'auto',
             ],
             'comments'        => $comments,
             'my_reflection'   => $myReflection,
@@ -478,7 +497,7 @@ class MaterialController extends Controller
                 'id' => $material->id,
                 'title' => $material->title,
                 'content' => $material->content,
-                'thumbnail' => $material->thumbnail ? asset('storage/' . $material->thumbnail) : null,
+                'thumbnail' => $material->thumbnail ? (str_starts_with($material->thumbnail, 'http') ? $material->thumbnail : asset('storage/' . $material->thumbnail)) : null,
                 'subject_id' => $material->subject_id,
                 'school_classes' => $material->schoolClasses->pluck('id'),
                 'learning_objective_id' => $material->learning_objective_id,
@@ -511,6 +530,7 @@ class MaterialController extends Controller
             'title'                 => 'required|string|max:255',
             'content'               => 'nullable|string',
             'thumbnail'             => 'nullable|image|max:2048',
+            'thumbnail_url'         => 'nullable|url|max:2048',
             'resources'             => 'nullable|array',
             'resources_to_delete'   => 'nullable|array',
         ]);
@@ -523,10 +543,24 @@ class MaterialController extends Controller
         ];
 
         if ($request->hasFile('thumbnail')) {
-            if ($material->thumbnail) {
+            if ($material->thumbnail && !str_starts_with($material->thumbnail, 'http')) {
                 Storage::disk('public')->delete($material->thumbnail);
             }
             $updateData['thumbnail'] = $request->file('thumbnail')->store('lms/thumbnails', 'public');
+        } elseif ($request->filled('thumbnail_url')) {
+            if ($material->thumbnail && !str_starts_with($material->thumbnail, 'http')) {
+                Storage::disk('public')->delete($material->thumbnail);
+            }
+            try {
+                $contents = file_get_contents($request->thumbnail_url);
+                $name = 'lms/thumbnails/' . uniqid() . '.jpg';
+                Storage::disk('public')->put($name, $contents);
+                $updateData['thumbnail'] = $name;
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error('Failed to download thumbnail: ' . $e->getMessage());
+                // Keep the old one if download fails, or set to null? Better to just unset so it doesn't get updated to null.
+                // Wait, if they generated a new one, but it failed, just leave it unchanged.
+            }
         }
 
         $material->update($updateData);
@@ -614,5 +648,26 @@ class MaterialController extends Controller
         );
 
         return back()->with('success', 'Materi ditandai sebagai selesai.');
+    }
+
+    public function toggleLock(Request $request, LmsMaterial $material)
+    {
+        if (!Auth::user()->teacher && Auth::user()->role !== 'admin') {
+            abort(403);
+        }
+
+        $validated = $request->validate([
+            'status' => 'required|in:auto,open,locked'
+        ]);
+
+        $material->update(['access_status' => $validated['status']]);
+
+        $statusLabel = match($validated['status']) {
+            'open' => 'terbuka untuk siswa',
+            'locked' => 'terkunci untuk siswa',
+            default => 'mengikuti alur otomatis',
+        };
+
+        return back()->with('success', "Status akses materi berhasil diubah menjadi: {$statusLabel}.");
     }
 }

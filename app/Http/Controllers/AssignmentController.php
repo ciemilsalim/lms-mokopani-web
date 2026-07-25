@@ -28,10 +28,13 @@ class AssignmentController extends Controller
         } elseif ($user->teacher) {
             $query->where('teacher_id', $user->teacher->id);
         } elseif ($user->student) {
-            $query->whereHas('schoolClasses', function ($q) use ($user) {
-                $q->where('school_classes.id', $user->student->school_class_id);
-            })
-                ->where('instrument_type', '!=', 'performance_observation')
+            if ($user->student->school_class_id) {
+                $query->whereHas('schoolClasses', function ($q) use ($user) {
+                    $q->where('school_classes.id', $user->student->school_class_id);
+                });
+            }
+
+            $query->where('instrument_type', '!=', 'performance_observation')
                 ->where('instrument_type', '!=', 'performance')
                 ->where('instrument_type', '!=', 'oral_test')
                 ->where('instrument_type', '!=', 'guided_discussion')

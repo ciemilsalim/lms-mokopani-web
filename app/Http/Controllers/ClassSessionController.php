@@ -19,156 +19,83 @@ class ClassSessionController extends Controller
      */
     public function index(Request $request)
     {
-        $teacherId = Auth::user()->teacher?->id ?? Auth::id();
+        $user = Auth::user();
 
-        $query = LmsClassSession::with(['modulAjar', 'schoolClass'])
-            ->where('teacher_id', $teacherId);
+        // ── AKSED OLEH SISWA ──────────────────────────────────────────
+        if ($user->role === 'student' || ($user->student && !$user->teacher)) {
+            $student = $user->student;
+            $classId = $student?->school_class_id;
 
-        if ($request->has('modul_ajar_id')) {
-            $query->where('modul_ajar_id', $request->modul_ajar_id);
+            $query = \App\Models\LmsModulAjar::with(['teacher', 'schoolClass', 'subject', 'learningObjective', 'material'])
+                ->orderBy('created_at', 'desc');
+
+            if ($classId) {
+                $query->where(function($q) use ($classId) {
+                    $q->where('school_class_id', $classId)
+                      ->orWhereNull('school_class_id');
+                });
+            }
+
+            $modulAjars = $query->get();
+
+            // Ambil semua Tugas & Asesmen dari Guru (misal Budi Santoso, S.Kom)
+            $asgnQuery = \App\Models\LmsAssignment::with(['teacher', 'subject'])->latest();
+            if ($classId) {
+                $asgnQuery->where(function($q) use ($classId) {
+                    $q->whereHas('schoolClasses', function ($subQ) use ($classId) {
+                        $subQ->where('school_classes.id', $classId);
+                    })->orDoesntHave('schoolClasses');
+                });
+            }
+            $assignments = $asgnQuery->get();
+
+            return Inertia::render('class-sessions/index', [
+                'modulAjars' => $modulAjars,
+                'assignments' => $assignments,
+                'isStudent' => true
+            ]);
         }
 
-        $sessions = $query->orderBy('created_at', 'desc')->get();
+        // ── AKSES OLEH GURU / ADMIN ────────────────────────────────────
+        $teacherId = $user->teacher?->id;
+
+        $modulAjarsQuery = \App\Models\LmsModulAjar::with(['subject', 'learningObjective', 'material', 'teacher', 'schoolClass'])
+            ->latest();
+            
+        if ($teacherId && $user->role !== 'admin') {
+            $modulAjarsQuery->where('teacher_id', $teacherId);
+        }
+
+        $modulAjars = $modulAjarsQuery->get();
 
         return Inertia::render('class-sessions/index', [
-            'sessions' => $sessions
+            'modulAjars' => $modulAjars,
+            'isStudent' => false
         ]);
     }
 
     /**
-     * Start a new class session.
-     */
-    public function store(Request $request)
-    {
-        $validated = $request->validate([
-            'modul_ajar_id' => 'nullable|exists:lms_modul_ajars,id',
-            'school_class_id' => 'nullable|integer',
-            'session_data' => 'nullable|array',
-        ]);
-
-        $teacherId = Auth::user()->teacher?->id ?? Auth::id() ?? 1;
-
-        $session = LmsClassSession::create([
-            'modul_ajar_id' => $validated['modul_ajar_id'] ?? null,
-            'teacher_id' => $teacherId,
-            'school_class_id' => $validated['school_class_id'] ?? null,
-            'start_time' => now(),
-            'session_data' => $validated['session_data'] ?? [
-                'observations' => [],
-                'formative_assessments' => [],
-                'summative_results' => [],
-                'reflection' => ''
-            ],
-            'attendance_synced' => true,
-        ]);
-
-        return redirect()->route('class-sessions.live', $session->id)
-            ->with('success', 'Sesi pembelajaran berhasil dimulai.');
-    }
-
-    /**
-     * Render Live Class Session Execution Page (Shadcn UI & Attendance Integration).
+     * Render Learning Execution Page for Teachers (Alur Pembelajaran).
      */
     public function live($id)
     {
-        $session = LmsClassSession::with(['modulAjar', 'schoolClass'])->findOrFail($id);
+        $modulAjar = \App\Models\LmsModulAjar::with(['subject', 'schoolClass', 'learningObjective', 'material'])->findOrFail($id);
         
-        // Fetch Attendance records directly from subject_attendances table (Aplikasi Absensi) & fallback to daily attendances
-        $attendances = [];
-        if ($session->school_class_id) {
-            $students = Student::where('school_class_id', $session->school_class_id)->get();
-            $studentIds = $students->pluck('id');
-            
-            $subjectAttendanceRecords = SubjectAttendance::whereIn('student_id', $studentIds)
-                ->whereDate('created_at', now()->toDateString())
-                ->get()
-                ->keyBy('student_id');
-
-            // Daily attendance from Aplikasi Absensi (attendances table)
-            $dailyAttendanceRecords = \App\Models\Attendance::whereIn('student_id', $studentIds)
-                ->whereDate('attendance_time', now()->toDateString())
-                ->get()
-                ->keyBy('student_id');
-
-            $attendances = $students->map(function ($student) use ($subjectAttendanceRecords, $dailyAttendanceRecords) {
-                $subRec = $subjectAttendanceRecords->get($student->id);
-                $dailyRec = $dailyAttendanceRecords->get($student->id);
-                
-                // Determine initial status: prefer subject attendance, then daily attendance status, else 'hadir'
-                $status = $subRec?->status ?? $dailyRec?->status ?? 'hadir';
-                
-                return [
-                    'student_id' => $student->id,
-                    'student_name' => $student->name,
-                    'nis' => $student->nis ?? $student->nisn ?? '-',
-                    'status' => strtolower($status),
-                    'notes' => $subRec?->notes ?? ($dailyRec ? 'Absensi Harian SIPADA' : ''),
-                ];
-            });
-        }
-
         return Inertia::render('class-sessions/live', [
-            'session' => $session,
-            'attendances' => $attendances
+            'modulAjar' => $modulAjar,
+            'attendances' => [] // Sesuai permintaan, observasi ditiadakan/disederhanakan. Absensi dipisah atau tidak dibutuhkan di alur ini.
         ]);
     }
 
     /**
-     * Render Live Class Session Page for Students (Dasbor Alur Belajar).
+     * Render Learning Execution Page for Students (Materi & Alur Belajar).
      */
     public function studentLive($id)
     {
-        $session = LmsClassSession::with(['modulAjar', 'teacher'])->findOrFail($id);
+        $modulAjar = \App\Models\LmsModulAjar::with(['teacher', 'subject', 'learningObjective', 'material'])->findOrFail($id);
         
-        $student = Auth::user()->student;
-        if ($session->school_class_id && $student && $student->school_class_id !== $session->school_class_id) {
-            abort(403, 'Akses ditolak. Anda bukan peserta di kelas ini.');
-        }
-
         return Inertia::render('class-sessions/student-live', [
-            'session' => $session
-        ]);
-    }
-
-    /**
-     * Show session detail API.
-     */
-    public function show($id)
-    {
-        $session = LmsClassSession::with(['modulAjar', 'schoolClass'])->findOrFail($id);
-
-        return response()->json([
-            'status' => 'success',
-            'data' => $session
-        ]);
-    }
-
-    /**
-     * Update session data (autosave observation, formative, summative, reflection).
-     */
-    public function update(Request $request, $id)
-    {
-        $session = LmsClassSession::findOrFail($id);
-
-        $validated = $request->validate([
-            'session_data' => 'nullable|array',
-            'end_session' => 'nullable|boolean',
-        ]);
-
-        if (isset($validated['session_data'])) {
-            $session->session_data = array_merge($session->session_data ?? [], $validated['session_data']);
-        }
-
-        if (!empty($validated['end_session'])) {
-            $session->end_time = now();
-        }
-
-        $session->save();
-
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Data pelaksanaan kelas berhasil diperbarui.',
-            'data' => $session
+            'modulAjar' => $modulAjar
         ]);
     }
 
