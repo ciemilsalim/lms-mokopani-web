@@ -444,57 +444,107 @@ const renderAssessmentDetails = (assignments: Assignment[]) => {
     );
 };
 
-// Helper untuk memformat teks yang bertumpuk (misal akibat copy-paste dari PDF)
+// Helper untuk memformat teks, memperbaiki overflow margin kanan, dan memperkaya poin-poin/bullet dengan ikon menarik
 const formatDocumentLayout = (html: string | null) => {
     if (!html) return '';
 
-    // Replace non-breaking spaces with normal spaces to prevent infinite stretching
+    // 1. Replace non-breaking spaces with normal spaces to prevent infinite stretching
     // and arbitrary word-breaking.
-    html = html.replace(/&nbsp;|\u00A0|&#160;/g, ' ');
+    let cleaned = html.replace(/&nbsp;|\u00A0|&#160;/g, ' ');
 
-    // If the content already has proper HTML structure (from ReactQuill/AI),
-    // only apply light formatting fixes without breaking the structure
-    const hasSemanticHtml = /<(h[1-6]|ul|ol|li|blockquote|table|p)\b/i.test(html);
-    
-    if (hasSemanticHtml) {
-        // Light fix: fix commas without spaces
-        let cleaned = html.replace(/,([a-zA-Z])/g, ', $1');
-        // Clean newlines between tags (e.g. </h2>\n<p> or </li>\n<li>) to prevent duplicate spacing in whitespace-pre-wrap
-        cleaned = cleaned.replace(/>\s*\n\s*</g, '><');
-        
-        // Auto-join words that are broken by a hyphen and newline (e.g., "sehari-\nhari" -> "sehari-hari")
-        cleaned = cleaned.replace(/-\s*\n\s*/g, '-');
-        
-        return cleaned;
+    // 2. Fix commas without spaces and clean newlines between tags
+    cleaned = cleaned.replace(/,([a-zA-Z])/g, ', $1');
+    cleaned = cleaned.replace(/>\s*\n\s*</g, '><');
+    cleaned = cleaned.replace(/-\s*\n\s*/g, '-');
+
+    // Helper for icons based on text content
+    const getBulletIcon = (text: string, index: number): string => {
+        const lower = text.toLowerCase();
+        if (lower.includes('contoh') || lower.includes('misal') || lower.includes('bayangkan') || lower.includes('seperti')) return '💡';
+        if (lower.includes('tujuan') || lower.includes('pilar') || lower.includes('kunci') || lower.includes('penting') || lower.includes('fokus')) return '🎯';
+        if (lower.includes('langkah') || lower.includes('proses') || lower.includes('cara') || lower.includes('tahap') || lower.includes('mulai')) return '🚀';
+        if (lower.includes('pola') || lower.includes('analisis') || lower.includes('kesamaan') || lower.includes('cari') || lower.includes('periksa')) return '🔍';
+        if (lower.includes('logika') || lower.includes('berpikir') || lower.includes('konsep') || lower.includes('otak') || lower.includes('nalar')) return '🧠';
+        if (lower.includes('kesimpulan') || lower.includes('jadi') || lower.includes('rangkuman') || lower.includes('ingat') || lower.includes('maka')) return '📌';
+        if (lower.includes('solusi') || lower.includes('cepat') || lower.includes('efisien') || lower.includes('mudah')) return '⚡';
+        if (lower.includes('komputer') || lower.includes('teknologi') || lower.includes('sistem') || lower.includes('digital') || lower.includes('mesin')) return '💻';
+        const defaultIcons = ['✨', '🌟', '📌', '💡', '🎯', '🚀', '⚡', '💻'];
+        return defaultIcons[index % defaultIcons.length];
+    };
+
+    const getHeadingIcon = (text: string): string => {
+        const lower = text.toLowerCase();
+        if (lower.includes('1.') || lower.includes('dekomposisi') || lower.includes('memecah')) return '🧩';
+        if (lower.includes('2.') || lower.includes('pola') || lower.includes('pengenalan') || lower.includes('kesamaan')) return '🔍';
+        if (lower.includes('3.') || lower.includes('abstraksi') || lower.includes('fokus') || lower.includes('penting')) return '🎯';
+        if (lower.includes('4.') || lower.includes('algoritma') || lower.includes('langkah') || lower.includes('struktur')) return '⚙️';
+        if (lower.includes('tujuan') || lower.includes('capaian') || lower.includes('target')) return '🎯';
+        if (lower.includes('contoh') || lower.includes('studi') || lower.includes('kasus') || lower.includes('misal')) return '🔬';
+        if (lower.includes('kesimpulan') || lower.includes('rangkuman') || lower.includes('ringkasan') || lower.includes('refleksi')) return '📌';
+        if (lower.includes('inti') || lower.includes('konsep') || lower.includes('membedah') || lower.includes('rahasia')) return '💡';
+        return '🌟';
+    };
+
+    // If it's plain text without tags, wrap paragraphs first
+    if (!/<(h[1-6]|ul|ol|li|blockquote|table|p|div)\b/i.test(cleaned)) {
+        const paragraphs = cleaned.split(/\n\s*\n/);
+        cleaned = paragraphs.map(p => {
+            let pText = p.replace(/([a-z\.])\s+(\d+\.)\s+/gi, '$1<br/><br/>$2 ');
+            return `<p>${pText}</p>`;
+        }).join('');
     }
 
-    // Legacy fallback for plain-text content (old data without HTML formatting)
-    // First, join hyphenated breaks
-    let text = html.replace(/-\s*\n\s*/g, '-');
-    
-    // Split by double newlines into paragraphs
-    const paragraphs = text.split(/\n\s*\n/);
-    
-    return paragraphs.map(p => {
-        let pText = p;
-        const exceptions = ['WhatsApp', 'MacBook', 'PowerPoint', 'JavaScript', 'YouTube', 'LinkedIn', 'FACT'];
-        exceptions.forEach((ex, j) => {
-            pText = pText.replace(new RegExp(ex, 'g'), `__EX${j}__`);
-        });
+    let bulletIdx = 0;
 
-        pText = pText.replace(/([a-z])([A-Z])/g, '$1<br/><br/>$2');
-        pText = pText.replace(/([a-zA-Z]')([A-Z])/g, '$1<br/><br/>$2');
-        pText = pText.replace(/\s*•\s*/g, '<br/><br/>• ');
-        pText = pText.replace(/([a-z\.])\s+(\d+\.)\s+/gi, '$1<br/><br/>$2 ');
-        pText = pText.replace(/(?<!Dr|Mr|Ms|Prof)\.\s+([A-Z])/g, '.<br/><br/>$1');
-        pText = pText.replace(/,([a-zA-Z])/g, ', $1');
+    // 3. Transform HTML list items (<li>...</li>) into attractive glassmorphism cards with emojis
+    cleaned = cleaned.replace(/<li[^>]*>([\s\S]*?)<\/li>/gi, (match, content) => {
+        const icon = getBulletIcon(content, bulletIdx++);
+        return `<li class="flex items-start gap-3.5 sm:gap-4 my-3.5 sm:my-4 p-4 sm:p-5 rounded-2xl bg-indigo-50/70 dark:bg-slate-800/60 border border-indigo-100/80 dark:border-slate-700/80 hover:bg-indigo-100/60 dark:hover:bg-slate-800/80 hover:border-indigo-300 dark:hover:border-indigo-500/50 transition duration-200 shadow-sm list-none break-words overflow-wrap-anywhere max-w-full w-full">
+            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white text-lg sm:text-xl shadow-md mt-0.5 select-none">
+                ${icon}
+            </span>
+            <div class="flex-1 min-w-0 break-words overflow-wrap-anywhere text-slate-800 dark:text-slate-200 leading-relaxed font-normal">
+                ${content}
+            </div>
+        </li>`;
+    });
 
-        exceptions.forEach((ex, j) => {
-            pText = pText.replace(new RegExp(`__EX${j}__`, 'g'), ex);
-        });
+    // 4. Transform plain paragraphs that start with bullet points (•, *, -) into cards
+    cleaned = cleaned.replace(/<p[^>]*>\s*[•\-\*]\s+([\s\S]*?)<\/p>/gi, (match, content) => {
+        const icon = getBulletIcon(content, bulletIdx++);
+        return `<div class="flex items-start gap-3.5 sm:gap-4 my-3.5 sm:my-4 p-4 sm:p-5 rounded-2xl bg-indigo-50/70 dark:bg-slate-800/60 border border-indigo-100/80 dark:border-slate-700/80 hover:bg-indigo-100/60 dark:hover:bg-slate-800/80 hover:border-indigo-300 dark:hover:border-indigo-500/50 transition duration-200 shadow-sm break-words overflow-wrap-anywhere max-w-full w-full">
+            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white text-lg sm:text-xl shadow-md mt-0.5 select-none">
+                ${icon}
+            </span>
+            <div class="flex-1 min-w-0 break-words overflow-wrap-anywhere text-slate-800 dark:text-slate-200 leading-relaxed font-normal">
+                ${content}
+            </div>
+        </div>`;
+    });
 
-        return `<p>${pText}</p>`;
-    }).join('');
+    // 5. Transform headings (h1-h6) with badges
+    cleaned = cleaned.replace(/<(h[1-6])[^>]*>([\s\S]*?)<\/\1>/gi, (match, tag, content) => {
+        const icon = getHeadingIcon(content);
+        return `<${tag} class="flex items-center gap-3.5 font-extrabold text-indigo-900 dark:text-indigo-300 mt-8 mb-4 break-words overflow-wrap-anywhere max-w-full w-full">
+            <span class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-indigo-500/20 border border-indigo-500/30 text-2xl shadow-inner select-none">
+                ${icon}
+            </span>
+            <span class="flex-1 min-w-0 break-words overflow-wrap-anywhere">${content}</span>
+        </${tag}>`;
+    });
+
+    // 6. Transform paragraphs that act as numbered headings (e.g. <p><strong>1. Dekomposisi...</strong></p> or <p>1. Dekomposisi...</p>)
+    cleaned = cleaned.replace(/<p[^>]*>\s*(?:<strong[^>]*>)?\s*([1-9]\.\s+[^\n<]{3,120})(?:<\/strong>)?\s*<\/p>/gi, (match, content) => {
+        const icon = getHeadingIcon(content);
+        return `<h3 class="flex items-center gap-3.5 text-xl sm:text-2xl font-extrabold text-indigo-900 dark:text-indigo-300 mt-8 mb-4 break-words overflow-wrap-anywhere max-w-full w-full">
+            <span class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-indigo-500/20 border border-indigo-500/30 text-2xl shadow-inner select-none">
+                ${icon}
+            </span>
+            <span class="flex-1 min-w-0 break-words overflow-wrap-anywhere">${content}</span>
+        </h3>`;
+    });
+
+    return cleaned;
 };
 
 export default function ShowMaterial({ 
@@ -845,17 +895,17 @@ export default function ShowMaterial({
                 </div>
 
                 {/* ── Main Content Area (Scrollable) ── */}
-                <main className="flex-1 overflow-y-auto px-6 py-8 sm:px-12 sm:py-12 md:px-20 md:py-16 bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 text-slate-100 selection:bg-indigo-500 selection:text-white">
-                    <div className="max-w-5xl mx-auto space-y-10 animate-in fade-in zoom-in-95 duration-300">
+                <main className="dark flex-1 overflow-y-auto overflow-x-hidden w-full max-w-full px-4 sm:px-8 md:px-16 py-8 sm:py-12 md:py-16 bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 text-slate-100 selection:bg-indigo-500 selection:text-white">
+                    <div className="max-w-4xl mx-auto space-y-10 w-full overflow-hidden break-words animate-in fade-in zoom-in-95 duration-300">
                         {teachingTab === 'content' && (
-                            <div className="space-y-10 pb-20">
+                            <div className="space-y-10 pb-20 w-full max-w-full overflow-hidden break-words">
                                 <div className="p-6 rounded-2xl bg-slate-800/60 border border-slate-700/80 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xl">
                                     <div>
                                         <div className="text-xs font-extrabold uppercase tracking-wider text-indigo-400 mb-1 flex items-center gap-1.5">
                                             <Sparkles className="h-3.5 w-3.5" />
                                             Tujuan Pembelajaran ({material.tp_code || 'TP'})
                                         </div>
-                                        <div className="text-base sm:text-lg font-bold text-slate-200 leading-snug">
+                                        <div className="text-base sm:text-lg font-bold text-slate-200 leading-snug break-words">
                                             {material.tp_desc || 'Tanpa deskripsi khusus'}
                                         </div>
                                     </div>
@@ -866,46 +916,46 @@ export default function ShowMaterial({
                                 </div>
 
                                 <div 
-                                    className="prose prose-invert max-w-none prose-p:text-xl sm:prose-p:text-2xl prose-p:leading-relaxed prose-headings:text-indigo-300 prose-h1:text-4xl sm:prose-h1:text-5xl prose-h2:text-3xl sm:prose-h2:text-4xl prose-h3:text-2xl sm:prose-h3:text-3xl prose-li:text-xl sm:prose-li:text-2xl prose-img:rounded-2xl prose-img:shadow-2xl prose-a:text-indigo-400 prose-blockquote:border-indigo-500 prose-blockquote:bg-indigo-950/20 prose-blockquote:p-6 prose-blockquote:rounded-r-2xl prose-blockquote:text-xl sm:prose-blockquote:text-2xl prose-strong:text-white font-normal tracking-wide"
-                                    dangerouslySetInnerHTML={{ __html: material.content || '<p class="text-slate-500 italic text-center py-12">Belum ada teks konten pada materi ini.</p>' }}
+                                    className="prose prose-invert max-w-none prose-p:text-xl sm:prose-p:text-2xl prose-p:leading-relaxed prose-headings:text-indigo-300 prose-h1:text-4xl sm:prose-h1:text-5xl prose-h2:text-3xl sm:prose-h2:text-4xl prose-h3:text-2xl sm:prose-h3:text-3xl prose-li:text-xl sm:prose-li:text-2xl prose-img:rounded-2xl prose-img:shadow-2xl prose-a:text-indigo-400 prose-blockquote:border-indigo-500 prose-blockquote:bg-indigo-950/20 prose-blockquote:p-6 prose-blockquote:rounded-r-2xl prose-blockquote:text-xl sm:prose-blockquote:text-2xl prose-strong:text-white font-normal tracking-wide w-full max-w-full overflow-hidden break-words overflow-wrap-anywhere [word-break:break-word] prose-ul:pl-0 prose-ol:pl-0 prose-ul:list-none prose-ol:list-none [&_*]:max-w-full [&_*]:break-words [&_*]:overflow-wrap-anywhere [&_*]:whitespace-normal"
+                                    dangerouslySetInnerHTML={{ __html: formatDocumentLayout(material.content) || '<p class="text-slate-500 italic text-center py-12">Belum ada teks konten pada materi ini.</p>' }}
                                 />
                             </div>
                         )}
 
                         {teachingTab === 'lkpd' && (
-                            <div className="space-y-8 pb-20">
+                            <div className="space-y-8 pb-20 w-full max-w-full overflow-hidden break-words">
                                 <div className="text-center space-y-2">
                                     <h2 className="text-3xl sm:text-4xl font-black tracking-tight text-white">📑 LKPD Terstruktur & Langkah Aktivitas</h2>
                                     <p className="text-base sm:text-lg text-slate-400">Alur pembelajaran kolaboratif dan instruksi kerja peserta didik.</p>
                                 </div>
 
-                                <div className="grid md:grid-cols-2 gap-6">
+                                <div className="grid md:grid-cols-2 gap-6 w-full max-w-full overflow-hidden">
                                     {material.application_activity && (
-                                        <div className="p-8 rounded-3xl bg-gradient-to-br from-indigo-950/50 to-slate-900 border border-indigo-500/30 space-y-4 shadow-2xl">
+                                        <div className="p-8 rounded-3xl bg-gradient-to-br from-indigo-950/50 to-slate-900 border border-indigo-500/30 space-y-4 shadow-2xl w-full max-w-full overflow-hidden break-words">
                                             <div className="flex items-center gap-3 text-indigo-400 font-extrabold text-lg uppercase tracking-wider">
                                                 <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 font-black">1</span>
                                                 Aktivitas Mengaplikasi
                                             </div>
-                                            <div className="prose prose-invert prose-p:text-lg prose-p:leading-relaxed text-slate-200" dangerouslySetInnerHTML={{ __html: material.application_activity }} />
+                                            <div className="prose prose-invert prose-p:text-lg prose-p:leading-relaxed text-slate-200 w-full max-w-full overflow-hidden break-words overflow-wrap-anywhere [word-break:break-word] prose-ul:pl-0 prose-ol:pl-0 prose-ul:list-none prose-ol:list-none [&_*]:max-w-full [&_*]:break-words [&_*]:overflow-wrap-anywhere [&_*]:whitespace-normal" dangerouslySetInnerHTML={{ __html: formatDocumentLayout(material.application_activity) }} />
                                         </div>
                                     )}
                                     {material.reflection_activity && (
-                                        <div className="p-8 rounded-3xl bg-gradient-to-br from-emerald-950/50 to-slate-900 border border-emerald-500/30 space-y-4 shadow-2xl">
+                                        <div className="p-8 rounded-3xl bg-gradient-to-br from-emerald-950/50 to-slate-900 border border-emerald-500/30 space-y-4 shadow-2xl w-full max-w-full overflow-hidden break-words">
                                             <div className="flex items-center gap-3 text-emerald-400 font-extrabold text-lg uppercase tracking-wider">
                                                 <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 font-black">2</span>
                                                 Aktivitas Merefleksi
                                             </div>
-                                            <div className="prose prose-invert prose-p:text-lg prose-p:leading-relaxed text-slate-200" dangerouslySetInnerHTML={{ __html: material.reflection_activity }} />
+                                            <div className="prose prose-invert prose-p:text-lg prose-p:leading-relaxed text-slate-200 w-full max-w-full overflow-hidden break-words overflow-wrap-anywhere [word-break:break-word] prose-ul:pl-0 prose-ol:pl-0 prose-ul:list-none prose-ol:list-none [&_*]:max-w-full [&_*]:break-words [&_*]:overflow-wrap-anywhere [&_*]:whitespace-normal" dangerouslySetInnerHTML={{ __html: formatDocumentLayout(material.reflection_activity) }} />
                                         </div>
                                     )}
                                 </div>
 
                                 {material.lkpd && (
-                                    <div className="p-8 rounded-3xl bg-slate-800/60 border border-slate-700/80 space-y-6 shadow-2xl">
+                                    <div className="p-8 rounded-3xl bg-slate-800/60 border border-slate-700/80 space-y-6 shadow-2xl w-full max-w-full overflow-hidden break-words">
                                         <h3 className="text-2xl font-bold text-white flex items-center gap-3">
                                             <FileText className="h-7 w-7 text-amber-400" /> Lembar Kerja Peserta Didik (LKPD)
                                         </h3>
-                                        <div className="prose prose-invert max-w-none prose-p:text-xl prose-li:text-xl text-slate-200" dangerouslySetInnerHTML={{ __html: material.lkpd }} />
+                                        <div className="prose prose-invert max-w-none prose-p:text-xl prose-li:text-xl text-slate-200 w-full max-w-full overflow-hidden break-words overflow-wrap-anywhere [word-break:break-word] prose-ul:pl-0 prose-ol:pl-0 prose-ul:list-none prose-ol:list-none [&_*]:max-w-full [&_*]:break-words [&_*]:overflow-wrap-anywhere [&_*]:whitespace-normal" dangerouslySetInnerHTML={{ __html: formatDocumentLayout(material.lkpd) }} />
                                     </div>
                                 )}
                             </div>
@@ -2101,9 +2151,9 @@ export default function ShowMaterial({
                                 prose-hr:border-[#2C2C3A]/10 dark:prose-hr:border-[#2C2C3A]/50
                                 prose-code:text-[#5E6AD2] prose-code:bg-[#5E6AD2]/10 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded-md prose-code:before:content-none prose-code:after:content-none prose-code:break-words
                                 prose-pre:bg-[#1B1B25] prose-pre:border prose-pre:border-[#2C2C3A]/30 prose-pre:rounded-2xl
-                                break-normal">
+                                w-full max-w-full overflow-hidden break-words overflow-wrap-anywhere [word-break:break-word] prose-ul:pl-0 prose-ol:pl-0 prose-ul:list-none prose-ol:list-none [&_*]:max-w-full [&_*]:break-words [&_*]:overflow-wrap-anywhere [&_*]:whitespace-normal">
                                 <div 
-                                    className="leading-relaxed"
+                                    className="leading-relaxed w-full max-w-full overflow-hidden break-words overflow-wrap-anywhere [word-break:break-word]"
                                     dangerouslySetInnerHTML={{ __html: formatDocumentLayout(material.content) }} 
                                 />
                             </div>
