@@ -70,8 +70,8 @@ const studentNavSections: NavSection[] = [
     {
         label: 'Belajar',
         items: [
-            { title: 'Materi Pembelajaran', url: '/materials',     icon: Library },
-            { title: 'Tugas & Asesmen',     url: '/assignments',   icon: FileText },
+            { title: 'Bahan Materi',        url: '/materials',     icon: Library },
+            { title: 'Bank Asesmen',        url: '/assignments',   icon: ClipboardList },
             { title: 'Projek P5',           url: '/p5/saya',       icon: Heart },
         ],
     },

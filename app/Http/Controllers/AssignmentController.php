@@ -33,21 +33,6 @@ class AssignmentController extends Controller
                     $q->where('school_classes.id', $user->student->school_class_id);
                 });
             }
-
-            $query->where('instrument_type', '!=', 'performance_observation')
-                ->where('instrument_type', '!=', 'performance')
-                ->where('instrument_type', '!=', 'oral_test')
-                ->where('instrument_type', '!=', 'guided_discussion')
-                ->where(function($q) {
-                    $q->where('assessment_type', '!=', 'initial')
-                      ->orWhere(function($subQ) {
-                          $subQ->where('assessment_type', 'initial')
-                               ->where(function($instQ) {
-                                   $instQ->whereNull('instrument_type')
-                                         ->orWhere('instrument_type', 'quiz_survey');
-                               });
-                      });
-                });
         }
 
         $models = $query->withCount('submissions')->latest()->get();
@@ -142,7 +127,7 @@ class AssignmentController extends Controller
                 });
                 $objectives = $tpGroups->map(function ($tpItems, $tpId) use ($accessibleTpIds, $user, $studentSubmissions) {
                     $firstTp = $tpItems->first();
-                    $isAccessible = $user->role === 'admin' || $tpId === 'null' || in_array($firstTp->learning_objective_id, $accessibleTpIds);
+                    $isAccessible = true; // Selalu izinkan siswa mengklik dan melihat detail asesmen
                     return [
                         'objective_id'          => $firstTp->learning_objective_id,
                         'objective_code'        => $firstTp->learningObjective?->code ?: ('TP ' . ($firstTp->learningObjective?->order ?? '?')),
@@ -200,8 +185,7 @@ class AssignmentController extends Controller
             'assessment_type'   => $a->assessment_type,
             'instrument_type'   => $a->instrument_type,
             'scoring_tool'      => $a->scoring_tool,
-            'submissions_count' => $a->submissions_count,
-            'is_accessible'     => $user->role === 'admin' || $user->role === 'teacher' || !$a->learning_objective_id || in_array($a->learning_objective_id, $accessibleTpIds),
+            'is_accessible'     => true, // Selalu izinkan siswa mengklik dan melihat detail asesmen
             'student_submission'=> isset($studentSubmissions[$a->id]) ? [
                 'id'        => $studentSubmissions[$a->id]->id,
                 'is_graded' => $studentSubmissions[$a->id]->score !== null,
@@ -362,10 +346,7 @@ class AssignmentController extends Controller
 
         $readinessStatus = null;
         if ($user->student) {
-            // Check access: observasi is teacher-only!
-            if ($assignment->instrument_type === 'observation_checklist' || $assignment->instrument_type === 'performance_observation' || $assignment->instrument_type === 'performance' || $assignment->instrument_type === 'oral_test' || $assignment->instrument_type === 'guided_discussion') {
-                abort(403, 'Akses ditolak. Asesmen ini hanya diisi oleh Guru.');
-            }
+            // Biarkan siswa membuka detail asesmen untuk melihat panduan, rubrik, atau hasil penilaian dari guru.
 
             // Get readiness status
             $diagnosticResult = \App\Models\StudentDiagnosticResult::where('student_id', $user->student->id)
@@ -1044,6 +1025,10 @@ class AssignmentController extends Controller
     {
         DB::transaction(function () use ($assignment) {
             \App\Models\StudentDiagnosticResult::where('assignment_id', $assignment->id)->delete();
+            \App\Models\LmsRemedialRecord::where('assignment_id', $assignment->id)->delete();
+            \App\Models\LmsReflection::where('assignment_id', $assignment->id)->delete();
+            \App\Models\LmsComment::where('assignment_id', $assignment->id)->delete();
+            $assignment->schoolClasses()->detach();
             $assignment->submissions()->delete();
             $assignment->delete();
         });

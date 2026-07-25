@@ -97,24 +97,22 @@ const typeStyles: Record<string, { bg: string; text: string; icon: any }> = {
 
 function AssignmentCard({ asgn, isTeacher = false }: { asgn: Assignment; isTeacher?: boolean }) {
     const overdue = isOverdue(asgn.due_date);
-    const isAccessible = asgn.is_accessible !== false; // default true if undefined
+    const isAccessible = true; // Selalu izinkan siswa mengklik dan melihat detail asesmen
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
     const handleEdit = (e: React.MouseEvent) => {
         e.stopPropagation();
-        router.visit(`/assignments/${asgn.id}/edit`);
+        router.get(route('assignments.edit', asgn.id));
     };
 
     const handleDelete = () => {
-        router.visit(`/assignments/${asgn.id}`, { method: 'delete' });
+        router.delete(route('assignments.destroy', asgn.id));
     };
 
     return (
         <div
-            onClick={() => isAccessible && router.visit(`/assignments/${asgn.id}`)}
-            className={`group flex items-center justify-between py-2 px-4 hover:bg-popover border-l-2 border-transparent hover:border-primary transition-colors cursor-pointer ${
-                !isAccessible ? 'opacity-60 grayscale-[30%] cursor-not-allowed pointer-events-none' : ''
-            }`}
+            onClick={() => router.visit(route('assignments.show', asgn.id))}
+            className="group flex items-center justify-between py-2 px-4 hover:bg-popover border-l-2 border-transparent hover:border-primary transition-colors cursor-pointer"
         >
             <div className="flex items-center gap-3 min-w-0 flex-1">
                 <span className={`h-2.5 w-2.5 rounded-full shrink-0 ${
@@ -205,10 +203,10 @@ function GroupedView({ groups, search, filterType }: { groups: SubjectGroup[]; s
     const [expandedSubjects, setExpandedSubjects] = useState<Record<number, boolean>>({});
     const [expandedObjectives, setExpandedObjectives] = useState<Record<string, boolean>>({});
 
-    const toggleSubject = (id: number) => setExpandedSubjects(prev => ({ ...prev, [id]: !prev[id] }));
+    const toggleSubject = (id: number) => setExpandedSubjects(prev => ({ ...prev, [id]: prev[id] !== false ? false : true }));
     const toggleObjective = (id: number, objId: number) => {
         const key = `${id}-${objId}`;
-        setExpandedObjectives(prev => ({ ...prev, [key]: !prev[key] }));
+        setExpandedObjectives(prev => ({ ...prev, [key]: prev[key] !== false ? false : true }));
     };
 
     const visible = groups
@@ -239,7 +237,7 @@ function GroupedView({ groups, search, filterType }: { groups: SubjectGroup[]; s
     return (
         <div className="flex flex-col rounded-xl border border-border bg-card overflow-hidden shadow-none">
             {visible.map((group, gIdx) => {
-                const isSubjectExpanded = expandedSubjects[group.subject_id];
+                const isSubjectExpanded = expandedSubjects[group.subject_id] !== false;
                 return (
                     <div key={group.subject_id} className={`${gIdx > 0 ? 'border-t border-border' : ''}`}>
                         <div 
@@ -253,7 +251,7 @@ function GroupedView({ groups, search, filterType }: { groups: SubjectGroup[]; s
                             <div className="flex flex-col">
                                 {group.objectives.map((obj, oIdx) => {
                                     const objKey = `${group.subject_id}-${obj.objective_id}`;
-                                    const isObjExpanded = expandedObjectives[objKey];
+                                    const isObjExpanded = expandedObjectives[objKey] !== false;
                                     return (
                                         <div key={obj.objective_id} className={`${oIdx > 0 ? 'border-t border-border/50' : ''}`}>
                                             <div 
@@ -290,14 +288,14 @@ function TeacherGroupedView({ groups, search, filterType }: { groups: TeacherCla
     const [expandedSubjects, setExpandedSubjects] = useState<Record<string, boolean>>({});
     const [expandedObjectives, setExpandedObjectives] = useState<Record<string, boolean>>({});
 
-    const toggleClass = (id: number) => setExpandedClasses(prev => ({ ...prev, [id]: !prev[id] }));
+    const toggleClass = (id: number) => setExpandedClasses(prev => ({ ...prev, [id]: prev[id] !== false ? false : true }));
     const toggleSubject = (clsId: number, subId: number) => {
         const key = `${clsId}-${subId}`;
-        setExpandedSubjects(prev => ({ ...prev, [key]: !prev[key] }));
+        setExpandedSubjects(prev => ({ ...prev, [key]: prev[key] !== false ? false : true }));
     };
     const toggleObjective = (clsId: number, subId: number, objId: number) => {
         const key = `${clsId}-${subId}-${objId}`;
-        setExpandedObjectives(prev => ({ ...prev, [key]: !prev[key] }));
+        setExpandedObjectives(prev => ({ ...prev, [key]: prev[key] !== false ? false : true }));
     };
 
     const visible = groups
@@ -333,7 +331,7 @@ function TeacherGroupedView({ groups, search, filterType }: { groups: TeacherCla
     return (
         <div className="flex flex-col gap-6">
             {visible.map((cls) => {
-                const isClassExpanded = expandedClasses[cls.class_id];
+                const isClassExpanded = filterType !== 'all' || Boolean(search) || expandedClasses[cls.class_id] !== false;
                 return (
                     <div key={cls.class_id} className="flex flex-col rounded-xl border border-border bg-card overflow-hidden shadow-none">
                         <div 
@@ -350,7 +348,7 @@ function TeacherGroupedView({ groups, search, filterType }: { groups: TeacherCla
                             <div className="flex flex-col">
                                 {cls.subjects.map((sub, sIdx) => {
                                     const subKey = `${cls.class_id}-${sub.subject_id}`;
-                                    const isSubExpanded = expandedSubjects[subKey];
+                                    const isSubExpanded = filterType !== 'all' || Boolean(search) || expandedSubjects[subKey] !== false;
                                     return (
                                         <div key={sub.subject_id} className={`${sIdx > 0 ? 'border-t border-border' : ''}`}>
                                             <div 
@@ -367,7 +365,7 @@ function TeacherGroupedView({ groups, search, filterType }: { groups: TeacherCla
                                                 <div className="flex flex-col">
                                                     {sub.objectives.map((obj, oIdx) => {
                                                         const objKey = `${cls.class_id}-${sub.subject_id}-${obj.objective_id}`;
-                                                        const isObjExpanded = expandedObjectives[objKey];
+                                                        const isObjExpanded = filterType !== 'all' || Boolean(search) || expandedObjectives[objKey] !== false;
                                                         return (
                                                             <div key={obj.objective_id} className={`${oIdx > 0 ? 'border-t border-border/50' : ''}`}>
                                                                 <div 
@@ -477,7 +475,7 @@ export default function Assignments({ assignments, grouped_assignments, teacher_
                         {user_role === 'teacher' && (
                             <button
                                 id="btn-add-assignment"
-                                onClick={() => router.visit('/assignments/create')}
+                                onClick={() => router.visit(route('assignments.create'))}
                                 className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-5 py-2.5 text-sm font-bold text-primary shadow-lg transition hover:bg-white/90 cursor-pointer"
                             >
                                 <Plus className="h-4 w-4" />

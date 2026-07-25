@@ -56,7 +56,7 @@ export default function GradeSplitPage({ assignment, students }: GradeSplitProps
         if (!currentStudent) return;
         setIsSaving(true);
         try {
-            await axios.post('/assignments/grade', {
+            await axios.post(route('assignments.grade'), {
                 assignment_id: assignment.id,
                 student_id: currentStudent.id,
                 score: score ? Number(score) : null,
@@ -81,7 +81,7 @@ export default function GradeSplitPage({ assignment, students }: GradeSplitProps
         formData.append('file', file);
 
         try {
-            await axios.post(`/assignments/${assignment.id}/upload-proof`, formData);
+            await axios.post(route('assignments.upload-proof', assignment.id), formData);
             showNotification('Karya fisik berhasil difoto/diunggah!', 'success');
             router.reload({ only: ['assignment'] });
         } catch(err) {
@@ -201,7 +201,7 @@ export default function GradeSplitPage({ assignment, students }: GradeSplitProps
                 {/* Header Bar */}
                 <div className="flex-none bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 p-4 flex flex-col md:flex-row justify-between items-center z-10 gap-4">
                     <div className="flex items-center gap-4 w-full md:w-auto">
-                        <Link href={`/assignments/${assignment.id}`} className="text-slate-500 hover:text-slate-700 dark:hover:text-slate-300">
+                        <Link href={route('assignments.show', assignment.id)} className="text-slate-500 hover:text-slate-700 dark:hover:text-slate-300">
                             <ChevronLeft className="w-5 h-5" />
                         </Link>
                         <div>

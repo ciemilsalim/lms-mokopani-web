@@ -468,7 +468,15 @@ const formatDocumentLayout = (html: string | null) => {
         if (lower.includes('kesimpulan') || lower.includes('jadi') || lower.includes('rangkuman') || lower.includes('ingat') || lower.includes('maka')) return '📌';
         if (lower.includes('solusi') || lower.includes('cepat') || lower.includes('efisien') || lower.includes('mudah')) return '⚡';
         if (lower.includes('komputer') || lower.includes('teknologi') || lower.includes('sistem') || lower.includes('digital') || lower.includes('mesin')) return '💻';
-        const defaultIcons = ['✨', '🌟', '📌', '💡', '🎯', '🚀', '⚡', '💻'];
+        if (lower.includes('definisi') || lower.includes('pengertian') || lower.includes('adalah') || lower.includes('makna') || lower.includes('arti')) return '📖';
+        if (lower.includes('latihan') || lower.includes('soal') || lower.includes('tugas') || lower.includes('kerjakan') || lower.includes('uji')) return '✏️';
+        if (lower.includes('jawaban') || lower.includes('hasil') || lower.includes('pembahasan') || lower.includes('benar') || lower.includes('solusi')) return '✅';
+        if (lower.includes('perhatian') || lower.includes('waspada') || lower.includes('hati-hati') || lower.includes('catatan') || lower.includes('awas') || lower.includes('peringatan')) return '⚠️';
+        if (lower.includes('tips') || lower.includes('trik') || lower.includes('rahasia') || lower.includes('bantuan') || lower.includes('mudah')) return '💡';
+        if (lower.includes('aturan') || lower.includes('prinsip') || lower.includes('hukum') || lower.includes('syarat') || lower.includes('kriteria')) return '⚖️';
+        if (lower.includes('waktu') || lower.includes('durasi') || lower.includes('jadwal') || lower.includes('menit') || lower.includes('jam')) return '⏱️';
+        if (lower.includes('kelompok') || lower.includes('tim') || lower.includes('bersama') || lower.includes('diskusi') || lower.includes('kolaborasi')) return '👥';
+        const defaultIcons = ['✨', '🌟', '📌', '💡', '🎯', '🚀', '⚡', '💻', '💎', '🎨', '🔥', '🏆', '🌈', '🧩', '🔬'];
         return defaultIcons[index % defaultIcons.length];
     };
 
@@ -499,11 +507,11 @@ const formatDocumentLayout = (html: string | null) => {
     // 3. Transform HTML list items (<li>...</li>) into attractive glassmorphism cards with emojis
     cleaned = cleaned.replace(/<li[^>]*>([\s\S]*?)<\/li>/gi, (match, content) => {
         const icon = getBulletIcon(content, bulletIdx++);
-        return `<li class="flex items-start gap-3.5 sm:gap-4 my-3.5 sm:my-4 p-4 sm:p-5 rounded-2xl bg-indigo-50/70 dark:bg-slate-800/60 border border-indigo-100/80 dark:border-slate-700/80 hover:bg-indigo-100/60 dark:hover:bg-slate-800/80 hover:border-indigo-300 dark:hover:border-indigo-500/50 transition duration-200 shadow-sm list-none break-words overflow-wrap-anywhere max-w-full w-full">
+        return `<li class="flex items-start gap-3.5 sm:gap-4 my-3.5 sm:my-4 p-4 sm:p-5 rounded-2xl bg-indigo-50/70 dark:bg-slate-800/60 border border-indigo-100/80 dark:border-slate-700/80 hover:bg-indigo-100/60 dark:hover:bg-slate-800/80 hover:border-indigo-300 dark:hover:border-indigo-500/50 transition duration-200 shadow-sm list-none break-words max-w-full w-full">
             <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white text-lg sm:text-xl shadow-md mt-0.5 select-none">
                 ${icon}
             </span>
-            <div class="flex-1 min-w-0 break-words overflow-wrap-anywhere text-slate-800 dark:text-slate-200 leading-relaxed font-normal">
+            <div class="flex-1 min-w-0 break-words whitespace-normal text-slate-800 dark:text-slate-200 leading-relaxed font-normal">
                 ${content}
             </div>
         </li>`;
@@ -512,11 +520,11 @@ const formatDocumentLayout = (html: string | null) => {
     // 4. Transform plain paragraphs that start with bullet points (•, *, -) into cards
     cleaned = cleaned.replace(/<p[^>]*>\s*[•\-\*]\s+([\s\S]*?)<\/p>/gi, (match, content) => {
         const icon = getBulletIcon(content, bulletIdx++);
-        return `<div class="flex items-start gap-3.5 sm:gap-4 my-3.5 sm:my-4 p-4 sm:p-5 rounded-2xl bg-indigo-50/70 dark:bg-slate-800/60 border border-indigo-100/80 dark:border-slate-700/80 hover:bg-indigo-100/60 dark:hover:bg-slate-800/80 hover:border-indigo-300 dark:hover:border-indigo-500/50 transition duration-200 shadow-sm break-words overflow-wrap-anywhere max-w-full w-full">
+        return `<div class="flex items-start gap-3.5 sm:gap-4 my-3.5 sm:my-4 p-4 sm:p-5 rounded-2xl bg-indigo-50/70 dark:bg-slate-800/60 border border-indigo-100/80 dark:border-slate-700/80 hover:bg-indigo-100/60 dark:hover:bg-slate-800/80 hover:border-indigo-300 dark:hover:border-indigo-500/50 transition duration-200 shadow-sm break-words max-w-full w-full">
             <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white text-lg sm:text-xl shadow-md mt-0.5 select-none">
                 ${icon}
             </span>
-            <div class="flex-1 min-w-0 break-words overflow-wrap-anywhere text-slate-800 dark:text-slate-200 leading-relaxed font-normal">
+            <div class="flex-1 min-w-0 break-words whitespace-normal text-slate-800 dark:text-slate-200 leading-relaxed font-normal">
                 ${content}
             </div>
         </div>`;
@@ -525,22 +533,22 @@ const formatDocumentLayout = (html: string | null) => {
     // 5. Transform headings (h1-h6) with badges
     cleaned = cleaned.replace(/<(h[1-6])[^>]*>([\s\S]*?)<\/\1>/gi, (match, tag, content) => {
         const icon = getHeadingIcon(content);
-        return `<${tag} class="flex items-center gap-3.5 font-extrabold text-indigo-900 dark:text-indigo-300 mt-8 mb-4 break-words overflow-wrap-anywhere max-w-full w-full">
+        return `<${tag} class="flex items-center gap-3.5 font-extrabold text-indigo-900 dark:text-indigo-300 mt-8 mb-4 break-words max-w-full w-full">
             <span class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-indigo-500/20 border border-indigo-500/30 text-2xl shadow-inner select-none">
                 ${icon}
             </span>
-            <span class="flex-1 min-w-0 break-words overflow-wrap-anywhere">${content}</span>
+            <span class="flex-1 min-w-0 break-words whitespace-normal">${content}</span>
         </${tag}>`;
     });
 
     // 6. Transform paragraphs that act as numbered headings (e.g. <p><strong>1. Dekomposisi...</strong></p> or <p>1. Dekomposisi...</p>)
     cleaned = cleaned.replace(/<p[^>]*>\s*(?:<strong[^>]*>)?\s*([1-9]\.\s+[^\n<]{3,120})(?:<\/strong>)?\s*<\/p>/gi, (match, content) => {
         const icon = getHeadingIcon(content);
-        return `<h3 class="flex items-center gap-3.5 text-xl sm:text-2xl font-extrabold text-indigo-900 dark:text-indigo-300 mt-8 mb-4 break-words overflow-wrap-anywhere max-w-full w-full">
+        return `<h3 class="flex items-center gap-3.5 text-xl sm:text-2xl font-extrabold text-indigo-900 dark:text-indigo-300 mt-8 mb-4 break-words max-w-full w-full">
             <span class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-indigo-500/20 border border-indigo-500/30 text-2xl shadow-inner select-none">
                 ${icon}
             </span>
-            <span class="flex-1 min-w-0 break-words overflow-wrap-anywhere">${content}</span>
+            <span class="flex-1 min-w-0 break-words whitespace-normal">${content}</span>
         </h3>`;
     });
 
@@ -916,7 +924,7 @@ export default function ShowMaterial({
                                 </div>
 
                                 <div 
-                                    className="prose prose-invert max-w-none prose-p:text-xl sm:prose-p:text-2xl prose-p:leading-relaxed prose-headings:text-indigo-300 prose-h1:text-4xl sm:prose-h1:text-5xl prose-h2:text-3xl sm:prose-h2:text-4xl prose-h3:text-2xl sm:prose-h3:text-3xl prose-li:text-xl sm:prose-li:text-2xl prose-img:rounded-2xl prose-img:shadow-2xl prose-a:text-indigo-400 prose-blockquote:border-indigo-500 prose-blockquote:bg-indigo-950/20 prose-blockquote:p-6 prose-blockquote:rounded-r-2xl prose-blockquote:text-xl sm:prose-blockquote:text-2xl prose-strong:text-white font-normal tracking-wide w-full max-w-full overflow-hidden break-words overflow-wrap-anywhere [word-break:break-word] prose-ul:pl-0 prose-ol:pl-0 prose-ul:list-none prose-ol:list-none [&_*]:max-w-full [&_*]:break-words [&_*]:overflow-wrap-anywhere [&_*]:whitespace-normal"
+                                    className="prose prose-invert max-w-none prose-p:text-xl sm:prose-p:text-2xl prose-p:leading-relaxed prose-headings:text-indigo-300 prose-h1:text-4xl sm:prose-h1:text-5xl prose-h2:text-3xl sm:prose-h2:text-4xl prose-h3:text-2xl sm:prose-h3:text-3xl prose-li:text-xl sm:prose-li:text-2xl prose-img:rounded-2xl prose-img:shadow-2xl prose-a:text-indigo-400 prose-blockquote:border-indigo-500 prose-blockquote:bg-indigo-950/20 prose-blockquote:p-6 prose-blockquote:rounded-r-2xl prose-blockquote:text-xl sm:prose-blockquote:text-2xl prose-strong:text-white font-normal tracking-wide w-full max-w-full break-words prose-ul:pl-0 prose-ol:pl-0 prose-ul:list-none prose-ol:list-none [&_*]:max-w-full [&_*]:break-words [&_*]:whitespace-normal"
                                     dangerouslySetInnerHTML={{ __html: formatDocumentLayout(material.content) || '<p class="text-slate-500 italic text-center py-12">Belum ada teks konten pada materi ini.</p>' }}
                                 />
                             </div>
@@ -936,7 +944,7 @@ export default function ShowMaterial({
                                                 <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 font-black">1</span>
                                                 Aktivitas Mengaplikasi
                                             </div>
-                                            <div className="prose prose-invert prose-p:text-lg prose-p:leading-relaxed text-slate-200 w-full max-w-full overflow-hidden break-words overflow-wrap-anywhere [word-break:break-word] prose-ul:pl-0 prose-ol:pl-0 prose-ul:list-none prose-ol:list-none [&_*]:max-w-full [&_*]:break-words [&_*]:overflow-wrap-anywhere [&_*]:whitespace-normal" dangerouslySetInnerHTML={{ __html: formatDocumentLayout(material.application_activity) }} />
+                                            <div className="prose prose-invert prose-p:text-lg prose-p:leading-relaxed text-slate-200 w-full max-w-full break-words prose-ul:pl-0 prose-ol:pl-0 prose-ul:list-none prose-ol:list-none [&_*]:max-w-full [&_*]:break-words [&_*]:whitespace-normal" dangerouslySetInnerHTML={{ __html: formatDocumentLayout(material.application_activity) }} />
                                         </div>
                                     )}
                                     {material.reflection_activity && (
@@ -945,7 +953,7 @@ export default function ShowMaterial({
                                                 <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 font-black">2</span>
                                                 Aktivitas Merefleksi
                                             </div>
-                                            <div className="prose prose-invert prose-p:text-lg prose-p:leading-relaxed text-slate-200 w-full max-w-full overflow-hidden break-words overflow-wrap-anywhere [word-break:break-word] prose-ul:pl-0 prose-ol:pl-0 prose-ul:list-none prose-ol:list-none [&_*]:max-w-full [&_*]:break-words [&_*]:overflow-wrap-anywhere [&_*]:whitespace-normal" dangerouslySetInnerHTML={{ __html: formatDocumentLayout(material.reflection_activity) }} />
+                                            <div className="prose prose-invert prose-p:text-lg prose-p:leading-relaxed text-slate-200 w-full max-w-full break-words prose-ul:pl-0 prose-ol:pl-0 prose-ul:list-none prose-ol:list-none [&_*]:max-w-full [&_*]:break-words [&_*]:whitespace-normal" dangerouslySetInnerHTML={{ __html: formatDocumentLayout(material.reflection_activity) }} />
                                         </div>
                                     )}
                                 </div>
@@ -955,7 +963,7 @@ export default function ShowMaterial({
                                         <h3 className="text-2xl font-bold text-white flex items-center gap-3">
                                             <FileText className="h-7 w-7 text-amber-400" /> Lembar Kerja Peserta Didik (LKPD)
                                         </h3>
-                                        <div className="prose prose-invert max-w-none prose-p:text-xl prose-li:text-xl text-slate-200 w-full max-w-full overflow-hidden break-words overflow-wrap-anywhere [word-break:break-word] prose-ul:pl-0 prose-ol:pl-0 prose-ul:list-none prose-ol:list-none [&_*]:max-w-full [&_*]:break-words [&_*]:overflow-wrap-anywhere [&_*]:whitespace-normal" dangerouslySetInnerHTML={{ __html: formatDocumentLayout(material.lkpd) }} />
+                                        <div className="prose prose-invert max-w-none prose-p:text-xl prose-li:text-xl text-slate-200 w-full max-w-full break-words prose-ul:pl-0 prose-ol:pl-0 prose-ul:list-none prose-ol:list-none [&_*]:max-w-full [&_*]:break-words [&_*]:whitespace-normal" dangerouslySetInnerHTML={{ __html: formatDocumentLayout(material.lkpd) }} />
                                     </div>
                                 )}
                             </div>
@@ -2059,7 +2067,7 @@ export default function ShowMaterial({
                             </div>
                         ) : (
                             <>
-                                <div className="rounded-3xl border border-[#2C2C3A]/20 dark:border-[#2C2C3A] bg-white dark:bg-[#1B1B25] p-8 shadow-sm">
+                                <div className="rounded-3xl border border-[#2C2C3A]/20 dark:border-[#2C2C3A] bg-white dark:bg-[#1B1B25] p-4 sm:p-6 md:p-8 shadow-sm overflow-x-auto">
                             <div className="space-y-4">
                                 <div className="flex items-center gap-2 flex-wrap">
                                     <span className="rounded-full bg-[#5E6AD2]/10 dark:bg-[#5E6AD2]/10 px-3 py-1 text-[10px] font-bold text-[#5E6AD2] uppercase tracking-widest">
@@ -2151,9 +2159,9 @@ export default function ShowMaterial({
                                 prose-hr:border-[#2C2C3A]/10 dark:prose-hr:border-[#2C2C3A]/50
                                 prose-code:text-[#5E6AD2] prose-code:bg-[#5E6AD2]/10 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded-md prose-code:before:content-none prose-code:after:content-none prose-code:break-words
                                 prose-pre:bg-[#1B1B25] prose-pre:border prose-pre:border-[#2C2C3A]/30 prose-pre:rounded-2xl
-                                w-full max-w-full overflow-hidden break-words overflow-wrap-anywhere [word-break:break-word] prose-ul:pl-0 prose-ol:pl-0 prose-ul:list-none prose-ol:list-none [&_*]:max-w-full [&_*]:break-words [&_*]:overflow-wrap-anywhere [&_*]:whitespace-normal">
+                                w-full max-w-full break-words prose-ul:pl-0 prose-ol:pl-0 prose-ul:list-none prose-ol:list-none [&_*]:max-w-full [&_*]:break-words [&_*]:whitespace-normal">
                                 <div 
-                                    className="leading-relaxed w-full max-w-full overflow-hidden break-words overflow-wrap-anywhere [word-break:break-word]"
+                                    className="leading-relaxed w-full max-w-full break-words"
                                     dangerouslySetInnerHTML={{ __html: formatDocumentLayout(material.content) }} 
                                 />
                             </div>
@@ -2481,6 +2489,39 @@ export default function ShowMaterial({
                                 )}
                             </div>
                         </div>
+
+                        {/* Daftar Asesmen Terkait Materi Ini */}
+                        {assignments && assignments.length > 0 && (
+                            <div className="rounded-3xl border border-[#2C2C3A]/10 dark:border-[#2C2C3A] bg-white dark:bg-[#1A1A24] p-6 shadow-xl">
+                                <div className="flex items-center justify-between mb-5">
+                                    <h3 className="text-xs font-black uppercase tracking-widest text-[#1F2937] dark:text-white flex items-center gap-2">
+                                        <Target className="h-4 w-4 text-[#5E6AD2]" />
+                                        Asesmen & Tugas Terkait ({assignments.length})
+                                    </h3>
+                                </div>
+                                <div className="space-y-3.5">
+                                    {assignments.map((ass, i) => (
+                                        <div key={i} className="p-4 rounded-2xl bg-[#F8F9FA] dark:bg-[#20202C] border border-[#E5E7EB] dark:border-[#2C2C3A] flex flex-col gap-3 transition hover:border-[#5E6AD2]/50 hover:shadow-md">
+                                            <div className="flex items-center justify-between gap-2">
+                                                <span className="px-2.5 py-1 rounded-lg bg-[#5E6AD2]/10 dark:bg-[#5E6AD2]/20 text-[#5E6AD2] dark:text-indigo-300 text-[10px] font-extrabold uppercase tracking-wide">
+                                                    {ass.assessment_type === 'initial' ? 'Awal (Diagnostik)' : ass.assessment_type === 'formative' ? 'Formatif' : 'Sumatif'}
+                                                </span>
+                                                <span className="text-[11px] font-bold text-[#8A8F98]">{ass.questions_count || 0} Soal</span>
+                                            </div>
+                                            <h4 className="text-sm font-bold text-[#1F2937] dark:text-white leading-snug">{ass.title}</h4>
+                                            {ass.description && <p className="text-xs text-[#6B7280] dark:text-[#8A8F98] line-clamp-2 leading-relaxed">{ass.description}</p>}
+                                            <Link
+                                                href={route('assignments.show', ass.id)}
+                                                className="mt-1 flex items-center justify-center gap-1.5 w-full py-2.5 rounded-xl bg-[#5E6AD2] hover:bg-[#4B55A8] text-white font-bold text-xs transition shadow-sm shadow-[#5E6AD2]/20 active:scale-95"
+                                            >
+                                                <span>{user_role === 'teacher' ? 'Lihat / Kelola Asesmen' : 'Kerjakan Asesmen'}</span>
+                                                <ArrowRight className="h-3.5 w-3.5" />
+                                            </Link>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
 
                         {/* Next Steps */}
                         <div className="rounded-3xl bg-gradient-to-br from-[#5E6AD2] to-[#4B55A8] p-8 text-white shadow-xl">

@@ -1955,7 +1955,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                     {user_role === 'teacher' && (
                         <div className="flex items-center gap-2">
                             <Link 
-                                href={`/assignments/${assignment.id}/grade-view`}
+                                href={route('assignments.grade-view', assignment.id)}
                                 className="flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-black bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:text-indigo-400 transition uppercase tracking-widest"
                             >
                                 <ListChecks className="h-4 w-4" />
