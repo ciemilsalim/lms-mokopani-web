@@ -6,8 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { ChevronLeft, ChevronRight, Save, CheckCircle2, FileText, Image as ImageIcon, Camera, UploadCloud } from 'lucide-react';
-import { toast } from 'react-hot-toast';
+import { ChevronLeft, ChevronRight, Save, CheckCircle2, FileText, Image as ImageIcon, Camera, UploadCloud, AlertCircle } from 'lucide-react';
 import axios from 'axios';
 
 interface GradeSplitProps {
@@ -27,6 +26,12 @@ export default function GradeSplitPage({ assignment, students }: GradeSplitProps
     const [kktpDetails, setKktpDetails] = useState<any>(submission?.kktp_details ?? {});
     const [isSaving, setIsSaving] = useState(false);
     const [isUploadingProof, setIsUploadingProof] = useState(false);
+    const [toastMessage, setToastMessage] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+    const showNotification = (message: string, type: 'success' | 'error' = 'success') => {
+        setToastMessage({ message, type });
+        setTimeout(() => setToastMessage(null), 3500);
+    };
 
     let isOffline = false;
     let textContent = submission?.content || '';
@@ -58,10 +63,9 @@ export default function GradeSplitPage({ assignment, students }: GradeSplitProps
                 feedback: feedback,
                 kktp_details: kktpDetails
             });
-            toast.success('Nilai berhasil disimpan!');
-            // Update local state without reload if needed, but for simplicity here we rely on Inertia or manual sync
+            showNotification('Nilai berhasil disimpan!', 'success');
         } catch (error) {
-            toast.error('Gagal menyimpan nilai.');
+            showNotification('Gagal menyimpan nilai.', 'error');
         } finally {
             setIsSaving(false);
         }
@@ -78,10 +82,10 @@ export default function GradeSplitPage({ assignment, students }: GradeSplitProps
 
         try {
             await axios.post(`/assignments/${assignment.id}/upload-proof`, formData);
-            toast.success('Karya fisik berhasil difoto/diunggah!');
-            router.reload({ only: ['assignment'] }); // reload to get new submission file_path
+            showNotification('Karya fisik berhasil difoto/diunggah!', 'success');
+            router.reload({ only: ['assignment'] });
         } catch(err) {
-            toast.error('Gagal mengunggah foto.');
+            showNotification('Gagal mengunggah foto.', 'error');
         } finally {
             setIsUploadingProof(false);
         }
@@ -307,6 +311,22 @@ export default function GradeSplitPage({ assignment, students }: GradeSplitProps
                     </div>
                 </div>
             </div>
+
+            {/* Custom Toast Notification */}
+            {toastMessage && (
+                <div className={`fixed bottom-6 right-6 z-50 px-5 py-3 rounded-xl shadow-xl flex items-center gap-3 animate-in fade-in slide-in-from-bottom-4 ${
+                    toastMessage.type === 'success' 
+                        ? 'bg-emerald-600 text-white' 
+                        : 'bg-rose-600 text-white'
+                }`}>
+                    {toastMessage.type === 'success' ? (
+                        <CheckCircle2 className="w-5 h-5" />
+                    ) : (
+                        <AlertCircle className="w-5 h-5" />
+                    )}
+                    <span className="font-semibold text-sm">{toastMessage.message}</span>
+                </div>
+            )}
         </AppLayout>
     );
 }
