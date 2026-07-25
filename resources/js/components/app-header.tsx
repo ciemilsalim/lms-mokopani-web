@@ -26,7 +26,7 @@ const teacherMobileNavItems: NavItem[] = [
     { title: 'Materi', url: '/materials', icon: Library },
     { title: 'Asesmen', url: '/assignments', icon: ClipboardList },
     { title: 'Pembelajaran', url: '/lesson-plans', icon: BookOpen },
-    { title: 'Laporan Nilai', url: '/gradebook', icon: FileBarChart },
+    { title: 'Nilai & Rapor', url: '/gradebook', icon: FileBarChart },
     { title: 'Analitik', url: '/analytics', icon: BarChart3 },
     { title: 'Pengumuman', url: '/announcements', icon: Bell },
     { title: 'Siswa', url: '/students', icon: GraduationCap },
@@ -36,6 +36,7 @@ const studentMobileNavItems: NavItem[] = [
     { title: 'Dashboard', url: '/dashboard', icon: LayoutGrid },
     { title: 'Materi', url: '/materials', icon: Library },
     { title: 'Asesmen', url: '/assignments', icon: ClipboardList },
+    { title: 'Nilai & Rapor Saya', url: '/gradebook', icon: FileBarChart },
     { title: 'Pengumuman', url: '/announcements', icon: Bell },
 ];
 

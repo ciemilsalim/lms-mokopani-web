@@ -4,7 +4,7 @@
 **Last Updated**: 25 July 2026
 
 ## 1. Executive Summary
-LMS Mokopani Web adalah sistem manajemen pembelajaran (Learning Management System) mutakhir yang dirancang khusus untuk ekosistem **Kurikulum Merdeka** di Indonesia. Platform ini menggunakan integrasi **Kecerdasan Buatan (OpenRouter AI via SIPADA)** untuk memberdayakan guru dalam merancang, melaksanakan, dan mengevaluasi pembelajaran secara otomatis, presisi, dan berbasis data. Sistem ini terintegrasi erat dengan *Sistem Pangkalan Data (SIASEK)* menggunakan arsitektur *shared database* dan API AI yang tersentralisasi.
+LMS Mokopani Web adalah sistem manajemen pembelajaran (Learning Management System) mutakhir yang dirancang khusus untuk ekosistem **Kurikulum Merdeka** di Indonesia. Platform ini menggunakan integrasi **Kecerdasan Buatan (OpenRouter AI)** yang konfigurasinya tersentralisasi melalui **Shared Database SIPADA** untuk memberdayakan guru dalam merancang, melaksanakan, dan mengevaluasi pembelajaran secara otomatis, presisi, dan berbasis data. Sistem ini terintegrasi erat dengan *Sistem Pangkalan Data (SIASEK)* menggunakan arsitektur *shared database* dengan sentralisasi konfigurasi AI.
 
 ## 2. Tech Stack & Architecture
 - **Backend Framework**: Laravel 11 (PHP 8.2+)
@@ -12,7 +12,7 @@ LMS Mokopani Web adalah sistem manajemen pembelajaran (Learning Management Syste
 - **Frontend Bridge**: Inertia.js v2.0
 - **Styling**: Tailwind CSS v4 + Shadcn UI
 - **Database**: MySQL (Shared database `db_absen` dari SIASEK)
-- **AI Engine**: OpenRouter AI (tersentralisasi melalui ekosistem SIPADA)
+- **AI Engine**: OpenRouter AI (konfigurasi tersentralisasi via shared database SIPADA, koneksi langsung ke OpenRouter API)
 
 ## 3. Core Modules & Features
 
@@ -23,7 +23,10 @@ LMS Mokopani Web adalah sistem manajemen pembelajaran (Learning Management Syste
 - **Modul Ajar & Alur Tujuan Pembelajaran (ATP) Wizard**:
   - *Smart Instructional Design*: AI merumuskan langkah-langkah pembelajaran, menyusun Kriteria Ketercapaian Tujuan Pembelajaran (KKTP), serta menghasilkan ilustrasi sampul modul ajar.
 - **Smart Assessment (Asesmen Cerdas)**:
-  - Pembuatan kuis, penugasan (*Assignments*), dan tes formatif/sumatif.
+  - Dua mode pembuatan asesmen:
+    - **Mode Cepat (Express AI Auto-Pilot)**: Guru cukup memilih TP dan Kelas, AI SIPADA otomatis membaca Modul Ajar terkait lalu menghasilkan instrumen asesmen lengkap secara serba-otomatis.
+    - **Mode Detail (Kustom)**: Guru memilih jenis asesmen (Awal/Formatif/Sumatif), instrumen penilaian (18+ jenis instrumen), lalu AI merancang stimulus, soal/rubrik, indikator, dan KKTP sesuai TP yang dipilih. Semua generate AI terhubung ke OpenRouter AI melalui konfigurasi terpusat di shared database SIPADA (`AiManager` → `OpenRouterApiService`).
+  - Pembuatan kuis, penugasan (*Assignments*), tes tertulis, tes lisan, penilaian kinerja, proyek, portofolio, dan 12+ instrumen lainnya.
   - Penilaian instan dan distribusi nilai ke *Gradebook*.
 - **Manajemen Kelas (*Class Sessions & Live Teaching*)**:
   - Pembuatan sesi kelas interaktif (mode *Live*).
@@ -50,11 +53,33 @@ LMS Mokopani Web adalah sistem manajemen pembelajaran (Learning Management Syste
 - **Master Data Management**: Terhubung langsung dengan konfigurasi dari Sistem Pangkalan Data.
 
 ## 4. Artificial Intelligence (AI) Integrations
-LMS ini dikendalikan oleh arsitektur *AI Services* yang terhubung langsung ke **OpenRouter AI via SIPADA**. Semua permintaan AI disentralisasi dari SIPADA, dengan kemampuan utama:
+
+### 4.1. Arsitektur AI
+LMS ini menggunakan arsitektur **Shared Database Centralization** untuk integrasi AI:
+- **Konfigurasi Terpusat**: Admin SIPADA mengelola API Key, Model, dan Provider AI di tabel `settings` pada shared database (`db_absen`). LMS Mokopani membaca konfigurasi ini secara otomatis melalui `AiManager`.
+- **Koneksi Langsung**: LMS memanggil OpenRouter API secara langsung menggunakan kredensial dari shared database — tanpa melalui proxy SIPADA. Pendekatan ini mengurangi latensi dan menghilangkan *single point of failure*.
+- **Multi-Provider Support**: `AiManager` mendukung resolusi otomatis ke berbagai provider (OpenRouter, Gemini, Groq, OpenAI, Claude) berdasarkan konfigurasi global di SIPADA, dengan fallback chain jika provider utama tidak tersedia.
+
+### 4.2. Kemampuan AI
 1. **Auto-Suggest TP & ATP**: AI memformulasikan Tujuan dan Alur secara otonom dari teks Capaian Pembelajaran (CP) nasional.
-2. **KKTP Generation**: Pembuatan rubrik Kriteria Ketercapaian secara cepat.
-3. **Deskripsi Rapor Otomatis**: Membaca seluruh nilai dari *Gradebook* dan menyusun deskripsi naratif yang memotivasi dan sesuai kaidah Kurikulum Merdeka.
-4. **Offline Fallback System**: Jika koneksi ke server OpenRouter terputus atau limit kuota tercapai, sistem secara cerdas akan beralih ke skenario lokal heuristik (*fallback*) sehingga layanan pembuatan Modul Ajar, TP, atau Rapor tetap bisa berjalan untuk keperluan luring/demonstrasi.
+2. **Smart Assessment Generation**: AI merancang instrumen asesmen (soal PG, esai, rubrik, indikator observasi, KKTP) pada Mode Cepat maupun Mode Detail, diselaraskan dengan Modul Ajar jika tersedia.
+3. **KKTP Generation**: Pembuatan rubrik Kriteria Ketercapaian secara cepat.
+4. **Modul Ajar AI Orchestrator**: AI menghasilkan 7 komponen Modul Ajar (RPP, langkah pembelajaran, asesmen, LKPD) dalam satu panggilan.
+5. **Deskripsi Rapor Otomatis**: Membaca seluruh nilai dari *Gradebook* dan menyusun deskripsi naratif yang memotivasi dan sesuai kaidah Kurikulum Merdeka.
+6. **Learning Steps Generation**: AI menghasilkan langkah belajar adaptif (Memahami, Mengaplikasi, Merefleksi) untuk sesi kelas live.
+7. **Offline Fallback System**: Jika koneksi ke server OpenRouter terputus atau limit kuota tercapai, sistem secara cerdas akan beralih ke skenario lokal heuristik (*fallback*) sehingga layanan pembuatan Modul Ajar, TP, Asesmen, atau Rapor tetap bisa berjalan untuk keperluan luring/demonstrasi.
+
+### 4.3. Alur Teknis AI pada Pembuatan Asesmen (Mode Detail)
+```
+create.tsx (handleSuggestAI)
+  → POST /instructional-design/auto-suggest
+  → LmsModulAjarController::autoSuggest()
+  → InstructionalSmartService::suggestAssessment()
+  → AiManager::getActiveProvider()   ← membaca global_ai_provider dari shared DB SIPADA
+  → OpenRouterApiService::suggestAssessment()  ← membaca API key & model dari shared DB SIPADA
+  → OpenRouter AI API (langsung)
+  → Response → parse JSON → cache → return ke frontend
+```
 
 ## 5. Security & Authentication
 - **SSO (Single Sign-On)**: Integrasi *login* tersentralisasi bersama sistem Presensi dan SIPADA.

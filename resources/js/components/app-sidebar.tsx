@@ -39,7 +39,7 @@ const teacherNavSections: NavSection[] = [
     {
         label: 'Tahap 3: Pengolahan',
         items: [
-            { title: 'Nilai & Rapor PPA',     url: '/rapor/wizard',           icon: FileBarChart },
+            { title: 'Nilai & Rapor',         url: '/gradebook',              icon: FileBarChart },
             { title: 'Projek P5',             url: '/p5',                     icon: Heart },
         ],
     },
@@ -78,7 +78,7 @@ const studentNavSections: NavSection[] = [
     {
         label: 'Hasil Belajar',
         items: [
-            { title: 'Rapor Saya',          url: '/rapor/wizard',    icon: FileBarChart },
+            { title: 'Nilai & Rapor Saya',  url: '/gradebook',       icon: FileBarChart },
         ],
     },
     {

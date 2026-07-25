@@ -3,7 +3,7 @@
 **Last Updated**: 25 July 2026
 
 ## 1. Executive Summary
-LMS Mokopani Web adalah sistem manajemen pembelajaran (Learning Management System) mutakhir yang dirancang khusus untuk ekosistem **Kurikulum Merdeka** di Indonesia. Platform ini menggunakan integrasi **Kecerdasan Buatan (OpenRouter AI via SIPADA)** untuk memberdayakan guru dalam merancang, melaksanakan, dan mengevaluasi pembelajaran secara otomatis, presisi, dan berbasis data. Sistem ini terintegrasi erat dengan *Sistem Pangkalan Data (SIASEK)* menggunakan arsitektur *shared database* dan API AI yang tersentralisasi.
+LMS Mokopani Web adalah sistem manajemen pembelajaran (Learning Management System) mutakhir yang dirancang khusus untuk ekosistem **Kurikulum Merdeka** di Indonesia. Platform ini menggunakan integrasi **Kecerdasan Buatan (OpenRouter AI)** yang konfigurasinya tersentralisasi melalui **Shared Database SIPADA** untuk memberdayakan guru dalam merancang, melaksanakan, dan mengevaluasi pembelajaran secara otomatis, presisi, dan berbasis data. Sistem ini terintegrasi erat dengan *Sistem Pangkalan Data (SIASEK)* menggunakan arsitektur *shared database* dengan sentralisasi konfigurasi AI.
 
 ## 2. Tech Stack & Architecture
 - **Backend Framework**: Laravel 11 (PHP 8.2+)
@@ -11,7 +11,7 @@ LMS Mokopani Web adalah sistem manajemen pembelajaran (Learning Management Syste
 - **Frontend Bridge**: Inertia.js v2.0
 - **Styling**: Tailwind CSS v4 + Shadcn UI
 - **Database**: MySQL (Shared database `db_absen` dari SIASEK)
-- **AI Engine**: OpenRouter AI (tersentralisasi melalui ekosistem SIPADA)
+- **AI Engine**: OpenRouter AI (konfigurasi tersentralisasi via shared database SIPADA, koneksi langsung ke OpenRouter API)
 
 ## 3. Core Modules & Features
 
@@ -49,11 +49,12 @@ LMS Mokopani Web adalah sistem manajemen pembelajaran (Learning Management Syste
 - **Master Data Management**: Terhubung langsung dengan konfigurasi dari Sistem Pangkalan Data.
 
 ## 4. Artificial Intelligence (AI) Integrations
-LMS ini dikendalikan oleh arsitektur *AI Services* yang terhubung langsung ke **OpenRouter AI via SIPADA**. Semua permintaan AI disentralisasi dari SIPADA, dengan kemampuan utama:
+LMS ini menggunakan arsitektur **Shared Database Centralization** — konfigurasi AI (API Key, Model, Provider) dikelola admin di tabel `settings` pada shared database SIPADA, lalu LMS membaca konfigurasi tersebut dan memanggil OpenRouter AI secara langsung. Kemampuan utama:
 1. **Auto-Suggest TP & ATP**: AI memformulasikan Tujuan dan Alur secara otonom dari teks Capaian Pembelajaran (CP) nasional.
-2. **KKTP Generation**: Pembuatan rubrik Kriteria Ketercapaian secara cepat.
-3. **Deskripsi Rapor Otomatis**: Membaca seluruh nilai dari *Gradebook* dan menyusun deskripsi naratif yang memotivasi dan sesuai kaidah Kurikulum Merdeka.
-4. **Offline Fallback System**: Jika koneksi ke server OpenRouter terputus atau limit kuota tercapai, sistem secara cerdas akan beralih ke skenario lokal heuristik (*fallback*) sehingga layanan pembuatan Modul Ajar, TP, atau Rapor tetap bisa berjalan untuk keperluan luring/demonstrasi.
+2. **Smart Assessment Generation**: AI merancang instrumen asesmen (soal, rubrik, indikator, KKTP) pada Mode Cepat maupun Mode Detail.
+3. **KKTP Generation**: Pembuatan rubrik Kriteria Ketercapaian secara cepat.
+4. **Deskripsi Rapor Otomatis**: Membaca seluruh nilai dari *Gradebook* dan menyusun deskripsi naratif yang memotivasi dan sesuai kaidah Kurikulum Merdeka.
+5. **Offline Fallback System**: Jika koneksi ke server OpenRouter terputus atau limit kuota tercapai, sistem secara cerdas akan beralih ke skenario lokal heuristik (*fallback*) sehingga layanan pembuatan Modul Ajar, TP, Asesmen, atau Rapor tetap bisa berjalan untuk keperluan luring/demonstrasi.
 
 ## 5. Security & Authentication
 - **SSO (Single Sign-On)**: Integrasi *login* tersentralisasi bersama sistem Presensi dan SIPADA.
@@ -110,14 +111,23 @@ php artisan migrate:fresh --seed
 
 ## 🤖 Konfigurasi Teknis Kecerdasan Buatan (OpenRouter)
 
-Semua permintaan AI dari LMS Mokopani Web kini diarahkan ke **SIPADA** yang bertindak sebagai *API Gateway* terpusat menuju OpenRouter AI.
+LMS Mokopani Web menggunakan arsitektur **Shared Database Centralization** untuk integrasi AI. Konfigurasi AI dikelola secara terpusat oleh admin SIPADA di tabel `settings` pada shared database (`db_absen`), dan LMS memanggil OpenRouter API secara **langsung** (tanpa proxy).
 
-1. Pastikan aplikasi SIPADA sudah terkonfigurasi dengan API Key OpenRouter (`OPENROUTER_API_KEY`) di file `.env` SIPADA.
-2. Di file `.env` LMS Mokopani Web, pastikan URL SIPADA terdaftar:
-   ```env
-   SIPADA_URL=http://127.0.0.1:8001
-   ```
-*(Jika API SIPADA tidak merespons, LMS otomatis mengaktifkan **Offline Fallback Logic**).*
+### Cara Kerja:
+1. Admin SIPADA mengatur `global_ai_provider`, `global_ai_api_key`, dan `global_ai_model` di halaman pengaturan SIPADA.
+2. LMS Mokopani membaca konfigurasi tersebut melalui `AiManager` dari shared database.
+3. `AiManager` me-resolve provider aktif (OpenRouter, Gemini, Groq, dll) dan memanggil API secara langsung.
+4. Jika provider tidak tersedia, sistem otomatis mencoba fallback ke provider lain atau ke **Offline Fallback Logic** (heuristik lokal).
+
+### Konfigurasi Tambahan (Opsional — Development Only):
+Jika ingin menggunakan API key lokal tanpa bergantung pada database SIPADA:
+```env
+# Di file .env LMS Mokopani Web
+GEMINI_API_KEY=your-gemini-key
+GEMINI_MODEL=gemini-2.0-flash
+ACTIVE_AI_PROVIDER=gemini
+```
+*(Catatan: Konfigurasi database SIPADA selalu diprioritaskan jika tersedia).*
 
 ---
 
