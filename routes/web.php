@@ -73,6 +73,7 @@ Route::middleware(['auth'])->group(function () {
 
     // ── Student-only ────────────────────────────────────────────────
     Route::middleware(['role:student'])->group(function () {
+        Route::get('class-sessions/{id}/student', [\App\Http\Controllers\ClassSessionController::class, 'studentLive'])->name('class-sessions.student-live');
         Route::post('assignments/{assignment}/submit', [AssignmentController::class, 'submit'])->name('assignments.submit');
         Route::post('reflections', [\App\Http\Controllers\ReflectionController::class, 'store'])->name('reflections.store');
         Route::post('materials/{material}/complete', [MaterialController::class, 'complete'])->name('materials.complete');
@@ -111,6 +112,8 @@ Route::middleware(['auth'])->group(function () {
         // Asesmen CRUD (create/edit/delete/grade)
         Route::post('assignments', [AssignmentController::class, 'store'])->name('assignments.store');
         Route::get('assignments/{assignment}/edit', [AssignmentController::class, 'edit'])->name('assignments.edit');
+        Route::get('assignments/{assignment}/grade-view', [AssignmentController::class, 'gradeView'])->name('assignments.grade-view');
+        Route::post('assignments/{assignment}/upload-proof', [AssignmentController::class, 'uploadProof'])->name('assignments.upload-proof');
         Route::post('assignments/grade', [AssignmentController::class, 'grade'])->name('assignments.grade');
         Route::post('assignments/open-remedial', [AssignmentController::class, 'openRemedial'])->name('assignments.open_remedial');
         Route::post('assignments/{assignment}', [AssignmentController::class, 'update'])->name('assignments.update');

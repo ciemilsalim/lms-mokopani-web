@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { ClipboardCheck, MessageCircle, X, Send } from 'lucide-react';
 
 interface ClassSession {
     id: number;
@@ -45,6 +46,26 @@ export default function LiveClassSessionPage({ session, attendances }: LiveSessi
     const [newFormativeScore, setNewFormativeScore] = useState('');
     const [newFormativeNote, setNewFormativeNote] = useState('');
     const [autosaveStatus, setAutosaveStatus] = useState<'saved' | 'saving' | 'error'>('saved');
+
+    // Quick Assessment Modal States
+    const [isQuickAssessOpen, setIsQuickAssessOpen] = useState(false);
+    const [selectedStudentForFeedback, setSelectedStudentForFeedback] = useState<string | null>(null);
+    const [quickFeedbackText, setQuickFeedbackText] = useState('');
+
+    const handleSendQuickFeedback = (studentName: string) => {
+        if (!quickFeedbackText.trim()) return;
+        const updated = [
+            ...(sessionData.formative_assessments || []),
+            {
+                student_name: studentName,
+                note: `[Umpan Balik Cepat] ${quickFeedbackText.trim()}`,
+                score: 0
+            }
+        ];
+        setSessionData({ ...sessionData, formative_assessments: updated });
+        setQuickFeedbackText('');
+        setSelectedStudentForFeedback(null);
+    };
 
     // Debounced Autosave
     useEffect(() => {
@@ -317,6 +338,67 @@ export default function LiveClassSessionPage({ session, attendances }: LiveSessi
                     </div>
                 </div>
             </div>
+
+            {/* Quick Assessment Floating Button */}
+            <div className="fixed bottom-6 right-6 z-40">
+                <Button 
+                    onClick={() => setIsQuickAssessOpen(!isQuickAssessOpen)}
+                    className="w-14 h-14 rounded-full shadow-lg bg-indigo-600 hover:bg-indigo-700 flex items-center justify-center text-white"
+                >
+                    {isQuickAssessOpen ? <X className="w-6 h-6" /> : <ClipboardCheck className="w-6 h-6" />}
+                </Button>
+            </div>
+
+            {/* Quick Assessment Modal / Drawer */}
+            {isQuickAssessOpen && (
+                <div className="fixed bottom-24 right-6 z-40 w-80 sm:w-96 bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 p-4 animate-in slide-in-from-bottom-4">
+                    <div className="flex justify-between items-center mb-4 border-b border-slate-100 dark:border-slate-800 pb-2">
+                        <h3 className="font-bold text-slate-800 dark:text-slate-100 flex items-center">
+                            <ClipboardCheck className="w-4 h-4 mr-2 text-indigo-600" />
+                            Asesmen & Umpan Balik Cepat
+                        </h3>
+                    </div>
+                    
+                    <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
+                        {attendances.map((student) => (
+                            <div key={student.student_id} className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-100 dark:border-slate-800">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">{student.student_name}</span>
+                                    <Button 
+                                        variant="ghost" 
+                                        size="sm" 
+                                        onClick={() => setSelectedStudentForFeedback(selectedStudentForFeedback === student.student_name ? null : student.student_name)}
+                                        className="h-7 text-xs text-indigo-600 dark:text-indigo-400"
+                                    >
+                                        <MessageCircle className="w-3 h-3 mr-1" /> Umpan Balik
+                                    </Button>
+                                </div>
+                                
+                                {selectedStudentForFeedback === student.student_name && (
+                                    <div className="mt-3 flex gap-2 animate-in fade-in">
+                                        <Input 
+                                            placeholder="Tulis pujian atau koreksi..."
+                                            value={quickFeedbackText}
+                                            onChange={(e) => setQuickFeedbackText(e.target.value)}
+                                            className="h-8 text-xs"
+                                        />
+                                        <Button 
+                                            size="sm" 
+                                            className="h-8 bg-indigo-600 text-white px-2"
+                                            onClick={() => handleSendQuickFeedback(student.student_name)}
+                                        >
+                                            <Send className="w-3 h-3" />
+                                        </Button>
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                        {attendances.length === 0 && (
+                            <div className="text-center text-slate-500 text-xs py-4">Data siswa tidak tersedia untuk sesi ini.</div>
+                        )}
+                    </div>
+                </div>
+            )}
         </AppLayout>
     );
 }

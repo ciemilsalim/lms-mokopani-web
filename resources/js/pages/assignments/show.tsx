@@ -48,7 +48,8 @@ import {
     Minimize2,
     ZoomIn,
     ZoomOut,
-    ClipboardCheck
+    ClipboardCheck,
+    Camera
 } from 'lucide-react';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { ConfirmDialog } from '@/components/confirm-dialog';
@@ -869,6 +870,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
         content: my_submission?.content ?? '',
         answers: {} as Record<string, string>,
         file: null as File | null,
+        is_offline_submission: (my_submission?.content && my_submission.content.includes('"submitted_offline":true')) ? true : false,
     });
 
     const [exitTicketData, setExitTicketData] = useState<any>({});
@@ -1952,13 +1954,22 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                         Kembali
                     </button>
                     {user_role === 'teacher' && (
-                        <button 
-                            onClick={() => setShowDeleteConfirm(true)}
-                            className="flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-black text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition uppercase tracking-widest"
-                        >
-                            <Trash2 className="h-4 w-4" />
-                            Hapus Asesmen
-                        </button>
+                        <div className="flex items-center gap-2">
+                            <Link 
+                                href={`/assignments/${assignment.id}/grade-view`}
+                                className="flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-black bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:text-indigo-400 transition uppercase tracking-widest"
+                            >
+                                <ListChecks className="h-4 w-4" />
+                                Penilaian Split-Screen
+                            </Link>
+                            <button 
+                                onClick={() => setShowDeleteConfirm(true)}
+                                className="flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-black text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition uppercase tracking-widest"
+                            >
+                                <Trash2 className="h-4 w-4" />
+                                Hapus Asesmen
+                            </button>
+                        </div>
                     )}
                 </div>
 
@@ -4106,21 +4117,64 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                         </a>
                                                     </div>
                                                 )}
-                                                <div className={`w-full rounded-xl border-2 border-dashed border-border bg-slate-50/20 px-8 py-12 text-center transition-all ${isSummativeLocked ? 'pointer-events-none opacity-60' : 'group-hover:border-sky-400 group-hover:bg-sky-50/10 cursor-pointer'}`}>
-                                                    <div className="h-12 w-12 rounded-xl bg-white dark:bg-slate-900 border border-border flex items-center justify-center mx-auto mb-4 text-muted-foreground group-hover:text-primary transition-colors shadow-sm">
-                                                        <Upload className="h-6 w-6" />
+                                                <div className="flex flex-col md:flex-row gap-4 mb-4">
+                                                    <label className={`flex flex-1 items-center gap-3 p-4 rounded-xl border-2 transition-all cursor-pointer ${studentForm.data.is_offline_submission ? 'border-sky-500 bg-sky-50/30' : 'border-slate-200 bg-white hover:bg-slate-50'}`}>
+                                                        <input 
+                                                            type="checkbox" 
+                                                            className="w-5 h-5 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                                                            checked={studentForm.data.is_offline_submission}
+                                                            onChange={(e) => studentForm.setData('is_offline_submission', e.target.checked)}
+                                                            disabled={isSummativeLocked}
+                                                        />
+                                                        <div>
+                                                            <p className="font-bold text-sm text-slate-800">Tugas diserahkan langsung ke guru di kelas</p>
+                                                            <p className="text-xs text-slate-500">Centang ini jika Anda membuat karya fisik (poster, kerajinan) dan tidak mengunggah file.</p>
+                                                        </div>
+                                                    </label>
+
+                                                    <div className="relative flex-1">
+                                                        <button 
+                                                            type="button" 
+                                                            className="w-full h-full flex flex-col items-center justify-center p-4 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 hover:bg-slate-100 hover:border-slate-400 transition-all text-slate-600"
+                                                            disabled={isSummativeLocked}
+                                                        >
+                                                            <Camera className="h-6 w-6 mb-2 text-slate-400" />
+                                                            <span className="font-bold text-sm">Ambil Foto Bukti Fisik</span>
+                                                            <span className="text-[10px] uppercase tracking-widest text-slate-400 mt-1">Gunakan Kamera HP</span>
+                                                        </button>
+                                                        <input 
+                                                            type="file"
+                                                            accept="image/*"
+                                                            capture="environment"
+                                                            disabled={isSummativeLocked}
+                                                            onChange={(e) => {
+                                                                if(e.target.files && e.target.files[0]) {
+                                                                    studentForm.setData('file', e.target.files[0]);
+                                                                    studentForm.setData('is_offline_submission', false);
+                                                                }
+                                                            }}
+                                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                                        />
                                                     </div>
-                                                    <p className="text-sm font-bold text-slate-600 dark:text-muted-foreground">
-                                                        {studentForm.data.file ? studentForm.data.file.name : 'Klik atau seret file ke sini untuk mengganti/unggah file baru'}
-                                                    </p>
-                                                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-2">Maks. 10MB (PDF, DOC, Gambar)</p>
-                                                    <input 
-                                                        type="file"
-                                                        disabled={isSummativeLocked}
-                                                        onChange={(e) => studentForm.setData('file', e.target.files ? e.target.files[0] : null)}
-                                                        className="absolute inset-0 opacity-0 cursor-pointer"
-                                                    />
                                                 </div>
+
+                                                {!studentForm.data.is_offline_submission && (
+                                                    <div className={`w-full rounded-xl border-2 border-dashed border-border bg-slate-50/20 px-8 py-12 text-center transition-all relative ${isSummativeLocked ? 'pointer-events-none opacity-60' : 'group-hover:border-sky-400 group-hover:bg-sky-50/10 cursor-pointer'}`}>
+                                                        <div className="h-12 w-12 rounded-xl bg-white dark:bg-slate-900 border border-border flex items-center justify-center mx-auto mb-4 text-muted-foreground group-hover:text-primary transition-colors shadow-sm">
+                                                            <Upload className="h-6 w-6" />
+                                                        </div>
+                                                        <p className="text-sm font-bold text-slate-600 dark:text-muted-foreground">
+                                                            {studentForm.data.file ? studentForm.data.file.name : 'Klik atau seret file ke sini untuk mengganti/unggah file baru'}
+                                                        </p>
+                                                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-2">Maks. 10MB (PDF, DOC, Gambar)</p>
+                                                        <input 
+                                                            type="file"
+                                                            disabled={isSummativeLocked}
+                                                            onChange={(e) => studentForm.setData('file', e.target.files ? e.target.files[0] : null)}
+                                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                                        />
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                     )}

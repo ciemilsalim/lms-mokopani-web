@@ -114,6 +114,23 @@ class ClassSessionController extends Controller
     }
 
     /**
+     * Render Live Class Session Page for Students (Dasbor Alur Belajar).
+     */
+    public function studentLive($id)
+    {
+        $session = LmsClassSession::with(['modulAjar', 'teacher'])->findOrFail($id);
+        
+        $student = Auth::user()->student;
+        if ($session->school_class_id && $student && $student->school_class_id !== $session->school_class_id) {
+            abort(403, 'Akses ditolak. Anda bukan peserta di kelas ini.');
+        }
+
+        return Inertia::render('class-sessions/student-live', [
+            'session' => $session
+        ]);
+    }
+
+    /**
      * Show session detail API.
      */
     public function show($id)

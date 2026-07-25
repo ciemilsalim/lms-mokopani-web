@@ -575,10 +575,19 @@ class AssignmentController extends Controller
         }
 
         $validated = $request->validate([
-            'content' => 'nullable|string',
-            'file'    => 'nullable|file|mimes:pdf,doc,docx,png,jpg,jpeg|max:10240',
-            'score'   => 'nullable|integer',
+            'content'               => 'nullable|string',
+            'file'                  => 'nullable|file|mimes:pdf,doc,docx,png,jpg,jpeg|max:10240',
+            'score'                 => 'nullable|integer',
+            'is_offline_submission' => 'nullable|boolean',
         ]);
+
+        $contentData = json_decode($validated['content'] ?? '{}', true);
+        if (!empty($validated['is_offline_submission'])) {
+            $contentData['submitted_offline'] = true;
+        } else {
+            unset($contentData['submitted_offline']);
+        }
+        $validated['content'] = json_encode($contentData);
 
         $filePath = null;
         if ($request->hasFile('file')) {
@@ -728,6 +737,92 @@ class AssignmentController extends Controller
         }
 
         return back()->with('success', 'Tugas berhasil dikumpulkan.');
+    }
+
+    /**
+     * Upload physical proof by teacher on behalf of the student
+     */
+    public function uploadProof(Request $request, LmsAssignment $assignment)
+    {
+        $user = Auth::user();
+        if (!$user->teacher) {
+            abort(403, 'Hanya guru yang dapat mengunggah bukti fisik.');
+        }
+
+        $validated = $request->validate([
+            'student_id' => 'required|exists:mysql_absensi.students,id',
+            'file'       => 'required|file|mimes:pdf,doc,docx,png,jpg,jpeg|max:10240',
+        ]);
+
+        $filePath = $request->file('file')->store('submissions/' . $assignment->id, 'public');
+
+        $submission = LmsSubmission::where('assignment_id', $assignment->id)
+            ->where('student_id', $validated['student_id'])
+            ->first();
+
+        if ($submission) {
+            $submission->update([
+                'file_path' => $filePath,
+                'submitted_at' => now(),
+            ]);
+        } else {
+            LmsSubmission::create([
+                'assignment_id'    => $assignment->id,
+                'student_id'       => $validated['student_id'],
+                'content'          => json_encode(['submitted_offline' => true]),
+                'file_path'        => $filePath,
+                'submitted_at'     => now(),
+                'attempts'         => 1,
+                'is_remedial_open' => false,
+            ]);
+        }
+
+        return back()->with('success', 'Bukti fisik berhasil diunggah.');
+    }
+
+    public function gradeView(LmsAssignment $assignment)
+    {
+        $user = Auth::user();
+        if (!$user->teacher) {
+            abort(403, 'Hanya guru yang dapat mengakses halaman penilaian ini.');
+        }
+
+        $assignment->load(['subject', 'submissions.student', 'schoolClasses']);
+
+        $students = \App\Models\Student::whereIn('school_class_id', $assignment->schoolClasses->pluck('id'))
+            ->orderBy('name')
+            ->get()
+            ->map(fn($s) => [
+                'id'   => $s->id,
+                'name' => $s->name,
+                'nis'  => $s->nis,
+            ]);
+
+        return Inertia::render('assignments/grade-split', [
+            'assignment' => [
+                'id'                => $assignment->id,
+                'title'             => $assignment->title,
+                'description'       => $assignment->description,
+                'subject'           => $assignment->subject?->name,
+                'max_points'        => $assignment->max_points,
+                'instrument_type'   => $assignment->instrument_type,
+                'instrument_config' => $assignment->instrument_config,
+                'scoring_tool'      => $assignment->scoring_tool,
+                'scoring_tool_config' => $assignment->scoring_tool_config,
+                'submissions'       => $assignment->submissions->map(fn ($s) => [
+                    'id'               => $s->id,
+                    'student_id'       => $s->student_id,
+                    'student_name'     => $s->student?->name ?? 'Unknown',
+                    'content'          => $s->content,
+                    'file_path'        => $s->file_path,
+                    'score'            => $s->score,
+                    'kktp_details'     => $s->kktp_details,
+                    'feedback'         => $s->feedback,
+                    'submitted_at'     => $s->created_at->format('d M Y, H:i'),
+                ]),
+            ],
+            'students' => $students,
+        ]);
     }
 
     public function grade(Request $request)
