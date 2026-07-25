@@ -213,6 +213,18 @@ class LmsModulAjarController extends Controller
                 }
             }
 
+            // Cari Modul Ajar / RPP terkait untuk menyelaraskan Rencana Asesmen & KKTP
+            $modulAjar = LmsModulAjar::where('learning_objective_id', $request->learning_objective_id)->first();
+            $hasModulAjar = false;
+            if ($modulAjar) {
+                $hasModulAjar = true;
+                $materialContent .= "\n\n[DOKUMEN MODUL AJAR TERHUBUNG]:\n" .
+                    "- Model Pedagogi: " . ($modulAjar->pedagogical_model ?? 'Sesuai TP') . "\n" .
+                    "- Rencana Asesmen Modul: " . (is_string($modulAjar->assessment_plan) ? $modulAjar->assessment_plan : json_encode($modulAjar->assessment_plan)) . "\n" .
+                    "- Detail KKTP Modul: " . (is_string($modulAjar->kktp_details) ? $modulAjar->kktp_details : json_encode($modulAjar->kktp_details)) . "\n" .
+                    "- Langkah Pembelajaran: " . (is_string($modulAjar->learning_steps) ? $modulAjar->learning_steps : json_encode($modulAjar->learning_steps));
+            }
+
             $suggestions = $service->suggestAssessment(
                 $request->learning_objective_id,
                 $request->input('instrument_type', 'rubric'),
@@ -222,6 +234,10 @@ class LmsModulAjarController extends Controller
                 $request->input('observation_mode'),
                 $request->input('quiz_mode')
             );
+
+            if (is_array($suggestions)) {
+                $suggestions['modul_ajar_found'] = $hasModulAjar;
+            }
         } else {
             $suggestions = $service->suggestExperiences(
                 $request->learning_objective_id,
