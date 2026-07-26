@@ -48,10 +48,12 @@ import {
     Minimize2,
     ZoomIn,
     ZoomOut,
-    ClipboardCheck
+    ClipboardCheck,
+    Target
 } from 'lucide-react';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { ConfirmDialog } from '@/components/confirm-dialog';
+import { KktpModal } from '@/components/assignments/KktpModal';
 import {
     Dialog,
     DialogContent,
@@ -833,6 +835,138 @@ export default function ShowAssignment({ assignment, students, my_submission, my
         } catch (e) {
             return 0;
         }
+    };
+
+    const checkIsKKTPPassed = (submission: any, asm: any, scoreVal?: number | null): boolean => {
+        if (!submission && scoreVal === null) return false;
+
+        let score = scoreVal;
+        if (score === undefined || score === null) {
+            score = submission && submission.score !== null && submission.score !== undefined ? Number(submission.score) : null;
+        }
+
+        let config = asm?.instrument_config;
+        if (typeof config === 'string') {
+            try { config = JSON.parse(config); } catch (e) {}
+        }
+        const kktp = config?.kktp;
+
+        let parsed: any = {};
+        if (submission?.content && typeof submission.content === 'string') {
+            try { parsed = JSON.parse(submission.content); } catch (e) {}
+        } else if (submission?.content && typeof submission.content === 'object') {
+            parsed = submission.content;
+        }
+
+        if (kktp && typeof kktp === 'object') {
+            const approach = kktp.approach || '';
+
+            // 1. Approach: score_interval / interval / score
+            if (['score_interval', 'interval', 'score'].includes(approach)) {
+                const intervals: Array<any> = kktp.intervals || [];
+                if (intervals.length > 0 && score !== null && score !== undefined) {
+                    const s = Number(score);
+                    for (const iv of intervals) {
+                        const min = Number(iv.min ?? 0);
+                        const max = Number(iv.max ?? 100);
+                        if (s >= min && s <= max) {
+                            const str = `${iv.status || ''} ${iv.label || ''} ${iv.desc || ''}`.toLowerCase();
+                            if ((str.includes('tuntas') || str.includes('sudah') || str.includes('mencapai') || str.includes('pengayaan')) && !str.includes('belum') && !str.includes('hampir') && !str.includes('remedial')) {
+                                return true;
+                            }
+                            if (str.includes('belum') || str.includes('hampir') || str.includes('remedial')) {
+                                return false;
+                            }
+                        }
+                    }
+                    // Fallback: check if score is >= lowest min among Tuntas intervals
+                    const tuntasMins = intervals
+                        .filter(iv => {
+                            const str = `${iv.status || ''} ${iv.label || ''} ${iv.desc || ''}`.toLowerCase();
+                            return (str.includes('tuntas') || str.includes('sudah') || str.includes('mencapai') || str.includes('pengayaan')) && !str.includes('belum') && !str.includes('hampir') && !str.includes('remedial');
+                        })
+                        .map(iv => Number(iv.min ?? 100));
+                    if (tuntasMins.length > 0) {
+                        return s >= Math.min(...tuntasMins);
+                    }
+                }
+            }
+
+            // 2. Approach: percentage / checklist / observation
+            if (['percentage', 'checklist', 'observation'].includes(approach)) {
+                const threshold = Number(kktp.threshold ?? kktp.min_score ?? asm?.passing_grade ?? 75);
+                if (score !== null && score !== undefined) {
+                    return Number(score) >= threshold;
+                }
+            }
+
+            // 3. Approach: criteria_description
+            if (approach === 'criteria_description') {
+                const total = (config?.rubrics?.length || config?.questions?.length || config?.indicators?.length || 0);
+                const minCrit = Number(kktp.min_criteria ?? Math.max(1, Math.round(total / 2)));
+                if (parsed.grading?.checked_indicators && Array.isArray(parsed.grading.checked_indicators)) {
+                    return parsed.grading.checked_indicators.length >= minCrit;
+                }
+                if (parsed.indicators && Array.isArray(parsed.indicators)) {
+                    const checked = parsed.indicators.filter((ind: any) => ind.checked || ind.selected_level).length;
+                    return checked >= minCrit;
+                }
+                if (parsed.grading?.is_passed !== undefined) {
+                    return Boolean(parsed.grading.is_passed);
+                }
+            }
+
+            // 4. Approach: rubric
+            if (approach === 'rubric') {
+                const levels: Array<any> = config?.levels || [];
+                const passingLvlName = kktp.passing_level;
+                const passingIdx = levels.findIndex(l => l.name === passingLvlName);
+                if (parsed.grading?.selected_level && passingIdx !== -1) {
+                    const selIdx = levels.findIndex(l => l.name === parsed.grading.selected_level);
+                    return selIdx >= passingIdx;
+                }
+                if (parsed.grading?.is_passed !== undefined) {
+                    return Boolean(parsed.grading.is_passed);
+                }
+            }
+        }
+
+        if (parsed.grading?.is_passed !== undefined) {
+            return Boolean(parsed.grading.is_passed);
+        }
+
+        const type = parsed.type || asm?.instrument_type;
+        if (['self_assessment', 'peer_assessment', 'reflective_journal', 'exit_ticket'].includes(type)) {
+            let mode = parsed.assessment_mode;
+            if (!mode) {
+                if (asm?.scoring_tool === 'checklist') mode = 'checklist';
+                else if (['rubric', 'rating_scale'].includes(asm?.scoring_tool)) mode = 'simple_rubric';
+            }
+            if (mode === 'checklist' && parsed.indicators && Array.isArray(parsed.indicators)) {
+                const total = parsed.indicators.length;
+                const checkedCount = parsed.indicators.filter((i: any) => i.checked).length;
+                const minCriteria = kktp?.min_criteria ?? Math.max(1, Math.round(total / 2));
+                return checkedCount >= minCriteria;
+            } else if (mode === 'simple_rubric' && parsed.indicators && Array.isArray(parsed.indicators)) {
+                const levels = ['Perlu Bimbingan', 'Cukup', 'Baik', 'Sangat Baik'];
+                const passingLvl = kktp?.passing_level || 'Baik';
+                let passingIdx = levels.indexOf(passingLvl);
+                if (passingIdx === -1) passingIdx = 2;
+                const passedCount = parsed.indicators.filter((i: any) => {
+                    const idx = levels.indexOf(i.selected_level);
+                    return idx !== -1 && idx >= passingIdx;
+                }).length;
+                const minCriteria = kktp?.min_criteria ?? Math.max(1, Math.round(parsed.indicators.length / 2));
+                return passedCount >= minCriteria;
+            }
+        }
+
+        if (score !== null && score !== undefined) {
+            const threshold = Number(kktp?.threshold ?? asm?.passing_grade ?? config?.pass_threshold ?? 70);
+            return Number(score) >= threshold;
+        }
+
+        return submission && submission.is_passed !== undefined ? Boolean(submission.is_passed) : false;
     };
 
     const getAssessmentMode = (assignment: any) => {
@@ -1872,6 +2006,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
     };
 
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [isKktpModalOpen, setIsKktpModalOpen] = useState(false);
     const [submitSuccess, setSubmitSuccess] = useState(false);
     const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -1944,28 +2079,35 @@ export default function ShowAssignment({ assignment, students, my_submission, my
             <>
                 <div className="flex h-full flex-1 flex-col gap-6 min-w-0 fade-in max-w-7xl mx-auto w-full">
                 {/* Back Button & Actions */}
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <button 
                         onClick={() => window.history.back()}
-                        className="flex items-center gap-2 text-sm font-bold text-muted-foreground hover:text-primary transition uppercase tracking-widest"
+                        className="flex items-center gap-2 text-sm font-bold text-muted-foreground hover:text-primary transition uppercase tracking-widest w-fit"
                     >
                         <ChevronLeft className="h-4 w-4" />
                         Kembali
                     </button>
                     {user_role === 'teacher' && (
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-start sm:justify-end">
+                            <button 
+                                onClick={() => setIsKktpModalOpen(true)}
+                                className="flex-1 sm:flex-initial justify-center flex items-center gap-2 rounded-xl px-3 sm:px-4 py-2 text-xs font-black bg-purple-50 text-purple-700 hover:bg-purple-100 dark:bg-purple-950/30 dark:text-purple-400 transition uppercase tracking-widest border border-purple-200/60 dark:border-purple-800/40 shadow-2xs whitespace-nowrap"
+                            >
+                                <Target className="h-4 w-4 text-purple-500 shrink-0" />
+                                Lihat Pendekatan KKTP
+                            </button>
                             <Link 
                                 href={route('assignments.grade-view', assignment.id)}
-                                className="flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-black bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:text-indigo-400 transition uppercase tracking-widest"
+                                className="flex-1 sm:flex-initial justify-center flex items-center gap-2 rounded-xl px-3 sm:px-4 py-2 text-xs font-black bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:text-indigo-400 transition uppercase tracking-widest whitespace-nowrap"
                             >
-                                <ListChecks className="h-4 w-4" />
+                                <ListChecks className="h-4 w-4 shrink-0" />
                                 Penilaian Split-Screen
                             </Link>
                             <button 
                                 onClick={() => setShowDeleteConfirm(true)}
-                                className="flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-black text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition uppercase tracking-widest"
+                                className="flex-1 sm:flex-initial justify-center flex items-center gap-2 rounded-xl px-3 sm:px-4 py-2 text-xs font-black text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition uppercase tracking-widest whitespace-nowrap"
                             >
-                                <Trash2 className="h-4 w-4" />
+                                <Trash2 className="h-4 w-4 shrink-0" />
                                 Hapus Asesmen
                             </button>
                         </div>
@@ -1973,10 +2115,10 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                 </div>
 
                 {/* Assignment Info Card */}
-                <div className="rounded-xl border border-border bg-white dark:bg-slate-900 p-8 shadow-2xl shadow-slate-100/50 dark:shadow-none">
+                <div className="rounded-xl border border-border bg-white dark:bg-slate-900 p-4 sm:p-6 md:p-8 shadow-2xl shadow-slate-100/50 dark:shadow-none">
                     <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
                         <div className="space-y-3">
-                            <div className="flex items-center gap-3">
+                            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                                 <span className="inline-flex rounded-full bg-sky-50 dark:bg-sky-950/40 px-3 py-1 text-[10px] font-black text-primary uppercase tracking-widest border border-sky-100 dark:border-sky-900/30">
                                     {assignment.subject}
                                 </span>
@@ -1991,27 +2133,27 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                     </span>
                                 )}
                             </div>
-                            <h1 className="text-3xl font-black text-foreground tracking-tight">{assignment.title}</h1>
-                            <div className="flex flex-wrap items-center gap-6 pt-2 text-xs font-bold text-muted-foreground uppercase tracking-widest">
-                                <span className="flex items-center gap-2">
-                                    <Calendar className="h-4 w-4 text-amber-500" />
+                            <h1 className="text-xl sm:text-2xl md:text-3xl font-black text-foreground tracking-tight leading-snug">{assignment.title}</h1>
+                            <div className="flex flex-wrap items-center gap-3 sm:gap-6 pt-2 text-[11px] sm:text-xs font-bold text-muted-foreground uppercase tracking-widest">
+                                <span className="flex items-center gap-1.5 sm:gap-2">
+                                    <Calendar className="h-4 w-4 text-amber-500 shrink-0" />
                                     Tenggat: <span className="text-slate-600 dark:text-slate-300">{assignment.due_date}</span>
                                 </span>
                                 {assignment.instrument_type !== 'reflective_journal' && assignment.instrument_type !== 'self_assessment' && assignment.instrument_type !== 'peer_assessment' && assignment.instrument_type !== 'exit_ticket' ? (
-                                    <span className="flex items-center gap-2">
-                                        <Star className="h-4 w-4 text-emerald-500" />
+                                    <span className="flex items-center gap-1.5 sm:gap-2">
+                                        <Star className="h-4 w-4 text-emerald-500 shrink-0" />
                                         Poin Maks: <span className="text-slate-600 dark:text-slate-300">{assignment.max_points} pts</span>
                                     </span>
                                 ) : (
-                                    <span className="flex items-center gap-2">
-                                        <Star className="h-4 w-4 text-emerald-500" />
+                                    <span className="flex items-center gap-1.5 sm:gap-2">
+                                        <Star className="h-4 w-4 text-emerald-500 shrink-0" />
                                         Penilaian: <span className="text-slate-600 dark:text-slate-300">Deskriptif (KKTP)</span>
                                     </span>
                                 )}
                             </div>
                         </div>
                     </div>
-                    <div className="mt-8 border-t border-slate-50 dark:border-slate-800 pt-8">
+                    <div className="mt-6 sm:mt-8 border-t border-slate-50 dark:border-slate-800 pt-6 sm:pt-8">
                         <div className="flex items-center gap-2 mb-4">
                             <FileText className="h-4 w-4 text-primary" />
                             <h3 className="text-xs font-black text-foreground uppercase tracking-widest">Instruksi & Deskripsi</h3>
@@ -2027,9 +2169,9 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                     <div className="space-y-6">
                         {['observation_checklist', 'anecdotal_notes', 'rubric', 'oral_test', 'performance_observation', 'performance', 'guided_discussion'].includes(assignment.instrument_type) ? (
                             <div className="space-y-6 animate-in fade-in duration-500">
-                                <div className="flex items-center justify-between px-4">
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between px-2 sm:px-4 gap-4">
                                     <div>
-                                        <h2 className="text-xl font-black text-foreground tracking-tight">
+                                        <h2 className="text-lg sm:text-xl font-black text-foreground tracking-tight">
                                             {assignment.instrument_type === 'observation_checklist' ? 'Lembar Observasi & Ceklis' : 
                                              assignment.instrument_type === 'anecdotal_notes' ? 'Daftar Catatan Anekdotal' :
                                              assignment.instrument_type === 'performance_observation' ? 'Lembar Observasi Keterlibatan' :
@@ -2054,13 +2196,13 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                             )}
                                         </div>
                                     </div>
-                                    <div className="flex items-center gap-4 bg-white dark:bg-slate-900 border border-border px-5 py-3 rounded-xl shadow-sm">
-                                        <div className="text-right">
+                                    <div className="flex items-center justify-between sm:justify-start gap-4 bg-white dark:bg-slate-900 border border-border px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl shadow-sm w-full sm:w-auto">
+                                        <div className="text-left sm:text-right flex-1 sm:flex-initial">
                                             <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Total Siswa</p>
-                                            <p className="text-lg font-black text-foreground">{students.length}</p>
+                                            <p className="text-base sm:text-lg font-black text-foreground">{students.length}</p>
                                         </div>
                                         <div className="h-8 w-px bg-slate-100 dark:bg-slate-800" />
-                                        <div className="text-right">
+                                        <div className="text-right flex-1 sm:flex-initial">
                                             <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">
                                                 {assignment.instrument_type === 'observation_checklist' ? 'Telah Diobservasi' : 
                                                  assignment.instrument_type === 'rubric' ? 'Telah Dinilai' :
@@ -2068,25 +2210,202 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                  assignment.instrument_type === 'performance' ? 'Telah Dinilai' :
                                                  'Ada Catatan'}
                                             </p>
-                                            <p className="text-lg font-black text-emerald-600">{assignment.submissions.length}</p>
+                                            <p className="text-base sm:text-lg font-black text-emerald-600">{assignment.submissions.length}</p>
                                         </div>
                                     </div>
                                 </div>
 
-                                <div className="overflow-hidden rounded-xl border border-border bg-white dark:bg-slate-900 shadow-2xl shadow-slate-100/50 dark:shadow-none">
-                                    <table className="w-full text-left text-sm border-collapse">
+                                {/* Responsive Card List for Mobile & Tablet */}
+                                <div className="space-y-3 lg:hidden">
+                                    {students.map((student) => {
+                                        const sub = submissionMap[student.id];
+                                        let indicatorCount = (assignment.instrument_config?.indicators || []).length;
+                                        if (!indicatorCount && assignment.instrument_config?.criteria) {
+                                            indicatorCount = assignment.instrument_config.criteria.length;
+                                        }
+                                        let munculCount = 0;
+                                        if (sub?.content) {
+                                            try {
+                                                const p = JSON.parse(sub.content);
+                                                if (assignment.instrument_type === 'rubric') {
+                                                    munculCount = Object.keys(p.scores || {}).length;
+                                                } else if (assignment.instrument_type === 'oral_test') {
+                                                    munculCount = sub.score || 0;
+                                                } else if (assignment.instrument_type === 'performance_observation') {
+                                                    munculCount = Object.values(p.observations || {}).filter(v => v === true || v === 'mulai' || v === 'konsisten').length;
+                                                } else if (assignment.instrument_type === 'performance') {
+                                                    const config = assignment.instrument_config;
+                                                    if (config?.indicators && config.indicators.length > 0) {
+                                                        munculCount = Object.values(p.scores || {}).filter(v => v === true).length;
+                                                    } else {
+                                                        munculCount = Object.keys(p.scores || {}).length;
+                                                    }
+                                                } else if (assignment.instrument_type === 'project') {
+                                                    const checklist = p.checklist || {};
+                                                    const checked = Object.values(checklist).filter(v => v === true).length;
+                                                    const total = Object.keys(checklist).length;
+                                                    munculCount = checked;
+                                                    indicatorCount = total > 0 ? total : 6;
+                                                } else {
+                                                    munculCount = Object.values(p.checklist || {}).filter(v => v === true).length;
+                                                }
+                                            } catch(e) {}
+                                        }
+
+                                        return (
+                                            <div key={student.id} className="p-4 rounded-xl border border-border bg-white dark:bg-slate-900 shadow-sm space-y-3 hover:border-primary/50 transition-all">
+                                                <div className="flex items-start justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-3">
+                                                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                                                        <div className="h-10 w-10 rounded-xl bg-sky-50 dark:bg-sky-950/30 flex items-center justify-center text-primary font-black text-xs shadow-sm border border-sky-100 dark:border-sky-900/30 shrink-0">
+                                                            {student.name.charAt(0)}
+                                                        </div>
+                                                        <div className="min-w-0 flex-1">
+                                                            <p className="font-bold text-slate-700 dark:text-slate-200 text-sm truncate">{student.name}</p>
+                                                            <p className="text-[10px] font-bold text-muted-foreground tracking-widest">{student.nis}</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="shrink-0">
+                                                        {sub ? (
+                                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/30 text-[10px] font-black text-success uppercase tracking-widest border border-emerald-100 dark:border-emerald-900/30">
+                                                                <CheckCircle2 className="h-3 w-3" />
+                                                                Selesai
+                                                            </span>
+                                                        ) : (
+                                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50 dark:bg-amber-950/30 text-[10px] font-black text-warning uppercase tracking-widest border border-amber-100 dark:border-amber-900/30">
+                                                                <Clock className="h-3 w-3" />
+                                                                Belum Ada
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+
+                                                <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg border border-slate-100 dark:border-slate-800/80 space-y-2">
+                                                    <div className="flex items-center justify-between text-xs">
+                                                        <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+                                                            {assignment.instrument_type === 'observation_checklist' ? 'Indikator Terpenuhi' : 
+                                                             assignment.instrument_type === 'rubric' ? 'Progres Penilaian' :
+                                                             assignment.instrument_type === 'oral_test' ? 'Hasil Tes' :
+                                                             assignment.instrument_type === 'performance' ? 'Progres Penilaian' :
+                                                             'Indikator Terpenuhi'}
+                                                        </span>
+                                                        <span className="text-xs font-black text-slate-700 dark:text-slate-200">{munculCount}{assignment.instrument_type === 'oral_test' ? '' : `/${indicatorCount}`}</span>
+                                                    </div>
+                                                    <div className="h-2 w-full rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
+                                                        <div 
+                                                            className={`h-full rounded-full transition-all duration-500 ${assignment.instrument_type === 'rubric' ? 'bg-amber-500' : assignment.instrument_type === 'oral_test' ? 'bg-indigo-500' : 'bg-emerald-500'}`}
+                                                            style={{ width: `${assignment.instrument_type === 'oral_test' ? (munculCount / assignment.max_points) * 100 : (indicatorCount > 0 ? (munculCount / indicatorCount) * 100 : 0)}%` }}
+                                                        />
+                                                    </div>
+                                                    {sub && (assignment.instrument_type === 'observation_checklist' || assignment.instrument_type === 'performance_observation' || assignment.instrument_type === 'performance' || assignment.instrument_type === 'rubric' || assignment.instrument_type === 'guided_discussion') && assignment.instrument_config?.kktp && (
+                                                        <div className="pt-1 flex justify-end">
+                                                            {(() => {
+                                                                const kktp = assignment.instrument_config.kktp;
+                                                                let isPassed = false;
+                                                                
+                                                                if (kktp.approach === 'percentage') {
+                                                                    const threshold = kktp.threshold || 75;
+                                                                    const percentage = indicatorCount > 0 ? (munculCount / indicatorCount) * 100 : 0;
+                                                                    isPassed = percentage >= threshold;
+                                                                } else if (kktp.approach === 'criteria_description') {
+                                                                    const minCriteria = kktp.min_criteria ?? Math.max(1, Math.round(indicatorCount / 2));
+                                                                    isPassed = munculCount >= minCriteria;
+                                                                } else if (kktp.approach === 'rubric') {
+                                                                    const minCriteria = kktp.min_criteria ?? Math.max(1, Math.round(indicatorCount / 2));
+                                                                    let metCount = 0;
+                                                                    const levels = assignment.instrument_config.levels || [];
+                                                                    const passingIdx = levels.findIndex((l: any) => l.name === kktp.passing_level);
+                                                                    try {
+                                                                        const p = JSON.parse(sub.content);
+                                                                        const scores = p.scores || {};
+                                                                        Object.values(scores).forEach((levelId: any) => {
+                                                                            const lvlIdx = levels.findIndex((l: any) => l.id === levelId);
+                                                                            if (passingIdx > -1 && lvlIdx >= passingIdx) {
+                                                                                metCount++;
+                                                                            } else if (passingIdx === -1 && lvlIdx >= Math.floor(levels.length / 2)) {
+                                                                                metCount++;
+                                                                            }
+                                                                        });
+                                                                    } catch(e) {}
+                                                                    isPassed = metCount >= minCriteria;
+                                                                } else {
+                                                                    isPassed = indicatorCount > 0 ? (munculCount / indicatorCount) >= 0.75 : false;
+                                                                }
+                                                                
+                                                                return isPassed ? (
+                                                                    <span className="inline-flex items-center gap-1 text-[9px] font-black text-emerald-600 bg-emerald-50 dark:bg-emerald-950/20 px-2 py-0.5 rounded uppercase tracking-wider border border-emerald-100 dark:border-emerald-900/30">
+                                                                        <CheckCircle2 className="h-3 w-3" /> Tuntas
+                                                                    </span>
+                                                                ) : (
+                                                                    <span className="inline-flex items-center gap-1 text-[9px] font-black text-rose-600 bg-rose-50 dark:bg-rose-950/20 px-2 py-0.5 rounded uppercase tracking-wider border border-rose-100 dark:border-rose-900/30">
+                                                                        <AlertCircle className="h-3 w-3" /> Belum Tuntas
+                                                                    </span>
+                                                                );
+                                                            })()}
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                <div className="flex justify-end pt-1">
+                                                    <button 
+                                                        onClick={() => {
+                                                            if (assignment.instrument_type === 'anecdotal_notes') {
+                                                                openAnecdotalModal(student, sub);
+                                                            } else if (assignment.instrument_type === 'rubric') {
+                                                                openRubricModal(student, sub);
+                                                            } else if (assignment.instrument_type === 'performance') {
+                                                                openPerformanceGrading(student);
+                                                            } else if (assignment.instrument_type === 'performance_observation') {
+                                                                openObservationModal(student, sub);
+                                                            } else if (assignment.instrument_type === 'guided_discussion') {
+                                                                openObservationModal(student, sub);
+                                                            } else if (assignment.instrument_type === 'project') {
+                                                                openProjectGrading(student);
+                                                            } else if (assignment.instrument_type === 'portfolio') {
+                                                                openPortfolioGrading(student);
+                                                            } else if (assignment.instrument_type === 'oral_test') {
+                                                                openOralGrading(student);
+                                                            } else {
+                                                                openObservationModal(student, sub);
+                                                            }
+                                                        }}
+                                                        className={`w-full justify-center inline-flex items-center gap-2 rounded-xl text-white px-4 py-2.5 text-xs font-black shadow-md transition-all hover:scale-105 active:scale-95 uppercase tracking-widest ${assignment.instrument_type === 'rubric' ? 'bg-amber-500 shadow-amber-100' : assignment.instrument_type === 'oral_test' ? 'bg-indigo-600 shadow-indigo-100' : 'bg-sky-500 shadow-sky-100'}`}
+                                                    >
+                                                        {assignment.instrument_type === 'rubric' ? <ListChecks className="h-3.5 w-3.5 shrink-0" /> : assignment.instrument_type === 'oral_test' ? <Mic className="h-3.5 w-3.5 shrink-0" /> : <Activity className="h-3.5 w-3.5 shrink-0" />}
+                                                        {sub ? (
+                                                            assignment.instrument_type === 'anecdotal_notes' ? 'Edit Catatan' : 
+                                                            assignment.instrument_type === 'rubric' ? 'Edit Rubrik' :
+                                                            assignment.instrument_type === 'oral_test' ? 'Edit Tes' :
+                                                            assignment.instrument_type === 'performance' ? 'Edit Penilaian' :
+                                                            'Edit Observasi'
+                                                        ) : (
+                                                            assignment.instrument_type === 'anecdotal_notes' ? 'Catatan' : 
+                                                            assignment.instrument_type === 'rubric' ? 'Isi Rubrik' :
+                                                            assignment.instrument_type === 'oral_test' ? 'Mulai Tes' :
+                                                            assignment.instrument_type === 'performance' ? 'Isi Penilaian' :
+                                                            'Observasi'
+                                                        )}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+
+                                {/* Desktop Table View */}
+                                <div className="hidden lg:block overflow-x-auto rounded-xl border border-border bg-white dark:bg-slate-900 shadow-2xl shadow-slate-100/50 dark:shadow-none">
+                                    <table className="w-full text-left text-sm border-collapse min-w-[650px] sm:min-w-0">
                                         <thead className="bg-slate-50/50 dark:bg-slate-800/50 text-[10px] font-black text-muted-foreground uppercase tracking-widest border-b border-border">
                                             <tr>
-                                                <th className="px-8 py-5">Siswa</th>
-                                                <th className="px-8 py-5">
+                                                <th className="px-4 sm:px-6 md:px-8 py-4 sm:py-5">Siswa</th>
+                                                <th className="px-4 sm:px-6 md:px-8 py-4 sm:py-5">
                                                     {assignment.instrument_type === 'observation_checklist' ? 'Indikator Terpenuhi' : 
                                                      assignment.instrument_type === 'rubric' ? 'Progres Penilaian' :
                                                      assignment.instrument_type === 'oral_test' ? 'Hasil Tes' :
                                                      assignment.instrument_type === 'performance' ? 'Progres Penilaian' :
                                                      'Indikator Terpenuhi'}
                                                 </th>
-                                                <th className="px-8 py-5">Status</th>
-                                                <th className="px-8 py-5 text-right">Aksi</th>
+                                                <th className="px-4 sm:px-6 md:px-8 py-4 sm:py-5">Status</th>
+                                                <th className="px-4 sm:px-6 md:px-8 py-4 sm:py-5 text-right">Aksi</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-border">
@@ -2127,9 +2446,9 @@ export default function ShowAssignment({ assignment, students, my_submission, my
 
                                                 return (
                                                     <tr key={student.id} className="group hover:bg-slate-50/30 dark:hover:bg-slate-800/20 transition-all">
-                                                        <td className="px-8 py-6">
-                                                            <div className="flex items-center gap-4">
-                                                                <div className="h-10 w-10 rounded-xl bg-sky-50 dark:bg-sky-950/30 flex items-center justify-center text-primary font-black text-xs shadow-sm border border-sky-100 dark:border-sky-900/30 group-hover:scale-110 transition-transform">
+                                                        <td className="px-4 sm:px-6 md:px-8 py-4 sm:py-6">
+                                                            <div className="flex items-center gap-3 sm:gap-4">
+                                                                <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl bg-sky-50 dark:bg-sky-950/30 flex items-center justify-center text-primary font-black text-xs shadow-sm border border-sky-100 dark:border-sky-900/30 group-hover:scale-110 transition-transform shrink-0">
                                                                     {student.name.charAt(0)}
                                                                 </div>
                                                                 <div>
@@ -2138,7 +2457,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                 </div>
                                                             </div>
                                                         </td>
-                                                        <td className="px-8 py-6">
+                                                        <td className="px-4 sm:px-6 md:px-8 py-4 sm:py-6">
                                                             <div className="flex flex-col gap-2">
                                                                 <div className="flex items-center gap-3">
                                                                     <div className="flex-1 h-1.5 max-w-[100px] rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
@@ -2198,20 +2517,20 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                 )}
                                                             </div>
                                                         </td>
-                                                        <td className="px-8 py-6">
+                                                        <td className="px-4 sm:px-6 md:px-8 py-4 sm:py-6">
                                                             {sub ? (
-                                                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/30 text-[10px] font-black text-success uppercase tracking-widest border border-emerald-100 dark:border-emerald-900/30">
+                                                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/30 text-[10px] font-black text-success uppercase tracking-widest border border-emerald-100 dark:border-emerald-900/30 whitespace-nowrap">
                                                                     <CheckCircle2 className="h-3 w-3" />
                                                                     Selesai
                                                                 </span>
                                                             ) : (
-                                                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 dark:bg-amber-950/30 text-[10px] font-black text-warning uppercase tracking-widest border border-amber-100 dark:border-amber-900/30">
+                                                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 dark:bg-amber-950/30 text-[10px] font-black text-warning uppercase tracking-widest border border-amber-100 dark:border-amber-900/30 whitespace-nowrap">
                                                                     <Clock className="h-3 w-3" />
                                                                     Belum Ada
                                                                 </span>
                                                             )}
                                                         </td>
-                                                        <td className="px-8 py-6 text-right">
+                                                        <td className="px-4 sm:px-6 md:px-8 py-4 sm:py-6 text-right">
                                                             <button 
                                                                 onClick={() => {
                                                                     if (assignment.instrument_type === 'anecdotal_notes') {
@@ -2234,9 +2553,9 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                         openObservationModal(student, sub);
                                                                     }
                                                                 }}
-                                                                className={`inline-flex items-center gap-2 rounded-xl text-white px-5 py-2.5 text-xs font-black shadow-lg transition-all hover:scale-105 active:scale-95 uppercase tracking-widest ${assignment.instrument_type === 'rubric' ? 'bg-amber-500 shadow-amber-100' : assignment.instrument_type === 'oral_test' ? 'bg-indigo-600 shadow-indigo-100' : 'bg-sky-500 shadow-sky-100'}`}
+                                                                className={`inline-flex items-center gap-1.5 sm:gap-2 rounded-xl text-white px-3 sm:px-5 py-2 sm:py-2.5 text-xs font-black shadow-lg transition-all hover:scale-105 active:scale-95 uppercase tracking-widest whitespace-nowrap ${assignment.instrument_type === 'rubric' ? 'bg-amber-500 shadow-amber-100' : assignment.instrument_type === 'oral_test' ? 'bg-indigo-600 shadow-indigo-100' : 'bg-sky-500 shadow-sky-100'}`}
                                                             >
-                                                                {assignment.instrument_type === 'rubric' ? <ListChecks className="h-3.5 w-3.5" /> : assignment.instrument_type === 'oral_test' ? <Mic className="h-3.5 w-3.5" /> : <Activity className="h-3.5 w-3.5" />}
+                                                                {assignment.instrument_type === 'rubric' ? <ListChecks className="h-3.5 w-3.5 shrink-0" /> : assignment.instrument_type === 'oral_test' ? <Mic className="h-3.5 w-3.5 shrink-0" /> : <Activity className="h-3.5 w-3.5 shrink-0" />}
                                                                 {sub ? (
                                                                     assignment.instrument_type === 'anecdotal_notes' ? 'Edit Catatan' : 
                                                                     assignment.instrument_type === 'rubric' ? 'Edit Rubrik' :
@@ -2517,22 +2836,173 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                         </div>
                                     </div>
                                 )}
-                                <div className="flex items-center justify-between px-4">
-                                    <h2 className="text-xl font-black text-foreground tracking-tight uppercase tracking-widest">Pengumpulan Siswa</h2>
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between px-2 sm:px-4 gap-2">
+                                    <h2 className="text-lg sm:text-xl font-black text-foreground tracking-tight uppercase tracking-widest">Pengumpulan Siswa</h2>
                                     <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
                                         {assignment.submissions.length} dari {students.length} Siswa Telah Mengumpulkan
                                     </span>
                                 </div>
 
-                                <div className="overflow-hidden rounded-xl border border-border bg-white dark:bg-slate-900 shadow-2xl shadow-slate-100/50 dark:shadow-none">
-                                    <table className="w-full text-left text-sm">
+                                {/* Responsive Card List for Mobile & Tablet */}
+                                <div className="space-y-3 lg:hidden">
+                                    {students.length === 0 ? (
+                                        <div className="p-8 text-center text-muted-foreground italic font-medium bg-white dark:bg-slate-900 rounded-xl border border-border">
+                                            Belum ada siswa di kelas ini.
+                                        </div>
+                                    ) : (
+                                        students.map((student: Student) => {
+                                            const s = submissionMap[student.id];
+                                            const displayScore = s ? (s.score ?? calculateSystemScore(s.content ?? '')) : null;
+                                            const effectivePassed = checkIsKKTPPassed(s, assignment, displayScore);
+
+                                            return (
+                                                <div key={student.id} className="p-4 rounded-xl border border-border bg-white dark:bg-slate-900 shadow-sm space-y-3 hover:border-primary/50 transition-all">
+                                                    {/* Top row: Avatar + Name + Status */}
+                                                    <div className="flex items-start justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-3">
+                                                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                                                            <div className="h-10 w-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-muted-foreground group-hover:bg-sky-50 dark:group-hover:bg-sky-950/30 group-hover:text-primary transition-colors shrink-0">
+                                                                <User className="h-5 w-5" />
+                                                            </div>
+                                                            <div className="min-w-0 flex-1">
+                                                                <p className="font-bold text-slate-700 dark:text-slate-200 text-sm truncate">{student.name}</p>
+                                                                <p className="text-[10px] font-bold text-muted-foreground tracking-widest">{student.nis}</p>
+                                                            </div>
+                                                        </div>
+                                                        <div className="shrink-0">
+                                                            {s ? (
+                                                                (s.score !== null) ? (
+                                                                    <div className="flex flex-col items-end gap-1">
+                                                                        <span className="inline-flex items-center gap-1.5 text-emerald-600 font-black text-[10px] uppercase tracking-widest">
+                                                                            <CheckCircle2 className="h-3.5 w-3.5" />
+                                                                            Dinilai
+                                                                        </span>
+                                                                        {effectivePassed ? (
+                                                                            <span className="text-[9px] font-black text-emerald-500 bg-emerald-50 dark:bg-emerald-950/20 px-2 py-0.5 rounded-md uppercase tracking-tighter">Tuntas</span>
+                                                                        ) : (
+                                                                            <div className="flex items-center gap-1.5">
+                                                                                <span className="text-[9px] font-black text-rose-500 bg-rose-50 dark:bg-rose-950/20 px-2 py-0.5 rounded-md uppercase tracking-tighter">Remedial</span>
+                                                                                {(s.attempts ?? 0) > 1 && (
+                                                                                    <span className="text-[9px] font-bold text-muted-foreground italic">({s.attempts ?? 0}x)</span>
+                                                                                )}
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                ) : (
+                                                                    <span className="inline-flex items-center gap-1.5 text-amber-500 font-black text-[10px] uppercase tracking-widest italic animate-pulse">
+                                                                        <Clock className="h-3.5 w-3.5" />
+                                                                        Menunggu
+                                                                    </span>
+                                                                )
+                                                            ) : (
+                                                                <span className="inline-flex items-center gap-1.5 text-rose-500 font-black text-[10px] uppercase tracking-widest">
+                                                                    <AlertCircle className="h-3.5 w-3.5" />
+                                                                    Belum Ada
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Middle row: Waktu Kumpul & Nilai */}
+                                                    <div className="grid grid-cols-2 gap-2 text-xs py-1">
+                                                        <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg border border-slate-100 dark:border-slate-800/80">
+                                                            <span className="text-[9px] font-black text-muted-foreground uppercase tracking-wider block mb-1">Waktu Kumpul</span>
+                                                            <span className="font-bold text-slate-700 dark:text-slate-300 text-xs">
+                                                                {s ? s.submitted_at : <span className="text-slate-400 font-normal italic">-</span>}
+                                                            </span>
+                                                        </div>
+                                                        <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg border border-slate-100 dark:border-slate-800/80">
+                                                            <span className="text-[9px] font-black text-muted-foreground uppercase tracking-wider block mb-1">Nilai</span>
+                                                            <div>
+                                                                {!s ? (
+                                                                    <span className="text-xs text-muted-foreground italic font-medium">-</span>
+                                                                ) : (
+                                                                    assignment.instrument_type === 'reflective_journal' || assignment.instrument_type === 'self_assessment' || assignment.instrument_type === 'peer_assessment' || assignment.instrument_type === 'exit_ticket' ? (
+                                                                        (() => {
+                                                                            if (s.score === null) return <span className="text-xs text-muted-foreground italic font-medium">-</span>;
+                                                                            let label = '-';
+                                                                            try {
+                                                                                const parsed = JSON.parse(s.content || '{}');
+                                                                                if (parsed.grading?.selected_level) {
+                                                                                    label = parsed.grading.selected_level;
+                                                                                } else {
+                                                                                    label = checkIsKKTPPassed(s, assignment, displayScore) ? 'Tuntas' : 'Belum Tuntas';
+                                                                                }
+                                                                            } catch(e) {
+                                                                                label = checkIsKKTPPassed(s, assignment, displayScore) ? 'Tuntas' : 'Belum Tuntas';
+                                                                            }
+                                                                            return <span className="text-xs font-bold text-foreground">{label}</span>;
+                                                                        })()
+                                                                    ) : (
+                                                                        <div>
+                                                                            <span className={`text-sm font-black ${(s.score !== null) ? (effectivePassed ? 'text-foreground' : 'text-destructive') : 'text-muted-foreground'}`}>
+                                                                                {displayScore}
+                                                                            </span>
+                                                                            <span className="text-[10px] font-black text-muted-foreground"> / {assignment.max_points}</span>
+                                                                            {s.remedial_history && s.remedial_history.length > 0 && (
+                                                                                <div className="text-[9px] text-muted-foreground mt-1 space-y-0.5">
+                                                                                    {s.remedial_history.map((hist: any, hIdx: number) => (
+                                                                                        <div key={hIdx}>
+                                                                                            Ke-{hist.attempt}: <span className="font-semibold text-foreground">{hist.score}</span>
+                                                                                        </div>
+                                                                                    ))}
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    )
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Bottom row: Actions */}
+                                                    <div className="flex items-center justify-end gap-2 pt-1">
+                                                        {s ? (
+                                                            <div className="flex items-center gap-2 w-full justify-end flex-wrap sm:flex-nowrap">
+                                                                {assignment.instrument_type === 'formative_quiz' && (
+                                                                    s.is_remedial_open ? (
+                                                                        <span className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-amber-50 dark:bg-amber-950/20 text-[10px] font-black text-warning uppercase border border-amber-200 dark:border-amber-900/30">
+                                                                            Akses Remedial Aktif
+                                                                        </span>
+                                                                    ) : (
+                                                                        <button
+                                                                            onClick={() => handleOpenRemedial(s.student_id)}
+                                                                            className="flex-1 sm:flex-initial justify-center inline-flex items-center gap-1.5 rounded-xl bg-amber-500 text-white px-3 py-2 text-xs font-black shadow-md shadow-amber-100 transition-all hover:scale-105 active:scale-95 uppercase tracking-widest whitespace-nowrap"
+                                                                        >
+                                                                            <RotateCcw className="h-3.5 w-3.5 shrink-0" />
+                                                                            Buka Remedial
+                                                                        </button>
+                                                                    )
+                                                                )}
+                                                                <button 
+                                                                    onClick={() => openGradeModal(s)}
+                                                                    className="flex-1 sm:flex-initial justify-center inline-flex items-center gap-1.5 rounded-xl bg-sky-500 text-white px-4 py-2.5 text-xs font-black shadow-md shadow-sky-100 transition-all hover:scale-105 active:scale-95 uppercase tracking-widest whitespace-nowrap"
+                                                                >
+                                                                    <Activity className="h-3.5 w-3.5 shrink-0" />
+                                                                    {assignment.instrument_type === 'reflective_journal' || assignment.instrument_type === 'self_assessment' || assignment.instrument_type === 'peer_assessment' || assignment.instrument_type === 'exit_ticket'
+                                                                        ? (s.score !== null ? 'Edit Penilaian' : 'Beri Penilaian')
+                                                                        : (s.score !== null ? 'Edit Nilai' : 'Beri Nilai')}
+                                                                </button>
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-xs text-muted-foreground italic font-medium">Belum mengumpulkan</span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })
+                                    )}
+                                </div>
+
+                                {/* Desktop Table View */}
+                                <div className="hidden lg:block overflow-x-auto rounded-xl border border-border bg-white dark:bg-slate-900 shadow-2xl shadow-slate-100/50 dark:shadow-none">
+                                    <table className="w-full text-left text-sm min-w-[700px] sm:min-w-0">
                                         <thead className="bg-slate-50/50 dark:bg-slate-800/50 text-[10px] font-black text-muted-foreground uppercase tracking-widest border-b border-border">
                                             <tr>
-                                                <th className="px-8 py-5">Siswa</th>
-                                                <th className="px-8 py-5">Waktu Kumpul</th>
-                                                <th className="px-8 py-5">Status</th>
-                                                <th className="px-8 py-5 text-right">Nilai</th>
-                                                <th className="px-8 py-5 text-right">Aksi</th>
+                                                <th className="px-4 sm:px-6 md:px-8 py-4 sm:py-5">Siswa</th>
+                                                <th className="px-4 sm:px-6 md:px-8 py-4 sm:py-5">Waktu Kumpul</th>
+                                                <th className="px-4 sm:px-6 md:px-8 py-4 sm:py-5">Status</th>
+                                                <th className="px-4 sm:px-6 md:px-8 py-4 sm:py-5 text-right">Nilai</th>
+                                                <th className="px-4 sm:px-6 md:px-8 py-4 sm:py-5 text-right">Aksi</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-border">
@@ -2546,13 +3016,13 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                 students.map((student: Student) => {
                                                     const s = submissionMap[student.id];
                                                     const displayScore = s ? (s.score ?? calculateSystemScore(s.content ?? '')) : null;
-                                                    const effectivePassed = s ? (s.score !== null ? s.is_passed : (displayScore !== null && displayScore >= (assignment.passing_grade || assignment.instrument_config?.pass_threshold || 70))) : false;
+                                                    const effectivePassed = checkIsKKTPPassed(s, assignment, displayScore);
 
                                                     return (
                                                         <tr key={student.id} className="group hover:bg-slate-50/30 dark:hover:bg-slate-800/20 transition-all">
-                                                            <td className="px-8 py-6">
-                                                                <div className="flex items-center gap-4">
-                                                                    <div className="h-10 w-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-muted-foreground group-hover:bg-sky-50 dark:group-hover:bg-sky-950/30 group-hover:text-primary transition-colors">
+                                                            <td className="px-4 sm:px-6 md:px-8 py-4 sm:py-6">
+                                                                <div className="flex items-center gap-3 sm:gap-4">
+                                                                    <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-muted-foreground group-hover:bg-sky-50 dark:group-hover:bg-sky-950/30 group-hover:text-primary transition-colors shrink-0">
                                                                         <User className="h-5 w-5" />
                                                                     </div>
                                                                     <div>
@@ -2561,10 +3031,10 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                     </div>
                                                                 </div>
                                                             </td>
-                                                            <td className="px-8 py-6 text-xs font-bold text-muted-foreground uppercase tracking-tighter">
+                                                            <td className="px-4 sm:px-6 md:px-8 py-4 sm:py-6 text-xs font-bold text-muted-foreground uppercase tracking-tighter whitespace-nowrap">
                                                                 {s ? s.submitted_at : <span className="text-slate-400 font-normal italic">-</span>}
                                                             </td>
-                                                            <td className="px-8 py-6">
+                                                            <td className="px-4 sm:px-6 md:px-8 py-4 sm:py-6">
                                                                 {s ? (
                                                                     (s.score !== null) ? (
                                                                         <div className="flex flex-col gap-1">
@@ -2596,7 +3066,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                     </span>
                                                                 )}
                                                             </td>
-                                                            <td className="px-8 py-6 text-right">
+                                                            <td className="px-4 sm:px-6 md:px-8 py-4 sm:py-6 text-right whitespace-nowrap">
                                                                 {!s ? (
                                                                     <span className="text-xs text-muted-foreground italic font-medium">-</span>
                                                                 ) : (
@@ -2608,13 +3078,11 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                                 const parsed = JSON.parse(s.content || '{}');
                                                                                 if (parsed.grading?.selected_level) {
                                                                                     label = parsed.grading.selected_level;
-                                                                                } else if (parsed.grading?.is_passed !== undefined) {
-                                                                                    label = parsed.grading.is_passed ? 'Tuntas' : 'Belum Tuntas';
                                                                                 } else {
-                                                                                    label = s.score >= (assignment.passing_grade || 70) ? 'Tuntas' : 'Belum Tuntas';
+                                                                                    label = checkIsKKTPPassed(s, assignment, displayScore) ? 'Tuntas' : 'Belum Tuntas';
                                                                                 }
                                                                             } catch(e) {
-                                                                                label = s.score >= (assignment.passing_grade || 70) ? 'Tuntas' : 'Belum Tuntas';
+                                                                                label = checkIsKKTPPassed(s, assignment, displayScore) ? 'Tuntas' : 'Belum Tuntas';
                                                                             }
                                                                             return <span className="text-xs font-bold text-foreground">{label}</span>;
                                                                         })()
@@ -2637,8 +3105,8 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                     )
                                                                 )}
                                                             </td>
-                                                            <td className="px-8 py-6 text-right">
-                                                                <div className="flex justify-end gap-2 items-center">
+                                                            <td className="px-4 sm:px-6 md:px-8 py-4 sm:py-6 text-right">
+                                                                <div className="flex justify-end gap-1.5 sm:gap-2 items-center flex-wrap sm:flex-nowrap">
                                                                     {s ? (
                                                                         <>
                                                                             {assignment.instrument_type === 'formative_quiz' && (
@@ -2649,18 +3117,18 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                                 ) : (
                                                                                     <button
                                                                                         onClick={() => handleOpenRemedial(s.student_id)}
-                                                                                        className="inline-flex items-center gap-1.5 rounded-xl bg-amber-500 text-white px-4 py-2 text-xs font-black shadow-lg shadow-amber-100 transition-all hover:scale-105 active:scale-95 uppercase tracking-widest"
+                                                                                        className="inline-flex items-center gap-1.5 rounded-xl bg-amber-500 text-white px-3 sm:px-4 py-2 text-xs font-black shadow-lg shadow-amber-100 transition-all hover:scale-105 active:scale-95 uppercase tracking-widest whitespace-nowrap"
                                                                                     >
-                                                                                        <RotateCcw className="h-3.5 w-3.5" />
+                                                                                        <RotateCcw className="h-3.5 w-3.5 shrink-0" />
                                                                                         Buka Remedial
                                                                                     </button>
                                                                                 )
                                                                             )}
                                                                             <button 
                                                                                 onClick={() => openGradeModal(s)}
-                                                                                className="inline-flex items-center gap-2 rounded-xl bg-sky-500 text-white px-5 py-2.5 text-xs font-black shadow-lg shadow-sky-100 transition-all hover:scale-105 active:scale-95 uppercase tracking-widest"
+                                                                                className="inline-flex items-center gap-1.5 sm:gap-2 rounded-xl bg-sky-500 text-white px-3 sm:px-5 py-2 sm:py-2.5 text-xs font-black shadow-lg shadow-sky-100 transition-all hover:scale-105 active:scale-95 uppercase tracking-widest whitespace-nowrap"
                                                                             >
-                                                                                <Activity className="h-3.5 w-3.5" />
+                                                                                <Activity className="h-3.5 w-3.5 shrink-0" />
                                                                                 {assignment.instrument_type === 'reflective_journal' || assignment.instrument_type === 'self_assessment' || assignment.instrument_type === 'peer_assessment' || assignment.instrument_type === 'exit_ticket'
                                                                                     ? (s.score !== null ? 'Edit Penilaian' : 'Beri Penilaian')
                                                                                     : (s.score !== null ? 'Edit Nilai' : 'Beri Nilai')}
@@ -4253,9 +4721,9 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                     if (parsed.grading?.selected_level) {
                                                                         return parsed.grading.selected_level;
                                                                     }
-                                                                    return parsed.grading?.is_passed ? 'Tuntas' : 'Belum Tuntas';
+                                                                    return checkIsKKTPPassed(my_submission, assignment, displayScore) ? 'Tuntas' : 'Belum Tuntas';
                                                                 } catch(e) {
-                                                                    return my_submission.score >= (assignment.passing_grade || 70) ? 'Tuntas' : 'Belum Tuntas';
+                                                                    return checkIsKKTPPassed(my_submission, assignment, displayScore) ? 'Tuntas' : 'Belum Tuntas';
                                                                 }
                                                             })()}
                                                         </span>
@@ -4263,13 +4731,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                     {my_submission?.score !== null && my_submission?.score !== undefined && (
                                                         <div className="pt-2">
                                                             {(() => {
-                                                                let isPassed = false;
-                                                                try {
-                                                                    const parsed = JSON.parse(my_submission.content || '{}');
-                                                                    isPassed = parsed.grading?.is_passed ?? (my_submission.score >= (assignment.passing_grade || 70));
-                                                                } catch(e) {
-                                                                    isPassed = my_submission.score >= (assignment.passing_grade || 70);
-                                                                }
+                                                                const isPassed = checkIsKKTPPassed(my_submission, assignment, displayScore);
                                                                 return isPassed ? (
                                                                     <span className="inline-flex items-center gap-1.5 px-3 py-1 text-white text-[9px] font-black uppercase tracking-widest rounded-lg bg-emerald-500 shadow-sm">
                                                                         <CheckCircle2 className="h-3 w-3" /> Tuntas
@@ -4295,11 +4757,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                     {displayScore !== null && (
                                                         <div className="pt-2">
                                                             {(() => {
-                                                                const systemScore = calculateSystemScore(my_submission?.content || '');
-                                                                const isObjectiveOnly = assignment.instrument_config?.questions?.every((q: any) => q.type === 'multiple_choice' || q.type === 'short_answer');
-                                                                const effectivePassed = (systemScore === 0 || isObjectiveOnly)
-                                                                    ? (Number(displayScore) >= (assignment.passing_grade || assignment.instrument_config?.pass_threshold || 70))
-                                                                    : (my_submission.score !== null ? my_submission.is_passed : (Number(displayScore) >= (assignment.passing_grade || assignment.instrument_config?.pass_threshold || 70)));
+                                                                const effectivePassed = checkIsKKTPPassed(my_submission, assignment, displayScore);
                                                                 
                                                                 return effectivePassed ? (
                                                                     <span className={`inline-flex items-center gap-1.5 px-3 py-1 text-white text-[9px] font-black uppercase tracking-widest ${
@@ -5119,8 +5577,8 @@ export default function ShowAssignment({ assignment, students, my_submission, my
 
             {/* Observation Modal (TEACHER) */}
             {selectedStudent && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 animate-in fade-in duration-300">
-                    <div className="w-full max-w-2xl rounded-xl bg-card p-6 shadow-none border border-border animate-in zoom-in-95 duration-300">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm p-2 sm:p-4 animate-in fade-in duration-300">
+                    <div className="w-full max-w-2xl max-h-[92vh] overflow-y-auto custom-scrollbar rounded-xl bg-card p-4 sm:p-6 shadow-none border border-border animate-in zoom-in-95 duration-300">
                         <div className="flex items-center justify-between mb-8">
                             <div className="flex items-center gap-4">
                                 <div className={`h-12 w-12 rounded-xl ${assignment.instrument_type === 'anecdotal_notes' ? 'bg-indigo-500 shadow-indigo-200' : 'bg-sky-500 shadow-sky-200'} flex items-center justify-center text-white shadow-lg`}>
@@ -6217,15 +6675,15 @@ export default function ShowAssignment({ assignment, students, my_submission, my
 
             {/* Grading Modal (Standard Quiz/Essay) */}
             {selectedSubmission && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 animate-in fade-in duration-300">
-                    <div className={`w-full max-h-[95vh] overflow-hidden rounded-xl bg-card shadow-none border border-border animate-in zoom-in-95 duration-300 flex gap-0 ${
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm p-2 sm:p-4 animate-in fade-in duration-300">
+                    <div className={`w-full max-h-[95vh] overflow-y-auto md:overflow-hidden rounded-xl bg-card shadow-none border border-border animate-in zoom-in-95 duration-300 flex gap-0 custom-scrollbar ${
                         (() => {
                             try {
                                 const p = JSON.parse(selectedSubmission.content || '');
                                 return p.type === 'concept_map' 
                                     ? 'max-w-[95vw] w-full flex-col lg:flex-row h-[90vh]' 
-                                    : 'max-w-4xl flex-col md:flex-row p-10';
-                            } catch { return 'max-w-4xl flex-col md:flex-row p-10'; }
+                                    : 'max-w-4xl flex-col md:flex-row p-4 sm:p-6 md:p-10';
+                            } catch { return 'max-w-4xl flex-col md:flex-row p-4 sm:p-6 md:p-10'; }
                         })()
                     }`}>
                         {/* Side: Student Response Preview */}
@@ -6234,9 +6692,9 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                 try {
                                     const p = JSON.parse(selectedSubmission.content || '');
                                     return p.type === 'concept_map'
-                                        ? 'flex-1 p-8 h-full flex flex-col min-h-0 overflow-hidden'
-                                        : 'flex-1 pr-4 max-h-[70vh] space-y-6';
-                                } catch { return 'flex-1 pr-4 max-h-[70vh] space-y-6'; }
+                                        ? 'flex-1 p-4 sm:p-8 h-full flex flex-col min-h-0 overflow-hidden'
+                                        : 'flex-1 md:pr-4 max-h-[50vh] md:max-h-[70vh] space-y-6';
+                                } catch { return 'flex-1 md:pr-4 max-h-[50vh] md:max-h-[70vh] space-y-6'; }
                             })()
                         }`}>
                             <div className="flex items-center justify-between mb-4 shrink-0">
@@ -6864,9 +7322,9 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                 try {
                                     const p = JSON.parse(selectedSubmission.content || '');
                                     return p.type === 'concept_map'
-                                        ? 'w-full lg:w-[400px] p-8 border-t lg:border-t-0 lg:border-l border-slate-150 dark:border-slate-800 h-full flex flex-col shrink-0 overflow-hidden bg-slate-50/50 dark:bg-slate-900/30'
-                                        : 'w-full md:w-80 p-8 rounded-xl border max-h-[70vh] pr-2 space-y-6';
-                                } catch { return 'w-full md:w-80 p-8 rounded-xl border max-h-[70vh] pr-2 space-y-6'; }
+                                        ? 'w-full lg:w-[400px] p-4 sm:p-8 border-t lg:border-t-0 lg:border-l border-slate-150 dark:border-slate-800 h-full flex flex-col shrink-0 overflow-hidden bg-slate-50/50 dark:bg-slate-900/30'
+                                        : 'w-full md:w-80 p-4 sm:p-6 md:p-8 rounded-xl border max-h-none md:max-h-[70vh] shrink-0 space-y-6 md:pr-2';
+                                } catch { return 'w-full md:w-80 p-4 sm:p-6 md:p-8 rounded-xl border max-h-none md:max-h-[70vh] shrink-0 space-y-6 md:pr-2'; }
                             })()
                         }`}>
                             <form 
@@ -7197,6 +7655,12 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                 onConfirm={handleDelete}
                 requireInput="DELETE"
                 inputPlaceholder="Ketik DELETE untuk konfirmasi"
+            />
+
+            <KktpModal
+                isOpen={isKktpModalOpen}
+                onClose={() => setIsKktpModalOpen(false)}
+                assignment={assignment}
             />
 
             <Dialog open={submitSuccess} onOpenChange={setSubmitSuccess}>

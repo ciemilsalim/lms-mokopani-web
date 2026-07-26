@@ -170,6 +170,7 @@ const renderAssessmentDetails = (assignments: Assignment[]) => {
                 const questions = config.questions || [];
                 const indicators = config.indicators || [];
                 const levels = config.levels || [];
+                const rubricLevels = config.rubricLevels || kktp.rubricLevels || null;
 
                 return (
                     <div key={asm.id} className="border border-black p-4 rounded-md space-y-4 print-avoid-break bg-gray-50/10" style={{ color: '#000000', borderColor: '#000000' }}>
@@ -325,6 +326,33 @@ const renderAssessmentDetails = (assignments: Assignment[]) => {
                                     <p className="mt-1 text-gray-700 leading-relaxed">
                                         Murid dianggap mencapai tujuan pembelajaran apabila memenuhi kriteria minimal sebanyak <strong className="font-bold text-emerald-700">{kktp.min_criteria || 2} kriteria</strong> dari total kriteria penilaian yang ditetapkan.
                                     </p>
+                                </div>
+                            )}
+
+                            {/* Rubric Levels (Wizard Format) */}
+                            {rubricLevels && (
+                                <div className="text-[9pt] text-gray-800 bg-amber-50/20 p-2.5 rounded border border-amber-500/30 space-y-2 mb-3">
+                                    <p className="font-bold text-amber-950">Pendekatan: Rubrik (4 Tahap Capaian)</p>
+                                    <div className="overflow-x-auto mt-2">
+                                        <table className="w-full border-collapse border border-black text-xs">
+                                            <thead>
+                                                <tr className="bg-gray-100 border-b border-black text-center font-bold">
+                                                    <th className="border border-black p-2 bg-rose-50 text-rose-950 font-bold w-1/4">1. Baru Berkembang</th>
+                                                    <th className="border border-black p-2 bg-amber-50 text-amber-950 font-bold w-1/4">2. Layak</th>
+                                                    <th className="border border-black p-2 bg-indigo-50 text-indigo-950 font-bold w-1/4">3. Cakap (Standar Ketuntasan)</th>
+                                                    <th className="border border-black p-2 bg-emerald-50 text-emerald-950 font-bold w-1/4">4. Mahir</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr className="align-top">
+                                                    <td className="border border-black p-2 bg-rose-50/20">{rubricLevels.baru_berkembang || rubricLevels[0]?.description || '-'}</td>
+                                                    <td className="border border-black p-2 bg-amber-50/20">{rubricLevels.layak || rubricLevels[1]?.description || '-'}</td>
+                                                    <td className="border border-black p-2 bg-indigo-50/20 font-medium">{rubricLevels.cakap || rubricLevels[2]?.description || '-'}</td>
+                                                    <td className="border border-black p-2 bg-emerald-50/20">{rubricLevels.mahir || rubricLevels[3]?.description || '-'}</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 </div>
                             )}
 
@@ -566,6 +594,16 @@ export default function RppPrintPreview({ material, assignments = [], school_nam
                         line-height: 1.5 !important;
                         word-wrap: break-word !important;
                         overflow-wrap: break-word !important;
+                    }
+                    .lkpd-section table, .lkpd-section th, .lkpd-section td,
+                    .signature-section table, .signature-section th, .signature-section td,
+                    table.no-border, table.no-border th, table.no-border td,
+                    .no-border, .no-border th, .no-border td {
+                        border: 0 !important;
+                        border-width: 0 !important;
+                    }
+                    .signature-section, .signature-section *, .signature-section td, .signature-section p {
+                        text-align: center !important;
                     }
                     .print-table th {
                         background-color: #f2f2f2 !important;
@@ -1158,15 +1196,58 @@ export default function RppPrintPreview({ material, assignments = [], school_nam
                         )}
 
                         {/* 7. Lembar Kerja Peserta Didik (LKPD) */}
-                        <div className="space-y-4 mb-12 print-page-break">
+                        <div className="lkpd-section space-y-4 mb-12 print-page-break">
                             <h4 className="text-md font-bold uppercase border-b border-black pb-1 mb-3 text-black">
                                 {hasSummativeAssignments ? "VI. LEMBAR KERJA PESERTA DIDIK (LKPD)" : "VII. LEMBAR KERJA PESERTA DIDIK (LKPD)"}
                             </h4>
                             
-                            <div className="border border-black p-6 rounded-lg bg-gray-50/50">
+                            <div className="border-0 p-6 rounded-lg bg-gray-50/50 print:border-0">
                                 <div className="text-center mb-6">
                                     <h5 className="text-sm font-bold uppercase tracking-wide text-black">{lkpdTitle}</h5>
                                     <p className="text-[10pt] italic text-gray-700 mt-1">Aktivitas Kerja Kelompok Kolaboratif</p>
+                                </div>
+
+                                {/* Kotak Pengisian Identitas (Mandatory) */}
+                                <div className="mb-6 p-4 border-0 rounded bg-white print:bg-transparent print:border-0">
+                                    <table className="w-full border-collapse text-sm font-semibold border-0 no-border" style={{ border: 'none', margin: 0 }}>
+                                        <tbody>
+                                            <tr>
+                                                <td className="py-2 align-top w-40 font-bold text-black" style={{ border: 'none', width: '160px', padding: '6px 8px' }}>Nama/Kelompok</td>
+                                                <td className="py-2 align-top text-center w-6 font-bold text-black" style={{ border: 'none', width: '24px', padding: '6px 4px' }}>:</td>
+                                                <td className="py-2 align-top text-black" style={{ border: 'none', padding: '6px 8px' }}>
+                                                    <div className="border-b-2 border-dotted border-black w-full min-h-[24px]"></div>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td className="py-2 align-top font-bold text-black pt-3" style={{ border: 'none', padding: '6px 8px' }}>Anggota</td>
+                                                <td className="py-2 align-top text-center font-bold text-black pt-3" style={{ border: 'none', padding: '6px 4px' }}>:</td>
+                                                <td className="py-2 align-top text-black pt-3" style={{ border: 'none', padding: '6px 8px' }}>
+                                                    <div className="space-y-3 font-normal text-sm">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="w-6 font-semibold">1.</span>
+                                                            <div className="border-b-2 border-dotted border-black flex-1 min-h-[20px]"></div>
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="w-6 font-semibold">2.</span>
+                                                            <div className="border-b-2 border-dotted border-black flex-1 min-h-[20px]"></div>
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="w-6 font-semibold">3.</span>
+                                                            <div className="border-b-2 border-dotted border-black flex-1 min-h-[20px]"></div>
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="w-6 font-semibold">4.</span>
+                                                            <div className="border-b-2 border-dotted border-black flex-1 min-h-[20px]"></div>
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="w-6 font-semibold">5.</span>
+                                                            <div className="border-b-2 border-dotted border-black flex-1 min-h-[20px]"></div>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
                                 </div>
 
                                 <div className="space-y-4 text-[11pt]">
@@ -1279,7 +1360,7 @@ export default function RppPrintPreview({ material, assignments = [], school_nam
                         </div>
 
                         {/* 7. Tanda Tangan (Signature block) */}
-                        <div className="print-avoid-break mt-12 grid grid-cols-2 gap-12 text-center text-[11pt] text-black">
+                        <div className="signature-section print-avoid-break mt-12 grid grid-cols-2 gap-12 text-center text-[11pt] text-black">
                             <div className="space-y-20">
                                 <div className="space-y-1">
                                     <p>Mengetahui,</p>

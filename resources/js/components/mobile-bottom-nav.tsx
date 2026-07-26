@@ -1,3 +1,4 @@
+import React from 'react';
 import { type NavItem, type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
 import { Menu, LogOut, Settings, Palette, ExternalLink, CalendarCheck } from 'lucide-react';
@@ -16,7 +17,7 @@ export function MobileBottomNav() {
     let primaryUrls: string[] = [];
     switch (user_role) {
         case 'teacher':
-            primaryUrls = ['/dashboard', '/materials', '/assignments', '/gradebook'];
+            primaryUrls = ['/dashboard', '/materials'];
             break;
         case 'student':
             primaryUrls = ['/dashboard', '/materials', '/gradebook'];
@@ -45,31 +46,32 @@ export function MobileBottomNav() {
                 const actuallyActive = isDashboard || (isActive && item.url !== '/dashboard');
                 
                 return (
-                    <Link
-                        key={item.title}
-                        href={item.url || '#'}
-                        className={`flex flex-col items-center justify-center w-full h-full gap-1 transition-colors ${actuallyActive ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}
-                    >
-                        {item.icon && <item.icon className={`h-5 w-5 ${actuallyActive ? 'fill-primary/20' : ''}`} />}
-                        <span className="text-[10px] font-semibold tracking-tight truncate max-w-[72px] text-center">
-                            {item.title}
-                        </span>
-                    </Link>
+                    <React.Fragment key={item.title}>
+                        <Link
+                            href={item.url || '#'}
+                            className={`flex flex-col items-center justify-center w-full h-full gap-1 transition-colors ${actuallyActive ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+                        >
+                            {item.icon && <item.icon className={`h-5 w-5 ${actuallyActive ? 'fill-primary/20' : ''}`} />}
+                            <span className="text-[10px] font-semibold tracking-tight truncate max-w-[72px] text-center">
+                                {item.title}
+                            </span>
+                        </Link>
+
+                        {/* Tombol Presensi - tepat setelah Dashboard untuk Admin & Teacher */}
+                        {(user_role === 'admin' || user_role === 'teacher') && item.url === '/dashboard' && (
+                            <a
+                                href="/sso/presensi"
+                                className="flex flex-col items-center justify-center w-full h-full gap-1 text-sky-600 dark:text-sky-400 hover:text-sky-700 dark:hover:text-sky-300 transition-colors"
+                            >
+                                <CalendarCheck className="h-5 w-5" />
+                                <span className="text-[10px] font-semibold tracking-tight truncate max-w-[72px] text-center">
+                                    Presensi
+                                </span>
+                            </a>
+                        )}
+                    </React.Fragment>
                 );
             })}
-
-            {/* Tombol Presensi - langsung di bottom bar */}
-            {(user_role === 'admin' || user_role === 'teacher') && (
-                <a
-                    href="/sso/presensi"
-                    className="flex flex-col items-center justify-center w-full h-full gap-1 text-sky-600 dark:text-sky-400 hover:text-sky-700 dark:hover:text-sky-300 transition-colors"
-                >
-                    <CalendarCheck className="h-5 w-5" />
-                    <span className="text-[10px] font-semibold tracking-tight truncate max-w-[72px] text-center">
-                        Presensi
-                    </span>
-                </a>
-            )}
 
             {/* Menu Lainnya */}
             <Sheet>

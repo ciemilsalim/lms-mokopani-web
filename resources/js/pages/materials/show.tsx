@@ -215,6 +215,7 @@ const renderAssessmentDetails = (assignments: Assignment[]) => {
                 const questions = config.questions || [];
                 const indicators = config.indicators || [];
                 const levels = config.levels || [];
+                const rubricLevels = config.rubricLevels || kktp.rubricLevels || null;
 
                 return (
                     <div key={asm.id} className="border border-black p-4 rounded-md space-y-4 print-avoid-break bg-gray-50/10" style={{ color: '#000000', borderColor: '#000000' }}>
@@ -370,6 +371,33 @@ const renderAssessmentDetails = (assignments: Assignment[]) => {
                                     <p className="mt-1 text-gray-700 leading-relaxed">
                                         Murid dianggap mencapai tujuan pembelajaran apabila memenuhi kriteria minimal sebanyak <strong className="font-bold text-emerald-700">{kktp.min_criteria || 2} kriteria</strong> dari total kriteria penilaian yang ditetapkan.
                                     </p>
+                                </div>
+                            )}
+
+                            {/* Rubric Levels (Wizard Format) */}
+                            {rubricLevels && (
+                                <div className="text-[9pt] text-gray-800 bg-amber-50/20 p-2.5 rounded border border-amber-500/30 space-y-2 mb-3">
+                                    <p className="font-bold text-amber-950">Pendekatan: Rubrik (4 Tahap Capaian)</p>
+                                    <div className="overflow-x-auto mt-2">
+                                        <table className="w-full border-collapse border border-black text-xs">
+                                            <thead>
+                                                <tr className="bg-gray-100 border-b border-black text-center font-bold">
+                                                    <th className="border border-black p-2 bg-rose-50 text-rose-950 font-bold w-1/4">1. Baru Berkembang</th>
+                                                    <th className="border border-black p-2 bg-amber-50 text-amber-950 font-bold w-1/4">2. Layak</th>
+                                                    <th className="border border-black p-2 bg-indigo-50 text-indigo-950 font-bold w-1/4">3. Cakap (Standar Ketuntasan)</th>
+                                                    <th className="border border-black p-2 bg-emerald-50 text-emerald-950 font-bold w-1/4">4. Mahir</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr className="align-top">
+                                                    <td className="border border-black p-2 bg-rose-50/20">{rubricLevels.baru_berkembang || rubricLevels[0]?.description || '-'}</td>
+                                                    <td className="border border-black p-2 bg-amber-50/20">{rubricLevels.layak || rubricLevels[1]?.description || '-'}</td>
+                                                    <td className="border border-black p-2 bg-indigo-50/20 font-medium">{rubricLevels.cakap || rubricLevels[2]?.description || '-'}</td>
+                                                    <td className="border border-black p-2 bg-emerald-50/20">{rubricLevels.mahir || rubricLevels[3]?.description || '-'}</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 </div>
                             )}
 
@@ -771,25 +799,25 @@ export default function ShowMaterial({
 
     if (isTeachingMode) {
         return (
-            <div className="fixed inset-0 z-[100] flex flex-col bg-slate-900 text-slate-100 font-sans overflow-hidden select-none">
+            <div className="fixed inset-0 z-[100] flex flex-col bg-background text-foreground font-sans overflow-hidden select-none">
                 <Head title={`[Mode Mengajar] ${material.title} – LMS Mokopani`} />
                 
                 {/* ── Floating Kendali Header ── */}
-                <header className="flex h-16 w-full items-center justify-between border-b border-slate-800 bg-slate-900/95 px-6 backdrop-blur-md shrink-0 shadow-lg">
+                <header className="flex h-16 w-full items-center justify-between border-b border-border/80 bg-background/95 px-6 backdrop-blur-md shrink-0 shadow-sm dark:shadow-lg">
                     <div className="flex items-center gap-3 min-w-0">
-                        <span className="shrink-0 rounded-lg bg-indigo-500/20 border border-indigo-500/30 px-2.5 py-1 text-xs font-extrabold text-indigo-400 uppercase tracking-wider">
+                        <span className="shrink-0 rounded-lg bg-indigo-500/10 dark:bg-indigo-500/20 border border-indigo-500/20 dark:border-indigo-500/30 px-2.5 py-1 text-xs font-extrabold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
                             {material.subject_name}
                         </span>
-                        <h1 className="text-base sm:text-lg font-black tracking-tight text-white truncate max-w-md md:max-w-xl">
+                        <h1 className="text-base sm:text-lg font-black tracking-tight text-foreground truncate max-w-md md:max-w-xl">
                             {material.title}
                         </h1>
                     </div>
 
-                    <div className="hidden md:flex items-center gap-1 rounded-xl bg-slate-800/80 p-1 border border-slate-700/60">
+                    <div className="hidden md:flex items-center gap-1 rounded-xl bg-secondary/80 p-1 border border-border/60">
                         <button
                             onClick={() => setTeachingTab('content')}
                             className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition cursor-pointer ${
-                                teachingTab === 'content' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
+                                teachingTab === 'content' ? 'bg-indigo-600 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-background/60'
                             }`}
                         >
                             <BookOpen className="h-3.5 w-3.5" /> Materi
@@ -798,7 +826,7 @@ export default function ShowMaterial({
                             <button
                                 onClick={() => setTeachingTab('lkpd')}
                                 className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition cursor-pointer ${
-                                    teachingTab === 'lkpd' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
+                                    teachingTab === 'lkpd' ? 'bg-indigo-600 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-background/60'
                                 }`}
                             >
                                 <FileText className="h-3.5 w-3.5" /> LKPD & Langkah
@@ -808,7 +836,7 @@ export default function ShowMaterial({
                             <button
                                 onClick={() => setTeachingTab('illustration')}
                                 className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition cursor-pointer ${
-                                    teachingTab === 'illustration' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
+                                    teachingTab === 'illustration' ? 'bg-indigo-600 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-background/60'
                                 }`}
                             >
                                 <ImageIcon className="h-3.5 w-3.5" /> Ilustrasi AI
@@ -818,7 +846,7 @@ export default function ShowMaterial({
                             <button
                                 onClick={() => setTeachingTab('resources')}
                                 className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition cursor-pointer ${
-                                    teachingTab === 'resources' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
+                                    teachingTab === 'resources' ? 'bg-indigo-600 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-background/60'
                                 }`}
                             >
                                 <FolderOpen className="h-3.5 w-3.5" /> Media & Lampiran
@@ -828,7 +856,7 @@ export default function ShowMaterial({
                             <button
                                 onClick={() => setTeachingTab('assessments')}
                                 className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition cursor-pointer ${
-                                    teachingTab === 'assessments' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
+                                    teachingTab === 'assessments' ? 'bg-indigo-600 text-white shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-background/60'
                                 }`}
                             >
                                 <Target className="h-3.5 w-3.5" /> Asesmen ({assignments.length})
@@ -842,7 +870,7 @@ export default function ShowMaterial({
                                 setIsTeachingMode(false);
                                 if (document.fullscreenElement) document.exitFullscreen()?.catch(() => {});
                             }}
-                            className="flex items-center gap-1.5 rounded-xl bg-rose-500/20 border border-rose-500/30 px-3.5 py-2 text-xs font-bold text-rose-300 transition hover:bg-rose-500/30 active:scale-95 cursor-pointer"
+                            className="flex items-center gap-1.5 rounded-xl bg-rose-500/10 dark:bg-rose-500/20 border border-rose-500/20 dark:border-rose-500/30 px-3.5 py-2 text-xs font-bold text-rose-600 dark:text-rose-300 transition hover:bg-rose-500/20 dark:hover:bg-rose-500/30 active:scale-95 cursor-pointer"
                         >
                             <X className="h-4 w-4" />
                             <span>Keluar <span className="hidden sm:inline">[Esc]</span></span>
@@ -851,11 +879,11 @@ export default function ShowMaterial({
                 </header>
 
                 {/* ── Mobile Navigation Pills (If Screen < MD) ── */}
-                <div className="flex md:hidden items-center justify-center gap-1 overflow-x-auto bg-slate-900/90 p-2 border-b border-slate-800 shrink-0">
+                <div className="flex md:hidden items-center justify-center gap-1 overflow-x-auto bg-background/95 p-2 border-b border-border/80 shrink-0">
                     <button
                         onClick={() => setTeachingTab('content')}
                         className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold shrink-0 ${
-                            teachingTab === 'content' ? 'bg-indigo-600 text-white' : 'text-slate-400'
+                            teachingTab === 'content' ? 'bg-indigo-600 text-white' : 'text-muted-foreground hover:text-foreground'
                         }`}
                     >
                         <BookOpen className="h-3.5 w-3.5" /> Materi
@@ -864,7 +892,7 @@ export default function ShowMaterial({
                         <button
                             onClick={() => setTeachingTab('lkpd')}
                             className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold shrink-0 ${
-                                teachingTab === 'lkpd' ? 'bg-indigo-600 text-white' : 'text-slate-400'
+                                teachingTab === 'lkpd' ? 'bg-indigo-600 text-white' : 'text-muted-foreground hover:text-foreground'
                             }`}
                         >
                             <FileText className="h-3.5 w-3.5" /> LKPD
@@ -874,7 +902,7 @@ export default function ShowMaterial({
                         <button
                             onClick={() => setTeachingTab('illustration')}
                             className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold shrink-0 ${
-                                teachingTab === 'illustration' ? 'bg-indigo-600 text-white' : 'text-slate-400'
+                                teachingTab === 'illustration' ? 'bg-indigo-600 text-white' : 'text-muted-foreground hover:text-foreground'
                             }`}
                         >
                             <ImageIcon className="h-3.5 w-3.5" /> Ilustrasi
@@ -884,7 +912,7 @@ export default function ShowMaterial({
                         <button
                             onClick={() => setTeachingTab('resources')}
                             className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold shrink-0 ${
-                                teachingTab === 'resources' ? 'bg-indigo-600 text-white' : 'text-slate-400'
+                                teachingTab === 'resources' ? 'bg-indigo-600 text-white' : 'text-muted-foreground hover:text-foreground'
                             }`}
                         >
                             <FolderOpen className="h-3.5 w-3.5" /> Media
@@ -894,7 +922,7 @@ export default function ShowMaterial({
                         <button
                             onClick={() => setTeachingTab('assessments')}
                             className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold shrink-0 ${
-                                teachingTab === 'assessments' ? 'bg-indigo-600 text-white' : 'text-slate-400'
+                                teachingTab === 'assessments' ? 'bg-indigo-600 text-white' : 'text-muted-foreground hover:text-foreground'
                             }`}
                         >
                             <Target className="h-3.5 w-3.5" /> Asesmen
@@ -903,29 +931,29 @@ export default function ShowMaterial({
                 </div>
 
                 {/* ── Main Content Area (Scrollable) ── */}
-                <main className="dark flex-1 overflow-y-auto overflow-x-hidden w-full max-w-full px-4 sm:px-8 md:px-16 py-8 sm:py-12 md:py-16 bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 text-slate-100 selection:bg-indigo-500 selection:text-white">
+                <main className="flex-1 overflow-y-auto overflow-x-hidden w-full max-w-full px-4 sm:px-8 md:px-16 py-8 sm:py-12 md:py-16 bg-gradient-to-b from-background via-background to-muted/20 text-foreground selection:bg-indigo-500 selection:text-white">
                     <div className="max-w-4xl mx-auto space-y-10 w-full overflow-hidden break-words animate-in fade-in zoom-in-95 duration-300">
                         {teachingTab === 'content' && (
                             <div className="space-y-10 pb-20 w-full max-w-full overflow-hidden break-words">
-                                <div className="p-6 rounded-2xl bg-slate-800/60 border border-slate-700/80 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xl">
+                                <div className="p-6 rounded-2xl bg-card/80 border border-border/60 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xl">
                                     <div>
-                                        <div className="text-xs font-extrabold uppercase tracking-wider text-indigo-400 mb-1 flex items-center gap-1.5">
+                                        <div className="text-xs font-extrabold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 mb-1 flex items-center gap-1.5">
                                             <Sparkles className="h-3.5 w-3.5" />
                                             Tujuan Pembelajaran ({material.tp_code || 'TP'})
                                         </div>
-                                        <div className="text-base sm:text-lg font-bold text-slate-200 leading-snug break-words">
+                                        <div className="text-base sm:text-lg font-bold text-foreground leading-snug break-words">
                                             {material.tp_desc || 'Tanpa deskripsi khusus'}
                                         </div>
                                     </div>
-                                    <div className="flex items-center gap-3 shrink-0 text-xs text-slate-400 bg-slate-800 px-4 py-2.5 rounded-xl border border-slate-700">
-                                        <User className="h-4 w-4 text-indigo-400" />
-                                        <span>Dibuat oleh <strong className="text-slate-200">{material.teacher_name}</strong></span>
+                                    <div className="flex items-center gap-3 shrink-0 text-xs text-muted-foreground bg-secondary/80 px-4 py-2.5 rounded-xl border border-border/60">
+                                        <User className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                                        <span>Dibuat oleh <strong className="text-foreground">{material.teacher_name}</strong></span>
                                     </div>
                                 </div>
 
                                 <div 
-                                    className="prose prose-invert max-w-none prose-p:text-xl sm:prose-p:text-2xl prose-p:leading-relaxed prose-headings:text-indigo-300 prose-h1:text-4xl sm:prose-h1:text-5xl prose-h2:text-3xl sm:prose-h2:text-4xl prose-h3:text-2xl sm:prose-h3:text-3xl prose-li:text-xl sm:prose-li:text-2xl prose-img:rounded-2xl prose-img:shadow-2xl prose-a:text-indigo-400 prose-blockquote:border-indigo-500 prose-blockquote:bg-indigo-950/20 prose-blockquote:p-6 prose-blockquote:rounded-r-2xl prose-blockquote:text-xl sm:prose-blockquote:text-2xl prose-strong:text-white font-normal tracking-wide w-full max-w-full break-words prose-ul:pl-0 prose-ol:pl-0 prose-ul:list-none prose-ol:list-none [&_*]:max-w-full [&_*]:break-words [&_*]:whitespace-normal"
-                                    dangerouslySetInnerHTML={{ __html: formatDocumentLayout(material.content) || '<p class="text-slate-500 italic text-center py-12">Belum ada teks konten pada materi ini.</p>' }}
+                                    className="prose dark:prose-invert max-w-none prose-p:text-xl sm:prose-p:text-2xl prose-p:leading-relaxed prose-headings:text-indigo-600 dark:prose-headings:text-indigo-300 prose-h1:text-4xl sm:prose-h1:text-5xl prose-h2:text-3xl sm:prose-h2:text-4xl prose-h3:text-2xl sm:prose-h3:text-3xl prose-li:text-xl sm:prose-li:text-2xl prose-img:rounded-2xl prose-img:shadow-2xl prose-a:text-indigo-600 dark:prose-a:text-indigo-400 prose-blockquote:border-indigo-500 prose-blockquote:bg-indigo-500/5 dark:prose-blockquote:bg-indigo-950/20 prose-blockquote:p-6 prose-blockquote:rounded-r-2xl prose-blockquote:text-xl sm:prose-blockquote:text-2xl prose-strong:text-foreground font-normal tracking-wide w-full max-w-full break-words prose-ul:pl-0 prose-ol:pl-0 prose-ul:list-none prose-ol:list-none [&_*]:max-w-full [&_*]:break-words [&_*]:whitespace-normal text-foreground"
+                                    dangerouslySetInnerHTML={{ __html: formatDocumentLayout(material.content) || '<p class="text-muted-foreground italic text-center py-12">Belum ada teks konten pada materi ini.</p>' }}
                                 />
                             </div>
                         )}
@@ -933,37 +961,37 @@ export default function ShowMaterial({
                         {teachingTab === 'lkpd' && (
                             <div className="space-y-8 pb-20 w-full max-w-full overflow-hidden break-words">
                                 <div className="text-center space-y-2">
-                                    <h2 className="text-3xl sm:text-4xl font-black tracking-tight text-white">📑 LKPD Terstruktur & Langkah Aktivitas</h2>
-                                    <p className="text-base sm:text-lg text-slate-400">Alur pembelajaran kolaboratif dan instruksi kerja peserta didik.</p>
+                                    <h2 className="text-3xl sm:text-4xl font-black tracking-tight text-foreground">📑 LKPD Terstruktur & Langkah Aktivitas</h2>
+                                    <p className="text-base sm:text-lg text-muted-foreground">Alur pembelajaran kolaboratif dan instruksi kerja peserta didik.</p>
                                 </div>
 
                                 <div className="grid md:grid-cols-2 gap-6 w-full max-w-full overflow-hidden">
                                     {material.application_activity && (
-                                        <div className="p-8 rounded-3xl bg-gradient-to-br from-indigo-950/50 to-slate-900 border border-indigo-500/30 space-y-4 shadow-2xl w-full max-w-full overflow-hidden break-words">
-                                            <div className="flex items-center gap-3 text-indigo-400 font-extrabold text-lg uppercase tracking-wider">
-                                                <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 font-black">1</span>
+                                        <div className="p-8 rounded-3xl bg-gradient-to-br from-indigo-500/5 via-card to-card dark:from-indigo-950/50 dark:to-slate-900 border border-indigo-500/20 dark:border-indigo-500/30 space-y-4 shadow-xl w-full max-w-full overflow-hidden break-words">
+                                            <div className="flex items-center gap-3 text-indigo-600 dark:text-indigo-400 font-extrabold text-lg uppercase tracking-wider">
+                                                <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-500/10 dark:bg-indigo-500/20 border border-indigo-500/20 dark:border-indigo-500/30 text-indigo-600 dark:text-indigo-300 font-black">1</span>
                                                 Aktivitas Mengaplikasi
                                             </div>
-                                            <div className="prose prose-invert prose-p:text-lg prose-p:leading-relaxed text-slate-200 w-full max-w-full break-words prose-ul:pl-0 prose-ol:pl-0 prose-ul:list-none prose-ol:list-none [&_*]:max-w-full [&_*]:break-words [&_*]:whitespace-normal" dangerouslySetInnerHTML={{ __html: formatDocumentLayout(material.application_activity) }} />
+                                            <div className="prose dark:prose-invert prose-p:text-lg prose-p:leading-relaxed text-foreground w-full max-w-full break-words prose-ul:pl-0 prose-ol:pl-0 prose-ul:list-none prose-ol:list-none [&_*]:max-w-full [&_*]:break-words [&_*]:whitespace-normal" dangerouslySetInnerHTML={{ __html: formatDocumentLayout(material.application_activity) }} />
                                         </div>
                                     )}
                                     {material.reflection_activity && (
-                                        <div className="p-8 rounded-3xl bg-gradient-to-br from-emerald-950/50 to-slate-900 border border-emerald-500/30 space-y-4 shadow-2xl w-full max-w-full overflow-hidden break-words">
-                                            <div className="flex items-center gap-3 text-emerald-400 font-extrabold text-lg uppercase tracking-wider">
-                                                <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 font-black">2</span>
+                                        <div className="p-8 rounded-3xl bg-gradient-to-br from-emerald-500/5 via-card to-card dark:from-emerald-950/50 dark:to-slate-900 border border-emerald-500/20 dark:border-emerald-500/30 space-y-4 shadow-xl w-full max-w-full overflow-hidden break-words">
+                                            <div className="flex items-center gap-3 text-emerald-600 dark:text-emerald-400 font-extrabold text-lg uppercase tracking-wider">
+                                                <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-500/10 dark:bg-emerald-500/20 border border-emerald-500/20 dark:border-emerald-500/30 text-emerald-600 dark:text-emerald-300 font-black">2</span>
                                                 Aktivitas Merefleksi
                                             </div>
-                                            <div className="prose prose-invert prose-p:text-lg prose-p:leading-relaxed text-slate-200 w-full max-w-full break-words prose-ul:pl-0 prose-ol:pl-0 prose-ul:list-none prose-ol:list-none [&_*]:max-w-full [&_*]:break-words [&_*]:whitespace-normal" dangerouslySetInnerHTML={{ __html: formatDocumentLayout(material.reflection_activity) }} />
+                                            <div className="prose dark:prose-invert prose-p:text-lg prose-p:leading-relaxed text-foreground w-full max-w-full break-words prose-ul:pl-0 prose-ol:pl-0 prose-ul:list-none prose-ol:list-none [&_*]:max-w-full [&_*]:break-words [&_*]:whitespace-normal" dangerouslySetInnerHTML={{ __html: formatDocumentLayout(material.reflection_activity) }} />
                                         </div>
                                     )}
                                 </div>
 
                                 {material.lkpd && (
-                                    <div className="p-8 rounded-3xl bg-slate-800/60 border border-slate-700/80 space-y-6 shadow-2xl w-full max-w-full overflow-hidden break-words">
-                                        <h3 className="text-2xl font-bold text-white flex items-center gap-3">
-                                            <FileText className="h-7 w-7 text-amber-400" /> Lembar Kerja Peserta Didik (LKPD)
+                                    <div className="p-8 rounded-3xl bg-card/80 border border-border/60 space-y-6 shadow-xl w-full max-w-full overflow-hidden break-words">
+                                        <h3 className="text-2xl font-bold text-foreground flex items-center gap-3">
+                                            <FileText className="h-7 w-7 text-amber-500 dark:text-amber-400" /> Lembar Kerja Peserta Didik (LKPD)
                                         </h3>
-                                        <div className="prose prose-invert max-w-none prose-p:text-xl prose-li:text-xl text-slate-200 w-full max-w-full break-words prose-ul:pl-0 prose-ol:pl-0 prose-ul:list-none prose-ol:list-none [&_*]:max-w-full [&_*]:break-words [&_*]:whitespace-normal" dangerouslySetInnerHTML={{ __html: formatDocumentLayout(material.lkpd) }} />
+                                        <div className="prose dark:prose-invert max-w-none prose-p:text-xl prose-li:text-xl text-foreground w-full max-w-full break-words prose-ul:pl-0 prose-ol:pl-0 prose-ul:list-none prose-ol:list-none [&_*]:max-w-full [&_*]:break-words [&_*]:whitespace-normal" dangerouslySetInnerHTML={{ __html: formatDocumentLayout(material.lkpd) }} />
                                     </div>
                                 )}
                             </div>
@@ -972,10 +1000,10 @@ export default function ShowMaterial({
                         {teachingTab === 'illustration' && (
                             <div className="flex flex-col items-center justify-center space-y-6 pb-20 text-center">
                                 <div className="space-y-2">
-                                    <h2 className="text-3xl sm:text-4xl font-black tracking-tight text-white">🖼️ Ilustrasi Pembelajaran AI</h2>
-                                    {material.image_prompt && <p className="text-base text-slate-400 max-w-2xl mx-auto italic">"{material.image_prompt}"</p>}
+                                    <h2 className="text-3xl sm:text-4xl font-black tracking-tight text-foreground">🖼️ Ilustrasi Pembelajaran AI</h2>
+                                    {material.image_prompt && <p className="text-base text-muted-foreground max-w-2xl mx-auto italic">"{material.image_prompt}"</p>}
                                 </div>
-                                <div className="relative rounded-3xl overflow-hidden border-2 border-slate-700/80 shadow-2xl max-w-4xl w-full bg-slate-950">
+                                <div className="relative rounded-3xl overflow-hidden border-2 border-border/80 shadow-xl max-w-4xl w-full bg-card/80">
                                     <img src={material.thumbnail!} alt={material.title} className="w-full h-auto max-h-[72vh] object-contain mx-auto" />
                                 </div>
                             </div>
@@ -984,8 +1012,8 @@ export default function ShowMaterial({
                         {teachingTab === 'resources' && (
                             <div className="space-y-8 pb-20">
                                 <div className="text-center space-y-2">
-                                    <h2 className="text-3xl sm:text-4xl font-black tracking-tight text-white">📦 Media & Lampiran Materi</h2>
-                                    <p className="text-base sm:text-lg text-slate-400">Berkas pendukung, presentasi slide, dan video pembelajaran.</p>
+                                    <h2 className="text-3xl sm:text-4xl font-black tracking-tight text-foreground">📦 Media & Lampiran Materi</h2>
+                                    <p className="text-base sm:text-lg text-muted-foreground">Berkas pendukung, presentasi slide, dan video pembelajaran.</p>
                                 </div>
 
                                 <div className="grid gap-6 sm:grid-cols-2">
@@ -994,14 +1022,14 @@ export default function ShowMaterial({
                                             href={`/storage/${material.file_path}`}
                                             target="_blank"
                                             rel="noreferrer"
-                                            className="flex items-center gap-4 p-6 rounded-3xl bg-slate-800/80 border border-slate-700 hover:bg-slate-800 hover:border-indigo-500 transition group shadow-xl"
+                                            className="flex items-center gap-4 p-6 rounded-3xl bg-card/80 border border-border/60 hover:bg-card hover:border-indigo-500 dark:hover:border-indigo-500 transition group shadow-xl"
                                         >
-                                            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-500/20 text-indigo-400 group-hover:scale-110 transition">
+                                            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-500/10 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 group-hover:scale-110 transition">
                                                 <Download className="h-7 w-7" />
                                             </div>
                                             <div>
-                                                <div className="text-sm font-bold text-slate-400 uppercase tracking-wider">Unduh Berkas Utama</div>
-                                                <div className="text-lg font-extrabold text-white group-hover:text-indigo-300 transition">Klik untuk Membuka / Unduh</div>
+                                                <div className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Unduh Berkas Utama</div>
+                                                <div className="text-lg font-extrabold text-foreground group-hover:text-indigo-600 dark:group-hover:text-indigo-300 transition">Klik untuk Membuka / Unduh</div>
                                             </div>
                                         </a>
                                     )}
@@ -1011,14 +1039,14 @@ export default function ShowMaterial({
                                             href={material.external_link}
                                             target="_blank"
                                             rel="noreferrer"
-                                            className="flex items-center gap-4 p-6 rounded-3xl bg-slate-800/80 border border-slate-700 hover:bg-slate-800 hover:border-emerald-500 transition group shadow-xl"
+                                            className="flex items-center gap-4 p-6 rounded-3xl bg-card/80 border border-border/60 hover:bg-card hover:border-emerald-500 dark:hover:border-emerald-500 transition group shadow-xl"
                                         >
-                                            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500/20 text-emerald-400 group-hover:scale-110 transition">
+                                            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 group-hover:scale-110 transition">
                                                 <Globe className="h-7 w-7" />
                                             </div>
                                             <div>
-                                                <div className="text-sm font-bold text-slate-400 uppercase tracking-wider">Tautan Eksternal</div>
-                                                <div className="text-lg font-extrabold text-white group-hover:text-emerald-300 transition line-clamp-1">{material.external_link}</div>
+                                                <div className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Tautan Eksternal</div>
+                                                <div className="text-lg font-extrabold text-foreground group-hover:text-emerald-600 dark:group-hover:text-emerald-300 transition line-clamp-1">{material.external_link}</div>
                                             </div>
                                         </a>
                                     )}
@@ -1026,7 +1054,7 @@ export default function ShowMaterial({
 
                                 {material.resources && material.resources.length > 0 && (
                                     <div className="space-y-6 pt-4">
-                                        <h3 className="text-xl font-bold text-slate-300">Daftar Media Terlampir ({material.resources.length})</h3>
+                                        <h3 className="text-xl font-bold text-foreground">Daftar Media Terlampir ({material.resources.length})</h3>
                                         <div className="space-y-8">
                                             {material.resources.map((res, idx) => {
                                                 if (res.type === 'youtube' || res.path.includes('youtube.com') || res.path.includes('youtu.be')) {
@@ -1035,11 +1063,11 @@ export default function ShowMaterial({
                                                     if (match && match[1]) videoId = match[1];
                                                     if (videoId) {
                                                         return (
-                                                            <div key={idx} className="space-y-3 bg-slate-800/50 p-6 rounded-3xl border border-slate-700">
-                                                                <h4 className="text-lg font-bold text-white flex items-center gap-2">
+                                                            <div key={idx} className="space-y-3 bg-card/60 p-6 rounded-3xl border border-border/60">
+                                                                <h4 className="text-lg font-bold text-foreground flex items-center gap-2">
                                                                     <Youtube className="h-6 w-6 text-rose-500" /> {res.title || 'Video Pembelajaran YouTube'}
                                                                 </h4>
-                                                                <div className="aspect-video w-full rounded-2xl overflow-hidden border border-slate-700 shadow-2xl">
+                                                                <div className="aspect-video w-full rounded-2xl overflow-hidden border border-border/60 shadow-xl">
                                                                     <iframe width="100%" height="100%" src={`https://www.youtube.com/embed/${videoId}`} title={res.title || "YouTube video"} frameBorder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen></iframe>
                                                                 </div>
                                                             </div>
@@ -1049,11 +1077,11 @@ export default function ShowMaterial({
                                                 if (res.path.includes('docs.google.com/presentation') || res.path.includes('docs.google.com/document')) {
                                                     const embedUrl = res.path.replace(/\/edit.*$/, '/preview');
                                                     return (
-                                                        <div key={idx} className="space-y-3 bg-slate-800/50 p-6 rounded-3xl border border-slate-700">
-                                                            <h4 className="text-lg font-bold text-white flex items-center gap-2">
-                                                                <FileText className="h-6 w-6 text-sky-400" /> {res.title || 'Dokumen Presentasi Google Slides/Docs'}
+                                                        <div key={idx} className="space-y-3 bg-card/60 p-6 rounded-3xl border border-border/60">
+                                                            <h4 className="text-lg font-bold text-foreground flex items-center gap-2">
+                                                                <FileText className="h-6 w-6 text-sky-500 dark:text-sky-400" /> {res.title || 'Dokumen Presentasi Google Slides/Docs'}
                                                             </h4>
-                                                            <div className="aspect-video w-full rounded-2xl overflow-hidden border border-slate-700 shadow-2xl">
+                                                            <div className="aspect-video w-full rounded-2xl overflow-hidden border border-border/60 shadow-xl">
                                                                 <iframe src={embedUrl} width="100%" height="100%" frameBorder="0" allowFullScreen></iframe>
                                                             </div>
                                                         </div>
@@ -1065,13 +1093,13 @@ export default function ShowMaterial({
                                                         href={res.path}
                                                         target="_blank"
                                                         rel="noreferrer"
-                                                        className="flex items-center justify-between p-6 rounded-2xl bg-slate-800/70 border border-slate-700 hover:border-indigo-500 transition group"
+                                                        className="flex items-center justify-between p-6 rounded-2xl bg-card/70 border border-border/60 hover:border-indigo-500 transition group"
                                                     >
                                                         <div className="flex items-center gap-4">
-                                                            <FolderOpen className="h-6 w-6 text-indigo-400 group-hover:scale-110 transition" />
-                                                            <span className="text-lg font-bold text-white group-hover:text-indigo-300 transition">{res.title || res.path}</span>
+                                                            <FolderOpen className="h-6 w-6 text-indigo-600 dark:text-indigo-400 group-hover:scale-110 transition" />
+                                                            <span className="text-lg font-bold text-foreground group-hover:text-indigo-600 dark:group-hover:text-indigo-300 transition">{res.title || res.path}</span>
                                                         </div>
-                                                        <ExternalLink className="h-5 w-5 text-slate-400 group-hover:text-white transition" />
+                                                        <ExternalLink className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition" />
                                                     </a>
                                                 );
                                             })}
@@ -1084,22 +1112,21 @@ export default function ShowMaterial({
                         {teachingTab === 'assessments' && (
                             <div className="space-y-8 pb-20">
                                 <div className="text-center space-y-2">
-                                    <h2 className="text-3xl sm:text-4xl font-black tracking-tight text-white">📝 Asesmen & Penugasan Terkait</h2>
-                                    <p className="text-base sm:text-lg text-slate-400">Daftar evaluasi belajar yang dikaitkan dengan materi ini.</p>
+                                    <h2 className="text-3xl sm:text-4xl font-black tracking-tight text-foreground">📝 Asesmen & Penugasan Terkait</h2>
+                                    <p className="text-base sm:text-lg text-muted-foreground">Daftar evaluasi belajar yang dikaitkan dengan materi ini.</p>
                                 </div>
 
                                 <div className="grid gap-6 sm:grid-cols-2">
                                     {assignments.map((ass, i) => (
-                                        <div key={i} className="p-6 rounded-3xl bg-slate-800/80 border border-slate-700 flex flex-col justify-between gap-6 shadow-xl">
+                                        <div key={i} className="p-6 rounded-3xl bg-card/80 border border-border/60 flex flex-col justify-between gap-6 shadow-xl">
                                             <div className="space-y-3">
                                                 <div className="flex items-center justify-between gap-2">
-                                                    <span className="px-3 py-1 rounded-lg bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 text-xs font-extrabold uppercase tracking-wide">
+                                                    <span className="px-3 py-1 rounded-lg bg-indigo-500/10 dark:bg-indigo-500/20 border border-indigo-500/20 dark:border-indigo-500/30 text-indigo-600 dark:text-indigo-300 text-xs font-extrabold uppercase tracking-wide">
                                                         {ass.assessment_type === 'initial' ? 'Awal (Diagnostik)' : ass.assessment_type === 'formative' ? 'Formatif' : 'Sumatif'}
                                                     </span>
-                                                    <span className="text-xs text-slate-400">{ass.questions_count} Soal</span>
                                                 </div>
-                                                <h4 className="text-xl font-bold text-white leading-snug">{ass.title}</h4>
-                                                {ass.description && <p className="text-sm text-slate-400 line-clamp-2">{ass.description}</p>}
+                                                <h4 className="text-xl font-bold text-foreground leading-snug">{ass.title}</h4>
+                                                {ass.description && <p className="text-sm text-muted-foreground line-clamp-2">{ass.description}</p>}
                                             </div>
                                             <Link
                                                 href={route('assignments.show', ass.id)}
@@ -1149,6 +1176,16 @@ export default function ShowMaterial({
                         line-height: 1.5 !important;
                         word-wrap: break-word !important;
                         overflow-wrap: break-word !important;
+                    }
+                    .lkpd-section table, .lkpd-section th, .lkpd-section td,
+                    .signature-section table, .signature-section th, .signature-section td,
+                    table.no-border, table.no-border th, table.no-border td,
+                    .no-border, .no-border th, .no-border td {
+                        border: 0 !important;
+                        border-width: 0 !important;
+                    }
+                    .signature-section, .signature-section *, .signature-section td, .signature-section p {
+                        text-align: center !important;
                     }
                     .print-table th {
                         background-color: #f2f2f2 !important;
@@ -1786,15 +1823,58 @@ export default function ShowMaterial({
                                 )}
 
                                 {/* 7. Lembar Kerja Peserta Didik (LKPD) */}
-                                <div className="space-y-4 mb-12 print-page-break">
+                                <div className="lkpd-section space-y-4 mb-12 print-page-break">
                                     <h4 className="text-md font-bold uppercase border-b border-black pb-1 mb-3 text-black">
                                         {hasSummativeAssignments ? "VI. LEMBAR KERJA PESERTA DIDIK (LKPD)" : "VII. LEMBAR KERJA PESERTA DIDIK (LKPD)"}
                                     </h4>
                                     
-                                    <div className="border border-black p-6 rounded-lg bg-gray-50/50">
+                                    <div className="border-0 p-6 rounded-lg bg-gray-50/50 print:border-0">
                                         <div className="text-center mb-6">
                                             <h5 className="text-sm font-bold uppercase tracking-wide text-black">{lkpdTitle}</h5>
                                             <p className="text-[10pt] italic text-gray-700 mt-1">Aktivitas Kerja Kelompok Kolaboratif</p>
+                                        </div>
+
+                                        {/* Kotak Pengisian Identitas (Mandatory) */}
+                                        <div className="mb-6 p-4 border-0 rounded bg-white print:bg-transparent print:border-0">
+                                            <table className="w-full border-collapse text-sm font-semibold border-0 no-border" style={{ border: 'none', margin: 0 }}>
+                                                <tbody>
+                                                    <tr>
+                                                        <td className="py-2 align-top w-40 font-bold text-black" style={{ border: 'none', width: '160px', padding: '6px 8px' }}>Nama/Kelompok</td>
+                                                        <td className="py-2 align-top text-center w-6 font-bold text-black" style={{ border: 'none', width: '24px', padding: '6px 4px' }}>:</td>
+                                                        <td className="py-2 align-top text-black" style={{ border: 'none', padding: '6px 8px' }}>
+                                                            <div className="border-b-2 border-dotted border-black w-full min-h-[24px]"></div>
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td className="py-2 align-top font-bold text-black pt-3" style={{ border: 'none', padding: '6px 8px' }}>Anggota</td>
+                                                        <td className="py-2 align-top text-center font-bold text-black pt-3" style={{ border: 'none', padding: '6px 4px' }}>:</td>
+                                                        <td className="py-2 align-top text-black pt-3" style={{ border: 'none', padding: '6px 8px' }}>
+                                                            <div className="space-y-3 font-normal text-sm">
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="w-6 font-semibold">1.</span>
+                                                                    <div className="border-b-2 border-dotted border-black flex-1 min-h-[20px]"></div>
+                                                                </div>
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="w-6 font-semibold">2.</span>
+                                                                    <div className="border-b-2 border-dotted border-black flex-1 min-h-[20px]"></div>
+                                                                </div>
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="w-6 font-semibold">3.</span>
+                                                                    <div className="border-b-2 border-dotted border-black flex-1 min-h-[20px]"></div>
+                                                                </div>
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="w-6 font-semibold">4.</span>
+                                                                    <div className="border-b-2 border-dotted border-black flex-1 min-h-[20px]"></div>
+                                                                </div>
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="w-6 font-semibold">5.</span>
+                                                                    <div className="border-b-2 border-dotted border-black flex-1 min-h-[20px]"></div>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
                                         </div>
 
                                         <div className="space-y-4 text-[11pt]">
@@ -1907,7 +1987,7 @@ export default function ShowMaterial({
                                 </div>
 
                                 {/* 7. Tanda Tangan (Signature block) */}
-                                <div className="print-avoid-break mt-12 grid grid-cols-2 gap-12 text-center text-[11pt] text-black">
+                                <div className="signature-section print-avoid-break mt-12 grid grid-cols-2 gap-12 text-center text-[11pt] text-black">
                                     <div className="space-y-20">
                                         <div className="space-y-1">
                                             <p>Mengetahui,</p>
@@ -1946,24 +2026,24 @@ export default function ShowMaterial({
             <Head title={`${material.title} – LMS Mokopani`} />
 
             <div className="flex h-full flex-1 flex-col gap-4 sm:gap-6 min-w-0 fade-in">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between border-b border-border/40 pb-4">
                     <button 
                         onClick={() => window.history.back()}
-                        className="flex items-center gap-2 text-sm font-medium text-[#8A8F98] hover:text-[#5E6AD2] transition"
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-border/60 bg-card/80 px-3.5 py-2 text-xs font-semibold text-muted-foreground transition hover:bg-card hover:text-foreground hover:border-border shadow-xs w-fit"
                     >
                         <ChevronLeft className="h-4 w-4" />
-                        Kembali
+                        <span>Kembali</span>
                     </button>
-                    <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
                         <button
                             onClick={() => {
                                 setIsTeachingMode(true);
                                 document.documentElement.requestFullscreen()?.catch(() => {});
                             }}
-                            className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 px-4 py-2 text-xs font-bold text-white shadow-md shadow-indigo-500/20 transition hover:from-violet-500 hover:to-indigo-500 active:scale-95 cursor-pointer"
+                            className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 px-3.5 py-2 text-xs font-bold text-white shadow-sm shadow-indigo-500/20 transition hover:from-violet-500 hover:to-indigo-500 active:scale-95 cursor-pointer"
                         >
                             <MonitorPlay className="h-3.5 w-3.5" />
-                            {user_role === 'teacher' || user_role === 'admin' ? 'Mode Mengajar' : 'Mode Fokus'}
+                            <span>{user_role === 'teacher' || user_role === 'admin' ? 'Mode Mengajar' : 'Mode Fokus'}</span>
                         </button>
                         {(user_role === 'teacher' || user_role === 'admin') && (
                             <>
@@ -1975,43 +2055,47 @@ export default function ShowMaterial({
                                         router.post(route('materials.toggle-lock', material.id), { status: next }, { preserveScroll: true });
                                     }}
                                     title="Klik untuk mengubah status akses siswa"
-                                    className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition cursor-pointer shadow-sm ${
-                                        material.access_status === 'open' ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 hover:bg-emerald-500/20 dark:bg-emerald-500/20 dark:text-emerald-300' :
-                                        material.access_status === 'locked' ? 'bg-rose-500/10 text-rose-600 border border-rose-500/20 hover:bg-rose-500/20 dark:bg-rose-500/20 dark:text-rose-300' :
-                                        'bg-blue-500/10 text-blue-600 border border-blue-500/20 hover:bg-blue-500/20 dark:bg-blue-500/20 dark:text-blue-300'
+                                    className={`flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold transition cursor-pointer shadow-xs border ${
+                                        material.access_status === 'open' ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20 hover:bg-emerald-500/20 dark:bg-emerald-500/20 dark:text-emerald-300' :
+                                        material.access_status === 'locked' ? 'bg-rose-500/10 text-rose-600 border-rose-500/20 hover:bg-rose-500/20 dark:bg-rose-500/20 dark:text-rose-300' :
+                                        'bg-blue-500/10 text-blue-600 border-blue-500/20 hover:bg-blue-500/20 dark:bg-blue-500/20 dark:text-blue-300'
                                     }`}
                                 >
                                     {material.access_status === 'open' && (
                                         <>
                                             <Unlock className="h-3.5 w-3.5 shrink-0" />
-                                            <span>Akses Siswa: Terbuka</span>
+                                            <span>Akses: Terbuka</span>
                                         </>
                                     )}
                                     {material.access_status === 'locked' && (
                                         <>
                                             <Lock className="h-3.5 w-3.5 shrink-0" />
-                                            <span>Akses Siswa: Terkunci</span>
+                                            <span>Akses: Terkunci</span>
                                         </>
                                     )}
                                     {(!material.access_status || material.access_status === 'auto') && (
                                         <>
                                             <span className="h-2 w-2 rounded-full bg-blue-500 animate-pulse shrink-0" />
-                                            <span>Akses Siswa: Otomatis (Alur AI)</span>
+                                            <span>Akses: Otomatis</span>
                                         </>
                                     )}
                                 </button>
-                                <Link
-                                    href={route('materials.edit', material.id)}
-                                    className="flex items-center gap-2 rounded-xl bg-[#5E6AD2]/10 px-4 py-2 text-xs font-bold text-[#5E6AD2] transition hover:bg-[#5E6AD2]/20 dark:bg-[#5E6AD2]/10 dark:text-[#5E6AD2]"
-                                >
-                                    <Pencil className="h-3.5 w-3.5" /> Edit Materi
-                                </Link>
-                                <button
-                                    onClick={() => setShowDeleteConfirm(true)}
-                                    className="flex items-center gap-2 rounded-xl bg-[#EB5757]/10 px-4 py-2 text-xs font-bold text-[#EB5757] transition hover:bg-[#EB5757]/20 dark:bg-[#EB5757]/10 dark:text-[#EB5757]"
-                                >
-                                    <Trash2 className="h-3.5 w-3.5" /> Hapus
-                                </button>
+                                <div className="flex items-center gap-1.5 pl-1 sm:pl-2 border-l border-border/60">
+                                    <Link
+                                        href={route('materials.edit', material.id)}
+                                        className="flex items-center gap-1.5 rounded-xl bg-secondary/80 border border-border/40 px-3.5 py-2 text-xs font-bold text-foreground transition hover:bg-secondary hover:border-border/60 shadow-xs"
+                                    >
+                                        <Pencil className="h-3.5 w-3.5 text-blue-500" />
+                                        <span>Edit</span>
+                                    </Link>
+                                    <button
+                                        onClick={() => setShowDeleteConfirm(true)}
+                                        className="flex items-center gap-1.5 rounded-xl bg-rose-500/10 border border-rose-500/20 px-3.5 py-2 text-xs font-bold text-rose-600 transition hover:bg-rose-500/20 dark:bg-rose-500/10 dark:text-rose-400 shadow-xs"
+                                    >
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                        <span>Hapus</span>
+                                    </button>
+                                </div>
                             </>
                         )}
                     </div>
@@ -2506,7 +2590,6 @@ export default function ShowMaterial({
                                                 <span className="px-2.5 py-1 rounded-lg bg-[#5E6AD2]/10 dark:bg-[#5E6AD2]/20 text-[#5E6AD2] dark:text-indigo-300 text-[10px] font-extrabold uppercase tracking-wide">
                                                     {ass.assessment_type === 'initial' ? 'Awal (Diagnostik)' : ass.assessment_type === 'formative' ? 'Formatif' : 'Sumatif'}
                                                 </span>
-                                                <span className="text-[11px] font-bold text-[#8A8F98]">{ass.questions_count || 0} Soal</span>
                                             </div>
                                             <h4 className="text-sm font-bold text-[#1F2937] dark:text-white leading-snug">{ass.title}</h4>
                                             {ass.description && <p className="text-xs text-[#6B7280] dark:text-[#8A8F98] line-clamp-2 leading-relaxed">{ass.description}</p>}
@@ -2522,23 +2605,6 @@ export default function ShowMaterial({
                                 </div>
                             </div>
                         )}
-
-                        {/* Next Steps */}
-                        <div className="rounded-3xl bg-gradient-to-br from-[#5E6AD2] to-[#4B55A8] p-8 text-white shadow-xl">
-                            <h3 className="text-xs font-black uppercase tracking-widest mb-4 opacity-80">Langkah Selanjutnya</h3>
-                            <p className="text-xs text-white/80 mb-8 leading-relaxed font-medium">
-                                {user_role === 'teacher'
-                                    ? 'Lihat daftar asesmen yang sudah dibuat atau rancang asesmen baru untuk materi ini.'
-                                    : 'Setelah memahami materi ini, silakan kerjakan asesmen yang relevan untuk menguji pemahaman Anda.'}
-                            </p>
-                            <Link 
-                                href="/assignments" 
-                                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-white py-4 text-sm font-black text-[#5E6AD2] transition hover:bg-white/90 hover:shadow-lg active:scale-95"
-                            >
-                                Lihat Daftar Asesmen
-                                <ArrowRight className="h-4 w-4" />
-                            </Link>
-                        </div>
                     </div>
                 </div>
             </div>

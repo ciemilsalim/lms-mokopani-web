@@ -179,15 +179,20 @@ export function AppSidebar() {
 
             <SidebarFooter className="border-t border-sidebar-border/50">
                 {(user_role === 'admin' || user_role === 'teacher') && (
-                    <div className="p-2">
-                        <a
-                            href="/sso/presensi"
-                            className="flex w-full items-center gap-2 rounded-lg bg-sky-50 px-3 py-2 text-sm font-semibold text-sky-600 transition-colors hover:bg-sky-100 dark:bg-sky-950/30 dark:text-sky-400 dark:hover:bg-sky-950/50"
-                        >
-                            <ExternalLink className="h-4 w-4" />
-                            <span>Aplikasi Presensi</span>
-                        </a>
-                    </div>
+                    <SidebarMenu>
+                        <SidebarMenuItem>
+                            <SidebarMenuButton
+                                asChild
+                                tooltip="Aplikasi Presensi"
+                                className="bg-sky-50 text-sky-600 hover:bg-sky-100 hover:text-sky-700 dark:bg-sky-950/30 dark:text-sky-400 dark:hover:bg-sky-950/50 dark:hover:text-sky-300 font-semibold group-data-[collapsible=icon]:bg-sky-50 group-data-[collapsible=icon]:text-sky-600 group-data-[collapsible=icon]:dark:bg-sky-950/30 group-data-[collapsible=icon]:dark:text-sky-400"
+                            >
+                                <a href="/sso/presensi">
+                                    <ExternalLink className="h-4 w-4 shrink-0" />
+                                    <span>Aplikasi Presensi</span>
+                                </a>
+                            </SidebarMenuButton>
+                        </SidebarMenuItem>
+                    </SidebarMenu>
                 )}
                 <NavUser />
             </SidebarFooter>

@@ -25,6 +25,8 @@ const InstrumentRenderer = ({ config, type }: { config: any, type: string }) => 
         try { parsedConfig = JSON.parse(config); } catch (e) {}
     }
     
+    const rubricLevels = parsedConfig.rubricLevels || parsedConfig.levels || (parsedConfig.kktp && (parsedConfig.kktp.rubricLevels || parsedConfig.kktp.levels));
+    
     return (
         <div className="mt-2 space-y-3">
             {/* Tampilkan Instruksi, Deskripsi, atau Stimulus jika ada */}
@@ -36,8 +38,32 @@ const InstrumentRenderer = ({ config, type }: { config: any, type: string }) => 
                 </div>
             )}
 
-            {/* Rubrik */}
-            {(parsedConfig.aspects || parsedConfig.rubrics) && (
+            {/* Rubrik 4 Tahap Capaian (jika ada rubricLevels) */}
+            {rubricLevels && (typeof rubricLevels === 'object') && (
+                <div className="overflow-x-auto my-2">
+                    <table className="w-full border-collapse border-2 border-black text-xs">
+                        <thead>
+                            <tr className="bg-gray-100 border-b-2 border-black text-center font-bold">
+                                <th className="border border-black p-2 bg-rose-50 text-rose-950 font-bold w-1/4">1. Baru Berkembang</th>
+                                <th className="border border-black p-2 bg-amber-50 text-amber-950 font-bold w-1/4">2. Layak</th>
+                                <th className="border border-black p-2 bg-indigo-50 text-indigo-950 font-bold w-1/4">3. Cakap (Standar Ketuntasan)</th>
+                                <th className="border border-black p-2 bg-emerald-50 text-emerald-950 font-bold w-1/4">4. Mahir</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr className="align-top">
+                                <td className="border border-black p-2.5 bg-rose-50/20">{rubricLevels.baru_berkembang || rubricLevels[0]?.description || rubricLevels[0]?.desc || '-'}</td>
+                                <td className="border border-black p-2.5 bg-amber-50/20">{rubricLevels.layak || rubricLevels[1]?.description || rubricLevels[1]?.desc || '-'}</td>
+                                <td className="border border-black p-2.5 bg-indigo-50/20 font-medium">{rubricLevels.cakap || rubricLevels[2]?.description || rubricLevels[2]?.desc || '-'}</td>
+                                <td className="border border-black p-2.5 bg-emerald-50/20">{rubricLevels.mahir || rubricLevels[3]?.description || rubricLevels[3]?.desc || '-'}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            )}
+
+            {/* Rubrik Aspek / Kriteria Umum */}
+            {!rubricLevels && (parsedConfig.aspects || parsedConfig.rubrics) && (
                 <div className="text-xs overflow-x-auto">
                     <table className="w-full border-collapse border border-gray-300">
                         <thead>
@@ -99,6 +125,113 @@ const InstrumentRenderer = ({ config, type }: { config: any, type: string }) => 
                             </li>
                         ))}
                     </ol>
+                </div>
+            )}
+        </div>
+    );
+};
+
+const KktpDetailsRenderer = ({ kktpDetails }: { kktpDetails: any }) => {
+    if (!kktpDetails) return null;
+    let parsed = kktpDetails;
+    if (typeof kktpDetails === 'string') {
+        if (!kktpDetails.trim().startsWith('{') && !kktpDetails.trim().startsWith('[')) {
+            return <div className="mb-4 bg-white p-4 border border-gray-300 rounded shadow-sm text-sm"><HtmlContent html={kktpDetails} /></div>;
+        }
+        try { parsed = JSON.parse(kktpDetails); } catch (e) {
+            return <div className="mb-4 bg-white p-4 border border-gray-300 rounded shadow-sm text-sm"><HtmlContent html={kktpDetails} /></div>;
+        }
+    }
+
+    if (!parsed || typeof parsed !== 'object') return null;
+
+    const rubricLevels = parsed.rubricLevels || parsed.levels || (parsed.kktp && (parsed.kktp.rubricLevels || parsed.kktp.levels));
+    const checklistItems = parsed.checklistItems || parsed.checklist || parsed.indicators || (parsed.kktp && (parsed.kktp.checklistItems || parsed.kktp.checklist));
+    const threshold = parsed.masteryThreshold || parsed.threshold || (parsed.kktp && parsed.kktp.threshold);
+
+    if (!rubricLevels && !checklistItems && parsed.approach) {
+        return (
+            <div className="mb-6 bg-white p-4 border border-gray-400 rounded shadow-sm text-sm">
+                <p className="font-bold mb-2 text-black border-b pb-1">Pendekatan KKTP: {parsed.approach === 'rubric' ? 'Rubrik (4 Tahap)' : parsed.approach}</p>
+                {parsed.passing_level && <p className="text-xs mt-1">Batas Ketuntasan: <strong>{parsed.passing_level}</strong></p>}
+                {parsed.min_criteria && <p className="text-xs mt-1">Minimal Kriteria Tuntas: <strong>{parsed.min_criteria}</strong></p>}
+                {parsed.description && <div className="mt-2 text-xs" dangerouslySetInnerHTML={{__html: parsed.description}} />}
+            </div>
+        );
+    }
+
+    if (!rubricLevels && (!checklistItems || checklistItems.length === 0) && !parsed.description && !parsed.aspects && !parsed.rubrics) {
+        return null;
+    }
+
+    return (
+        <div className="mb-6 bg-white p-4 border-2 border-black rounded shadow-sm text-sm print:border-black">
+            <div className="flex justify-between items-center border-b-2 border-black pb-2 mb-3">
+                <h5 className="font-bold text-base text-black uppercase m-0">Rubrik & Kriteria Ketuntasan Tujuan Pembelajaran (KKTP)</h5>
+                {threshold && (
+                    <span className="text-xs font-bold px-2.5 py-1 bg-green-100 text-green-900 rounded border border-green-400">
+                        Batas Ketuntasan: {threshold}
+                    </span>
+                )}
+            </div>
+
+            {/* Rubric Levels (4 Tahap Capaian) */}
+            {rubricLevels && (typeof rubricLevels === 'object') && (
+                <div className="overflow-x-auto my-3">
+                    <table className="w-full border-collapse border-2 border-black text-xs">
+                        <thead>
+                            <tr className="bg-gray-100 border-b-2 border-black text-center font-bold">
+                                <th className="border border-black p-2 bg-rose-50 text-rose-950 font-bold w-1/4">1. Baru Berkembang</th>
+                                <th className="border border-black p-2 bg-amber-50 text-amber-950 font-bold w-1/4">2. Layak</th>
+                                <th className="border border-black p-2 bg-indigo-50 text-indigo-950 font-bold w-1/4">3. Cakap (Standar Ketuntasan)</th>
+                                <th className="border border-black p-2 bg-emerald-50 text-emerald-950 font-bold w-1/4">4. Mahir</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr className="align-top">
+                                <td className="border border-black p-3 bg-rose-50/20">{rubricLevels.baru_berkembang || rubricLevels[0]?.description || rubricLevels[0]?.desc || '-'}</td>
+                                <td className="border border-black p-3 bg-amber-50/20">{rubricLevels.layak || rubricLevels[1]?.description || rubricLevels[1]?.desc || '-'}</td>
+                                <td className="border border-black p-3 bg-indigo-50/20 font-medium">{rubricLevels.cakap || rubricLevels[2]?.description || rubricLevels[2]?.desc || '-'}</td>
+                                <td className="border border-black p-3 bg-emerald-50/20">{rubricLevels.mahir || rubricLevels[3]?.description || rubricLevels[3]?.desc || '-'}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            )}
+
+            {/* Checklist Items */}
+            {checklistItems && Array.isArray(checklistItems) && checklistItems.length > 0 && (
+                <div className="my-3">
+                    <p className="font-semibold text-xs mb-2 text-black border-b border-gray-200 pb-1">Indikator Lembar Pengamatan (Ceklis):</p>
+                    <table className="w-full border-collapse border border-black text-xs">
+                        <thead>
+                            <tr className="bg-gray-100">
+                                <th className="border border-black p-2 text-center w-12 font-bold">No</th>
+                                <th className="border border-black p-2 text-left font-bold">Indikator Ketercapaian</th>
+                                <th className="border border-black p-2 text-center w-24 font-bold">Tercapai</th>
+                                <th className="border border-black p-2 text-center w-24 font-bold">Belum</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {checklistItems.map((item: string, idx: number) => (
+                                <tr key={idx} className="hover:bg-gray-50">
+                                    <td className="border border-black p-2 text-center font-semibold">{idx + 1}</td>
+                                    <td className="border border-black p-2">{item}</td>
+                                    <td className="border border-black p-2 text-center">[ &nbsp; ]</td>
+                                    <td className="border border-black p-2 text-center">[ &nbsp; ]</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+
+            {/* Other configs or descriptions */}
+            {!rubricLevels && (!checklistItems || checklistItems.length === 0) && (
+                <div className="text-xs space-y-2">
+                    {parsed.description && <div dangerouslySetInnerHTML={{__html: parsed.description}} />}
+                    {parsed.aspects && <InstrumentRenderer config={parsed} type="rubric" />}
+                    {parsed.rubrics && <InstrumentRenderer config={parsed} type="rubric" />}
                 </div>
             )}
         </div>
@@ -201,6 +334,7 @@ export default function Show({ modulAjar, assignments }: any) {
     const headmasterName = modulAjar.headmaster_name || 'Nama Kepala Sekolah';
     const headmasterNip = modulAjar.headmaster_nip || '-';
 
+    const kktpDetails = modulAjar.kktp_details || parsedData.kktp_details || parsedData.kktp || null;
     const initialAssignments = assignments?.filter((a: any) => a.assessment_type === 'initial') || [];
     const processAssignments = assignments?.filter((a: any) => a.assessment_type === 'formative' || a.assessment_type === 'summative') || [];
 
@@ -231,6 +365,12 @@ export default function Show({ modulAjar, assignments }: any) {
                 body { font-family: 'Times New Roman', serif; font-size: 12pt; }
                 table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
                 table, th, td { border: 1px solid black; }
+                .lkpd-section table, .lkpd-section th, .lkpd-section td,
+                .lkpd-content-wrapper table, .lkpd-content-wrapper th, .lkpd-content-wrapper td,
+                .signature-section table, .signature-section th, .signature-section td,
+                table.no-border, table.no-border th, table.no-border td,
+                .no-border, .no-border th, .no-border td { border: none !important; }
+                .signature-section, .signature-section *, .signature-section td, .signature-section p { text-align: center !important; }
                 th, td { padding: 8px; text-align: left; vertical-align: top; }
                 h1 { text-align: center; font-size: 16pt; font-weight: bold; }
                 h2 { text-align: center; font-size: 14pt; font-weight: bold; }
@@ -523,7 +663,12 @@ export default function Show({ modulAjar, assignments }: any) {
                                     {processAssignments.map((asm: any) => (
                                         <li key={asm.id}>
                                             <strong>{asm.title}</strong> <span className="uppercase text-xs font-semibold px-1 py-0.5 bg-gray-200 ml-1 rounded">({asm.assessment_type})</span><br/>
-                                            {asm.description || `Instrumen untuk mengukur ketercapaian secara ${asm.assessment_type === 'formative' ? 'proses' : 'akhir'}.`}
+                                            <span className="text-gray-800">{asm.description || `Instrumen untuk mengukur ketercapaian secara ${asm.assessment_type === 'formative' ? 'proses' : 'akhir'}.`}</span>
+                                            {asm.instrument_config && (
+                                                <div className="mt-1 text-xs text-indigo-950 bg-indigo-50/60 p-1.5 rounded border border-indigo-200 block">
+                                                    💡 <strong>KKTP:</strong> {getKktpDescription(asm)}
+                                                </div>
+                                            )}
                                         </li>
                                     ))}
                                 </ul>
@@ -546,12 +691,21 @@ export default function Show({ modulAjar, assignments }: any) {
                                 <p className="text-sm italic text-gray-500">Tidak ada asesmen formatif/sumatif yang didefinisikan secara eksplisit.</p>
                             )}
 
-                            {processAssignments.length > 0 && (
-                                <div className="mt-4 pt-4 border-t border-black">
-                                    <h4 className="font-bold mb-2 text-sm">Lampiran Instrumen & Rubrik KKTP:</h4>
+                            {(processAssignments.length > 0 || kktpDetails || modulAjar.subject_kktp) && (
+                                <div className="mt-6 pt-4 border-t-2 border-black">
+                                    <h4 className="font-bold mb-3 text-sm uppercase">Lampiran Instrumen & Rubrik KKTP:</h4>
+                                    
+                                    {/* 1. Tampilkan Rubrik KKTP Utama dari Modul Ajar */}
+                                    <KktpDetailsRenderer kktpDetails={kktpDetails || modulAjar.subject_kktp} />
+
+                                    {/* 2. Tampilkan Instrumen Asesmen dari Assignment */}
                                     {processAssignments.map((asm: any) => (
-                                        <div key={asm.id} className="mb-4 bg-white p-3 border border-gray-300 rounded shadow-sm text-sm">
-                                            <p className="font-semibold text-base mb-2 border-b pb-1 border-gray-100">{asm.title} <span className="uppercase text-xs px-1 py-0.5 bg-gray-200 rounded font-bold ml-1">({asm.instrument_type})</span></p>
+                                        <div key={asm.id} className="mb-4 bg-white p-4 border border-gray-400 rounded shadow-sm text-sm">
+                                            <div className="flex justify-between items-center border-b pb-2 mb-2 border-gray-200">
+                                                <p className="font-bold text-base text-black m-0">{asm.title} <span className="uppercase text-xs px-1.5 py-0.5 bg-gray-200 text-black rounded font-bold ml-1">({asm.instrument_type})</span></p>
+                                                {asm.max_points && <span className="text-xs font-bold px-2 py-0.5 border border-black rounded bg-white">Maks: {asm.max_points} Poin</span>}
+                                            </div>
+                                            {asm.description && <p className="italic text-xs text-gray-700 mb-2"><strong>Petunjuk:</strong> {asm.description}</p>}
                                             <InstrumentRenderer config={asm.instrument_config} type={asm.instrument_type} />
                                         </div>
                                     ))}
@@ -571,7 +725,7 @@ export default function Show({ modulAjar, assignments }: any) {
                         </section>
 
                         {/* VI. LKPD */}
-                        <section className="print-avoid-break lkpd-section relative">
+                        <section className="print-avoid-break lkpd-section relative mt-8 pt-4 border-t-2 border-black">
                             <div className="flex justify-between items-center mb-4 border-b-2 border-black pb-2">
                                 <h3 className="font-bold text-lg uppercase m-0">VI. LEMBAR KERJA PESERTA DIDIK (LKPD) / LAMPIRAN</h3>
                                 <div className="print:hidden hide-in-word text-right">
@@ -585,8 +739,55 @@ export default function Show({ modulAjar, assignments }: any) {
                                 </div>
                             </div>
                             
-                            <div className="border border-black p-6 bg-white min-h-[300px] print:border-none print:p-0">
-                                <HtmlContent html={lkpdContent} />
+                            {/* LKPD Paper Sheet with proper margins and borders */}
+                            <div className="border-0 p-6 sm:p-8 my-4 bg-white shadow-sm min-h-[400px] print:border-0 print:p-8 print:my-6 print:rounded-none">
+                                {/* Kotak Pengisian Identitas (Mandatory Requirement 3) */}
+                                <div className="mb-6 p-4 border-0 rounded bg-gray-50/40 print:bg-transparent print:border-0">
+                                    <table className="w-full border-collapse text-sm font-semibold border-0 no-border" style={{ border: 'none', margin: 0 }}>
+                                        <tbody>
+                                            <tr>
+                                                <td className="py-2 align-top w-40 font-bold text-black" style={{ border: 'none', width: '160px', padding: '6px 8px' }}>Nama/Kelompok</td>
+                                                <td className="py-2 align-top text-center w-6 font-bold text-black" style={{ border: 'none', width: '24px', padding: '6px 4px' }}>:</td>
+                                                <td className="py-2 align-top text-black" style={{ border: 'none', padding: '6px 8px' }}>
+                                                    <div className="border-b-2 border-dotted border-black w-full min-h-[24px]"></div>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td className="py-2 align-top font-bold text-black pt-3" style={{ border: 'none', padding: '6px 8px' }}>Anggota</td>
+                                                <td className="py-2 align-top text-center font-bold text-black pt-3" style={{ border: 'none', padding: '6px 4px' }}>:</td>
+                                                <td className="py-2 align-top text-black pt-3" style={{ border: 'none', padding: '6px 8px' }}>
+                                                    <div className="space-y-3 font-normal text-sm">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="w-6 font-semibold">1.</span>
+                                                            <div className="border-b-2 border-dotted border-black flex-1 min-h-[20px]"></div>
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="w-6 font-semibold">2.</span>
+                                                            <div className="border-b-2 border-dotted border-black flex-1 min-h-[20px]"></div>
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="w-6 font-semibold">3.</span>
+                                                            <div className="border-b-2 border-dotted border-black flex-1 min-h-[20px]"></div>
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="w-6 font-semibold">4.</span>
+                                                            <div className="border-b-2 border-dotted border-black flex-1 min-h-[20px]"></div>
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="w-6 font-semibold">5.</span>
+                                                            <div className="border-b-2 border-dotted border-black flex-1 min-h-[20px]"></div>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                {/* LKPD Content with tidy table and text formatting */}
+                                <div className="lkpd-content-wrapper prose prose-sm max-w-none text-black">
+                                    <HtmlContent html={lkpdContent} />
+                                </div>
                             </div>
                         </section>
 
@@ -612,18 +813,18 @@ export default function Show({ modulAjar, assignments }: any) {
                         </section>
 
                         {/* Tanda Tangan */}
-                        <section className="mt-12 pt-8 print-avoid-break hide-in-lkpd-print">
-                            <table className="w-full border-0 text-sm" style={{ border: 'none' }}>
+                        <section className="signature-section mt-12 pt-8 print-avoid-break hide-in-lkpd-print text-center">
+                            <table className="w-full border-0 no-border text-sm" style={{ border: 'none' }}>
                                 <tbody>
                                     <tr>
-                                        <td className="w-1/2 text-center align-top" style={{ border: 'none' }}>
+                                        <td className="w-1/2 text-center align-top" style={{ border: 'none', textAlign: 'center' }}>
                                             <p>Mengetahui,</p>
                                             <p className="font-bold">Kepala {schoolName}</p>
                                             <br/><br/><br/><br/>
                                             <p className="font-bold underline">{headmasterName}</p>
                                             <p>NIP. {headmasterNip}</p>
                                         </td>
-                                        <td className="w-1/2 text-center align-top" style={{ border: 'none' }}>
+                                        <td className="w-1/2 text-center align-top" style={{ border: 'none', textAlign: 'center' }}>
                                             <p>Buol, {new Date(modulAjar.created_at).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
                                             <p className="font-bold">Guru Mata Pelajaran</p>
                                             <br/><br/><br/><br/>
@@ -641,30 +842,84 @@ export default function Show({ modulAjar, assignments }: any) {
                 <style dangerouslySetInnerHTML={{__html: `
                     table {
                         width: 100% !important;
-                        table-layout: fixed !important;
+                        table-layout: auto !important;
+                        border-collapse: collapse !important;
+                        margin: 1.25rem 0 !important;
                     }
                     td, th {
+                        border: 1px solid #000000 !important;
+                        padding: 10px 14px !important;
                         word-wrap: break-word;
                         overflow-wrap: anywhere;
                         word-break: normal;
+                        vertical-align: top;
+                        text-align: left;
+                        line-height: 1.5 !important;
+                    }
+                    th {
+                        background-color: #f3f4f6 !important;
+                        font-weight: 700 !important;
+                    }
+                    .lkpd-content-wrapper table {
+                        margin: 1.5rem 0 !important;
+                        border: 0 !important;
+                    }
+                    .lkpd-content-wrapper th, .lkpd-content-wrapper td {
+                        border: 0 !important;
+                        padding: 8px 12px !important;
+                        color: #000000 !important;
+                    }
+                    .lkpd-section table,
+                    .lkpd-section th,
+                    .lkpd-section td,
+                    .signature-section table,
+                    .signature-section th,
+                    .signature-section td,
+                    table.no-border,
+                    table.no-border th,
+                    table.no-border td,
+                    .no-border,
+                    .no-border th,
+                    .no-border td {
+                        border: 0 !important;
+                        border-width: 0 !important;
+                    }
+                    .signature-section,
+                    .signature-section *,
+                    .signature-section td,
+                    .signature-section p,
+                    .signature-section div {
+                        text-align: center !important;
                     }
                     .prose img {
                         max-width: 100% !important;
                         height: auto !important;
+                        margin: 1rem auto !important;
                     }
                     @media print {
-                        body { background: white; }
+                        body { background: white; padding: 0; margin: 0; }
                         nav, header, .md\\:hidden, .print\\:hidden, [role="navigation"] { display: none !important; }
                         .print-lkpd-mode section:not(.lkpd-section) { display: none !important; }
                         .print-lkpd-mode .hide-in-lkpd-print { display: none !important; }
                         
-                        section { page-break-inside: auto !important; break-inside: auto !important; margin-bottom: 1.5rem !important; }
-                        table { page-break-inside: auto !important; break-inside: auto !important; }
+                        .print-lkpd-mode .lkpd-section {
+                            margin: 0 !important;
+                            padding: 0 !important;
+                            border: none !important;
+                        }
+                        
+                        section { page-break-inside: auto !important; break-inside: auto !important; margin-bottom: 2rem !important; }
+                        table { page-break-inside: auto !important; break-inside: auto !important; width: 100% !important; }
                         
                         /* Prevent text lines, list items, paragraphs and table rows from being sliced horizontally across page boundaries */
                         p, li, tr, th, td, h1, h2, h3, h4, h5, h6, blockquote {
                             break-inside: avoid !important;
                             page-break-inside: avoid !important;
+                        }
+                        
+                        th, td {
+                            padding: 8px 12px !important;
+                            border: 1px solid #000 !important;
                         }
                         
                         .prose { max-width: 100% !important; }

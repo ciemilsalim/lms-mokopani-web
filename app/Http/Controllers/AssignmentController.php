@@ -441,58 +441,7 @@ class AssignmentController extends Controller
         }
 
         $getIsPassed = function ($s) use ($assignment) {
-            if ($s && $s->content) {
-                $parsed = json_decode($s->content, true);
-                if (isset($parsed['grading']['is_passed'])) {
-                    return (bool) $parsed['grading']['is_passed'];
-                }
-
-                // Fallback calculation from student submission before teacher grades
-                $type = $parsed['type'] ?? $assignment->instrument_type;
-                if (in_array($type, ['self_assessment', 'peer_assessment', 'reflective_journal'])) {
-                    $mode = $parsed['assessment_mode'] ?? null;
-                    if (!$mode) {
-                        if ($assignment->scoring_tool === 'checklist') {
-                            $mode = 'checklist';
-                        } elseif (in_array($assignment->scoring_tool, ['rubric', 'rating_scale'])) {
-                            $mode = 'simple_rubric';
-                        }
-                    }
-
-                    if ($mode === 'checklist' && isset($parsed['indicators']) && is_array($parsed['indicators'])) {
-                        $total = count($parsed['indicators']);
-                        $checkedCount = 0;
-                        foreach ($parsed['indicators'] as $ind) {
-                            if (!empty($ind['checked'])) {
-                                $checkedCount++;
-                            }
-                        }
-                        $minCriteria = $assignment->instrument_config['kktp']['min_criteria'] ?? max(1, round($total / 2));
-                        return $checkedCount >= $minCriteria;
-                    } elseif ($mode === 'simple_rubric' && isset($parsed['indicators']) && is_array($parsed['indicators'])) {
-                        $levels = ['Perlu Bimbingan', 'Cukup', 'Baik', 'Sangat Baik'];
-                        $passingLvl = $assignment->instrument_config['kktp']['passing_level'] ?? 'Baik';
-                        $passingIdx = array_search($passingLvl, $levels);
-                        if ($passingIdx === false) { $passingIdx = 2; }
-
-                        $total = count($parsed['indicators']);
-                        $passedCount = 0;
-                        foreach ($parsed['indicators'] as $ind) {
-                            $lvl = $ind['selected_level'] ?? '';
-                            $lvlIdx = array_search($lvl, $levels);
-                            if ($lvlIdx !== false && $lvlIdx >= $passingIdx) {
-                                $passedCount++;
-                            }
-                        }
-                        $minCriteria = $assignment->instrument_config['kktp']['min_criteria'] ?? max(1, round($total / 2));
-                        return $passedCount >= $minCriteria;
-                    }
-                }
-            }
-            if ($assignment->instrument_type === 'formative_quiz') {
-                return ($s && $s->score !== null) ? ($s->score >= ($assignment->passing_grade ?? 70)) : false;
-            }
-            return $assignment->assessment_type === 'formative' ? true : ($s->score !== null && $s->score >= ($assignment->passing_grade ?? 70));
+            return $assignment->evaluateKetuntasan($s);
         };
 
 

@@ -133,7 +133,7 @@ class SubjectController extends Controller
                     'assessment_type' => $a->assessment_type,
                     'is_submitted'    => !!$submission,
                     'is_graded'       => $submission && $submission->score !== null,
-                    'is_passed'       => $submission && $submission->score !== null && $submission->score >= ($a->passing_grade ?? 70),
+                    'is_passed'       => $a->evaluateKetuntasan($submission),
                     'score'           => $submission?->score,
                     'attempts'        => $submission?->attempts ?? 0,
                     'passing_grade'   => $a->passing_grade ?? 70,

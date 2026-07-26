@@ -106,10 +106,10 @@ Tujuan Pembelajaran: {tp}
 Konten/Materi: {content}
 Jenis Asesmen: {instrument_label}
 
-Jika Jenis Asesmen adalah 'Kuis / Survei Diagnostik' (Asesmen Awal), maka buatlah tepat 3 pertanyaan dengan format gradasi tingkat kesulitan (tanpa bobot nilai/points, tanpa Pilihan Ganda) dan wajib menyertakan field 'description' (deskripsi/instruksi tugas untuk siswa):
-- Soal 1 (Level 1): Kemampuan Dasar/Prasyarat (Tipe Isian Singkat atau Uraian/Essay). Pertanyaan konsep dasar sekali sebelum memulai materi inti.
-- Soal 2 (Level 2): Kemampuan Sesuai Target (Tipe Isian Singkat atau Uraian/Essay). Menguji pemahaman standar/inti dari materi.
-- Soal 3 (Level 3): Kemampuan Di Atas Rata-rata/Pengayaan (Tipe Uraian/Essay). Berupa analisis, pemecahan masalah, atau troubleshooting tingkat tinggi.
+Jika Jenis Asesmen adalah 'Kuis / Survei Diagnostik' (Asesmen Awal), maka WAJIB membuat tepat 3 pertanyaan yang berfokus pada KEMAMPUAN PRASYARAT (pengetahuan awal yang harus dimiliki siswa SEBELUM mempelajari materi baru ini). Jangan tanyakan materi inti yang baru akan dipelajari. Sertakan field 'description' (instruksi tugas):
+- Soal 1 (Level 1): Kemampuan Dasar/Prasyarat (Isian Singkat). Pertanyaan tentang konsep/keterampilan paling mendasar dari materi sebelumnya yang menopang topik ini.
+- Soal 2 (Level 2): Kemampuan Menengah (Isian Singkat/Uraian). Menguji pemahaman prasyarat yang lebih kompleks namun belum menyentuh materi inti.
+- Soal 3 (Level 3): Pemecahan Masalah Prasyarat (Uraian/Essay). Mengukur apakah siswa siap menerima materi baru berdasarkan pemahaman konsep-konsep prasyaratnya.
 
 Buatkan instrumen asesmen lengkap dalam format JSON sesuai jenis yang diminta.
 PENTING: Setiap output JSON WAJIB menyertakan field 'description' di level root yang berisi deskripsi/instruksi tugas untuk siswa dalam bahasa Indonesia sederhana, ramah, dan mudah dipahami (1-3 kalimat).

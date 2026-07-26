@@ -138,7 +138,7 @@ class AnalyticsService
                 }
                 $scores[] = [
                     'score'   => $score,
-                    'is_passed' => $score !== null && $score >= $passing,
+                    'is_passed'   => $a->evaluateKetuntasan($sub),
                     'passing_grade' => $passing,
                 ];
             }

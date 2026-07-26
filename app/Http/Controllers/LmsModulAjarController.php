@@ -237,6 +237,10 @@ class LmsModulAjarController extends Controller
                 "- JENIS ASESMEN TARGET: " . $typeLabel . "\n" .
                 "- HARAP RANCANG JUDUL, INSTRUKSI, SOAL/RUBRIK KHUSUS UNTUK " . strtoupper($typeLabel) . ".";
 
+            if ($targetAssessmentType === 'initial') {
+                $materialContent .= "\n- PERHATIAN KHUSUS: Soal yang dibuat HARUS menguji KEMAMPUAN PRASYARAT (pengetahuan dasar dari materi SEBELUMNYA) yang dibutuhkan agar siswa bisa mempelajari materi TP ini dengan lancar. JANGAN menguji materi inti TP ini karena siswa belum mempelajarinya.";
+            }
+
             $suggestions = $service->suggestAssessment(
                 $request->learning_objective_id,
                 $request->input('instrument_type', 'rubric'),
