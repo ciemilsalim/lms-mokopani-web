@@ -1,5 +1,5 @@
 import AppLayout from '@/layouts/app-layout';
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, useForm, router } from '@inertiajs/react';
 import { ChevronLeft, Save, Zap, Image as ImageIcon, X, Link as LinkIcon, Upload, AlertTriangle, ImagePlus, Loader2, Sparkles, Trash2 } from 'lucide-react';
 import ReactQuill from 'react-quill-new';
 import { useState } from 'react';
@@ -167,9 +167,8 @@ export default function EditMaterial({ material, teachings, objectives }: EditMa
         imageUrls.forEach(u => formData.append('image_urls[]', u));
         imagesToDelete.forEach(id => formData.append('images_to_delete[]', id.toString()));
 
-        post(route('materials.update', material.id), {
+        router.post(route('materials.update', material.id), formData, {
             forceFormData: true,
-            data: Object.fromEntries(formData) as any,
         });
     };
 

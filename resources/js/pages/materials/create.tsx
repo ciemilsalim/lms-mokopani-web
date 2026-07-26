@@ -1,6 +1,6 @@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
-import { Head, useForm } from '@inertiajs/react';
+import { Head, useForm, router } from '@inertiajs/react';
 import { useState, useEffect } from 'react';
 import { 
     ChevronLeft, 
@@ -270,13 +270,33 @@ export default function CreateMaterial({ teachings, objectives }: CreateMaterial
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        transform((data) => ({
-            ...data,
-            resources: resources,
-            image_uploads: imageFiles,
-            image_urls: imageUrls,
-        }));
-        post(route('materials.store'), {
+        
+        const formData = new FormData();
+        formData.append('subject_id', data.subject_id.toString());
+        data.school_classes.forEach(c => formData.append('school_classes[]', c.toString()));
+        if (data.learning_objective_id) formData.append('learning_objective_id', data.learning_objective_id.toString());
+        formData.append('title', data.title);
+        if (data.content) formData.append('content', data.content);
+        if (data.thumbnail) formData.append('thumbnail', data.thumbnail);
+        if (data.thumbnail_url) formData.append('thumbnail_url', data.thumbnail_url);
+        if (data.file) formData.append('file', data.file);
+        
+        // Resources
+        resources.forEach((res, i) => {
+            formData.append(`resources[${i}][type]`, res.type);
+            formData.append(`resources[${i}][title]`, res.title || '');
+            if (res.type === 'link' || res.type === 'youtube') {
+                formData.append(`resources[${i}][value]`, res.value || '');
+            } else if (res.file) {
+                formData.append(`resources[${i}][file]`, res.file);
+            }
+        });
+        
+        // Multi-image
+        imageFiles.forEach(f => formData.append('image_uploads[]', f));
+        imageUrls.forEach(u => formData.append('image_urls[]', u));
+
+        router.post(route('materials.store'), formData, {
             forceFormData: true,
         });
     };
