@@ -660,39 +660,48 @@ export default function LearningObjectiveIndex({ objectives, subjects, cpList }:
                         ) : (
                             objectives.map((obj) => (
                                 <div key={obj.id} className="group relative rounded-xl border border-border bg-card p-6 shadow-sm transition-all hover:shadow-xl hover:-translate-y-1">
-                                    <div className="flex items-start justify-between mb-4">
-                                        <div className="flex flex-col gap-1">
-                                            <div className="flex items-center gap-2">
-                                                <span className="inline-flex rounded-full bg-primary/10 px-2.5 py-0.5 text-[10px] font-black text-primary uppercase tracking-widest">
+                                    <div className="flex items-start justify-between mb-4 gap-4">
+                                        <div className="flex flex-col gap-1.5 min-w-0">
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <span className="inline-flex items-center rounded-md bg-slate-100 dark:bg-slate-800 px-2.5 py-1 text-[10px] font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider border border-slate-200 dark:border-slate-700 shadow-sm">
                                                     {obj.subject?.name}
                                                 </span>
-                                                <span className="inline-flex rounded-full bg-secondary/20 px-2.5 py-0.5 text-[10px] font-bold text-muted-foreground uppercase">
+                                                <span className={`inline-flex items-center rounded-md px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider border shadow-sm ${
+                                                    obj.formulation_method === 'analysis' 
+                                                        ? 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800/50' 
+                                                        : obj.formulation_method === 'cross_element' 
+                                                        ? 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-400 dark:border-purple-800/50' 
+                                                        : 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800/50'
+                                                }`}>
                                                     {obj.formulation_method === 'analysis' ? 'Analisis' : obj.formulation_method === 'cross_element' ? 'Lintas Elemen' : 'Salin CP'}
                                                 </span>
                                             </div>
                                             {obj.capaian_pembelajaran && (
-                                                <span className="text-[10px] font-bold text-muted-foreground/60 line-clamp-1">{obj.capaian_pembelajaran?.elemen}</span>
+                                                <span className="text-xs font-medium text-slate-500 dark:text-slate-400 line-clamp-1 mt-1" title={obj.capaian_pembelajaran?.elemen}>
+                                                    {obj.capaian_pembelajaran?.elemen}
+                                                </span>
                                             )}
                                         </div>
-                                        <div className="flex gap-2 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition duration-300">
+                                        <div className="flex items-center gap-1 p-1 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-all duration-300 shadow-sm shrink-0">
                                             <button 
                                                 onClick={() => openBreakdownModal(obj)}
-                                                className="h-8 flex items-center justify-center gap-1.5 px-3 rounded-xl bg-primary/10 text-primary hover:bg-primary/20 transition shadow-sm"
+                                                className="h-8 flex items-center justify-center gap-1.5 px-3 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 hover:shadow-sm dark:bg-indigo-900/40 dark:text-indigo-400 dark:hover:bg-indigo-900/60 transition-all"
                                                 title="Pecah menjadi Sub-TP"
                                             >
                                                 <SplitSquareHorizontal className="h-3.5 w-3.5" />
-                                                <span className="text-[10px] font-black uppercase">Pecah Sub-TP</span>
+                                                <span className="text-[10px] font-bold uppercase hidden xl:inline-block">Pecah Sub-TP</span>
                                             </button>
+                                            <div className="w-px h-4 bg-slate-200 dark:bg-slate-700 mx-1 hidden sm:block"></div>
                                             <button 
                                                 onClick={() => openEditModal(obj)}
-                                                className="h-8 w-8 flex items-center justify-center rounded-xl bg-muted text-muted-foreground hover:text-primary transition shadow-sm"
+                                                className="h-8 w-8 flex items-center justify-center rounded-lg text-slate-500 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/40 transition-all"
                                                 title="Edit"
                                             >
                                                 <Edit2 className="h-3.5 w-3.5" />
                                             </button>
                                             <button 
                                                 onClick={() => setDeleteId(obj.id)}
-                                                className="h-8 w-8 flex items-center justify-center rounded-xl bg-muted text-muted-foreground hover:text-destructive transition shadow-sm"
+                                                className="h-8 w-8 flex items-center justify-center rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-all"
                                                 title="Hapus"
                                             >
                                                 <Trash2 className="h-3.5 w-3.5" />
