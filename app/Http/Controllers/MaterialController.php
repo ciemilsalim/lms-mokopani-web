@@ -192,6 +192,10 @@ class MaterialController extends Controller
                 'thumbnail'             => 'nullable|image|max:2048',
                 'thumbnail_url'         => 'nullable|url|max:2048',
                 'resources'             => 'nullable|array',
+                'image_uploads'         => 'nullable|array|max:6',
+                'image_uploads.*'       => 'image|max:4096',
+                'image_urls'            => 'nullable|array|max:6',
+                'image_urls.*'          => 'url|max:2048',
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
             \Illuminate\Support\Facades\Log::error('Material Store Validation Failed: ', $e->errors());
@@ -262,6 +266,40 @@ class MaterialController extends Controller
                         'path'        => $path,
                         'file_type'   => $fileType,
                     ]);
+                }
+            }
+        }
+
+        // Handle image uploads (multi-image)
+        if ($request->hasFile('image_uploads')) {
+            foreach ($request->file('image_uploads') as $imageFile) {
+                $imagePath = $imageFile->store('lms/images', 'public');
+                \App\Models\LmsMaterialResource::create([
+                    'material_id' => $material->id,
+                    'type'        => 'image',
+                    'title'       => null,
+                    'path'        => $imagePath,
+                    'file_type'   => $imageFile->getClientOriginalExtension(),
+                ]);
+            }
+        }
+
+        // Handle AI-generated image URLs (multi-image)
+        if (!empty($validated['image_urls'])) {
+            foreach ($validated['image_urls'] as $imageUrl) {
+                try {
+                    $contents = file_get_contents($imageUrl);
+                    $name = 'lms/images/' . uniqid() . '.jpg';
+                    Storage::disk('public')->put($name, $contents);
+                    \App\Models\LmsMaterialResource::create([
+                        'material_id' => $material->id,
+                        'type'        => 'image',
+                        'title'       => null,
+                        'path'        => $name,
+                        'file_type'   => 'jpg',
+                    ]);
+                } catch (\Exception $e) {
+                    \Illuminate\Support\Facades\Log::error('Failed to download AI image: ' . $e->getMessage());
                 }
             }
         }
@@ -443,7 +481,7 @@ class MaterialController extends Controller
                     'id'        => $r->id,
                     'type'      => $r->type,
                     'title'     => $r->title,
-                    'path'      => $r->path,
+                    'path'      => $r->type === 'image' ? (str_starts_with($r->path, 'http') ? $r->path : asset('storage/' . $r->path)) : $r->path,
                     'file_type' => $r->file_type,
                 ]),
                 'created_at'             => $material->created_at->format('d M Y'),
@@ -505,7 +543,7 @@ class MaterialController extends Controller
                     'id' => $r->id,
                     'type' => $r->type,
                     'title' => $r->title,
-                    'path' => $r->path,
+                    'path' => $r->type === 'image' ? (str_starts_with($r->path, 'http') ? $r->path : asset('storage/' . $r->path)) : $r->path,
                     'file_type' => $r->file_type,
                 ]),
             ],
@@ -533,6 +571,11 @@ class MaterialController extends Controller
             'thumbnail_url'         => 'nullable|url|max:2048',
             'resources'             => 'nullable|array',
             'resources_to_delete'   => 'nullable|array',
+            'images_to_delete'      => 'nullable|array',
+            'image_uploads'         => 'nullable|array|max:6',
+            'image_uploads.*'       => 'image|max:4096',
+            'image_urls'            => 'nullable|array|max:6',
+            'image_urls.*'          => 'url|max:2048',
         ]);
 
         $updateData = [
@@ -604,6 +647,60 @@ class MaterialController extends Controller
                         'path'        => $path,
                         'file_type'   => $fileType,
                     ]);
+                }
+            }
+        }
+
+        // Handle images to delete
+        if (!empty($validated['images_to_delete'])) {
+            $imagesToDelete = \App\Models\LmsMaterialResource::whereIn('id', $validated['images_to_delete'])
+                                ->where('material_id', $material->id)
+                                ->where('type', 'image')
+                                ->get();
+            foreach ($imagesToDelete as $img) {
+                if ($img->path && !str_starts_with($img->path, 'http')) {
+                    Storage::disk('public')->delete($img->path);
+                }
+                $img->delete();
+            }
+        }
+
+        // Handle new image uploads (multi-image)
+        if ($request->hasFile('image_uploads')) {
+            $existingImageCount = $material->resources()->where('type', 'image')->count();
+            foreach ($request->file('image_uploads') as $imageFile) {
+                if ($existingImageCount >= 6) break;
+                $imagePath = $imageFile->store('lms/images', 'public');
+                \App\Models\LmsMaterialResource::create([
+                    'material_id' => $material->id,
+                    'type'        => 'image',
+                    'title'       => null,
+                    'path'        => $imagePath,
+                    'file_type'   => $imageFile->getClientOriginalExtension(),
+                ]);
+                $existingImageCount++;
+            }
+        }
+
+        // Handle AI-generated image URLs (multi-image)
+        if (!empty($validated['image_urls'])) {
+            $existingImageCount = $material->resources()->where('type', 'image')->count();
+            foreach ($validated['image_urls'] as $imageUrl) {
+                if ($existingImageCount >= 6) break;
+                try {
+                    $contents = file_get_contents($imageUrl);
+                    $name = 'lms/images/' . uniqid() . '.jpg';
+                    Storage::disk('public')->put($name, $contents);
+                    \App\Models\LmsMaterialResource::create([
+                        'material_id' => $material->id,
+                        'type'        => 'image',
+                        'title'       => null,
+                        'path'        => $name,
+                        'file_type'   => 'jpg',
+                    ]);
+                    $existingImageCount++;
+                } catch (\Exception $e) {
+                    \Illuminate\Support\Facades\Log::error('Failed to download AI image: ' . $e->getMessage());
                 }
             }
         }
