@@ -89,21 +89,59 @@ class GradebookController extends Controller
 
         // 6. Format data
         $gradeData = $students->map(function ($student) use ($tps, $summativeAssignments, $initialAssignments, $formativeAssignments, $submissions, $finalScores, $subjectId) {
-            // Map scores to TPs
-            $summativeScores = $tps->map(function ($tp) use ($student, $summativeAssignments, $submissions) {
-                // Find summative assignment for this TP
+            // Map scores to TPs - Step 1: Direct Scores
+            $directScores = $tps->mapWithKeys(function ($tp) use ($student, $summativeAssignments, $submissions) {
                 $assignment = $summativeAssignments->where('learning_objective_id', $tp->id)->first();
-                $score = '-';
-                
+                $score = 0; // Asumsi 0 untuk semua TP
                 if ($assignment) {
                     $sub = $submissions->where('student_id', $student->id)->where('assignment_id', $assignment->id)->first();
-                    $score = $sub?->score ?? '-';
+                    $score = $sub?->score ?? 0;
+                }
+                return [$tp->id => [
+                    'score' => $score,
+                    'has_assignment' => $assignment ? true : false
+                ]];
+            });
+
+            // Map scores to TPs - Step 2: Accumulate for Parent TPs
+            $summativeScores = $tps->map(function ($tp) use ($tps, $directScores) {
+                $dir = $directScores[$tp->id];
+                $score = $dir['score'];
+                $isParent = !$tp->parent_id && $tps->where('parent_id', $tp->id)->count() > 0;
+                
+                $hasAssignment = $dir['has_assignment'];
+                if ($isParent) {
+                    $childDirs = $tps->where('parent_id', $tp->id)
+                        ->map(fn($child) => $directScores[$child->id]);
+                    
+                    if ($childDirs->where('has_assignment', true)->count() > 0) {
+                        $hasAssignment = true;
+                    }
+                    
+                    $validScores = collect();
+                    
+                    // Hanya rata-ratakan dengan TP Induk jika TP Induk memang memiliki asesmen langsung
+                    if ($dir['has_assignment']) {
+                        $validScores->push($score);
+                    }
+                    
+                    foreach ($childDirs as $cd) {
+                        $validScores->push($cd['score']);
+                    }
+                    
+                    if ($validScores->count() > 0) {
+                        $score = round($validScores->avg());
+                    } else {
+                        $score = 0;
+                    }
                 }
 
                 return [
                     'tp_id' => $tp->id,
                     'tp_code' => $tp->code,
-                    'score' => $score
+                    'score' => $score,
+                    'is_top_level' => !$tp->parent_id,
+                    'has_assignment' => $hasAssignment
                 ];
             });
 
@@ -119,14 +157,19 @@ class GradebookController extends Controller
                 return ['id' => $a->id, 'score' => $sub?->score ?? '-', 'type' => $a->assessment_type];
             });
 
-            $validScores = $summativeScores->where('score', '!==', '-')->pluck('score');
-            $average = $validScores->count() > 0 ? round($validScores->avg(), 1) : 0;
+            // Rata-rata keseluruhan hanya diambil dari Top-level TPs
+            $topLevelScores = $summativeScores->filter(fn($s) => $s['is_top_level'])->pluck('score');
+            $average = $topLevelScores->count() > 0 ? round($topLevelScores->avg(), 1) : 0;
 
-            // Generate Deskripsi Otomatis (Mastery vs Improvement)
+            // Generate Deskripsi Otomatis HANYA dari TP yang sudah ada tugas/asesmennya
+            $validScoresForDesc = $summativeScores->filter(fn($s) => $s['is_top_level'] && $s['has_assignment']);
+            $hasAnySummativeSubmission = $submissions->where('student_id', $student->id)
+                ->whereIn('assignment_id', $summativeAssignments->pluck('id'))->count() > 0;
+            
             $description = '';
-            if ($validScores->count() > 0) {
-                $highest = $summativeScores->where('score', '!==', '-')->sortByDesc('score')->first();
-                $lowest = $summativeScores->where('score', '!==', '-')->sortBy('score')->first();
+            if ($hasAnySummativeSubmission && $validScoresForDesc->count() > 0) {
+                $highest = $validScoresForDesc->sortByDesc('score')->first();
+                $lowest = $validScoresForDesc->sortBy('score')->first();
                 
                 $highTpObj = $tps->find($highest['tp_id']);
                 $lowTpObj = $tps->find($lowest['tp_id']);
@@ -141,7 +184,7 @@ class GradebookController extends Controller
                     $description .= " Perlu peningkatan dalam {$lowLabel}.";
                 }
             } else {
-                $description = 'Belum ada data nilai sumatif.';
+                $description = 'Siswa belum memiliki data penilaian yang mencukupi untuk membuat deskripsi capaian.';
             }
 
             return [
@@ -201,30 +244,81 @@ class GradebookController extends Controller
         $submissions = LmsSubmission::whereIn('assignment_id', $assignments->pluck('id'))->get();
 
         $reportData = $students->map(function ($student) use ($assignments, $submissions, $objectives, $subjectId) {
-            // Hitung rata-rata nilai sumatif
             $studentSubmissions = $submissions->where('student_id', $student->id);
-            $totalScore = $studentSubmissions->sum('score');
-            $count = $studentSubmissions->count();
-            $finalScore = $count > 0 ? round($totalScore / $count) : 0;
 
-            // Analisis per TP untuk deskripsi
-            $tpPerformances = $objectives->map(function ($tp) use ($assignments, $studentSubmissions) {
+            // Analisis per TP untuk deskripsi dan perhitungan
+            $tpDirectPerformances = $objectives->mapWithKeys(function ($tp) use ($assignments, $studentSubmissions) {
                 $tpAssignments = $assignments->where('learning_objective_id', $tp->id);
                 $tpSubmissions = $studentSubmissions->whereIn('assignment_id', $tpAssignments->pluck('id'));
                 
+                $score = 0; // Asumsi 0
+                if ($tpSubmissions->count() > 0) {
+                    $score = $tpSubmissions->avg('score');
+                }
+                
+                return [$tp->id => [
+                    'score' => $score,
+                    'has_assignment' => $tpAssignments->count() > 0
+                ]];
+            });
+
+            // Calculate accumulated scores for all TPs
+            $accumulatedTPs = $objectives->map(function ($tp) use ($objectives, $tpDirectPerformances) {
+                $dir = $tpDirectPerformances[$tp->id];
+                $score = $dir['score'];
+                $hasAssignment = $dir['has_assignment'];
+                $isTopLevel = !$tp->parent_id;
+                $isParent = $isTopLevel && $objectives->where('parent_id', $tp->id)->count() > 0;
+                
+                if ($isParent) {
+                    $childDirs = $objectives->where('parent_id', $tp->id)
+                        ->map(fn($child) => $tpDirectPerformances[$child->id]);
+                    
+                    if ($childDirs->where('has_assignment', true)->count() > 0) {
+                        $hasAssignment = true;
+                    }
+                        
+                    $validScores = collect();
+                    if ($dir['has_assignment']) {
+                        $validScores->push($score);
+                    }
+                    foreach ($childDirs as $cd) {
+                        $validScores->push($cd['score']);
+                    }
+                    
+                    if ($validScores->count() > 0) {
+                        $score = $validScores->avg();
+                    } else {
+                        $score = 0;
+                    }
+                }
+
                 return [
                     'code'        => $tp->code,
                     'description' => $tp->description,
-                    'avg'         => $tpSubmissions->count() > 0 ? $tpSubmissions->avg('score') : 0,
-                    'count'       => $tpSubmissions->count()
+                    'avg'         => $score,
+                    'is_top_level'=> $isTopLevel,
+                    'has_assignment' => $hasAssignment
                 ];
-            })->filter(fn($tp) => $tp['count'] > 0);
+            });
+
+            $tpPerformances = $accumulatedTPs->filter(fn($tp) => $tp['is_top_level']);
+
+            // Hitung rata-rata nilai sumatif HANYA dari Top Level TPs
+            $finalScore = 0;
+            if ($tpPerformances->count() > 0) {
+                $finalScore = round($tpPerformances->avg('avg'));
+            }
+
+            // Hanya gunakan TP yang SUDAH ADA TUGAS untuk membuat deskripsi!
+            $tpPerformancesForDesc = $tpPerformances->filter(fn($tp) => $tp['has_assignment']);
+            $hasAnySummativeSubmission = $studentSubmissions->count() > 0;
 
             // Generate Deskripsi
             $description = "";
-            if ($tpPerformances->count() > 0) {
-                $highest = $tpPerformances->sortByDesc('avg')->first();
-                $lowest = $tpPerformances->sortBy('avg')->first();
+            if ($hasAnySummativeSubmission && $tpPerformancesForDesc->count() > 0) {
+                $highest = $tpPerformancesForDesc->sortByDesc('avg')->first();
+                $lowest = $tpPerformancesForDesc->sortBy('avg')->first();
 
                 $description = "Menunjukkan penguasaan yang sangat baik dalam hal {$highest['description']}.";
                 
@@ -233,7 +327,7 @@ class GradebookController extends Controller
                     $description .= " Perlu bimbingan lebih lanjut dalam hal {$lowest['description']}.";
                 }
             } else {
-                $description = "Data penilaian belum mencukupi untuk membuat deskripsi.";
+                $description = "Siswa belum memiliki data penilaian yang mencukupi untuk membuat deskripsi capaian.";
             }
 
             return [

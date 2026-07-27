@@ -1087,6 +1087,22 @@ export default function ShowMaterial({
                                                         </div>
                                                     );
                                                 }
+                                                const ext = res.file_type?.toLowerCase() || res.path.split('.').pop()?.toLowerCase() || '';
+
+                                                if (['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg'].includes(ext)) {
+                                                    const imgSrc = res.path.startsWith('http') ? res.path : `/storage/${res.path}`;
+                                                    return (
+                                                        <div key={idx} className="space-y-3 bg-card/60 p-6 rounded-3xl border border-border/60">
+                                                            <h4 className="text-lg font-bold text-foreground flex items-center gap-2">
+                                                                <ImageIcon className="h-6 w-6 text-emerald-500" /> {res.title || 'Gambar Lampiran'}
+                                                            </h4>
+                                                            <div className="w-full rounded-2xl overflow-hidden border border-border/60 shadow-xl bg-background/50 flex justify-center p-4">
+                                                                <img src={imgSrc} alt={res.title || 'Gambar'} className="max-w-full max-h-[500px] object-contain rounded-xl" />
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                }
+
                                                 return (
                                                     <a
                                                         key={idx}
@@ -2306,6 +2322,19 @@ export default function ShowMaterial({
                                         } else {
                                             const ext = res.file_type?.toLowerCase() || res.path.split('.').pop()?.toLowerCase() || '';
                                             
+                                            // Image Preview
+                                            if (['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg'].includes(ext)) {
+                                                const imgSrc = res.path.startsWith('http') ? res.path : `/storage/${res.path}`;
+                                                return (
+                                                    <div key={idx} className="space-y-2">
+                                                        <h4 className="text-sm font-bold text-[#8A8F98]">{res.title || 'Gambar Lampiran'}</h4>
+                                                        <div className="w-full rounded-3xl overflow-hidden border border-[#2C2C3A]/20 dark:border-[#2C2C3A] shadow-sm bg-[#F1F1F4]/5 dark:bg-[#1B1B25]/50 flex justify-center p-4">
+                                                            <img src={imgSrc} alt={res.title || 'Gambar'} className="max-w-full max-h-[500px] object-contain rounded-xl" />
+                                                        </div>
+                                                    </div>
+                                                );
+                                            }
+
                                             // Local Video Preview
                                             if (['mp4', 'webm', 'ogg'].includes(ext)) {
                                                 return (
