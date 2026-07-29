@@ -38,10 +38,10 @@ export default function Index({ modulAjars, period }: IndexProps) {
     };
 
     const filtered = modulAjars.filter(m => 
-        m.subject_name.toLowerCase().includes(search.toLowerCase()) ||
-        m.class_name.toLowerCase().includes(search.toLowerCase()) ||
-        m.material_title.toLowerCase().includes(search.toLowerCase()) ||
-        m.tp_desc.toLowerCase().includes(search.toLowerCase())
+        m.subject_name?.toLowerCase().includes(search.toLowerCase()) ||
+        m.class_name?.toLowerCase().includes(search.toLowerCase()) ||
+        m.material_title?.toLowerCase().includes(search.toLowerCase()) ||
+        m.tp_desc?.toLowerCase().includes(search.toLowerCase())
     );
 
     return (
