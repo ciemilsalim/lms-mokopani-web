@@ -22,7 +22,7 @@ const quillModules = {
 interface ModulAjar {
     id: number;
     subject_id: number;
-    school_class_id: number;
+    school_class_ids: number[];
     learning_objective_id: number;
     material_id: number;
     pedagogical_model: string;
@@ -132,7 +132,7 @@ export default function Edit({ modulAjar, teachings, objectives, materials, peri
     const [isSaving, setIsSaving] = useState(false);
 
     // Get current parameters
-    const subjectInfo = teachings.find(t => t.subject_id === modulAjar.subject_id && t.school_class_id === modulAjar.school_class_id);
+    const subjectInfo = teachings.find(t => t.subject_id === modulAjar.subject_id);
     const objectiveInfo = objectives.find(o => o.id === modulAjar.learning_objective_id);
     const materialInfo = materials.find(m => m.id === modulAjar.material_id);
 
@@ -183,7 +183,7 @@ export default function Edit({ modulAjar, teachings, objectives, materials, peri
                 material_id: modulAjar.material_id,
                 pedagogical_model: pedagogicalModel,
                 custom_prompt: customPrompt,
-                school_class_id: modulAjar.school_class_id,
+                school_class_ids: modulAjar.school_class_ids,
                 regenerate: true // Force bypass cache
             });
 
@@ -263,7 +263,7 @@ export default function Edit({ modulAjar, teachings, objectives, materials, peri
 
         const payload = {
             subject_id: modulAjar.subject_id,
-            school_class_id: modulAjar.school_class_id,
+            school_class_ids: modulAjar.school_class_ids,
             learning_objective_id: modulAjar.learning_objective_id,
             material_id: modulAjar.material_id,
             pedagogical_model: pedagogicalModel,

@@ -41,34 +41,39 @@ interface CreateProps {
 }
 
 export default function Create({ teachings, objectives, materials, period }: CreateProps) {
-    const [selectedTeaching, setSelectedTeaching] = useState<string>('');
+    const [selectedSubjectId, setSelectedSubjectId] = useState<string>('');
+    const [selectedClassIds, setSelectedClassIds] = useState<number[]>([]);
     const [selectedObjectiveId, setSelectedObjectiveId] = useState<string>('');
     const [selectedMaterialId, setSelectedMaterialId] = useState<string>('');
     
     const [isSaving, setIsSaving] = useState(false);
     const [isPromptModalOpen, setIsPromptModalOpen] = useState(false);
 
-    // Get current teaching info
-    const currentTeaching = teachings.find(t => t.id === parseInt(selectedTeaching));
+    // Get unique subjects
+    const uniqueSubjects = Array.from(new Set(teachings.map(t => t.subject_id)))
+        .map(id => teachings.find(t => t.subject_id === id));
+
+    // Get available classes for selected subject
+    const availableClasses = teachings.filter(t => t.subject_id === parseInt(selectedSubjectId));
 
     // Filter TPs based on selected Subject
-    const filteredObjectives = currentTeaching 
-        ? objectives.filter(o => o.subject_id === currentTeaching.subject_id)
+    const filteredObjectives = selectedSubjectId 
+        ? objectives.filter(o => o.subject_id === parseInt(selectedSubjectId))
         : [];
 
     // Filter Materials based on selected TP & Subject
-    const filteredMaterials = currentTeaching && selectedObjectiveId
-        ? materials.filter(m => m.subject_id === currentTeaching.subject_id && m.learning_objective_id === parseInt(selectedObjectiveId))
+    const filteredMaterials = selectedSubjectId && selectedObjectiveId
+        ? materials.filter(m => m.subject_id === parseInt(selectedSubjectId) && m.learning_objective_id === parseInt(selectedObjectiveId))
         : [];
 
     // Save Modul Ajar to DB
     const handleSave = () => {
-        if (!currentTeaching || !selectedObjectiveId || !selectedMaterialId) return;
+        if (!selectedSubjectId || selectedClassIds.length === 0 || !selectedObjectiveId || !selectedMaterialId) return;
         setIsSaving(true);
 
         const payload = {
-            subject_id: currentTeaching.subject_id,
-            school_class_id: currentTeaching.school_class_id,
+            subject_id: parseInt(selectedSubjectId),
+            school_class_ids: selectedClassIds,
             learning_objective_id: parseInt(selectedObjectiveId),
             material_id: parseInt(selectedMaterialId),
             pedagogical_model: 'Pembelajaran Mendalam (Deep Learning)',
@@ -120,24 +125,54 @@ export default function Create({ teachings, objectives, materials, period }: Cre
                         </div>
 
                         <div className="space-y-4">
-                            {/* Teaching Assignment Selector */}
+                            {/* Subject Selector */}
                             <div className="space-y-2">
-                                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">1. Mata Pelajaran & Kelas</label>
+                                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">1. Mata Pelajaran</label>
                                 <select 
-                                    value={selectedTeaching}
+                                    value={selectedSubjectId}
                                     onChange={(e) => {
-                                        setSelectedTeaching(e.target.value);
+                                        setSelectedSubjectId(e.target.value);
+                                        setSelectedClassIds([]);
                                         setSelectedObjectiveId('');
                                         setSelectedMaterialId('');
                                     }}
                                     className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 dark:bg-popover transition"
                                 >
-                                    <option value="">-- Pilih Mapel & Kelas --</option>
-                                    {teachings.map(t => (
-                                        <option key={t.id} value={t.id}>{t.subject_name} ({t.class_name})</option>
+                                    <option value="">-- Pilih Mata Pelajaran --</option>
+                                    {uniqueSubjects.map(s => (
+                                        <option key={s?.subject_id} value={s?.subject_id}>{s?.subject_name}</option>
                                     ))}
                                 </select>
                             </div>
+
+                            {/* Classes Checkboxes */}
+                            {selectedSubjectId && availableClasses.length > 0 && (
+                                <div className="space-y-2">
+                                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Pilih Kelas Terkait</label>
+                                    <div className="flex flex-wrap gap-3">
+                                        {availableClasses.map(c => (
+                                            <label key={c.school_class_id} className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-background hover:bg-muted/50 cursor-pointer transition">
+                                                <input 
+                                                    type="checkbox" 
+                                                    className="rounded border-border text-primary focus:ring-primary"
+                                                    checked={selectedClassIds.includes(c.school_class_id)}
+                                                    onChange={(e) => {
+                                                        if (e.target.checked) {
+                                                            setSelectedClassIds([...selectedClassIds, c.school_class_id]);
+                                                        } else {
+                                                            setSelectedClassIds(selectedClassIds.filter(id => id !== c.school_class_id));
+                                                        }
+                                                    }}
+                                                />
+                                                <span className="text-sm font-medium text-foreground">{c.class_name}</span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                    {selectedClassIds.length === 0 && (
+                                        <p className="text-xs text-amber-500 font-medium">Pilih minimal satu kelas.</p>
+                                    )}
+                                </div>
+                            )}
 
                             {/* TP Selector */}
                             <div className="space-y-2">
@@ -148,7 +183,7 @@ export default function Create({ teachings, objectives, materials, period }: Cre
                                         setSelectedObjectiveId(e.target.value);
                                         setSelectedMaterialId('');
                                     }}
-                                    disabled={!selectedTeaching}
+                                    disabled={!selectedSubjectId}
                                     className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 dark:bg-popover transition disabled:opacity-50"
                                 >
                                     <option value="">-- Pilih TP --</option>

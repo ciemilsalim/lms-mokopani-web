@@ -805,7 +805,7 @@ class InstructionalSmartService
         ?string $model = null,
         ?string $customPrompt = null,
         bool $regenerate = false,
-        ?int $classId = null
+        ?array $classIds = null
     ): array {
         $this->isLastRequestOnline = false;
         
@@ -818,9 +818,9 @@ class InstructionalSmartService
 
         $subjectName = $tp->subject?->name ?? 'Mata Pelajaran';
         $className = $tp->schoolClass?->name ?? 'Kelas X';
-        if ($classId) {
-            $classModel = \App\Models\SchoolClass::find($classId);
-            $className = $classModel ? $classModel->name : $className;
+        if ($classIds && count($classIds) > 0) {
+            $classModels = \App\Models\SchoolClass::whereIn('id', $classIds)->pluck('name')->toArray();
+            $className = count($classModels) > 0 ? implode(', ', $classModels) : $className;
         }
         $tpDescription = $tp->description ?? 'Tujuan Pembelajaran';
         $materialTitle = $material->title ?? 'Materi Inti';

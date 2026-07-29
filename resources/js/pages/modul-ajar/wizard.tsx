@@ -42,7 +42,7 @@ export default function ModulAjarWizardPage({ cpList, teachings, period }: Modul
 
         const payload = {
             subject_id: firstTeaching?.subject_id || 1,
-            school_class_id: firstTeaching?.school_class_id || 1,
+            school_class_ids: [firstTeaching?.school_class_id || 1],
             learning_objective_id: 1, // fallback
             material_id: 1, // fallback
             pedagogical_model: 'PPA 2025 Backward Design',

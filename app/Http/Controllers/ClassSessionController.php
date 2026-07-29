@@ -26,13 +26,14 @@ class ClassSessionController extends Controller
             $student = $user->student;
             $classId = $student?->school_class_id;
 
-            $query = \App\Models\LmsModulAjar::with(['teacher', 'schoolClass', 'subject', 'learningObjective', 'material'])
+            $query = \App\Models\LmsModulAjar::with(['teacher', 'schoolClasses', 'subject', 'learningObjective', 'material'])
                 ->orderBy('created_at', 'desc');
 
             if ($classId) {
                 $query->where(function($q) use ($classId) {
-                    $q->where('school_class_id', $classId)
-                      ->orWhereNull('school_class_id');
+                    $q->whereHas('schoolClasses', function ($subQ) use ($classId) {
+                        $subQ->where('school_classes.id', $classId);
+                    })->orDoesntHave('schoolClasses');
                 });
             }
 
@@ -59,7 +60,7 @@ class ClassSessionController extends Controller
         // ── AKSES OLEH GURU / ADMIN ────────────────────────────────────
         $teacherId = $user->teacher?->id;
 
-        $modulAjarsQuery = \App\Models\LmsModulAjar::with(['subject', 'learningObjective', 'material', 'teacher', 'schoolClass'])
+        $modulAjarsQuery = \App\Models\LmsModulAjar::with(['subject', 'learningObjective', 'material', 'teacher', 'schoolClasses'])
             ->latest();
             
         if ($teacherId && $user->role !== 'admin') {
@@ -79,7 +80,7 @@ class ClassSessionController extends Controller
      */
     public function live($id)
     {
-        $modulAjar = \App\Models\LmsModulAjar::with(['subject', 'schoolClass', 'learningObjective', 'material'])->findOrFail($id);
+        $modulAjar = \App\Models\LmsModulAjar::with(['subject', 'schoolClasses', 'learningObjective', 'material'])->findOrFail($id);
         
         return Inertia::render('class-sessions/live', [
             'modulAjar' => $modulAjar,

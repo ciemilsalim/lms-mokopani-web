@@ -28,7 +28,7 @@ class LmsModulAjarController extends Controller
         $activeYear = AcademicYear::getActive();
         $activeSemester = Semester::getActive();
 
-        $modulAjars = LmsModulAjar::with(['subject', 'schoolClass', 'learningObjective', 'material'])
+        $modulAjars = LmsModulAjar::with(['subject', 'schoolClasses', 'learningObjective', 'material'])
             ->where('teacher_id', $teacher->id)
             ->where('academic_year_id', $activeYear?->id)
             ->where('semester_id', $activeSemester?->id)
@@ -37,7 +37,7 @@ class LmsModulAjarController extends Controller
             ->map(fn ($m) => [
                 'id' => $m->id,
                 'subject_name' => $m->subject?->name,
-                'class_name' => $m->schoolClass?->name,
+                'class_name' => $m->schoolClasses->pluck('name')->implode(', '),
                 'tp_code' => $m->learningObjective?->code,
                 'tp_desc' => $m->learningObjective?->description,
                 'material_title' => $m->material?->title,
@@ -280,7 +280,8 @@ class LmsModulAjarController extends Controller
             'pedagogical_model'     => 'nullable|string',
             'custom_prompt'         => 'nullable|string',
             'regenerate'            => 'nullable|boolean',
-            'school_class_id'       => 'nullable|exists:mysql_absensi.school_classes,id',
+            'school_class_ids'      => 'nullable|array',
+            'school_class_ids.*'    => 'exists:mysql_absensi.school_classes,id',
         ]);
 
         $regenerate = $request->boolean('regenerate', false);
@@ -291,7 +292,7 @@ class LmsModulAjarController extends Controller
             $request->pedagogical_model,
             $request->custom_prompt,
             $regenerate,
-            $request->school_class_id
+            $request->school_class_ids
         );
 
         if (is_array($draft)) {
@@ -312,7 +313,8 @@ class LmsModulAjarController extends Controller
 
         $validated = $request->validate([
             'subject_id'            => 'required|exists:mysql_absensi.subjects,id',
-            'school_class_id'       => 'required|exists:mysql_absensi.school_classes,id',
+            'school_class_ids'      => 'required|array',
+            'school_class_ids.*'    => 'exists:mysql_absensi.school_classes,id',
             'learning_objective_id' => 'required|exists:lms_learning_objectives,id',
             'material_id'           => 'required|exists:lms_materials,id',
             'pedagogical_model'     => 'nullable|string',
@@ -332,6 +334,8 @@ class LmsModulAjarController extends Controller
             'semester_id'      => $activeSemester?->id,
         ]));
 
+        $modulAjar->schoolClasses()->sync($validated['school_class_ids']);
+
         return redirect()->route('lesson-plans.edit', $modulAjar->id)
             ->with('success', 'Referensi berhasil dipilih. Silakan lengkapi rancangan Modul Ajar Anda pada Wizard ini.');
     }
@@ -345,7 +349,7 @@ class LmsModulAjarController extends Controller
         $activeYear = AcademicYear::getActive();
         $activeSemester = Semester::getActive();
         
-        $modulAjar = LmsModulAjar::with(['subject', 'schoolClass', 'learningObjective', 'material', 'material.resources'])
+        $modulAjar = LmsModulAjar::with(['subject', 'schoolClasses', 'learningObjective', 'material', 'material.resources'])
             ->where('teacher_id', $teacher->id)
             ->findOrFail($id);
 
@@ -358,11 +362,11 @@ class LmsModulAjarController extends Controller
             'modulAjar' => [
                 'id' => $modulAjar->id,
                 'subject_id' => $modulAjar->subject_id,
-                'school_class_id' => $modulAjar->school_class_id,
+                'school_class_ids' => $modulAjar->schoolClasses->pluck('id'),
                 'learning_objective_id' => $modulAjar->learning_objective_id,
                 'material_id' => $modulAjar->material_id,
                 'subject_name' => $modulAjar->subject?->name,
-                'class_name' => $modulAjar->schoolClass?->name,
+                'class_name' => $modulAjar->schoolClasses->pluck('name')->implode(', '),
                 'semester_name' => $activeSemester?->name,
                 'academic_year_name' => $activeYear?->name,
                 'tp_code' => $modulAjar->learningObjective?->code,
@@ -413,7 +417,8 @@ class LmsModulAjarController extends Controller
         $activeYear = AcademicYear::getActive();
         $activeSemester = Semester::getActive();
 
-        $modulAjar = LmsModulAjar::where('teacher_id', $teacher->id)->findOrFail($id);
+        $modulAjar = LmsModulAjar::with('schoolClasses')->where('teacher_id', $teacher->id)->findOrFail($id);
+        $modulAjar->school_class_ids = $modulAjar->schoolClasses->pluck('id');
 
         // Ambil data penugasan mengajar (Mapel & Kelas)
         $teachings = TeachingAssignment::with(['subject', 'schoolClass'])
@@ -466,7 +471,8 @@ class LmsModulAjarController extends Controller
 
         $validated = $request->validate([
             'subject_id'            => 'required|exists:mysql_absensi.subjects,id',
-            'school_class_id'       => 'required|exists:mysql_absensi.school_classes,id',
+            'school_class_ids'      => 'required|array',
+            'school_class_ids.*'    => 'exists:mysql_absensi.school_classes,id',
             'learning_objective_id' => 'required|exists:lms_learning_objectives,id',
             'material_id'           => 'required|exists:lms_materials,id',
             'pedagogical_model'     => 'nullable|string',
@@ -481,6 +487,7 @@ class LmsModulAjarController extends Controller
         ]);
 
         $modulAjar->update($validated);
+        $modulAjar->schoolClasses()->sync($validated['school_class_ids']);
 
         return redirect()->route('lesson-plans.index')
             ->with('success', 'Modul Ajar berhasil diperbarui.');

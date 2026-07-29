@@ -14,7 +14,6 @@ class LmsModulAjar extends Model
     protected $fillable = [
         'teacher_id',
         'subject_id',
-        'school_class_id',
         'learning_objective_id',
         'material_id',
         'academic_year_id',
@@ -40,9 +39,9 @@ class LmsModulAjar extends Model
         return $this->belongsTo(Subject::class);
     }
 
-    public function schoolClass()
+    public function schoolClasses()
     {
-        return $this->belongsTo(SchoolClass::class);
+        return $this->belongsToMany(SchoolClass::class, 'lms_modul_ajar_classes', 'modul_ajar_id', 'school_class_id');
     }
 
     public function learningObjective()
