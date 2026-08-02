@@ -111,10 +111,11 @@ class LmsModulAjarController extends Controller
                 'class_name'      => $t->schoolClass?->name,
             ]);
 
-        // Ambil Tujuan Pembelajaran (TP)
+        // Ambil Tujuan Pembelajaran (TP) yang tidak memiliki sub-TP (tidak dipecah)
         $objectives = LmsLearningObjective::where('teacher_id', $teacher->id)
             ->where('academic_year_id', $activeYear?->id)
             ->where('semester_id', $activeSemester?->id)
+            ->doesntHave('subObjectives')
             ->get();
 
         // Ambil materi pengajaran yang sudah pernah dibuat guru
@@ -434,10 +435,14 @@ class LmsModulAjarController extends Controller
                 'class_name'      => $t->schoolClass?->name,
             ]);
 
-        // Ambil Tujuan Pembelajaran (TP)
+        // Ambil Tujuan Pembelajaran (TP) yang tidak memiliki sub-TP (atau yang saat ini sedang dipilih)
         $objectives = LmsLearningObjective::where('teacher_id', $teacher->id)
             ->where('academic_year_id', $activeYear?->id)
             ->where('semester_id', $activeSemester?->id)
+            ->where(function ($query) use ($modulAjar) {
+                $query->doesntHave('subObjectives')
+                      ->orWhere('id', $modulAjar->learning_objective_id);
+            })
             ->get();
 
         // Ambil materi pengajaran

@@ -164,6 +164,7 @@ class MaterialController extends Controller
         $objectives = \App\Models\LmsLearningObjective::where('teacher_id', $teacher->id)
             ->where('academic_year_id', $activeYear?->id)
             ->where('semester_id', $activeSemester?->id)
+            ->doesntHave('subObjectives')
             ->get();
 
         return Inertia::render('materials/create', [
@@ -527,6 +528,10 @@ class MaterialController extends Controller
         $objectives = \App\Models\LmsLearningObjective::where('teacher_id', $teacher->id)
             ->where('academic_year_id', $activeYear?->id)
             ->where('semester_id', $activeSemester?->id)
+            ->where(function ($query) use ($material) {
+                $query->doesntHave('subObjectives')
+                      ->orWhere('id', $material->learning_objective_id);
+            })
             ->get();
 
         $material->load('resources');

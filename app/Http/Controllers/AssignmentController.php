@@ -235,6 +235,7 @@ class AssignmentController extends Controller
         $objectives = \App\Models\LmsLearningObjective::where('teacher_id', $teacher->id)
             ->where('academic_year_id', $activeYear?->id)
             ->where('semester_id', $activeSemester?->id)
+            ->doesntHave('subObjectives')
             ->get();
 
         return Inertia::render('assignments/create', [
@@ -867,6 +868,10 @@ class AssignmentController extends Controller
         $objectives = \App\Models\LmsLearningObjective::where('teacher_id', $teacher->id)
             ->where('academic_year_id', $activeYear?->id)
             ->where('semester_id', $activeSemester?->id)
+            ->where(function ($query) use ($assignment) {
+                $query->doesntHave('subObjectives')
+                      ->orWhere('id', $assignment->learning_objective_id);
+            })
             ->get();
 
         $holidays = \App\Models\Calendar::where('is_holiday', true)
