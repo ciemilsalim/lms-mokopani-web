@@ -59,7 +59,10 @@ class GradebookController extends Controller
         }
 
         // 1. Get all TPs for this subject (Primary Headers)
-        $tps = LmsLearningObjective::where('subject_id', $subjectId)->orderBy('code')->get();
+        $tps = LmsLearningObjective::where('subject_id', $subjectId)
+            ->doesntHave('subObjectives')
+            ->orderBy('code')
+            ->get();
 
         // 2. Ambil semua tugas untuk kelas & mapel ini
         $allAssignments = LmsAssignment::with('learningObjective')
@@ -103,44 +106,17 @@ class GradebookController extends Controller
                 ]];
             });
 
-            // Map scores to TPs - Step 2: Accumulate for Parent TPs
-            $summativeScores = $tps->map(function ($tp) use ($tps, $directScores) {
+            // Map scores to TPs - Step 2: HANYA TAMPILKAN SUB TP JIKA ADA
+            $summativeScores = $tps->map(function ($tp) use ($directScores) {
                 $dir = $directScores[$tp->id];
                 $score = $dir['score'];
-                $isParent = !$tp->parent_id && $tps->where('parent_id', $tp->id)->count() > 0;
-                
                 $hasAssignment = $dir['has_assignment'];
-                if ($isParent) {
-                    $childDirs = $tps->where('parent_id', $tp->id)
-                        ->map(fn($child) => $directScores[$child->id]);
-                    
-                    if ($childDirs->where('has_assignment', true)->count() > 0) {
-                        $hasAssignment = true;
-                    }
-                    
-                    $validScores = collect();
-                    
-                    // Hanya rata-ratakan dengan TP Induk jika TP Induk memang memiliki asesmen langsung
-                    if ($dir['has_assignment']) {
-                        $validScores->push($score);
-                    }
-                    
-                    foreach ($childDirs as $cd) {
-                        $validScores->push($cd['score']);
-                    }
-                    
-                    if ($validScores->count() > 0) {
-                        $score = round($validScores->avg());
-                    } else {
-                        $score = 0;
-                    }
-                }
 
                 return [
                     'tp_id' => $tp->id,
                     'tp_code' => $tp->code,
                     'score' => $score,
-                    'is_top_level' => !$tp->parent_id,
+                    'is_top_level' => true, // Anggap semua leaf TPs valid untuk dihitung rata-rata
                     'has_assignment' => $hasAssignment
                 ];
             });
@@ -226,9 +202,11 @@ class GradebookController extends Controller
             return redirect()->route('gradebook.index');
         }
 
-        // Ambil TP untuk mapel ini
+        // Ambil TP untuk mapel ini yang TIDAK punya sub-TP (leaf TPs)
         $objectives = LmsLearningObjective::where('subject_id', $subjectId)
             ->where('teacher_id', $teacher->id)
+            ->doesntHave('subObjectives')
+            ->orderBy('code')
             ->get();
 
         // Ambil semua tugas sumatif
@@ -262,42 +240,17 @@ class GradebookController extends Controller
                 ]];
             });
 
-            // Calculate accumulated scores for all TPs
-            $accumulatedTPs = $objectives->map(function ($tp) use ($objectives, $tpDirectPerformances) {
+            // Calculate accumulated scores for all TPs (hanya menggunakan Leaf TPs)
+            $accumulatedTPs = $objectives->map(function ($tp) use ($tpDirectPerformances) {
                 $dir = $tpDirectPerformances[$tp->id];
                 $score = $dir['score'];
                 $hasAssignment = $dir['has_assignment'];
-                $isTopLevel = !$tp->parent_id;
-                $isParent = $isTopLevel && $objectives->where('parent_id', $tp->id)->count() > 0;
-                
-                if ($isParent) {
-                    $childDirs = $objectives->where('parent_id', $tp->id)
-                        ->map(fn($child) => $tpDirectPerformances[$child->id]);
-                    
-                    if ($childDirs->where('has_assignment', true)->count() > 0) {
-                        $hasAssignment = true;
-                    }
-                        
-                    $validScores = collect();
-                    if ($dir['has_assignment']) {
-                        $validScores->push($score);
-                    }
-                    foreach ($childDirs as $cd) {
-                        $validScores->push($cd['score']);
-                    }
-                    
-                    if ($validScores->count() > 0) {
-                        $score = $validScores->avg();
-                    } else {
-                        $score = 0;
-                    }
-                }
 
                 return [
                     'code'        => $tp->code,
                     'description' => $tp->description,
                     'avg'         => $score,
-                    'is_top_level'=> $isTopLevel,
+                    'is_top_level'=> true, // Anggap semua leaf TPs valid untuk dihitung rata-rata akhir
                     'has_assignment' => $hasAssignment
                 ];
             });
