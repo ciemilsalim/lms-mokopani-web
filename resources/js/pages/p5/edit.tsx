@@ -24,12 +24,22 @@ interface Project {
     sub_element_ids: number[];
     alokasi_waktu: number | null;
     status: string;
+    cocurricular_id: number | null;
+}
+
+interface SipadaProject {
+    id: number;
+    title: string;
+    learning_objectives: string | null;
+    activity_type: string;
+    time_allocation: number;
 }
 
 interface P5EditProps {
     project: Project;
     classes: ClassItem[];
     dimensi: Dimensi[];
+    sipada_projects: SipadaProject[];
 }
 
 const temaList = [
@@ -38,7 +48,7 @@ const temaList = [
     'Kewirausahaan', 'Kebekerjaan',
 ];
 
-export default function P5Edit({ project, classes, dimensi }: P5EditProps) {
+export default function P5Edit({ project, classes, dimensi, sipada_projects }: P5EditProps) {
     const { data, setData, post, processing, errors } = useForm({
         judul: project.judul,
         deskripsi: project.deskripsi || '',
@@ -48,6 +58,7 @@ export default function P5Edit({ project, classes, dimensi }: P5EditProps) {
         sub_element_ids: project.sub_element_ids || [],
         alokasi_waktu: project.alokasi_waktu?.toString() || '',
         status: project.status,
+        cocurricular_id: project.cocurricular_id ? project.cocurricular_id.toString() : '',
     });
 
     const toggleDimensi = (id: number) => {
@@ -97,6 +108,38 @@ export default function P5Edit({ project, classes, dimensi }: P5EditProps) {
                         <h3 className="text-sm font-black text-foreground uppercase tracking-widest flex items-center gap-2">
                             <Heart className="h-4 w-4 text-rose-500" /> Informasi Projek
                         </h3>
+
+                        {sipada_projects && sipada_projects.length > 0 && (
+                            <div className="space-y-2 p-4 border border-primary/20 bg-primary/5 rounded-lg">
+                                <label className="text-xs font-semibold text-primary flex items-center gap-2">
+                                    <Heart className="h-4 w-4" /> Import Data dari Kokurikuler (Opsional)
+                                </label>
+                                <select 
+                                    value={data.cocurricular_id} 
+                                    onChange={e => {
+                                        const selectedId = e.target.value;
+                                        setData('cocurricular_id', selectedId);
+                                        const project = sipada_projects.find(p => p.id.toString() === selectedId);
+                                        if (project) {
+                                            setData(data => ({
+                                                ...data,
+                                                cocurricular_id: selectedId,
+                                                judul: project.title,
+                                                deskripsi: project.learning_objectives || '',
+                                                alokasi_waktu: project.time_allocation ? project.time_allocation.toString() : '',
+                                            }));
+                                        }
+                                    }} 
+                                    className="w-full rounded-lg border border-input bg-background px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring"
+                                >
+                                    <option value="">-- Pilih Projek --</option>
+                                    {sipada_projects.map(p => (
+                                        <option key={p.id} value={p.id}>{p.title}</option>
+                                    ))}
+                                </select>
+                                <p className="text-[10px] text-muted-foreground">Pilih projek dari jadwal untuk mengisi data secara otomatis.</p>
+                            </div>
+                        )}
 
                         <div className="grid gap-6 md:grid-cols-2">
                             <div className="space-y-1.5">

@@ -140,10 +140,20 @@ class P5ProjectController extends Controller
 
         $dimensi = LmsP5Dimensi::with('elements.subElements')->get();
 
+        // Fetch SIPADA Cocurriculars assigned to this teacher
+        $sipadaProjects = \Illuminate\Support\Facades\DB::connection('mysql_absensi')
+            ->table('cocurriculars')
+            ->join('cocurricular_teacher', 'cocurriculars.id', '=', 'cocurricular_teacher.cocurricular_id')
+            ->where('cocurricular_teacher.teacher_id', $teacher->id)
+            ->where('cocurriculars.academic_year_id', $activeYear?->id)
+            ->select('cocurriculars.*')
+            ->get();
+
         return Inertia::render('p5/create', [
-            'classes'      => $classes,
-            'dimensi'      => $dimensi,
-            'period'       => $activeYear?->name . ' - ' . $activeSemester?->name,
+            'classes'         => $classes,
+            'dimensi'         => $dimensi,
+            'sipada_projects' => $sipadaProjects,
+            'period'          => $activeYear?->name . ' - ' . $activeSemester?->name,
         ]);
     }
 
@@ -163,6 +173,7 @@ class P5ProjectController extends Controller
             'sub_element_ids.*' => 'exists:lms_p5_sub_elements,id',
             'alokasi_waktu'   => 'nullable|integer|min:1',
             'status'          => 'required|in:draft,active,selesai',
+            'cocurricular_id' => 'nullable|integer',
         ]);
 
         LmsP5Project::create([
@@ -176,6 +187,7 @@ class P5ProjectController extends Controller
             'sub_element_ids'  => $validated['sub_element_ids'],
             'alokasi_waktu'    => $validated['alokasi_waktu'],
             'status'           => $validated['status'],
+            'cocurricular_id'  => $validated['cocurricular_id'] ?? null,
         ]);
 
         return redirect()->route('p5.index')->with('success', 'Projek P5 berhasil dibuat.');
@@ -240,11 +252,22 @@ class P5ProjectController extends Controller
         $classes = collect($teachings)->unique('class_id')->values();
 
         $dimensi = LmsP5Dimensi::with('elements.subElements')->get();
+        $activeYear = AcademicYear::getActive();
+
+        // Fetch SIPADA Cocurriculars assigned to this teacher
+        $sipadaProjects = \Illuminate\Support\Facades\DB::connection('mysql_absensi')
+            ->table('cocurriculars')
+            ->join('cocurricular_teacher', 'cocurriculars.id', '=', 'cocurricular_teacher.cocurricular_id')
+            ->where('cocurricular_teacher.teacher_id', $teacher->id)
+            ->where('cocurriculars.academic_year_id', $activeYear?->id)
+            ->select('cocurriculars.*')
+            ->get();
 
         return Inertia::render('p5/edit', [
-            'project' => $project,
-            'classes' => $classes,
-            'dimensi' => $dimensi,
+            'project'         => $project,
+            'classes'         => $classes,
+            'dimensi'         => $dimensi,
+            'sipada_projects' => $sipadaProjects,
         ]);
     }
 
@@ -261,6 +284,7 @@ class P5ProjectController extends Controller
             'sub_element_ids.*' => 'exists:lms_p5_sub_elements,id',
             'alokasi_waktu'   => 'nullable|integer|min:1',
             'status'          => 'required|in:draft,active,selesai',
+            'cocurricular_id' => 'nullable|integer',
         ]);
 
         $project->update($validated);

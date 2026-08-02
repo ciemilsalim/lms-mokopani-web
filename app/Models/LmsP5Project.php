@@ -19,6 +19,7 @@ class LmsP5Project extends Model
         'sub_element_ids',
         'alokasi_waktu',
         'status',
+        'cocurricular_id',
     ];
 
     protected $casts = [
