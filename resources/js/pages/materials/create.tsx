@@ -23,6 +23,7 @@ import {
     AlertTriangle,
     ImagePlus,
     Loader2,
+    Star,
 } from 'lucide-react';
 import axios from 'axios';
 import ReactQuill from 'react-quill-new';
@@ -175,6 +176,7 @@ export default function CreateMaterial({ teachings, objectives }: CreateMaterial
     const [imageModalTab, setImageModalTab] = useState<'upload' | 'ai'>('upload');
     const [imageFiles, setImageFiles] = useState<File[]>([]);
     const [imageUrls, setImageUrls] = useState<string[]>([]);
+    const [uploadProgress, setUploadProgress] = useState<number | null>(null);
 
     const totalImages = imageFiles.length + imageUrls.length;
     const maxImages = 6;
@@ -183,18 +185,35 @@ export default function CreateMaterial({ teachings, objectives }: CreateMaterial
         if (!imageDescription) return;
         if (totalImages >= maxImages) return;
         setIsGeneratingImage(true);
+        setUploadProgress(0);
+        
+        let progress = 0;
+        const progressInterval = setInterval(() => {
+            if (progress < 90) {
+                progress += Math.random() * 10;
+                setUploadProgress(progress);
+            }
+        }, 500);
+
         try {
             const response = await axios.post(route('ai.generate-illustration'), {
                 description: imageDescription
             });
             if (response.data?.status === 'success') {
-                setImageUrls(prev => [...prev, response.data.url]);
-                setImageDescription('');
-                if (totalImages + 1 >= maxImages) {
-                    setIsImageModalOpen(false);
-                }
+                setUploadProgress(100);
+                clearInterval(progressInterval);
+                setTimeout(() => {
+                    setUploadProgress(null);
+                    setImageUrls(prev => [...prev, response.data.url]);
+                    setImageDescription('');
+                    if (totalImages + 1 >= maxImages) {
+                        setIsImageModalOpen(false);
+                    }
+                }, 500);
             }
         } catch (error) {
+            clearInterval(progressInterval);
+            setUploadProgress(null);
             console.error('Failed to generate image', error);
             alert('Gagal menghasilkan gambar. Pastikan AI terkonfigurasi dengan benar.');
         } finally {
@@ -207,15 +226,40 @@ export default function CreateMaterial({ teachings, objectives }: CreateMaterial
         const files = Array.from(e.target.files);
         const remaining = maxImages - totalImages;
         const toAdd = files.slice(0, remaining);
-        setImageFiles(prev => [...prev, ...toAdd]);
+        
+        setUploadProgress(0);
+        let progress = 0;
+        const interval = setInterval(() => {
+            progress += 25;
+            setUploadProgress(progress);
+            if (progress >= 100) {
+                clearInterval(interval);
+                setTimeout(() => {
+                    setUploadProgress(null);
+                    setImageFiles(prev => [...prev, ...toAdd]);
+                    if (totalImages + toAdd.length >= maxImages) {
+                        setIsImageModalOpen(false);
+                    }
+                }, 300);
+            }
+        }, 100);
+
         e.target.value = '';
     };
 
     const removeImageFile = (index: number) => {
+        const fileToRemove = imageFiles[index];
+        if (data.thumbnail === fileToRemove) {
+            setData('thumbnail', null);
+        }
         setImageFiles(prev => prev.filter((_, i) => i !== index));
     };
 
     const removeImageUrl = (index: number) => {
+        const urlToRemove = imageUrls[index];
+        if (data.thumbnail_url === urlToRemove) {
+            setData('thumbnail_url', null);
+        }
         setImageUrls(prev => prev.filter((_, i) => i !== index));
     };
 
@@ -534,23 +578,39 @@ export default function CreateMaterial({ teachings, objectives }: CreateMaterial
                                     {imageFiles.map((file, idx) => (
                                         <div key={`file-${idx}`} className="relative group aspect-video rounded-lg overflow-hidden border border-border bg-muted/30">
                                             <img src={URL.createObjectURL(file)} className="w-full h-full object-cover" alt={`Upload ${idx + 1}`} />
-                                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
-                                                <button type="button" onClick={() => removeImageFile(idx)} className="p-1.5 rounded-full bg-white/90 text-rose-600 hover:bg-white transition shadow-sm">
+                                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-2">
+                                                <button type="button" onClick={() => { setData('thumbnail', file); setData('thumbnail_url', null); }} className="p-1.5 rounded-full bg-white/90 text-amber-500 hover:bg-white transition shadow-sm" title="Jadikan Thumbnail">
+                                                    <Star className="h-4 w-4" />
+                                                </button>
+                                                <button type="button" onClick={() => removeImageFile(idx)} className="p-1.5 rounded-full bg-white/90 text-rose-600 hover:bg-white transition shadow-sm" title="Hapus Gambar">
                                                     <X className="h-4 w-4" />
                                                 </button>
                                             </div>
                                             <span className="absolute bottom-1 left-1 text-[8px] font-bold bg-black/60 text-white px-1.5 py-0.5 rounded">Upload</span>
+                                            {data.thumbnail === file && (
+                                                <span className="absolute top-1 right-1 text-[8px] font-bold bg-amber-500 text-white px-1.5 py-0.5 rounded shadow flex items-center gap-1">
+                                                    <Star className="h-2.5 w-2.5 fill-current" /> Thumbnail
+                                                </span>
+                                            )}
                                         </div>
                                     ))}
                                     {imageUrls.map((url, idx) => (
                                         <div key={`url-${idx}`} className="relative group aspect-video rounded-lg overflow-hidden border border-border bg-muted/30">
                                             <img src={url} className="w-full h-full object-cover" alt={`AI ${idx + 1}`} />
-                                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
-                                                <button type="button" onClick={() => removeImageUrl(idx)} className="p-1.5 rounded-full bg-white/90 text-rose-600 hover:bg-white transition shadow-sm">
+                                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-2">
+                                                <button type="button" onClick={() => { setData('thumbnail_url', url); setData('thumbnail', null); }} className="p-1.5 rounded-full bg-white/90 text-amber-500 hover:bg-white transition shadow-sm" title="Jadikan Thumbnail">
+                                                    <Star className="h-4 w-4" />
+                                                </button>
+                                                <button type="button" onClick={() => removeImageUrl(idx)} className="p-1.5 rounded-full bg-white/90 text-rose-600 hover:bg-white transition shadow-sm" title="Hapus Gambar">
                                                     <X className="h-4 w-4" />
                                                 </button>
                                             </div>
                                             <span className="absolute bottom-1 left-1 text-[8px] font-bold bg-indigo-600/80 text-white px-1.5 py-0.5 rounded flex items-center gap-0.5"><Sparkles className="h-2.5 w-2.5" /> AI</span>
+                                            {data.thumbnail_url === url && (
+                                                <span className="absolute top-1 right-1 text-[8px] font-bold bg-amber-500 text-white px-1.5 py-0.5 rounded shadow flex items-center gap-1">
+                                                    <Star className="h-2.5 w-2.5 fill-current" /> Thumbnail
+                                                </span>
+                                            )}
                                         </div>
                                     ))}
                                 </div>
@@ -808,6 +868,20 @@ export default function CreateMaterial({ teachings, objectives }: CreateMaterial
                                 Selesai
                             </button>
                         </div>
+
+                        {uploadProgress !== null && (
+                            <div className="px-4 pb-4 animate-in slide-in-from-bottom-2 duration-300">
+                                <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+                                    <div 
+                                        className="h-full bg-indigo-600 transition-all duration-300 ease-out"
+                                        style={{ width: `${Math.min(100, Math.max(0, uploadProgress))}%` }}
+                                    ></div>
+                                </div>
+                                <p className="text-center text-xs font-medium text-muted-foreground mt-2">
+                                    {uploadProgress >= 100 ? 'Berhasil ditambahkan!' : 'Memproses...'}
+                                </p>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}

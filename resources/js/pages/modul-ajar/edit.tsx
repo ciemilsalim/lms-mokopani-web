@@ -1,6 +1,6 @@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
-import { Head, router } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { 
@@ -73,6 +73,8 @@ interface Assessment {
 }
 
 export default function Edit({ modulAjar, teachings, objectives, materials, period }: EditProps) {
+    const { errors } = usePage<{ errors: Record<string, any> }>().props;
+
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Dashboard', href: '/dashboard' },
         { title: 'Pembelajaran', href: '/lesson-plans' },
@@ -294,7 +296,11 @@ export default function Edit({ modulAjar, teachings, objectives, materials, peri
         };
 
         router.put(route('lesson-plans.update', modulAjar.id), payload, {
-            onFinish: () => setIsSaving(false)
+            onFinish: () => setIsSaving(false),
+            onError: (err) => {
+                console.error("Validation errors:", err);
+                alert("Gagal menyimpan: periksa kembali form Anda.");
+            }
         });
     };
 
@@ -323,15 +329,27 @@ export default function Edit({ modulAjar, teachings, objectives, materials, peri
             <div className="flex h-full flex-1 flex-col gap-6 min-w-0">
                 {/* Top Back Action & Title */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <button 
-                        onClick={() => window.history.back()}
-                        className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition self-start sm:self-auto"
-                    >
-                        <ChevronLeft className="h-4 w-4" />
-                        Kembali
-                    </button>
-                    <h1 className="text-xl font-bold text-foreground self-start sm:self-auto">Edit Modul Ajar / RPP</h1>
+                    <div className="flex items-center gap-3">
+                        <Link href={route('lesson-plans.index')} className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition">
+                            <ChevronLeft className="h-4 w-4" />
+                            Kembali
+                        </Link>
+                        <h1 className="text-xl font-bold text-foreground">Edit Modul Ajar</h1>
+                    </div>
                 </div>
+
+                {Object.keys(errors).length > 0 && (
+                    <div className="rounded-xl bg-destructive/10 p-4 border border-destructive/20 text-destructive text-sm font-medium flex flex-col gap-1">
+                        <p className="font-bold flex items-center gap-2">
+                            <AlertCircle className="h-4 w-4" /> Gagal menyimpan modul ajar. Periksa kesalahan berikut:
+                        </p>
+                        <ul className="list-disc pl-5 mt-1">
+                            {Object.values(errors).map((err, i) => (
+                                <li key={i}>{String(err)}</li>
+                            ))}
+                        </ul>
+                    </div>
+                )}
 
                 <div className="grid gap-6 lg:grid-cols-3">
                     {/* Left Panel: Read Only Configuration */}
