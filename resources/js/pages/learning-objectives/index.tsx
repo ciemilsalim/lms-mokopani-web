@@ -429,27 +429,25 @@ export default function LearningObjectiveIndex({ objectives, subjects, cpList }:
             return;
         }
 
-        // Simpan setiap Sub-TP satu per satu menggunakan Inertia
-        validTps.forEach((tpDesc, index) => {
-            router.post(route('learning-objectives.store'), {
-                subject_id: breakdownTarget.subject_id.toString(),
-                school_class_id: breakdownTarget.school_class_id.toString(),
+        router.post(route('learning-objectives.store'), {
+            is_batch: true,
+            subject_id: breakdownTarget.subject_id.toString(),
+            school_class_id: breakdownTarget.school_class_id.toString(),
+            cp_id: breakdownTarget.cp_id?.toString() || '',
+            cp_ids: breakdownTarget.capaian_pembelajarans?.map(cp => cp.id) || [],
+            parent_id: breakdownTarget.id,
+            sub_tps: validTps.map((desc, index) => ({
                 code: `${breakdownTarget.code || `TP ${breakdownTarget.order}`}.${index + 1}`,
-                description: tpDesc,
-                cp_id: breakdownTarget.cp_id?.toString() || '',
-                cp_ids: breakdownTarget.capaian_pembelajarans?.map(cp => cp.id) || [],
+                description: desc,
                 competence: '',
                 content: '',
-                formulation_method: 'direct',
-                parent_id: breakdownTarget.id,
-            }, {
-                preserveScroll: true,
-                onSuccess: () => {
-                    if (index === validTps.length - 1) {
-                        closeBreakdownModal();
-                    }
-                }
-            });
+                formulation_method: 'direct'
+            }))
+        }, {
+            preserveScroll: true,
+            onSuccess: () => {
+                closeBreakdownModal();
+            }
         });
     };
 

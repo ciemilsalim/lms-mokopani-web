@@ -63,6 +63,52 @@ class LearningObjectiveController extends Controller
         $activeYear = AcademicYear::getActive();
         $activeSemester = Semester::getActive();
 
+        if ($request->boolean('is_batch')) {
+            $validated = $request->validate([
+                'subject_id'         => 'required|exists:mysql_absensi.subjects,id',
+                'school_class_id'    => 'required|exists:mysql_absensi.school_classes,id',
+                'parent_id'          => 'nullable|exists:lms_learning_objectives,id',
+                'cp_id'              => 'nullable|exists:lms_capaian_pembelajaran,id',
+                'cp_ids'             => 'nullable|array',
+                'cp_ids.*'           => 'exists:lms_capaian_pembelajaran,id',
+                'sub_tps'            => 'required|array',
+                'sub_tps.*.code'     => 'nullable|string',
+                'sub_tps.*.description' => 'required|string',
+                'sub_tps.*.competence' => 'nullable|string',
+                'sub_tps.*.content'  => 'nullable|string',
+                'sub_tps.*.formulation_method' => 'required|in:direct,analysis,cross_element',
+            ]);
+
+            foreach ($validated['sub_tps'] as $sub) {
+                $order = LmsLearningObjective::where('subject_id', $validated['subject_id'])
+                                    ->where('school_class_id', $validated['school_class_id'])
+                                    ->where('parent_id', $validated['parent_id'] ?? null)
+                                    ->count() + 1;
+
+                $objective = LmsLearningObjective::create([
+                    'subject_id'         => $validated['subject_id'],
+                    'school_class_id'    => $validated['school_class_id'],
+                    'teacher_id'         => $teacher->id,
+                    'academic_year_id'   => $activeYear?->id,
+                    'semester_id'        => $activeSemester?->id,
+                    'code'               => $sub['code'] ?: ('TP-' . $order),
+                    'description'        => $sub['description'],
+                    'cp_id'              => $validated['cp_id'],
+                    'competence'         => $sub['competence'] ?? null,
+                    'content'            => $sub['content'] ?? null,
+                    'formulation_method' => $sub['formulation_method'],
+                    'parent_id'          => $validated['parent_id'] ?? null,
+                    'order'              => $order,
+                ]);
+
+                if (!empty($validated['cp_ids'])) {
+                    $objective->capaianPembelajarans()->sync($validated['cp_ids']);
+                }
+            }
+
+            return redirect()->back()->with('success', 'Sub Tujuan Pembelajaran berhasil ditambahkan.');
+        }
+
         $validated = $request->validate([
             'subject_id'         => 'required|exists:mysql_absensi.subjects,id',
             'school_class_id'    => 'required|exists:mysql_absensi.school_classes,id',
