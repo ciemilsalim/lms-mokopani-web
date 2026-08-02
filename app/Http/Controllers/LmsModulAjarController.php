@@ -471,28 +471,44 @@ class LmsModulAjarController extends Controller
      */
     public function update(Request $request, $id)
     {
+        Log::info('=== LmsModulAjar UPDATE called ===', [
+            'id' => $id,
+            'all_input' => $request->all(),
+        ]);
+
         $teacher = Auth::user()->teacher;
         $modulAjar = LmsModulAjar::where('teacher_id', $teacher->id)->findOrFail($id);
 
-        $validated = $request->validate([
-            'subject_id'            => 'required|exists:mysql_absensi.subjects,id',
-            'school_class_ids'      => 'required|array',
-            'school_class_ids.*'    => 'exists:mysql_absensi.school_classes,id',
-            'learning_objective_id' => 'nullable|exists:lms_learning_objectives,id',
-            'material_id'           => 'nullable|exists:lms_materials,id',
-            'pedagogical_model'     => 'nullable|string',
-            'general_info'          => 'nullable|string',
-            'learning_design'       => 'nullable|string',
-            'learning_steps'        => 'nullable|string',
-            'assessment_plan'       => 'nullable|string',
-            'kktp_details'          => 'nullable|string',
-            'lkpd'                  => 'nullable|string',
-            'learning_resources'    => 'nullable|string',
-            'ai_prompt_used'        => 'nullable|string',
-        ]);
+        Log::info('ModulAjar found:', ['modul_ajar_id' => $modulAjar->id]);
+
+        try {
+            $validated = $request->validate([
+                'subject_id'            => 'required|exists:mysql_absensi.subjects,id',
+                'school_class_ids'      => 'required|array',
+                'school_class_ids.*'    => 'exists:mysql_absensi.school_classes,id',
+                'learning_objective_id' => 'nullable|exists:lms_learning_objectives,id',
+                'material_id'           => 'nullable|exists:lms_materials,id',
+                'pedagogical_model'     => 'nullable|string',
+                'general_info'          => 'nullable|string',
+                'learning_design'       => 'nullable|string',
+                'learning_steps'        => 'nullable|string',
+                'assessment_plan'       => 'nullable|string',
+                'kktp_details'          => 'nullable|string',
+                'lkpd'                  => 'nullable|string',
+                'learning_resources'    => 'nullable|string',
+                'ai_prompt_used'        => 'nullable|string',
+            ]);
+
+            Log::info('Validation passed', ['validated_keys' => array_keys($validated)]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            Log::error('Validation FAILED', ['errors' => $e->errors()]);
+            throw $e;
+        }
 
         $modulAjar->update($validated);
         $modulAjar->schoolClasses()->sync($validated['school_class_ids']);
+
+        Log::info('=== LmsModulAjar UPDATE success ===');
 
         return redirect()->route('lesson-plans.index')
             ->with('success', 'Modul Ajar berhasil diperbarui.');

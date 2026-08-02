@@ -191,7 +191,7 @@ class MaterialController extends Controller
                 'external_link'         => 'nullable|url|max:255',
                 'file'                  => 'nullable|file|max:10240', // 10MB
                 'thumbnail'             => 'nullable|image|max:2048',
-                'thumbnail_url'         => 'nullable|url|max:2048',
+                'thumbnail_url'         => 'nullable|string|max:2048',
                 'resources'             => 'nullable|array',
                 'image_uploads'         => 'nullable|array|max:6',
                 'image_uploads.*'       => 'image|max:4096',
@@ -215,12 +215,35 @@ class MaterialController extends Controller
             $thumbnailPath = $request->file('thumbnail')->store('lms/thumbnails', 'public');
         } elseif ($request->filled('thumbnail_url')) {
             try {
-                $contents = file_get_contents($request->thumbnail_url);
-                $name = 'lms/thumbnails/' . uniqid() . '.jpg';
-                Storage::disk('public')->put($name, $contents);
-                $thumbnailPath = $name;
+                $url = $request->thumbnail_url;
+                $host = request()->getSchemeAndHttpHost();
+                $relativePath = null;
+
+                if (str_starts_with($url, $host)) {
+                    $relativePath = str_replace($host . '/storage/', '', $url);
+                } elseif (str_starts_with($url, '/storage/')) {
+                    $relativePath = substr($url, strlen('/storage/'));
+                }
+
+                if ($relativePath) {
+                    if (Storage::disk('public')->exists($relativePath)) {
+                        $ext = pathinfo($relativePath, PATHINFO_EXTENSION) ?: 'jpg';
+                        $name = 'lms/thumbnails/' . uniqid() . '.' . $ext;
+                        $contents = Storage::disk('public')->get($relativePath);
+                        Storage::disk('public')->put($name, $contents);
+                        $thumbnailPath = $name;
+                    }
+                } elseif (filter_var($url, FILTER_VALIDATE_URL)) {
+                    $context = stream_context_create(['http' => ['timeout' => 5]]);
+                    $contents = file_get_contents($url, false, $context);
+                    if ($contents) {
+                        $name = 'lms/thumbnails/' . uniqid() . '.jpg';
+                        Storage::disk('public')->put($name, $contents);
+                        $thumbnailPath = $name;
+                    }
+                }
             } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::error('Failed to download thumbnail: ' . $e->getMessage());
+                \Illuminate\Support\Facades\Log::error('Failed to process thumbnail: ' . $e->getMessage());
                 $thumbnailPath = null;
             }
         }
@@ -573,7 +596,7 @@ class MaterialController extends Controller
             'title'                 => 'required|string|max:255',
             'content'               => 'nullable|string',
             'thumbnail'             => 'nullable|image|max:2048',
-            'thumbnail_url'         => 'nullable|url|max:2048',
+            'thumbnail_url'         => 'nullable|string|max:2048',
             'resources'             => 'nullable|array',
             'resources_to_delete'   => 'nullable|array',
             'images_to_delete'      => 'nullable|array',
@@ -600,14 +623,38 @@ class MaterialController extends Controller
                 Storage::disk('public')->delete($material->thumbnail);
             }
             try {
-                $contents = file_get_contents($request->thumbnail_url);
-                $name = 'lms/thumbnails/' . uniqid() . '.jpg';
-                Storage::disk('public')->put($name, $contents);
-                $updateData['thumbnail'] = $name;
+                $url = $request->thumbnail_url;
+                $host = request()->getSchemeAndHttpHost();
+                $relativePath = null;
+
+                // Case 1: Full local URL like http://localhost/storage/lms/thumbnails/xxx.jpg
+                if (str_starts_with($url, $host)) {
+                    $relativePath = str_replace($host . '/storage/', '', $url);
+                }
+                // Case 2: Relative path like /storage/lms/thumbnails/xxx.jpg
+                elseif (str_starts_with($url, '/storage/')) {
+                    $relativePath = substr($url, strlen('/storage/'));
+                }
+
+                if ($relativePath) {
+                    if (Storage::disk('public')->exists($relativePath)) {
+                        $ext = pathinfo($relativePath, PATHINFO_EXTENSION) ?: 'jpg';
+                        $name = 'lms/thumbnails/' . uniqid() . '.' . $ext;
+                        $contents = Storage::disk('public')->get($relativePath);
+                        Storage::disk('public')->put($name, $contents);
+                        $updateData['thumbnail'] = $name;
+                    }
+                } elseif (filter_var($url, FILTER_VALIDATE_URL)) {
+                    $context = stream_context_create(['http' => ['timeout' => 5]]);
+                    $contents = file_get_contents($url, false, $context);
+                    if ($contents) {
+                        $name = 'lms/thumbnails/' . uniqid() . '.jpg';
+                        Storage::disk('public')->put($name, $contents);
+                        $updateData['thumbnail'] = $name;
+                    }
+                }
             } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::error('Failed to download thumbnail: ' . $e->getMessage());
-                // Keep the old one if download fails, or set to null? Better to just unset so it doesn't get updated to null.
-                // Wait, if they generated a new one, but it failed, just leave it unchanged.
+                \Illuminate\Support\Facades\Log::error('Failed to process thumbnail: ' . $e->getMessage());
             }
         }
 

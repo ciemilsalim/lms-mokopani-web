@@ -1,6 +1,6 @@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
-import { Head, router, usePage } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { 
@@ -261,6 +261,8 @@ export default function Edit({ modulAjar, teachings, objectives, materials, peri
 
     // Save Modul Ajar updates
     const handleSave = () => {
+        console.log('=== handleSave CALLED ===');
+        console.log('isSaving before:', isSaving);
         setIsSaving(true);
 
         const payload = {
@@ -295,12 +297,36 @@ export default function Edit({ modulAjar, teachings, objectives, materials, peri
             ai_prompt_used: customPrompt,
         };
 
-        router.put(route('lesson-plans.update', modulAjar.id), payload, {
-            onFinish: () => setIsSaving(false),
+        const targetRoute = route('lesson-plans.update', modulAjar.id);
+        console.log('Target route:', targetRoute);
+        console.log('Payload:', JSON.stringify(payload, null, 2));
+        console.log('modulAjar.id:', modulAjar.id);
+        console.log('modulAjar.subject_id:', modulAjar.subject_id);
+        console.log('modulAjar.school_class_ids:', modulAjar.school_class_ids);
+        console.log('modulAjar.learning_objective_id:', modulAjar.learning_objective_id);
+        console.log('modulAjar.material_id:', modulAjar.material_id);
+
+        router.put(targetRoute, payload, {
+            onBefore: () => {
+                console.log('=== router.put onBefore ===');
+            },
+            onStart: () => {
+                console.log('=== router.put onStart ===');
+            },
+            onProgress: (progress) => {
+                console.log('=== router.put onProgress ===', progress);
+            },
+            onSuccess: (page) => {
+                console.log('=== router.put onSuccess ===', page);
+            },
             onError: (err) => {
-                console.error("Validation errors:", err);
-                alert("Gagal menyimpan: periksa kembali form Anda.");
-            }
+                console.error('=== router.put onError ===', err);
+                alert('Gagal menyimpan. Errors: ' + JSON.stringify(err));
+            },
+            onFinish: () => {
+                console.log('=== router.put onFinish ===');
+                setIsSaving(false);
+            },
         });
     };
 

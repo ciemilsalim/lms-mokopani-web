@@ -181,8 +181,12 @@ export default function EditMaterial({ material, teachings, objectives }: EditMa
         setData('resources_to_delete', [...data.resources_to_delete, id]);
     };
 
-    const submit = (e: React.FormEvent) => {
-        e.preventDefault();
+    const submit = (e?: React.FormEvent | React.MouseEvent) => {
+        if (e) e.preventDefault();
+        console.log('=== materials/edit submit CALLED ===');
+        console.log('data.thumbnail:', data.thumbnail);
+        console.log('data.thumbnail_url:', data.thumbnail_url);
+        
         const formData = new FormData();
         formData.append('_method', 'post');
         formData.append('subject_id', data.subject_id.toString());
@@ -210,8 +214,18 @@ export default function EditMaterial({ material, teachings, objectives }: EditMa
         imageUrls.forEach(u => formData.append('image_urls[]', u));
         imagesToDelete.forEach(id => formData.append('images_to_delete[]', id.toString()));
 
+        console.log('Sending to route:', route('materials.update', material.id));
+
         router.post(route('materials.update', material.id), formData, {
             forceFormData: true,
+            onBefore: () => console.log('=== router.post onBefore ==='),
+            onStart: () => console.log('=== router.post onStart ==='),
+            onSuccess: (page) => console.log('=== router.post onSuccess ===', page),
+            onError: (err) => {
+                console.error('=== router.post onError ===', err);
+                alert('Gagal menyimpan materi. Errors: ' + JSON.stringify(err));
+            },
+            onFinish: () => console.log('=== router.post onFinish ==='),
         });
     };
 
@@ -314,7 +328,7 @@ export default function EditMaterial({ material, teachings, objectives }: EditMa
                                             <div key={`existing-${img.id}`} className="relative group aspect-video rounded-2xl overflow-hidden border border-[#2C2C3A]/20 dark:border-[#2C2C3A] bg-white dark:bg-[#1B1B25]">
                                                 <img src={img.path} className="w-full h-full object-cover" alt="Gambar materi" />
                                                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-2">
-                                                    <button type="button" onClick={() => { setData('thumbnail', null); setData('thumbnail_url', window.location.origin + img.path); }} className="p-1.5 rounded-full bg-white/90 text-amber-500 hover:bg-white transition shadow-sm" title="Jadikan Thumbnail">
+                                                    <button type="button" onClick={() => { setData('thumbnail', null); setData('thumbnail_url', img.path.startsWith('http') ? img.path : window.location.origin + img.path); }} className="p-1.5 rounded-full bg-white/90 text-amber-500 hover:bg-white transition shadow-sm" title="Jadikan Thumbnail">
                                                         <Star className="h-4 w-4" />
                                                     </button>
                                                     {img.type === 'existing' && (
@@ -324,7 +338,7 @@ export default function EditMaterial({ material, teachings, objectives }: EditMa
                                                     )}
                                                 </div>
                                                 <span className="absolute bottom-1 left-1 text-[8px] font-bold bg-black/60 text-white px-1.5 py-0.5 rounded">{img.type === 'legacy' ? 'Thumbnail' : 'Tersimpan'}</span>
-                                                {(data.thumbnail_url === (window.location.origin + img.path) || (img.type === 'legacy' && !data.thumbnail && !data.thumbnail_url)) && (
+                                                {(data.thumbnail_url === (img.path.startsWith('http') ? img.path : window.location.origin + img.path) || (img.type === 'legacy' && !data.thumbnail && !data.thumbnail_url)) && (
                                                     <span className="absolute top-1 right-1 text-[8px] font-bold bg-amber-500 text-white px-1.5 py-0.5 rounded shadow flex items-center gap-1">
                                                         <Star className="h-2.5 w-2.5 fill-current" /> Thumbnail
                                                     </span>
