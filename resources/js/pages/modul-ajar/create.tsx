@@ -57,7 +57,7 @@ export default function Create({ teachings, objectives, materials, period }: Cre
     const availableClasses = teachings
         .filter(t => t.subject_id === parseInt(selectedSubjectId))
         .filter((value, index, self) => 
-            index === self.findIndex((t) => t.school_class_id === value.school_class_id)
+            index === self.findIndex((t) => t.class_name === value.class_name)
         );
 
     // Filter TPs based on selected Subject
