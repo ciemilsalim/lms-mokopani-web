@@ -58,7 +58,8 @@ export default function Create({ teachings, objectives, materials, period }: Cre
         .filter(t => t.subject_id === parseInt(selectedSubjectId))
         .filter((value, index, self) => 
             index === self.findIndex((t) => t.class_name === value.class_name)
-        );
+        )
+        .sort((a, b) => a.class_name.localeCompare(b.class_name));
 
     // Filter TPs based on selected Subject
     const filteredObjectives = selectedSubjectId 
