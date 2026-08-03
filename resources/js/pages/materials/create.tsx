@@ -363,7 +363,12 @@ export default function CreateMaterial({ teachings, objectives }: CreateMaterial
     );
 
     // Get classes for the selected subject
-    const classesForSubject = teachings.filter(t => t.subject_id === parseInt(data.subject_id));
+    const classesForSubject = teachings
+        .filter(t => t.subject_id === parseInt(data.subject_id))
+        .filter((value, index, self) => 
+            index === self.findIndex((t) => t.school_class?.name === value.school_class?.name)
+        )
+        .sort((a, b) => (a.school_class?.name || '').localeCompare(b.school_class?.name || ''));
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
