@@ -53,8 +53,12 @@ export default function Create({ teachings, objectives, materials, period }: Cre
     const uniqueSubjects = Array.from(new Set(teachings.map(t => t.subject_id)))
         .map(id => teachings.find(t => t.subject_id === id));
 
-    // Get available classes for selected subject
-    const availableClasses = teachings.filter(t => t.subject_id === parseInt(selectedSubjectId));
+    // Get available classes for selected subject, avoiding duplicates
+    const availableClasses = teachings
+        .filter(t => t.subject_id === parseInt(selectedSubjectId))
+        .filter((value, index, self) => 
+            index === self.findIndex((t) => t.school_class_id === value.school_class_id)
+        );
 
     // Filter TPs based on selected Subject
     const filteredObjectives = selectedSubjectId 
