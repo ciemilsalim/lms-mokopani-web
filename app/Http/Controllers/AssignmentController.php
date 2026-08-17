@@ -397,9 +397,10 @@ class AssignmentController extends Controller
                 ->orderBy('name')
                 ->get()
                 ->map(fn($s) => [
-                    'id'   => $s->id,
-                    'name' => $s->name,
-                    'nis'  => $s->nis,
+                    'id'        => $s->id,
+                    'name'      => $s->name,
+                    'nis'       => $s->nis,
+                    'photo_url' => $s->photo_url,
                 ]);
         }
 
@@ -435,9 +436,10 @@ class AssignmentController extends Controller
                 ->reject(fn($s) => in_array($s->id, $selectedPeerIds))
                 ->values()
                 ->map(fn($s) => [
-                    'id'   => $s->id,
-                    'name' => $s->name,
-                    'nis'  => $s->nis,
+                    'id'        => $s->id,
+                    'name'      => $s->name,
+                    'nis'       => $s->nis,
+                    'photo_url' => $s->photo_url,
                 ]);
         }
 
@@ -465,6 +467,7 @@ class AssignmentController extends Controller
                     'id'               => $s->id,
                     'student_id'       => $s->student_id,
                     'student_name'     => $s->student?->name ?? 'Unknown',
+                    'student_photo_url'=> $s->student?->photo_url,
                     'content'          => $s->content,
                     'file_path'        => $s->file_path,
                     'score'            => $s->score,

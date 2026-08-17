@@ -84,7 +84,31 @@ interface Student {
     id: number;
     name: string;
     nis: string;
+    photo_url?: string | null;
 }
+
+const StudentAvatar = ({ photoUrl, name, className = "h-10 w-10 rounded-xl" }: { photoUrl?: string | null; name: string; className?: string }) => {
+    const [imgError, setImgError] = useState(false);
+
+    if (photoUrl && !imgError) {
+        return (
+            <div className={`${className} overflow-hidden bg-slate-100 dark:bg-slate-800 shrink-0 border border-border/80 shadow-2xs`}>
+                <img
+                    src={photoUrl}
+                    alt={name}
+                    className="h-full w-full object-cover"
+                    onError={() => setImgError(true)}
+                />
+            </div>
+        );
+    }
+
+    return (
+        <div className={`${className} bg-primary/10 text-primary dark:bg-primary/20 flex items-center justify-center font-black text-xs shrink-0 border border-primary/20 shadow-2xs`}>
+            {name ? name.charAt(0).toUpperCase() : '?'}
+        </div>
+    );
+};
 
 import CommentSection from '@/components/CommentSection';
 import ReflectionForm from '@/components/ReflectionForm';
@@ -2256,9 +2280,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                             <div key={student.id} className="p-4 rounded-xl border border-border bg-white dark:bg-slate-900 shadow-sm space-y-3 hover:border-primary/50 transition-all">
                                                 <div className="flex items-start justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-3">
                                                     <div className="flex items-center gap-3 min-w-0 flex-1">
-                                                        <div className="h-10 w-10 rounded-xl bg-sky-50 dark:bg-sky-950/30 flex items-center justify-center text-primary font-black text-xs shadow-sm border border-sky-100 dark:border-sky-900/30 shrink-0">
-                                                            {student.name.charAt(0)}
-                                                        </div>
+                                                        <StudentAvatar photoUrl={student.photo_url} name={student.name} className="h-10 w-10 rounded-xl" />
                                                         <div className="min-w-0 flex-1">
                                                             <p className="font-bold text-slate-700 dark:text-slate-200 text-sm truncate">{student.name}</p>
                                                             <p className="text-[10px] font-bold text-muted-foreground tracking-widest">{student.nis}</p>
@@ -2448,9 +2470,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                     <tr key={student.id} className="group hover:bg-slate-50/30 dark:hover:bg-slate-800/20 transition-all">
                                                         <td className="px-4 sm:px-6 md:px-8 py-4 sm:py-6">
                                                             <div className="flex items-center gap-3 sm:gap-4">
-                                                                <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl bg-sky-50 dark:bg-sky-950/30 flex items-center justify-center text-primary font-black text-xs shadow-sm border border-sky-100 dark:border-sky-900/30 group-hover:scale-110 transition-transform shrink-0">
-                                                                    {student.name.charAt(0)}
-                                                                </div>
+                                                                <StudentAvatar photoUrl={student.photo_url} name={student.name} className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl" />
                                                                 <div>
                                                                     <p className="font-bold text-slate-700 dark:text-slate-200">{student.name}</p>
                                                                     <p className="text-[10px] font-bold text-muted-foreground tracking-widest">{student.nis}</p>
@@ -2860,9 +2880,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                     {/* Top row: Avatar + Name + Status */}
                                                     <div className="flex items-start justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-3">
                                                         <div className="flex items-center gap-3 min-w-0 flex-1">
-                                                            <div className="h-10 w-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-muted-foreground group-hover:bg-sky-50 dark:group-hover:bg-sky-950/30 group-hover:text-primary transition-colors shrink-0">
-                                                                <User className="h-5 w-5" />
-                                                            </div>
+                                                            <StudentAvatar photoUrl={student.photo_url} name={student.name} className="h-10 w-10 rounded-xl" />
                                                             <div className="min-w-0 flex-1">
                                                                 <p className="font-bold text-slate-700 dark:text-slate-200 text-sm truncate">{student.name}</p>
                                                                 <p className="text-[10px] font-bold text-muted-foreground tracking-widest">{student.nis}</p>
@@ -3022,9 +3040,7 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                         <tr key={student.id} className="group hover:bg-slate-50/30 dark:hover:bg-slate-800/20 transition-all">
                                                             <td className="px-4 sm:px-6 md:px-8 py-4 sm:py-6">
                                                                 <div className="flex items-center gap-3 sm:gap-4">
-                                                                    <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-muted-foreground group-hover:bg-sky-50 dark:group-hover:bg-sky-950/30 group-hover:text-primary transition-colors shrink-0">
-                                                                        <User className="h-5 w-5" />
-                                                                    </div>
+                                                                    <StudentAvatar photoUrl={student.photo_url} name={student.name} className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl" />
                                                                     <div>
                                                                         <span className="font-bold text-slate-700 dark:text-slate-200">{student.name}</span>
                                                                         <p className="text-[10px] font-bold text-muted-foreground tracking-widest">{student.nis}</p>
