@@ -143,9 +143,6 @@ export default function CreateAssignment({ teachings, objectives, assessment_typ
     const [aiNotification, setAiNotification] = useState<{ message: string; type: 'info' | 'warning' | 'error' } | null>(null);
     const [clickCount, setClickCount] = useState(0);
     const [isPromptModalOpen, setIsPromptModalOpen] = useState(false);
-
-    // Express AI Mode states
-    const [creationMode, setCreationMode] = useState<'express' | 'detailed'>('express');
     const [modulAjarFound, setModulAjarFound] = useState<boolean | null>(null);
 
     useEffect(() => {
@@ -372,255 +369,25 @@ export default function CreateAssignment({ teachings, objectives, assessment_typ
     const currentInstruments = data.assessment_type ? (instruments[data.assessment_type] || []) : [];
     const colors = assessmentColors[data.assessment_type] || assessmentColors.summative;
 
-    return (
+return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Buat Tugas Baru – LMS Mokopani" />
 
             <div className="flex h-full flex-1 flex-col gap-4 sm:gap-6 min-w-0 fade-in">
                 <form onSubmit={handleSubmit} className="space-y-6">
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                    <div>
-                        <button 
-                            onClick={() => window.history.back()}
-                            className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary transition mb-1"
-                        >
-                            <ChevronLeft className="h-4 w-4" />
-                            Kembali
-                        </button>
-                        <h1 className="text-xl font-bold text-foreground">Buat Penugasan Baru</h1>
-                    </div>
-
-                    {/* Mode Switcher Tabs */}
-                    <div className="flex p-1 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
-                        <button
-                            type="button"
-                            onClick={() => setCreationMode('express')}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
-                                creationMode === 'express' 
-                                    ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm' 
-                                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-                            }`}
-                        >
-                            <Zap className="w-3.5 h-3.5 text-amber-500" /> Mode Cepat (AI Auto-Pilot)
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => setCreationMode('detailed')}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
-                                creationMode === 'detailed' 
-                                    ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm' 
-                                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-                            }`}
-                        >
-                            <Settings className="w-3.5 h-3.5" /> Mode Detail (Kustom)
-                        </button>
-                    </div>
-                </div>
-
-                {/* ═══════════════ MODE CEPAT (EXPRESS AI MODE) ═══════════════ */}
-                {creationMode === 'express' && (
-                    <div className="space-y-6 animate-in fade-in duration-300">
-                        <div className="bg-gradient-to-r from-indigo-50/80 via-purple-50/50 to-white dark:from-indigo-950/30 dark:via-purple-950/20 dark:to-slate-900 p-6 rounded-2xl border border-indigo-100 dark:border-indigo-900 shadow-sm space-y-6">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className="p-3 bg-indigo-600 text-white rounded-xl shadow-md">
-                                        <Sparkles className="w-6 h-6 animate-pulse" />
-                                    </div>
-                                    <div>
-                                        <h2 className="text-lg font-bold text-slate-900 dark:text-white">Pembuat Asesmen Auto-Pilot AI SIPADA</h2>
-                                        <p className="text-xs text-slate-500 dark:text-slate-400">
-                                            Cukup pilih TP dan Kelas. AI akan membaca Modul Ajar terkait & membuatkan instrumen secara serba-otomatis!
-                                        </p>
-                                    </div>
-                                </div>
-                                {modulAjarFound === true && (
-                                    <Badge className="bg-emerald-500 text-white border-none py-1.5 px-3 flex items-center gap-1.5 shadow-sm">
-                                        <CheckCircle2 className="w-3.5 h-3.5" /> Modul Ajar Terhubung
-                                    </Badge>
-                                )}
-                            </div>
-
-                            {/* Jenis Asesmen Target Selector */}
-                            <div>
-                                <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-2">
-                                    Target Jenis Asesmen dari Modul Ajar
-                                </label>
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                                    {[
-                                        { id: 'initial', label: '🔍 Asesmen Awal (Diagnostik)', desc: 'Kesiapan belajar murid' },
-                                        { id: 'formative', label: '🎯 Asesmen Formatif (Proses)', desc: 'Umpan balik saat KBM' },
-                                        { id: 'summative', label: '🏆 Asesmen Sumatif (Akhir TP)', desc: 'Penilaian capaian modul/rapor' }
-                                    ].map((t) => {
-                                        const isSelected = (data.assessment_type || 'summative') === t.id;
-                                        return (
-                                            <button
-                                                key={t.id}
-                                                type="button"
-                                                onClick={() => setData('assessment_type', t.id)}
-                                                className={`p-3 rounded-xl border text-left transition-all ${
-                                                    isSelected
-                                                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
-                                                        : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-indigo-300'
-                                                }`}
-                                            >
-                                                <div className="font-bold text-xs">{t.label}</div>
-                                                <div className={`text-[11px] mt-0.5 ${isSelected ? 'text-indigo-100' : 'text-slate-500'}`}>
-                                                    {t.desc}
-                                                </div>
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-2">
-                                        1. Mata Pelajaran & Tujuan Pembelajaran (TP)
-                                    </label>
-                                    <select
-                                        value={data.learning_objective_id}
-                                        onChange={(e) => {
-                                            const objId = e.target.value;
-                                            const selectedObj = objectives.find(o => o.id === Number(objId));
-                                            setData(prev => ({
-                                                ...prev,
-                                                learning_objective_id: objId,
-                                                subject_id: selectedObj ? selectedObj.subject_id.toString() : prev.subject_id,
-                                                assessment_type: prev.assessment_type || 'summative',
-                                                instrument_type: prev.instrument_type || 'project',
-                                                scoring_tool: prev.scoring_tool || 'rubric'
-                                            }));
-                                        }}
-                                        className="w-full p-3 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500 font-medium"
-                                    >
-                                        <option value="">-- Pilih Tujuan Pembelajaran (TP) --</option>
-                                        {objectives.map((obj) => (
-                                            <option key={obj.id} value={obj.id}>
-                                                [{obj.code}] {obj.description}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-
-                                <div>
-                                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-2">
-                                        2. Tenggat Waktu Pengumpulan
-                                    </label>
-                                    <input
-                                        type="datetime-local"
-                                        value={data.due_date}
-                                        onChange={(e) => {
-                                            setData('due_date', e.target.value);
-                                            checkHoliday(e.target.value);
-                                        }}
-                                        className="w-full p-3 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500 font-medium"
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Select Classes */}
-                            <div>
-                                <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-2">
-                                    3. Pilih Kelas Sasaran
-                                </label>
-                                <div className="flex flex-wrap gap-2">
-                                    {teachings
-                                        .filter(t => !data.subject_id || t.subject_id == Number(data.subject_id))
-                                        .map((t) => {
-                                            const isSelected = data.school_classes.includes(t.class_id);
-                                            return (
-                                                <button
-                                                    key={t.class_id}
-                                                    type="button"
-                                                    onClick={() => {
-                                                        const current = [...data.school_classes];
-                                                        const idx = current.indexOf(t.class_id);
-                                                        if (idx > -1) current.splice(idx, 1);
-                                                        else current.push(t.class_id);
-                                                        setData('school_classes', current);
-                                                    }}
-                                                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border ${
-                                                        isSelected 
-                                                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' 
-                                                            : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-indigo-300'
-                                                    }`}
-                                                >
-                                                    {t.class_name}
-                                                </button>
-                                            );
-                                        })}
-                                </div>
-                            </div>
-
-                            {/* Single Instant Action Button */}
-                            <div className="pt-2">
-                                <Button
-                                    type="button"
-                                    onClick={() => handleSuggestAI()}
-                                    disabled={aiLoading || !data.learning_objective_id}
-                                    className="w-full py-4 text-sm font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg flex items-center justify-center gap-2 rounded-xl"
-                                >
-                                    <Sparkles className="w-4 h-4" />
-                                    {aiLoading ? 'AI SIPADA Sedang Membaca Modul Ajar & Merancang Asesmen...' : '⚡ Hasilkan Asesmen Instan dari Modul Ajar'}
-                                </Button>
-                            </div>
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <button 
+                                onClick={() => window.history.back()}
+                                className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary transition mb-1"
+                            >
+                                <ChevronLeft className="h-4 w-4" />
+                                Kembali
+                            </button>
+                            <h1 className="text-xl font-bold text-foreground">Buat Penugasan Baru</h1>
                         </div>
-
-                        {/* Instant Generated Preview Card */}
-                        {data.title && (
-                            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-md space-y-6 animate-in slide-in-from-bottom-4">
-                                <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
-                                    <div>
-                                        <Badge className="bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 mb-1">
-                                            Hasil Rancangan AI SIPADA
-                                        </Badge>
-                                        <h3 className="text-lg font-bold text-slate-900 dark:text-white">{data.title}</h3>
-                                    </div>
-                                    <Button type="button" variant="outline" size="sm" onClick={() => setCreationMode('detailed')}>
-                                        Edit di Mode Detail
-                                    </Button>
-                                </div>
-
-                                <div className="space-y-4">
-                                    <div>
-                                        <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Instruksi & Stimulus:</h4>
-                                        <p className="text-sm text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-800 p-4 rounded-xl border border-slate-100 dark:border-slate-700 whitespace-pre-wrap">
-                                            {data.description || data.instrument_config?.stimulus || 'Tidak ada deskripsi.'}
-                                        </p>
-                                    </div>
-
-                                    {data.instrument_config?.kktp?.criteria && (
-                                        <div>
-                                            <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Kriteria KKTP Modul Ajar:</h4>
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                                {data.instrument_config.kktp.criteria.map((crit: any, cIdx: number) => (
-                                                    <div key={cIdx} className="p-3 bg-indigo-50/50 dark:bg-indigo-950/30 rounded-lg text-xs font-semibold text-indigo-900 dark:text-indigo-200 border border-indigo-100 dark:border-indigo-900">
-                                                        ✓ {crit.name}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-
-                                <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-3">
-                                    <Button 
-                                        type="button" 
-                                        onClick={handleSubmit} 
-                                        disabled={processing || data.school_classes.length === 0} 
-                                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-8 py-3 rounded-xl shadow-md text-sm"
-                                    >
-                                        🚀 Terbitkan Asesmen Sekarang
-                                    </Button>
-                                </div>
-                            </div>
-                        )}
                     </div>
-                )}
 
-                {/* ═══════════════ MODE DETAIL (KUSTOM DETIL) ═══════════════ */}
-                {creationMode === 'detailed' && (
                     <div className="space-y-8 animate-in fade-in duration-300">
                     {/* ═══════════════ STEP 1: Assessment Type ═══════════════ */}
                     <div className="space-y-3">
@@ -1749,7 +1516,6 @@ export default function CreateAssignment({ teachings, objectives, assessment_typ
                         </div>
                     )}
                     </div>
-                )}
                 </form>
             </div>
             
