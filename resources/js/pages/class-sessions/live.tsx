@@ -49,29 +49,35 @@ export default function LiveClassSessionPage({ modulAjar }: LiveSessionProps) {
         );
     };
 
+    const breadcrumbs = [
+        { title: 'Dashboard', href: '/dashboard' },
+        { title: 'Sesi Kelas', href: '/class-sessions' },
+        { title: 'Live Class', href: '#' },
+    ];
+
     return (
-        <AppLayout title="Pelaksanaan Pembelajaran">
+        <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Pelaksanaan Pembelajaran" />
 
-            <div className="max-w-5xl mx-auto py-6 px-4 sm:px-6 space-y-8">
+            <div className="max-w-5xl mx-auto py-4 sm:py-6 px-3 sm:px-6 space-y-6 sm:space-y-8 pb-16 md:pb-0">
                 {/* Header Bar */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-card p-5 sm:p-6 rounded-2xl border border-border/80 shadow-xs">
                     <div>
-                        <div className="flex items-center gap-2 mb-2">
-                            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+                        <div className="flex items-center gap-2 mb-1.5">
+                            <h1 className="text-xl sm:text-2xl font-black text-foreground">
                                 Pelaksanaan Pembelajaran
                             </h1>
-                            <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
-                                Kurikulum Dinamis
+                            <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 font-bold">
+                                Live Class
                             </Badge>
                         </div>
-                        <p className="text-sm text-slate-500 font-medium">
-                            Topik: <span className="text-slate-800 dark:text-slate-200">{modulAjar?.material?.title || 'Modul Ajar'}</span> • {modulAjar?.subject?.name || 'Mata Pelajaran'}
+                        <p className="text-xs sm:text-sm text-muted-foreground font-medium">
+                            Topik: <span className="font-bold text-foreground">{modulAjar?.material?.title || 'Modul Ajar'}</span> &bull; {modulAjar?.subject?.name || 'Mata Pelajaran'}
                         </p>
                     </div>
                     <div>
-                        <Link href="/assignments" className="inline-flex items-center justify-center rounded-xl text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-12 px-6 py-2 bg-indigo-600 text-white hover:bg-indigo-700 shadow-lg shadow-indigo-200 dark:shadow-none hover:scale-105 transform duration-200">
-                            <ClipboardList className="w-5 h-5 mr-2" />
+                        <Link href="/assignments" className="w-full sm:w-auto inline-flex items-center justify-center rounded-xl text-xs sm:text-sm font-bold transition active:scale-95 h-11 px-5 bg-primary text-primary-foreground shadow-sm hover:bg-primary/90">
+                            <ClipboardList className="w-4 h-4 mr-2" />
                             Lakukan Asesmen
                         </Link>
                     </div>

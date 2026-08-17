@@ -4,6 +4,7 @@ import { Head, router, usePage } from '@inertiajs/react';
 import { BookOpen, ClipboardList, Clock, Plus, Search, Info, Target, GraduationCap, ChevronDown, ChevronRight, Pencil, Trash2, CheckCircle2, Users } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { ConfirmDialog } from '@/components/confirm-dialog';
+import { MobileFab } from '@/components/mobile-fab';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: '/dashboard' },
@@ -112,48 +113,48 @@ function AssignmentCard({ asgn, isTeacher = false }: { asgn: Assignment; isTeach
     return (
         <div
             onClick={() => router.visit(route('assignments.show', asgn.id))}
-            className="group flex items-center justify-between py-2 px-4 hover:bg-popover border-l-2 border-transparent hover:border-primary transition-colors cursor-pointer"
+            className="group flex items-center justify-between py-3 sm:py-2 px-3.5 sm:px-4 hover:bg-popover border-l-2 border-transparent hover:border-primary transition-colors cursor-pointer active:bg-muted/40"
         >
-            <div className="flex items-center gap-3 min-w-0 flex-1">
+            <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
                 <span className={`h-2.5 w-2.5 rounded-full shrink-0 ${
                     asgn.assessment_type === 'initial' ? 'bg-emerald-500' : 
                     asgn.assessment_type === 'formative' ? 'bg-warning' : 'bg-primary'
                 }`} title={asgn.assessment_type || 'Tugas'} />
                 
-                <h3 className="text-[13px] font-medium text-foreground truncate max-w-sm group-hover:text-primary transition-colors">
+                <h3 className="text-xs sm:text-[13px] font-bold sm:font-medium text-foreground truncate max-w-sm group-hover:text-primary transition-colors">
                     {asgn.title}
                 </h3>
                 
-                <span className="hidden sm:inline-flex items-center rounded bg-muted/50 border border-border px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground whitespace-nowrap">
+                <span className="hidden sm:inline-flex items-center rounded-md bg-muted/60 border border-border/60 px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground whitespace-nowrap">
                     {instrumentLabels[asgn.instrument_type || ''] || asgn.instrument_type}
                 </span>
 
                 {asgn.due_date && overdue && (
-                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-destructive">
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-destructive shrink-0">
                         <Clock className="h-3 w-3" /> Terlambat
                     </span>
                 )}
                 {!isTeacher && asgn.student_submission?.is_graded && (
-                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-500">
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-500 shrink-0">
                         <CheckCircle2 className="h-3 w-3" /> Dinilai
                     </span>
                 )}
             </div>
 
-            <div className="flex items-center gap-4 shrink-0 pl-4">
+            <div className="flex items-center gap-2 sm:gap-4 shrink-0 pl-2 sm:pl-4">
                 {isTeacher ? (
-                    <div className="flex items-center gap-3">
-                        <div className="flex items-center justify-end min-w-[70px]">
+                    <div className="flex items-center gap-2 sm:gap-3">
+                        <div className="flex items-center justify-end min-w-[50px] sm:min-w-[70px]">
                             {asgn.submissions_count > 0 ? (
-                                <span className="text-[11px] text-primary font-bold">{asgn.submissions_count} kumpul</span>
+                                <span className="text-[10px] sm:text-[11px] text-primary font-black bg-primary/10 px-2 py-0.5 rounded-md">{asgn.submissions_count} kumpul</span>
                             ) : (
-                                <span className="text-[11px] text-muted-foreground font-medium">0 kumpul</span>
+                                <span className="text-[10px] sm:text-[11px] text-muted-foreground font-medium">0 kumpul</span>
                             )}
                         </div>
                         <div className="flex items-center gap-0.5 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity duration-200">
                             <button
                                 onClick={handleEdit}
-                                className="rounded p-1 text-muted-foreground hover:bg-primary/10 hover:text-primary transition cursor-pointer"
+                                className="rounded-lg p-1.5 text-muted-foreground hover:bg-primary/10 hover:text-primary transition cursor-pointer"
                                 title="Edit asesmen"
                             >
                                 <Pencil className="h-3.5 w-3.5" />
@@ -163,7 +164,7 @@ function AssignmentCard({ asgn, isTeacher = false }: { asgn: Assignment; isTeach
                                     e.stopPropagation();
                                     setShowDeleteConfirm(true);
                                 }}
-                                className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition cursor-pointer"
+                                className="rounded-lg p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition cursor-pointer"
                                 title="Hapus asesmen"
                             >
                                 <Trash2 className="h-3.5 w-3.5" />
@@ -525,6 +526,10 @@ export default function Assignments({ assignments, grouped_assignments, teacher_
                     <FlatView assignments={assignments ?? []} search={search} filterType={filterType} />
                 )}
             </div>
+
+            {user_role === 'teacher' && (
+                <MobileFab href={route('assignments.create')} label="Asesmen Baru" />
+            )}
 
             {/* Floating Premium Toast Notification */}
             {toast && (

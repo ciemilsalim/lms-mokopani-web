@@ -102,45 +102,52 @@ export default function GradebookShow({ summative_headers, initial_headers, form
         { key: 'initial' as const, label: 'Asesmen Awal', icon: ClipboardCheck, activeColor: 'text-emerald-600 dark:text-emerald-400', count: initial_headers.length },
     ];
 
+    const [mobileLayout, setMobileLayout] = useState<'cards' | 'table'>('cards');
+    const [expandedStudentIds, setExpandedStudentIds] = useState<Record<number, boolean>>({});
+
+    const toggleStudentExpand = (id: number) => {
+        setExpandedStudentIds(prev => ({ ...prev, [id]: !prev[id] }));
+    };
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`Alur Asesmen Detail – LMS Mokopani`} />
 
-            <div className="flex h-full flex-1 flex-col gap-6 min-w-0 fade-in">
+            <div className="flex h-full flex-1 flex-col gap-5 sm:gap-6 min-w-0 fade-in pb-12 md:pb-0">
                 {/* Header Actions */}
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                         <button 
                             onClick={() => window.history.back()}
-                            className="mb-2 flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary transition"
+                            className="mb-1.5 flex items-center gap-1.5 text-xs font-bold text-muted-foreground hover:text-primary transition active:scale-95"
                         >
                             <ChevronLeft className="h-4 w-4" />
                             Kembali
                         </button>
-                        <h1 className="text-xl font-bold text-foreground">Alur Asesmen Terpadu</h1>
-                        <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest">{period}</p>
+                        <h1 className="text-lg sm:text-xl font-black text-foreground">Alur Asesmen Terpadu</h1>
+                        <p className="text-[11px] text-muted-foreground font-bold uppercase tracking-widest">{period}</p>
                     </div>
                     <div className="flex gap-2">
                         <Link
                             href={`/gradebook/learning-report/${encodeURIComponent(classId || '')}/${encodeURIComponent(subjectId || '')}`}
-                            className="inline-flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-4 py-2 text-sm font-bold text-primary hover:bg-primary/10 transition dark:border-primary/30 dark:bg-primary/5 dark:text-primary"
+                            className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 rounded-xl border border-primary/20 bg-primary/10 px-3.5 py-2 text-xs font-bold text-primary hover:bg-primary/20 transition active:scale-95"
                         >
-                            <FileText className="h-4 w-4" />
+                            <FileText className="h-3.5 w-3.5" />
                             Laporan CP
                         </Link>
                         <Link 
                             href={`/gradebook/final-report?class_id=${classId}&subject_id=${subjectId}`}
-                            className="inline-flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/10 px-4 py-2 text-sm font-bold text-primary hover:bg-primary/20 transition dark:border-primary/30 dark:bg-primary/10 dark:text-primary"
+                            className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 rounded-xl border border-primary/30 bg-primary text-primary-foreground px-3.5 py-2 text-xs font-bold shadow-xs hover:bg-primary/90 transition active:scale-95"
                         >
-                            <FileText className="h-4 w-4" />
-                            Laporan Akhir
+                            <FileText className="h-3.5 w-3.5" />
+                            Rapor Akhir
                         </Link>
                     </div>
                 </div>
 
                 {/* View Switcher & Search */}
-                <div className="flex flex-col gap-4 md:flex-row md:items-center justify-between">
-                    <div className="flex p-1 bg-muted rounded-2xl w-fit">
+                <div className="flex flex-col gap-3 md:flex-row md:items-center justify-between">
+                    <div className="flex p-1 bg-muted/70 rounded-2xl w-full sm:w-fit overflow-x-auto scrollbar-thin border border-border/50">
                         {tabs.map(tab => {
                             const Icon = tab.icon;
                             const isActive = viewMode === tab.key;
@@ -148,12 +155,14 @@ export default function GradebookShow({ summative_headers, initial_headers, form
                                 <button
                                     key={tab.key}
                                     onClick={() => setViewMode(tab.key)}
-                                    className={`flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-bold transition ${isActive ? `bg-white ${tab.activeColor} shadow-sm dark:bg-popover` : 'text-muted-foreground'}`}
+                                    className={`flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-xs font-bold transition shrink-0 flex-1 sm:flex-initial ${
+                                        isActive ? `bg-card ${tab.activeColor} shadow-xs` : 'text-muted-foreground hover:text-foreground'
+                                    }`}
                                 >
-                                    <Icon className="h-4 w-4" />
-                                    <span className="hidden sm:inline">{tab.label}</span>
+                                    <Icon className="h-3.5 w-3.5" />
+                                    <span>{tab.label}</span>
                                     {tab.count > 0 && (
-                                        <span className={`ml-1 text-[10px] font-bold rounded-full px-1.5 py-0.5 ${isActive ? 'bg-current/10' : 'bg-muted-foreground/10'}`}>
+                                        <span className={`ml-1 text-[10px] font-bold rounded-full px-1.5 py-0.2 ${isActive ? 'bg-current/10' : 'bg-muted-foreground/15'}`}>
                                             {tab.count}
                                         </span>
                                     )}
@@ -162,20 +171,137 @@ export default function GradebookShow({ summative_headers, initial_headers, form
                         })}
                     </div>
                     
-                    <div className="relative flex-1 md:max-w-xs">
-                        <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                        <input
-                            type="text"
-                            placeholder="Cari nama siswa..."
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            className="w-full rounded-2xl border border-border bg-white px-11 py-3 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 dark:bg-popover dark:text-slate-200 shadow-sm"
-                        />
+                    <div className="flex items-center gap-2">
+                        {/* Mobile Cards vs Table layout switcher */}
+                        <div className="md:hidden flex p-1 bg-muted/60 rounded-xl border border-border/50 shrink-0">
+                            <button
+                                type="button"
+                                onClick={() => setMobileLayout('cards')}
+                                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition ${
+                                    mobileLayout === 'cards' ? 'bg-card text-primary shadow-xs' : 'text-muted-foreground'
+                                }`}
+                            >
+                                Kartu
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setMobileLayout('table')}
+                                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition ${
+                                    mobileLayout === 'table' ? 'bg-card text-primary shadow-xs' : 'text-muted-foreground'
+                                }`}
+                            >
+                                Tabel
+                            </button>
+                        </div>
+
+                        <div className="relative flex-1 md:max-w-xs">
+                            <Search className="absolute left-3.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                            <input
+                                type="text"
+                                placeholder="Cari nama siswa..."
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                className="w-full rounded-xl border border-border bg-card px-9 py-2 text-xs outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 shadow-xs"
+                            />
+                        </div>
                     </div>
                 </div>
 
-                {/* Main Table */}
-                <div className="overflow-hidden rounded-xl border border-border bg-card shadow-none">
+                {/* ── Mobile Card View (md:hidden when mobileLayout === 'cards') ── */}
+                <div className={`${mobileLayout === 'cards' ? 'block' : 'hidden'} md:hidden space-y-3`}>
+                    {filteredData.length === 0 ? (
+                        <div className="py-16 text-center text-muted-foreground text-xs italic bg-card rounded-2xl border border-border/60 p-6">
+                            Belum ada data nilai siswa untuk ditampilkan.
+                        </div>
+                    ) : (
+                        filteredData.map((d) => {
+                            const isExpanded = expandedStudentIds[d.student_id];
+                            const currentHeaders = getCurrentHeaders();
+                            const finalScore = Math.round((d.average + (localScores[d.student_id] || 0)) / ((localScores[d.student_id] ?? 0) > 0 ? 2 : 1));
+
+                            return (
+                                <div key={d.student_id} className="rounded-2xl border border-border/70 bg-card p-4 shadow-xs space-y-3">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="flex items-center gap-3 min-w-0">
+                                            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary font-bold text-xs shrink-0">
+                                                {d.student_name.slice(0, 2).toUpperCase()}
+                                            </div>
+                                            <div className="flex flex-col min-w-0">
+                                                <span className="font-bold text-foreground text-sm truncate">{d.student_name}</span>
+                                                <span className="text-[10px] font-mono text-muted-foreground font-semibold">NIS: {d.student_nis || '-'}</span>
+                                            </div>
+                                        </div>
+
+                                        {viewMode === 'summative' && (
+                                            <div className="text-right shrink-0">
+                                                <span className="text-[10px] font-bold text-muted-foreground block uppercase">Nilai Akhir</span>
+                                                <span className="text-base font-black text-primary">{finalScore}</span>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Sumatif Akhir Input for teacher */}
+                                    {viewMode === 'summative' && (
+                                        <div className="flex items-center justify-between p-2.5 rounded-xl bg-muted/40 border border-border/40">
+                                            <span className="text-xs font-bold text-muted-foreground">Input Sumatif Akhir:</span>
+                                            <input
+                                                type="number"
+                                                value={localScores[d.student_id] ?? ''}
+                                                placeholder="0"
+                                                className="w-16 h-8 bg-card border border-border rounded-lg text-center text-xs font-black text-foreground outline-none focus:ring-2 focus:ring-primary/20"
+                                                onChange={(e) => updateSumatifAkhir(d.student_id, Number(e.target.value))}
+                                                onBlur={(e) => saveSumatifAkhir(d.student_id, Number(e.target.value))}
+                                            />
+                                        </div>
+                                    )}
+
+                                    {/* Expandable Breakdown Button */}
+                                    <button
+                                        type="button"
+                                        onClick={() => toggleStudentExpand(d.student_id)}
+                                        className="w-full flex items-center justify-between pt-2 border-t border-border/50 text-xs font-bold text-primary active:opacity-70"
+                                    >
+                                        <span>Rincian Nilai ({currentHeaders.length} Asesmen)</span>
+                                        <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
+                                    </button>
+
+                                    {/* Expanded Detail */}
+                                    {isExpanded && (
+                                        <div className="pt-2 space-y-2.5 text-xs animate-in fade-in">
+                                            <div className="grid grid-cols-2 gap-2">
+                                                {viewMode === 'summative' ? (
+                                                    d.summative.map((s, idx) => (
+                                                        <div key={idx} className="p-2 rounded-xl bg-muted/30 border border-border/40">
+                                                            <p className="text-[10px] font-bold text-muted-foreground truncate">{summative_headers[idx]?.title || `TP ${idx + 1}`}</p>
+                                                            <p className="text-xs font-black text-foreground mt-0.5">{s.score}</p>
+                                                        </div>
+                                                    ))
+                                                ) : (
+                                                    getCurrentScores(d).map((s, idx) => (
+                                                        <div key={idx} className="p-2 rounded-xl bg-muted/30 border border-border/40">
+                                                            <p className="text-[10px] font-bold text-muted-foreground truncate">{currentHeaders[idx]?.title || `Asesmen ${idx + 1}`}</p>
+                                                            <p className="text-xs font-black text-foreground mt-0.5">{s.score}</p>
+                                                        </div>
+                                                    ))
+                                                )}
+                                            </div>
+
+                                            {viewMode === 'summative' && d.description && (
+                                                <div className="p-2.5 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-200/50 dark:border-indigo-900/40 space-y-1">
+                                                    <p className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-wide">Capaian Kompetensi (Rapor):</p>
+                                                    <p className="text-[11px] text-indigo-900 dark:text-indigo-200 leading-snug italic">{d.description}</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })
+                    )}
+                </div>
+
+                {/* ── Main Table View (Desktop ALWAYS visible, Mobile only when mobileLayout === 'table') ── */}
+                <div className={`${mobileLayout === 'table' ? 'block' : 'hidden'} md:block overflow-hidden rounded-2xl md:rounded-xl border border-border bg-card shadow-none`}>
                     <div className="overflow-x-auto scrollbar-thin">
                         <table className="w-full text-left text-[13px]">
                             <thead>

@@ -61,43 +61,49 @@ export default function StudentLiveSessionPage({ modulAjar }: StudentLiveProps) 
         );
     };
 
+    const breadcrumbs = [
+        { title: 'Dashboard', href: '/dashboard' },
+        { title: 'Sesi Kelas', href: '/class-sessions' },
+        { title: 'Alur Belajar', href: '#' },
+    ];
+
     return (
-        <AppLayout title="Materi & Alur Belajar">
+        <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Materi & Alur Belajar" />
 
-            <div className="max-w-5xl mx-auto py-8 px-4 sm:px-6 space-y-8">
+            <div className="max-w-5xl mx-auto py-4 sm:py-8 px-3 sm:px-6 space-y-6 sm:space-y-8 pb-16 md:pb-0">
                 {/* Header Section */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-card p-5 sm:p-6 rounded-2xl border border-border/80 shadow-xs">
                     <div>
-                        <div className="flex items-center gap-2 mb-2">
-                            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+                        <div className="flex items-center gap-2 mb-1.5">
+                            <h1 className="text-xl sm:text-2xl font-black text-foreground">
                                 Alur Belajar Siswa
                             </h1>
-                            <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
+                            <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 font-bold">
                                 {modulAjar?.subject?.name || 'Mata Pelajaran'}
                             </Badge>
                         </div>
-                        <p className="text-sm text-slate-500 font-medium">
-                            Topik: <span className="text-slate-800 dark:text-slate-200">{modulAjar?.material?.title || 'Modul Pembelajaran'}</span> • Guru: {modulAjar?.teacher?.name || 'Guru'}
+                        <p className="text-xs sm:text-sm text-muted-foreground font-medium">
+                            Topik: <span className="font-bold text-foreground">{modulAjar?.material?.title || 'Modul Pembelajaran'}</span> &bull; Guru: {modulAjar?.teacher?.name || 'Guru'}
                         </p>
                     </div>
                     <div>
-                        <Link href="/assignments" className="inline-flex items-center justify-center rounded-xl text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-12 px-6 py-2 bg-indigo-600 text-white hover:bg-indigo-700 shadow-lg shadow-indigo-200 dark:shadow-none hover:scale-105 transform duration-200">
-                            <ClipboardList className="w-5 h-5 mr-2" />
+                        <Link href="/assignments" className="w-full md:w-auto inline-flex items-center justify-center rounded-xl text-xs sm:text-sm font-bold transition active:scale-95 h-11 px-5 bg-primary text-primary-foreground shadow-sm hover:bg-primary/90">
+                            <ClipboardList className="w-4 h-4 mr-2" />
                             Buka Tugas & Asesmen
                         </Link>
                     </div>
                 </div>
 
                 {/* Zone Navigation */}
-                <div className="flex gap-2 overflow-x-auto pb-2">
+                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin">
                     {zones.map((zone) => (
                         <button
                             key={zone.id}
                             onClick={() => setActiveZone(zone.id as any)}
-                            className={`flex items-center px-4 py-3 rounded-xl border font-bold text-sm transition-all whitespace-nowrap ${
+                            className={`flex items-center px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-xl border font-bold text-xs sm:text-sm transition-all whitespace-nowrap active:scale-95 ${
                                 activeZone === zone.id
-                                    ? `${zone.color} border-transparent ring-2 ring-offset-2 ring-indigo-500`
+                                    ? `${zone.color} border-transparent ring-2 ring-primary`
                                     : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800'
                             }`}
                         >

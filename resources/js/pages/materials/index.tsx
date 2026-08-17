@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { ConfirmDialog } from '@/components/confirm-dialog';
+import { MobileFab } from '@/components/mobile-fab';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: '/dashboard' },
@@ -491,6 +492,10 @@ export default function Materials({ materials, grouped_materials, teacher_groupe
                     <StudentGroupedView groups={grouped_materials ?? []} search={search} />
                 )}
             </div>
+
+            {user_role === 'teacher' && (
+                <MobileFab href={route('materials.create')} label="Materi Baru" />
+            )}
 
             {/* Floating Premium Toast Notification */}
             {toast && (
