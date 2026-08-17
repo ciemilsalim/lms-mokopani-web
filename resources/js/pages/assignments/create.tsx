@@ -568,6 +568,7 @@ export default function CreateAssignment({ teachings, objectives, assessment_typ
                                             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
                                                 {teachings
                                                     .filter(t => t.subject_id === parseInt(data.subject_id))
+                                                    .sort((a, b) => (a.class_name || '').localeCompare(b.class_name || '', undefined, { numeric: true, sensitivity: 'base' }))
                                                     .map(t => {
                                                         const isSelected = data.school_classes.includes(t.class_id);
                                                         return (
