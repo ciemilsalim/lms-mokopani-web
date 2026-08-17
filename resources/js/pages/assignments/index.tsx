@@ -204,10 +204,10 @@ function GroupedView({ groups, search, filterType }: { groups: SubjectGroup[]; s
     const [expandedSubjects, setExpandedSubjects] = useState<Record<number, boolean>>({});
     const [expandedObjectives, setExpandedObjectives] = useState<Record<string, boolean>>({});
 
-    const toggleSubject = (id: number) => setExpandedSubjects(prev => ({ ...prev, [id]: prev[id] !== false ? false : true }));
+    const toggleSubject = (id: number) => setExpandedSubjects(prev => ({ ...prev, [id]: !prev[id] }));
     const toggleObjective = (id: number, objId: number) => {
         const key = `${id}-${objId}`;
-        setExpandedObjectives(prev => ({ ...prev, [key]: prev[key] !== false ? false : true }));
+        setExpandedObjectives(prev => ({ ...prev, [key]: !prev[key] }));
     };
 
     const visible = groups
@@ -226,6 +226,24 @@ function GroupedView({ groups, search, filterType }: { groups: SubjectGroup[]; s
         }))
         .filter(subject => subject.objectives.length > 0);
 
+    const handleExpandAll = () => {
+        const allSubs: Record<number, boolean> = {};
+        const allObjs: Record<string, boolean> = {};
+        visible.forEach(g => {
+            allSubs[g.subject_id] = true;
+            g.objectives.forEach(o => {
+                allObjs[`${g.subject_id}-${o.objective_id}`] = true;
+            });
+        });
+        setExpandedSubjects(allSubs);
+        setExpandedObjectives(allObjs);
+    };
+
+    const handleCollapseAll = () => {
+        setExpandedSubjects({});
+        setExpandedObjectives({});
+    };
+
     if (visible.length === 0) {
         return (
             <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
@@ -236,50 +254,87 @@ function GroupedView({ groups, search, filterType }: { groups: SubjectGroup[]; s
     }
 
     return (
-        <div className="flex flex-col rounded-xl border border-border bg-card overflow-hidden shadow-none">
-            {visible.map((group, gIdx) => {
-                const isSubjectExpanded = expandedSubjects[group.subject_id] !== false;
-                return (
-                    <div key={group.subject_id} className={`${gIdx > 0 ? 'border-t border-border' : ''}`}>
-                        <div 
-                            onClick={() => toggleSubject(group.subject_id)}
-                            className="flex items-center justify-between px-4 py-2 bg-muted/30 border-b border-border cursor-pointer hover:bg-muted/50 transition-colors"
-                        >
-                            <span className="text-[11px] font-semibold uppercase tracking-widest text-foreground">{group.subject_name}</span>
-                            {isSubjectExpanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
-                        </div>
-                        {isSubjectExpanded && (
-                            <div className="flex flex-col">
-                                {group.objectives.map((obj, oIdx) => {
-                                    const objKey = `${group.subject_id}-${obj.objective_id}`;
-                                    const isObjExpanded = expandedObjectives[objKey] !== false;
-                                    return (
-                                        <div key={obj.objective_id} className={`${oIdx > 0 ? 'border-t border-border/50' : ''}`}>
-                                            <div 
-                                                onClick={() => toggleObjective(group.subject_id, obj.objective_id || 0)}
-                                                className="px-4 py-1.5 bg-muted/10 flex items-center justify-between cursor-pointer hover:bg-muted/20 transition-colors"
-                                            >
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-[10px] font-bold text-primary">{obj.objective_code}</span>
-                                                    <span className="text-[11px] font-medium text-muted-foreground line-clamp-1">{obj.objective_description}</span>
-                                                </div>
-                                                {isObjExpanded ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
-                                            </div>
-                                            {isObjExpanded && (
-                                                <div className="flex flex-col divide-y divide-border/30">
-                                                    {obj.assignments.map(asgn => (
-                                                        <AssignmentCard key={asgn.id} asgn={asgn} isTeacher={false} />
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </div>
-                                    );
-                                })}
+        <div className="space-y-4">
+            <div className="flex justify-end gap-2 text-xs font-bold text-muted-foreground">
+                <button
+                    type="button"
+                    onClick={handleExpandAll}
+                    className="px-3 py-1.5 rounded-lg bg-card border border-border hover:text-foreground hover:bg-muted/40 transition cursor-pointer"
+                >
+                    Buka Semua
+                </button>
+                <button
+                    type="button"
+                    onClick={handleCollapseAll}
+                    className="px-3 py-1.5 rounded-lg bg-card border border-border hover:text-foreground hover:bg-muted/40 transition cursor-pointer"
+                >
+                    Tutup Semua
+                </button>
+            </div>
+
+            <div className="flex flex-col gap-3">
+                {visible.map((group) => {
+                    const isSubjectExpanded = Boolean(search) || filterType !== 'all' || Boolean(expandedSubjects[group.subject_id]);
+                    const totalAsgn = group.objectives.reduce((acc, o) => acc + o.assignments.length, 0);
+
+                    return (
+                        <div key={group.subject_id} className="rounded-2xl border border-border/80 bg-card overflow-hidden shadow-xs hover:border-primary/30 transition-all">
+                            <div 
+                                onClick={() => toggleSubject(group.subject_id)}
+                                className="flex items-center justify-between px-4 sm:px-5 py-3.5 bg-card cursor-pointer hover:bg-muted/30 transition-colors"
+                            >
+                                <div className="flex items-center gap-3">
+                                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary shrink-0">
+                                        <BookOpen className="h-4 w-4" />
+                                    </div>
+                                    <div>
+                                        <span className="text-xs sm:text-sm font-black text-foreground">{group.subject_name}</span>
+                                        <p className="text-[11px] text-muted-foreground">{group.objectives.length} Tujuan Pembelajaran</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[10px] font-bold bg-muted px-2.5 py-1 rounded-lg text-muted-foreground">{totalAsgn} Asesmen</span>
+                                    <div className={`p-1.5 rounded-lg bg-muted/50 text-muted-foreground transition-transform duration-200 ${isSubjectExpanded ? 'rotate-180' : ''}`}>
+                                        <ChevronDown className="h-4 w-4" />
+                                    </div>
+                                </div>
                             </div>
-                        )}
-                    </div>
-                );
-            })}
+                            {isSubjectExpanded && (
+                                <div className="border-t border-border/70 divide-y divide-border/40">
+                                    {group.objectives.map((obj) => {
+                                        const objKey = `${group.subject_id}-${obj.objective_id}`;
+                                        const isObjExpanded = Boolean(search) || filterType !== 'all' || expandedObjectives[objKey] !== false;
+                                        return (
+                                            <div key={obj.objective_id} className="bg-background/40">
+                                                <div 
+                                                    onClick={() => toggleObjective(group.subject_id, obj.objective_id || 0)}
+                                                    className="px-4 sm:px-5 py-2.5 flex items-center justify-between cursor-pointer hover:bg-muted/20 transition-colors"
+                                                >
+                                                    <div className="flex items-center gap-2 min-w-0">
+                                                        <span className="text-[10px] font-black text-primary bg-primary/10 px-2 py-0.5 rounded-md shrink-0">[{obj.objective_code}]</span>
+                                                        <span className="text-xs font-semibold text-foreground/90 truncate">{obj.objective_description}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2 shrink-0">
+                                                        <span className="text-[10px] font-bold text-muted-foreground">{obj.assignments.length} Butir</span>
+                                                        {isObjExpanded ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
+                                                    </div>
+                                                </div>
+                                                {isObjExpanded && (
+                                                    <div className="flex flex-col divide-y divide-border/30 bg-card border-t border-border/30">
+                                                        {obj.assignments.map(asgn => (
+                                                            <AssignmentCard key={asgn.id} asgn={asgn} isTeacher={false} />
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                    );
+                })}
+            </div>
         </div>
     );
 }
@@ -289,14 +344,14 @@ function TeacherGroupedView({ groups, search, filterType }: { groups: TeacherCla
     const [expandedSubjects, setExpandedSubjects] = useState<Record<string, boolean>>({});
     const [expandedObjectives, setExpandedObjectives] = useState<Record<string, boolean>>({});
 
-    const toggleClass = (id: number) => setExpandedClasses(prev => ({ ...prev, [id]: prev[id] !== false ? false : true }));
+    const toggleClass = (id: number) => setExpandedClasses(prev => ({ ...prev, [id]: !prev[id] }));
     const toggleSubject = (clsId: number, subId: number) => {
         const key = `${clsId}-${subId}`;
-        setExpandedSubjects(prev => ({ ...prev, [key]: prev[key] !== false ? false : true }));
+        setExpandedSubjects(prev => ({ ...prev, [key]: !prev[key] }));
     };
     const toggleObjective = (clsId: number, subId: number, objId: number) => {
         const key = `${clsId}-${subId}-${objId}`;
-        setExpandedObjectives(prev => ({ ...prev, [key]: prev[key] !== false ? false : true }));
+        setExpandedObjectives(prev => ({ ...prev, [key]: !prev[key] }));
     };
 
     const visible = groups
@@ -318,7 +373,32 @@ function TeacherGroupedView({ groups, search, filterType }: { groups: TeacherCla
                 }))
                 .filter(sub => sub.objectives.length > 0),
         }))
-        .filter(cls => cls.subjects.length > 0);
+        .filter(cls => cls.subjects.length > 0)
+        .sort((a, b) => (a.class_name || '').localeCompare(b.class_name || '', undefined, { numeric: true, sensitivity: 'base' }));
+
+    const handleExpandAll = () => {
+        const allCls: Record<number, boolean> = {};
+        const allSubs: Record<string, boolean> = {};
+        const allObjs: Record<string, boolean> = {};
+        visible.forEach(cls => {
+            allCls[cls.class_id] = true;
+            cls.subjects.forEach(sub => {
+                allSubs[`${cls.class_id}-${sub.subject_id}`] = true;
+                sub.objectives.forEach(obj => {
+                    allObjs[`${cls.class_id}-${sub.subject_id}-${obj.objective_id}`] = true;
+                });
+            });
+        });
+        setExpandedClasses(allCls);
+        setExpandedSubjects(allSubs);
+        setExpandedObjectives(allObjs);
+    };
+
+    const handleCollapseAll = () => {
+        setExpandedClasses({});
+        setExpandedSubjects({});
+        setExpandedObjectives({});
+    };
 
     if (visible.length === 0) {
         return (
@@ -330,75 +410,128 @@ function TeacherGroupedView({ groups, search, filterType }: { groups: TeacherCla
     }
 
     return (
-        <div className="flex flex-col gap-6">
-            {visible.map((cls) => {
-                const isClassExpanded = filterType !== 'all' || Boolean(search) || expandedClasses[cls.class_id] !== false;
-                return (
-                    <div key={cls.class_id} className="flex flex-col rounded-xl border border-border bg-card overflow-hidden shadow-none">
-                        <div 
-                            onClick={() => toggleClass(cls.class_id)}
-                            className="flex items-center justify-between px-4 py-2.5 bg-muted/50 border-b border-border cursor-pointer hover:bg-muted/70 transition-colors"
-                        >
-                            <div className="flex items-center gap-2">
-                                {isClassExpanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
-                                <span className="text-[12px] font-bold uppercase tracking-widest text-foreground">{cls.class_name}</span>
+        <div className="space-y-4">
+            {/* Header Toolbar: Expand / Collapse All */}
+            <div className="flex items-center justify-between gap-3 bg-card p-3 sm:px-4 rounded-xl border border-border/70 shadow-xs">
+                <span className="text-xs font-bold text-muted-foreground">
+                    Menampilkan <strong className="text-foreground">{visible.length} Kelas</strong> dengan asesmen aktif
+                </span>
+                <div className="flex items-center gap-2">
+                    <button
+                        type="button"
+                        onClick={handleExpandAll}
+                        className="px-3 py-1.5 rounded-lg bg-background border border-border text-[11px] font-bold text-muted-foreground hover:text-foreground hover:bg-muted/40 transition cursor-pointer"
+                    >
+                        Buka Semua
+                    </button>
+                    <button
+                        type="button"
+                        onClick={handleCollapseAll}
+                        className="px-3 py-1.5 rounded-lg bg-background border border-border text-[11px] font-bold text-muted-foreground hover:text-foreground hover:bg-muted/40 transition cursor-pointer"
+                    >
+                        Tutup Semua
+                    </button>
+                </div>
+            </div>
+
+            <div className="flex flex-col gap-3">
+                {visible.map((cls) => {
+                    // Default is collapsed (hidden), except when searching or filtering
+                    const isClassExpanded = Boolean(search) || filterType !== 'all' || Boolean(expandedClasses[cls.class_id]);
+                    const totalAsgnInClass = cls.subjects.reduce((acc, sub) => acc + sub.objectives.reduce((oAcc, obj) => oAcc + obj.assignments.length, 0), 0);
+
+                    return (
+                        <div key={cls.class_id} className="rounded-2xl border border-border/80 bg-card overflow-hidden shadow-xs hover:border-primary/30 transition-all">
+                            {/* Class Header Button */}
+                            <div 
+                                onClick={() => toggleClass(cls.class_id)}
+                                className="flex items-center justify-between px-4 sm:px-5 py-3.5 bg-card cursor-pointer hover:bg-muted/30 transition-colors"
+                            >
+                                <div className="flex items-center gap-3 min-w-0">
+                                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary shrink-0">
+                                        <Users className="h-4 w-4" />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <span className="text-xs sm:text-sm font-black text-foreground truncate block">{cls.class_name}</span>
+                                        <p className="text-[11px] text-muted-foreground mt-0.5">{cls.subjects.length} Mata Pelajaran Diajarkan</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2.5 shrink-0">
+                                    <span className="text-[10px] font-bold bg-primary/10 text-primary px-2.5 py-1 rounded-lg">
+                                        {totalAsgnInClass} Asesmen
+                                    </span>
+                                    <div className={`p-1.5 rounded-lg bg-muted/50 text-muted-foreground transition-transform duration-200 ${isClassExpanded ? 'rotate-180' : ''}`}>
+                                        <ChevronDown className="h-4 w-4" />
+                                    </div>
+                                </div>
                             </div>
-                            <span className="text-[10px] font-bold text-muted-foreground">{cls.subjects.length} Mapel</span>
-                        </div>
-                        {isClassExpanded && (
-                            <div className="flex flex-col">
-                                {cls.subjects.map((sub, sIdx) => {
-                                    const subKey = `${cls.class_id}-${sub.subject_id}`;
-                                    const isSubExpanded = filterType !== 'all' || Boolean(search) || expandedSubjects[subKey] !== false;
-                                    return (
-                                        <div key={sub.subject_id} className={`${sIdx > 0 ? 'border-t border-border' : ''}`}>
-                                            <div 
-                                                onClick={() => toggleSubject(cls.class_id, sub.subject_id)}
-                                                className="px-4 py-2 bg-muted/20 flex items-center justify-between cursor-pointer hover:bg-muted/30 transition-colors"
-                                            >
-                                                <div className="flex items-center gap-2">
-                                                    {isSubExpanded ? <ChevronDown className="h-3.5 w-3.5 text-primary/70" /> : <ChevronRight className="h-3.5 w-3.5 text-primary/70" />}
-                                                    <BookOpen className="h-3.5 w-3.5 text-primary" />
-                                                    <span className="text-[11px] font-semibold uppercase tracking-widest text-foreground/80">{sub.subject_name}</span>
+
+                            {/* Class Contents (Subjects -> Objectives -> Assignments) */}
+                            {isClassExpanded && (
+                                <div className="border-t border-border/70 divide-y divide-border/40">
+                                    {cls.subjects.map((sub) => {
+                                        const subKey = `${cls.class_id}-${sub.subject_id}`;
+                                        const isSubExpanded = Boolean(search) || filterType !== 'all' || expandedSubjects[subKey] !== false;
+                                        const totalSubAsgn = sub.objectives.reduce((acc, obj) => acc + obj.assignments.length, 0);
+
+                                        return (
+                                            <div key={sub.subject_id} className="bg-background/40">
+                                                {/* Subject Header */}
+                                                <div 
+                                                    onClick={() => toggleSubject(cls.class_id, sub.subject_id)}
+                                                    className="px-4 sm:px-5 py-2.5 flex items-center justify-between cursor-pointer hover:bg-muted/20 transition-colors"
+                                                >
+                                                    <div className="flex items-center gap-2.5">
+                                                        <BookOpen className="h-3.5 w-3.5 text-primary" />
+                                                        <span className="text-xs font-bold uppercase tracking-wider text-foreground">{sub.subject_name}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-[10px] font-bold text-muted-foreground">{totalSubAsgn} Asesmen</span>
+                                                        {isSubExpanded ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            {isSubExpanded && (
-                                                <div className="flex flex-col">
-                                                    {sub.objectives.map((obj, oIdx) => {
-                                                        const objKey = `${cls.class_id}-${sub.subject_id}-${obj.objective_id}`;
-                                                        const isObjExpanded = filterType !== 'all' || Boolean(search) || expandedObjectives[objKey] !== false;
-                                                        return (
-                                                            <div key={obj.objective_id} className={`${oIdx > 0 ? 'border-t border-border/50' : ''}`}>
-                                                                <div 
-                                                                    onClick={() => toggleObjective(cls.class_id, sub.subject_id, obj.objective_id || 0)}
-                                                                    className="px-4 py-1.5 bg-muted/5 flex items-center justify-between cursor-pointer hover:bg-muted/10 transition-colors"
-                                                                >
-                                                                    <div className="flex items-center gap-2">
-                                                                        {isObjExpanded ? <ChevronDown className="h-3 w-3 text-muted-foreground" /> : <ChevronRight className="h-3 w-3 text-muted-foreground" />}
-                                                                        <span className="text-[10px] font-bold text-primary">{obj.objective_code}</span>
-                                                                        <span className="text-[11px] font-medium text-muted-foreground line-clamp-1">{obj.objective_description}</span>
+
+                                                {/* Objectives Accordion */}
+                                                {isSubExpanded && (
+                                                    <div className="divide-y divide-border/30 bg-card border-t border-border/30">
+                                                        {sub.objectives.map((obj) => {
+                                                            const objKey = `${cls.class_id}-${sub.subject_id}-${obj.objective_id}`;
+                                                            const isObjExpanded = Boolean(search) || filterType !== 'all' || expandedObjectives[objKey] !== false;
+                                                            return (
+                                                                <div key={obj.objective_id} className="divide-y divide-border/20">
+                                                                    <div 
+                                                                        onClick={() => toggleObjective(cls.class_id, sub.subject_id, obj.objective_id || 0)}
+                                                                        className="px-4 sm:px-6 py-2 bg-muted/10 flex items-center justify-between cursor-pointer hover:bg-muted/20 transition-colors"
+                                                                    >
+                                                                        <div className="flex items-center gap-2 min-w-0">
+                                                                            <span className="text-[10px] font-black text-primary bg-primary/10 px-1.5 py-0.5 rounded shrink-0">[{obj.objective_code}]</span>
+                                                                            <span className="text-[11px] font-medium text-muted-foreground truncate">{obj.objective_description}</span>
+                                                                        </div>
+                                                                        <div className="flex items-center gap-1.5 shrink-0">
+                                                                            {isObjExpanded ? <ChevronDown className="h-3 w-3 text-muted-foreground" /> : <ChevronRight className="h-3 w-3 text-muted-foreground" />}
+                                                                        </div>
                                                                     </div>
+                                                                    {isObjExpanded && (
+                                                                        <div className="flex flex-col divide-y divide-border/30 bg-card">
+                                                                            {obj.assignments.map(asgn => (
+                                                                                <AssignmentCard key={asgn.id} asgn={asgn} isTeacher={true} />
+                                                                            ))}
+                                                                        </div>
+                                                                    )}
                                                                 </div>
-                                                                {isObjExpanded && (
-                                                                    <div className="flex flex-col divide-y divide-border/30">
-                                                                        {obj.assignments.map(asgn => (
-                                                                            <AssignmentCard key={asgn.id} asgn={asgn} isTeacher={true} />
-                                                                        ))}
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                        );
-                                                    })}
-                                                </div>
-                                            )}
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        )}
-                    </div>
-                );
-            })}
+                                                            );
+                                                        })}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                    );
+                })}
+            </div>
         </div>
     );
 }
