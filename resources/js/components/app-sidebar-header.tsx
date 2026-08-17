@@ -7,6 +7,7 @@ import NotificationBell from './notification-bell';
 import AppLogo from './app-logo';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ChevronDown, ArrowLeft, Calendar } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -159,10 +160,15 @@ export function AppSidebarHeader({ breadcrumbs = [] }: { breadcrumbs?: Breadcrum
                 <div className="flex items-center gap-1.5 sm:gap-2">
                     <Link
                         href="/profile"
-                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary border border-primary/20 shadow-xs text-[11px] font-black hover:bg-primary/20 active:scale-95 transition"
+                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full hover:opacity-90 active:scale-95 transition"
                         title={fullName}
                     >
-                        {initials}
+                        <Avatar className="h-8 w-8 overflow-hidden rounded-full border border-primary/20 shadow-xs">
+                            <AvatarImage src={auth?.user?.avatar || auth?.user?.avatar_url || ''} alt={fullName} className="object-cover" />
+                            <AvatarFallback className="rounded-full bg-primary/10 text-primary font-black text-[11px]">
+                                {initials}
+                            </AvatarFallback>
+                        </Avatar>
                     </Link>
 
                     {/* Desktop Name + role */}
