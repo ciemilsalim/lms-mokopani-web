@@ -69,6 +69,36 @@ Route::get('/sso/debug', function () {
     }
 })->name('sso.debug');
 
+Route::get('/sso/test-auth/{id?}', function ($id = 57) {
+    try {
+        $user = \App\Models\User::find($id);
+        if (!$user) {
+            return response()->json(['status' => 'error', 'message' => 'User ID ' . $id . ' tidak ditemukan di database LMS.'], 404);
+        }
+        
+        \Illuminate\Support\Facades\Auth::login($user, true);
+        request()->session()->regenerate();
+        request()->session()->save();
+        
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Login berhasil disetel di sesi! Sekarang buka /sso/debug atau /dashboard di tab ini.',
+            'session_id' => session()->getId(),
+            'session_driver' => config('session.driver'),
+            'auth_check_immediate' => \Illuminate\Support\Facades\Auth::check(),
+            'user' => $user->only('id', 'name', 'email', 'role'),
+            'cookie_name' => config('session.cookie'),
+        ], 200, [], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    } catch (\Throwable $e) {
+        return response()->json([
+            'status' => 'error',
+            'error' => $e->getMessage(),
+            'file' => $e->getFile(),
+            'line' => $e->getLine(),
+        ], 500, [], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    }
+})->name('sso.test-auth');
+
 Route::get('/clear-cache', function() {
     \Illuminate\Support\Facades\Artisan::call('optimize:clear');
     return 'Cache cleared successfully! Silakan refresh halaman utama LMS.';
