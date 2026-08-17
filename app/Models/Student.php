@@ -42,23 +42,19 @@ class Student extends Model
             return asset('storage/' . $this->photo);
         }
 
-        // 2. Base URL SIPADA
-        $sipadaUrl = rtrim(env('SIPADA_URL', env('VITE_SIPADA_URL', 'http://localhost:8000')), '/');
-
-        // 3. Cek direktori fisik sistem-pangkalan-data jika berdampingan
+        // 2. Cek direktori fisik sistem-pangkalan-data jika berdampingan
         $sipadaStoragePath = env('SIPADA_STORAGE_DIR', base_path('../sistem-pangkalan-data/storage/app/public'));
         if (file_exists($sipadaStoragePath . '/' . $this->photo)) {
-            return $sipadaUrl . '/storage/' . $this->photo;
+            return url('/media-proxy/' . ltrim($this->photo, '/'));
         }
 
-        // 4. Cek direktori fisik aplikasi-absensi jika berdampingan
+        // 3. Cek direktori fisik aplikasi-absensi jika berdampingan
         $absensiStoragePath = env('ABSENSI_STORAGE_DIR', base_path('../aplikasi-absensi/storage/app/public'));
         if (file_exists($absensiStoragePath . '/' . $this->photo)) {
-            $absensiUrl = rtrim(env('SSO_ABSENSI_URL', 'http://localhost:8002'), '/');
-            return $absensiUrl . '/storage/' . $this->photo;
+            return url('/media-proxy/' . ltrim($this->photo, '/'));
         }
 
-        return $sipadaUrl . '/storage/' . $this->photo;
+        return url('/media-proxy/' . ltrim($this->photo, '/'));
     }
 
     public function user()

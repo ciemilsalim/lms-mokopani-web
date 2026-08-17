@@ -26,6 +26,25 @@ Route::get('/', function () {
     return redirect()->route('login');
 })->name('home');
 
+Route::get('/media-proxy/{path}', function ($path) {
+    // 1. Cek di storage publik LMS
+    $lmsPath = storage_path('app/public/' . $path);
+    if (file_exists($lmsPath) && is_file($lmsPath)) {
+        return response()->file($lmsPath);
+    }
+    // 2. Cek di storage aplikasi-absensi
+    $absensiPath = base_path('../aplikasi-absensi/storage/app/public/' . $path);
+    if (file_exists($absensiPath) && is_file($absensiPath)) {
+        return response()->file($absensiPath);
+    }
+    // 3. Cek di storage sistem-pangkalan-data
+    $sipadaPath = base_path('../sistem-pangkalan-data/storage/app/public/' . $path);
+    if (file_exists($sipadaPath) && is_file($sipadaPath)) {
+        return response()->file($sipadaPath);
+    }
+    abort(404);
+})->where('path', '.*')->name('media.proxy');
+
 Route::get('/sso/login', [\App\Http\Controllers\Auth\SsoLoginController::class, 'login'])->name('sso.login');
 Route::get('/sso/presensi', [\App\Http\Controllers\SSOController::class, 'redirectToPresensi'])->name('sso.presensi');
 

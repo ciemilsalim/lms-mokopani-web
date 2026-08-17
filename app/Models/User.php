@@ -45,12 +45,16 @@ class User extends Authenticatable
 
     public function getAvatarUrlAttribute()
     {
-        if ($this->teacher && $this->teacher->photo_url) {
-            return $this->teacher->photo_url;
+        $teacher = $this->teacher ?: Teacher::where('user_id', $this->id)->first();
+        if ($teacher && $teacher->photo_url) {
+            return $teacher->photo_url;
         }
-        if ($this->student && $this->student->photo_url) {
-            return $this->student->photo_url;
+
+        $student = $this->student ?: Student::where('user_id', $this->id)->first();
+        if ($student && $student->photo_url) {
+            return $student->photo_url;
         }
+
         return null;
     }
 

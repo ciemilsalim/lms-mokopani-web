@@ -27,9 +27,9 @@ export function UserInfo({ user, showEmail = false }: { user: User; showEmail?: 
 
     return (
         <>
-            <Avatar className="h-8 w-8 overflow-hidden rounded-full">
-                <AvatarImage src={user.avatar} alt={user.name} />
-                <AvatarFallback className="rounded-full bg-neutral-200 text-black dark:bg-neutral-700 dark:text-white">
+            <Avatar className="h-8 w-8 overflow-hidden rounded-full border border-border/80 shadow-2xs">
+                <AvatarImage src={user.avatar || user.avatar_url || ''} alt={user.name} className="object-cover" />
+                <AvatarFallback className="rounded-full bg-neutral-200 text-black dark:bg-neutral-700 dark:text-white font-bold text-xs">
                     {getInitials(user.name)}
                 </AvatarFallback>
             </Avatar>
