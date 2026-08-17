@@ -249,6 +249,23 @@ class InstructionalSmartService
         return $base . $journal . " " . $meta;
     }
 
+    public static function sanitizeOutput($data)
+    {
+        if (is_string($data)) {
+            $cleaned = html_entity_decode($data, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            $cleaned = str_replace(["\xc2\xa0", '&nbsp;'], ' ', $cleaned);
+            $cleaned = preg_replace('/[ \t]+/', ' ', $cleaned);
+            return trim($cleaned);
+        }
+        if (is_array($data)) {
+            foreach ($data as $k => $v) {
+                $data[$k] = self::sanitizeOutput($v);
+            }
+            return $data;
+        }
+        return $data;
+    }
+
     public function suggestAssessment(
         int $tpId, 
         string $type, 
@@ -264,12 +281,23 @@ class InstructionalSmartService
 
         $description = $tp->description ?? '';
 
-        // Chaining Context: Gunakan judul & uraian materi riil hasil ketikan guru jika dikirim, fallback ke TP content jika kosong
-        if (!empty($materialContent)) {
-            $content = "Judul Materi: " . ($materialTitle ?? '') . "\nUraian Materi:\n" . strip_tags($materialContent);
-        } else {
-            $content = $tp->content ?? 'materi ini';
+        // Ekstrak nama topik ringkas yang bersih untuk fallback template
+        $rawTopic = !empty($materialTitle) ? $materialTitle : (!empty($tp->content) ? $tp->content : 'materi ini');
+        $cleanShortTopic = self::sanitizeOutput(strip_tags($rawTopic));
+        if (empty($cleanShortTopic)) {
+            $cleanShortTopic = 'materi ini';
         }
+
+        // Siapkan teks konteks mendalam khusus untuk dikirim ke AI Provider
+        if (!empty($materialContent)) {
+            $cleanMat = self::sanitizeOutput(strip_tags($materialContent));
+            $aiContextContent = "Judul Materi: " . $cleanShortTopic . "\nUraian Materi:\n" . $cleanMat;
+        } else {
+            $aiContextContent = $cleanShortTopic;
+        }
+
+        // Variabel untuk template offline (selalu gunakan topik ringkas)
+        $content = $cleanShortTopic;
 
         // Integrasi API Manager
         $aiManager = app(AiManager::class);
@@ -277,10 +305,10 @@ class InstructionalSmartService
 
         if ($ai->isConfigured()) {
             try {
-                $suggested = $ai->suggestAssessment($description, $content, $type, $regenerate, $observationMode, $quizMode);
+                $suggested = $ai->suggestAssessment($description, $aiContextContent, $type, $regenerate, $observationMode, $quizMode);
                 if (!empty($suggested)) {
                     $this->isLastRequestOnline = true;
-                    return $suggested;
+                    return self::sanitizeOutput($suggested);
                 }
             } catch (\Exception $e) {
                 \Illuminate\Support\Facades\Log::error('InstructionalSmartService Gemini Assessment Error: ' . $e->getMessage());

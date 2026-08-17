@@ -265,6 +265,7 @@ class LmsModulAjarController extends Controller
 
         if (is_array($suggestions)) {
             $suggestions['ai_active'] = $service->isLastRequestOnline;
+            $suggestions = InstructionalSmartService::sanitizeOutput($suggestions);
         }
 
         return response()->json($suggestions);

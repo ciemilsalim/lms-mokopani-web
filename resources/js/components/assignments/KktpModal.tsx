@@ -22,6 +22,21 @@ interface KktpModalProps {
     assignment: any;
 }
 
+const cleanText = (str: any): string => {
+    if (!str || typeof str !== 'string') return typeof str === 'object' ? '' : String(str || '');
+    return str
+        .replace(/&nbsp;/gi, ' ')
+        .replace(/&#39;/g, "'")
+        .replace(/&quot;/g, '"')
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/\[DOKUMEN MODUL AJAR TERHUBUNG\][\s\S]*/i, '')
+        .replace(/\[SPESIFIKASI ASESMEN YANG WAJIB DIHASILKAN\][\s\S]*/i, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+};
+
 export const KktpModal: React.FC<KktpModalProps> = ({ isOpen, onClose, assignment }) => {
     if (!isOpen || !assignment) return null;
 
@@ -34,16 +49,16 @@ export const KktpModal: React.FC<KktpModalProps> = ({ isOpen, onClose, assignmen
     let levelsList: Array<{ name: string; desc: string }> = [];
     if (Array.isArray(rawLevels) && rawLevels.length > 0) {
         levelsList = rawLevels.map((l: any) => ({
-            name: l.name || l.title || 'Tahap',
-            desc: l.desc || l.description || '-'
+            name: cleanText(l.name || l.title || 'Tahap'),
+            desc: cleanText(l.desc || l.description || '-')
         }));
     } else if (rawLevels && typeof rawLevels === 'object') {
         if (rawLevels.baru_berkembang || rawLevels.layak || rawLevels.cakap || rawLevels.mahir) {
             levelsList = [
-                { name: 'Baru Berkembang', desc: rawLevels.baru_berkembang || '-' },
-                { name: 'Layak / Cukup', desc: rawLevels.layak || '-' },
-                { name: 'Cakap / Baik', desc: rawLevels.cakap || '-' },
-                { name: 'Mahir / Sangat Baik', desc: rawLevels.mahir || '-' },
+                { name: 'Baru Berkembang', desc: cleanText(rawLevels.baru_berkembang || '-') },
+                { name: 'Layak / Cukup', desc: cleanText(rawLevels.layak || '-') },
+                { name: 'Cakap / Baik', desc: cleanText(rawLevels.cakap || '-') },
+                { name: 'Mahir / Sangat Baik', desc: cleanText(rawLevels.mahir || '-') },
             ];
         }
     }
@@ -270,8 +285,10 @@ export const KktpModal: React.FC<KktpModalProps> = ({ isOpen, onClose, assignmen
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                 {criteriaList.map((item, idx) => {
-                                    const title = typeof item === 'object' ? item.name || item.title || `Kriteria ${idx + 1}` : item;
-                                    const desc = typeof item === 'object' ? item.desc || item.description : null;
+                                    const rawTitle = typeof item === 'object' ? item.name || item.title || `Kriteria ${idx + 1}` : item;
+                                    const rawDesc = typeof item === 'object' ? item.desc || item.description : null;
+                                    const title = cleanText(rawTitle);
+                                    const desc = rawDesc ? cleanText(rawDesc) : null;
 
                                     return (
                                         <div 
