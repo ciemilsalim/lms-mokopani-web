@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Carbon\Carbon;
 
 class SsoLoginController extends Controller
 {
@@ -16,34 +18,82 @@ class SsoLoginController extends Controller
     {
         $token = $request->query('token');
 
+        Log::info('[SSO LMS] /sso/login request diterima', [
+            'has_token'      => !empty($token),
+            'token_snippet'  => $token ? substr($token, 0, 10) . '...' : null,
+            'ip'             => $request->ip(),
+            'user_agent'     => $request->userAgent(),
+            'server_time'    => now()->toDateTimeString(),
+        ]);
+
         if (!$token) {
-            return redirect()->route('login')->withErrors(['sso' => 'Token SSO tidak ditemukan.']);
+            Log::warning('[SSO LMS] Parameter token kosong di query string URL');
+            return redirect()->route('login')->withErrors(['sso' => 'Token SSO tidak ditemukan dalam URL.']);
         }
 
-        // 1. Find and validate the token in the shared database
-        // Robust timezone-agnostic query (valid if expires_at > now or created within last 15 minutes)
-        $ssoToken = DB::table('sso_tokens')
-            ->where('token', $token)
-            ->where(function($q) {
-                $q->where('expires_at', '>', now())
-                  ->orWhere('created_at', '>=', now()->subMinutes(15));
-            })
-            ->first();
+        // 1. Ambil data token langsung dari tabel database
+        $rawToken = DB::table('sso_tokens')->where('token', $token)->first();
 
-        if (!$ssoToken) {
-            return redirect()->route('login')->withErrors(['sso' => 'Token SSO tidak valid atau telah kadaluarsa.']);
+        if (!$rawToken) {
+            $totalTokens = DB::table('sso_tokens')->count();
+            Log::warning('[SSO LMS] Token tidak ditemukan di database sso_tokens', [
+                'token_snippet'       => substr($token, 0, 10) . '...',
+                'total_tokens_in_db'  => $totalTokens,
+            ]);
+            return redirect()->route('login')->withErrors(['sso' => 'Token SSO tidak valid di database LMS atau telah digunakan. Pastikan kedua aplikasi terhubung ke database yang sama.']);
         }
 
-        // 2. Log the user in with remember token
-        Auth::loginUsingId($ssoToken->user_id, true);
+        // 2. Validasi kadaluarsa token secara fleksibel dan timezone-resilient
+        $expiresAt = Carbon::parse($rawToken->expires_at);
+        $createdAt = Carbon::parse($rawToken->created_at);
+        $isNotExpired = $expiresAt->isFuture() || $createdAt->greaterThanOrEqualTo(now()->subMinutes(30));
 
-        // 3. Delete the token immediately (one-time use)
+        Log::info('[SSO LMS] Token SSO ditemukan di database', [
+            'token_id'   => $rawToken->id,
+            'user_id'    => $rawToken->user_id,
+            'created_at' => (string) $rawToken->created_at,
+            'expires_at' => (string) $rawToken->expires_at,
+            'now'        => (string) now(),
+            'is_valid'   => $isNotExpired,
+        ]);
+
+        if (!$isNotExpired) {
+            Log::warning('[SSO LMS] Token SSO telah kadaluarsa', [
+                'created_at' => (string) $rawToken->created_at,
+                'expires_at' => (string) $rawToken->expires_at,
+                'now'        => (string) now(),
+            ]);
+            DB::table('sso_tokens')->where('token', $token)->delete();
+            return redirect()->route('login')->withErrors(['sso' => 'Token SSO telah kadaluarsa. Silakan klik ulang menu LMS Mokopani di Presensi.']);
+        }
+
+        // 3. Pastikan user dengan ID tersebut ada di tabel users
+        $user = \App\Models\User::find($rawToken->user_id);
+        if (!$user) {
+            Log::error('[SSO LMS] User ID dari token tidak ditemukan di tabel users LMS', [
+                'user_id' => $rawToken->user_id,
+            ]);
+            return redirect()->route('login')->withErrors(['sso' => 'Akun pengguna (ID: ' . $rawToken->user_id . ') tidak ditemukan di tabel users LMS Mokopani.']);
+        }
+
+        // 4. Autentikasi user dengan remember token
+        Auth::login($user, true);
+
+        // 5. Hapus token satu kali pakai dari database
         DB::table('sso_tokens')->where('token', $token)->delete();
 
-        // 4. Regenerate the session for security
+        // 6. Regenerasi session
         $request->session()->regenerate();
 
-        // 5. Redirect to the dashboard
-        return redirect()->intended(route('dashboard'));
+        Log::info('[SSO LMS] Login SSO Berhasil! Mengalihkan ke dashboard', [
+            'user_id'    => $user->id,
+            'name'       => $user->name,
+            'email'      => $user->email,
+            'role'       => $user->role,
+            'auth_check' => Auth::check(),
+        ]);
+
+        // 7. Arahkan langsung ke dashboard
+        return redirect()->route('dashboard');
     }
 }

@@ -7,7 +7,7 @@ import {
     MoreHorizontal, Play, Target, Calendar, CheckCircle2, Circle,
     User, Star, FileText, Activity, ArrowUpRight, Zap, Heart, ArrowUpDown,
 } from 'lucide-react';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Cell, PieChart, Pie, ResponsiveContainer, RadialBarChart, RadialBar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, BarChart, Bar } from 'recharts';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -183,6 +183,14 @@ const activityLabelMap: Record<string, string> = {
 
 export default function Dashboard({ stats, identity, subjects, classes, recentActivities, recentAnnouncements, todaySchedule, todayName }: DashboardProps) {
     const { auth, user_role } = usePage<SharedData>().props;
+
+    useEffect(() => {
+        console.group('[LMS Mokopani Dashboard Loaded]');
+        console.log('✅ Pengguna Terautentikasi (Auth):', auth?.user);
+        console.log('Peran Pengguna (Role):', user_role);
+        console.log('Identitas:', identity);
+        console.groupEnd();
+    }, [auth, user_role, identity]);
 
     const roleLabel: Record<string, string> = {
         admin: 'Administrator',

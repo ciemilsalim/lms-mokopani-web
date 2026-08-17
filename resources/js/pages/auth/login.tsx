@@ -1,6 +1,6 @@
 import { Head, useForm, Link } from '@inertiajs/react';
-import { Eye, EyeOff, LoaderCircle } from 'lucide-react';
-import { FormEventHandler, useState } from 'react';
+import { Eye, EyeOff, LoaderCircle, AlertTriangle } from 'lucide-react';
+import { FormEventHandler, useState, useEffect } from 'react';
 
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
@@ -18,15 +18,30 @@ type LoginForm = {
 interface LoginProps {
     status?: string;
     canResetPassword: boolean;
+    errors: Record<string, string>;
 }
 
-export default function Login({ status, canResetPassword }: LoginProps) {
+export default function Login({ status, canResetPassword, errors: propErrors }: LoginProps) {
     const [showPassword, setShowPassword] = useState(false);
     const { data, setData, post, processing, errors, reset } = useForm<LoginForm>({
         email: '',
         password: '',
         remember: false,
     });
+
+    const activeErrors = { ...propErrors, ...errors };
+
+    useEffect(() => {
+        console.group('[SSO LMS Login Diagnostik]');
+        console.log('Current URL:', window.location.href);
+        console.log('Query String:', window.location.search);
+        console.log('Status Message:', status || 'Tidak ada status');
+        console.log('Errors:', activeErrors);
+        if (activeErrors?.sso) {
+            console.error('SSO ERROR TERDETEKSI:', activeErrors.sso);
+        }
+        console.groupEnd();
+    }, [activeErrors, status]);
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
@@ -38,6 +53,16 @@ export default function Login({ status, canResetPassword }: LoginProps) {
     return (
         <AuthLayout title="Selamat datang! 👋" description="Silakan masuk ke akun Anda untuk melanjutkan">
             <Head title="Masuk" />
+
+            {activeErrors?.sso && (
+                <div className="mb-4 rounded-xl border border-destructive/30 bg-destructive/10 p-3.5 text-sm font-medium text-destructive flex items-start gap-3 shadow-xs animate-in fade-in duration-200">
+                    <AlertTriangle className="h-5 w-5 shrink-0 text-destructive mt-0.5" />
+                    <div>
+                        <div className="font-bold text-destructive">Gagal Masuk via SSO</div>
+                        <div className="text-xs mt-0.5 text-destructive/90 leading-relaxed">{activeErrors.sso}</div>
+                    </div>
+                </div>
+            )}
 
             {status && (
                 <div className="mb-4 rounded-lg border border-success/20 bg-success/10 px-4 py-3 text-sm font-medium text-success">
