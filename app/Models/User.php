@@ -22,6 +22,7 @@ class User extends Authenticatable
         'email',
         'password',
         'role',
+        'profile_photo_path',
         'ai_provider',
         'ai_api_key',
     ];
@@ -45,14 +46,32 @@ class User extends Authenticatable
 
     public function getAvatarUrlAttribute()
     {
+        // 1. Cek profile_photo_path di User (dari aplikasi Absensi / Jetstream / SIPADA)
+        if (!empty($this->profile_photo_path)) {
+            if (Str::startsWith($this->profile_photo_path, ['http://', 'https://'])) {
+                return $this->profile_photo_path;
+            }
+            return url('/media-proxy/' . ltrim($this->profile_photo_path, '/'));
+        }
+
+        // 2. Cek relasi Teacher
         $teacher = $this->teacher ?: Teacher::where('user_id', $this->id)->first();
         if ($teacher && $teacher->photo_url) {
             return $teacher->photo_url;
         }
 
+        // 3. Cek relasi Student
         $student = $this->student ?: Student::where('user_id', $this->id)->first();
         if ($student && $student->photo_url) {
             return $student->photo_url;
+        }
+
+        // 4. Cek kolom photo langsung jika ada
+        if (!empty($this->photo)) {
+            if (Str::startsWith($this->photo, ['http://', 'https://'])) {
+                return $this->photo;
+            }
+            return url('/media-proxy/' . ltrim($this->photo, '/'));
         }
 
         return null;

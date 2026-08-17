@@ -27,22 +27,44 @@ Route::get('/', function () {
 })->name('home');
 
 Route::get('/media-proxy/{path}', function ($path) {
-    // 1. Cek di storage publik LMS
-    $lmsPath = storage_path('app/public/' . $path);
-    if (file_exists($lmsPath) && is_file($lmsPath)) {
-        return response()->file($lmsPath);
+    // 1. Cek direktori fisik lokal (LMS, Absensi, SIPADA)
+    $candidatePaths = [
+        storage_path('app/public/' . $path),
+        public_path('storage/' . $path),
+        base_path('../aplikasi-absensi/storage/app/public/' . $path),
+        base_path('../presensi/storage/app/public/' . $path),
+        base_path('../sistem-pangkalan-data/storage/app/public/' . $path),
+        base_path('../sipada/storage/app/public/' . $path),
+        base_path('../../presensi/storage/app/public/' . $path),
+        base_path('../../aplikasi-absensi/storage/app/public/' . $path),
+        base_path('../../sipada/storage/app/public/' . $path),
+    ];
+
+    foreach ($candidatePaths as $candidate) {
+        if (file_exists($candidate) && is_file($candidate)) {
+            return response()->file($candidate);
+        }
     }
-    // 2. Cek di storage aplikasi-absensi
-    $absensiPath = base_path('../aplikasi-absensi/storage/app/public/' . $path);
-    if (file_exists($absensiPath) && is_file($absensiPath)) {
-        return response()->file($absensiPath);
+
+    // 2. Jika tidak ada di disk fisik lokal (misal di server cPanel multi-subdomain), redirect ke domain Presensi / SIPADA
+    $host = request()->getHost();
+    $isLocal = in_array($host, ['localhost', '127.0.0.1', '::1']) || str_ends_with($host, '.test');
+    
+    $presensiBase = $isLocal 
+        ? env('SSO_ABSENSI_URL', 'http://localhost:8000') 
+        : env('SSO_ABSENSI_URL', 'https://presensi-smpn1biau.zahradev.id');
+
+    $sipadaBase = $isLocal 
+        ? env('SIPADA_URL', 'http://localhost:8000') 
+        : env('SIPADA_URL', 'https://sipada-smpn1biau.zahradev.id');
+
+    // Jika path siswa atau logo, prioritaskan SIPADA
+    if (str_starts_with($path, 'student_photos') || str_starts_with($path, 'school_logos')) {
+        return redirect(rtrim($sipadaBase, '/') . '/storage/' . ltrim($path, '/'));
     }
-    // 3. Cek di storage sistem-pangkalan-data
-    $sipadaPath = base_path('../sistem-pangkalan-data/storage/app/public/' . $path);
-    if (file_exists($sipadaPath) && is_file($sipadaPath)) {
-        return response()->file($sipadaPath);
-    }
-    abort(404);
+
+    // Default foto guru / profile-photos / teacher_attendances ke Presensi
+    return redirect(rtrim($presensiBase, '/') . '/storage/' . ltrim($path, '/'));
 })->where('path', '.*')->name('media.proxy');
 
 Route::get('/sso/login', [\App\Http\Controllers\Auth\SsoLoginController::class, 'login'])->name('sso.login');
