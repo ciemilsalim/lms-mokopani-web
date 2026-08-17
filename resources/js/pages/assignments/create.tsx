@@ -216,6 +216,8 @@ export default function CreateAssignment({ teachings, objectives, assessment_typ
                 }
 
                 setData(prev => {
+                    const newConfig = { ...prev.instrument_config };
+
                     const cleanAiText = (str: any): string => {
                         if (!str || typeof str !== 'string') return '';
                         let res = str
