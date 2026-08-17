@@ -216,10 +216,32 @@ export default function CreateAssignment({ teachings, objectives, assessment_typ
                 }
 
                 setData(prev => {
-                    const newConfig = { ...prev.instrument_config };
+                    const cleanAiText = (str: any): string => {
+                        if (!str || typeof str !== 'string') return '';
+                        let res = str
+                            .replace(/&nbsp;/gi, ' ')
+                            .replace(/&#39;/g, "'")
+                            .replace(/&quot;/g, '"')
+                            .replace(/&amp;/g, '&')
+                            .replace(/&lt;/g, '<')
+                            .replace(/&gt;/g, '>')
+                            .replace(/\[DOKUMEN MODUL AJAR TERHUBUNG\][\s\S]*/i, '')
+                            .replace(/\[SPESIFIKASI ASESMEN YANG WAJIB DIHASILKAN\][\s\S]*/i, '');
+                        
+                        if (res.includes('Judul Materi:') && res.includes('Uraian Materi:')) {
+                            const match = res.match(/Ketepatan konsep dan penerapan materi\s+Judul Materi:\s*([^:\n]+)/i);
+                            if (match) {
+                                res = `Ketepatan konsep dan penerapan materi ${match[1].trim()}.`;
+                            } else {
+                                const match2 = res.match(/Judul Materi:\s*([^:\n]+)/i);
+                                if (match2) res = match2[1].trim();
+                            }
+                        }
+                        return res.replace(/\s+/g, ' ').trim();
+                    };
 
-                    if (suggestion.stimulus !== undefined) newConfig.stimulus = suggestion.stimulus;
-                    if (suggestion.criteria !== undefined) newConfig.criteria = suggestion.criteria;
+                    if (suggestion.stimulus !== undefined) newConfig.stimulus = cleanAiText(suggestion.stimulus);
+                    if (suggestion.criteria !== undefined) newConfig.criteria = cleanAiText(suggestion.criteria);
                     let suggestedQuestions = suggestion.questions || suggestion.pertanyaan;
                     if (suggestedQuestions !== undefined && Array.isArray(suggestedQuestions)) {
                         const totalQuestions = suggestedQuestions.length;
@@ -228,23 +250,35 @@ export default function CreateAssignment({ teachings, objectives, assessment_typ
 
                         newConfig.questions = suggestedQuestions.map((q: any, idx: number) => ({
                             ...q,
-                            text: q.text || q.question || q.pertanyaan || q.description || '',
-                            answer: q.answer || q.correct_answer || q.jawaban || q.kunci_jawaban || q.pembahasan || q.pedoman_penskoran || q.rubrik || '',
+                            text: cleanAiText(q.text || q.question || q.pertanyaan || q.description || ''),
+                            answer: cleanAiText(q.answer || q.correct_answer || q.jawaban || q.kunci_jawaban || q.pembahasan || q.pedoman_penskoran || q.rubrik || ''),
                             points: idx < remainder ? basePoints + 1 : basePoints,
                             options: Array.isArray(q.options || q.pilihan) ? (q.options || q.pilihan).map((o: any) => ({
                                 ...o,
-                                text: o.text || o.option || o.label || o.teks || ''
+                                text: cleanAiText(o.text || o.option || o.label || o.teks || '')
                             })) : undefined
                         }));
                     }
-                    if (suggestion.indicators !== undefined) newConfig.indicators = suggestion.indicators;
-                    if (suggestion.focus !== undefined) newConfig.focus = suggestion.focus;
-                    if (suggestion.context !== undefined) newConfig.context = suggestion.context;
-                    if (suggestion.teacher_notes !== undefined) newConfig.teacher_notes = suggestion.teacher_notes;
-                    if (suggestion.levels !== undefined) newConfig.levels = suggestion.levels;
-                    if (suggestion.central_topic !== undefined) newConfig.central_topic = suggestion.central_topic;
+                    if (suggestion.indicators !== undefined && Array.isArray(suggestion.indicators)) {
+                        newConfig.indicators = suggestion.indicators.map((ind: any) => ({
+                            ...ind,
+                            name: cleanAiText(ind.name || ind.text || ''),
+                            text: cleanAiText(ind.text || ind.name || '')
+                        }));
+                    }
+                    if (suggestion.focus !== undefined) newConfig.focus = cleanAiText(suggestion.focus);
+                    if (suggestion.context !== undefined) newConfig.context = cleanAiText(suggestion.context);
+                    if (suggestion.teacher_notes !== undefined) newConfig.teacher_notes = cleanAiText(suggestion.teacher_notes);
+                    if (suggestion.levels !== undefined && Array.isArray(suggestion.levels)) {
+                        newConfig.levels = suggestion.levels.map((lvl: any) => ({
+                            ...lvl,
+                            name: cleanAiText(lvl.name || ''),
+                            desc: cleanAiText(lvl.desc || lvl.description || '')
+                        }));
+                    }
+                    if (suggestion.central_topic !== undefined) newConfig.central_topic = cleanAiText(suggestion.central_topic);
                     if (suggestion.submission_mode !== undefined) newConfig.submission_mode = suggestion.submission_mode;
-                    if (suggestion.instructions !== undefined) newConfig.instructions = suggestion.instructions;
+                    if (suggestion.instructions !== undefined) newConfig.instructions = cleanAiText(suggestion.instructions);
                     if (suggestion.keywords !== undefined) newConfig.keywords = suggestion.keywords;
                     if (suggestion.kktp !== undefined) {
                         newConfig.kktp = {

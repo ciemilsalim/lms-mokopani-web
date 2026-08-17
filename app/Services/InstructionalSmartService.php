@@ -249,11 +249,48 @@ class InstructionalSmartService
         return $base . $journal . " " . $meta;
     }
 
+    public static function extractConciseTopic(?string $title, ?string $tpContent): string
+    {
+        $raw = !empty($title) ? $title : (!empty($tpContent) ? $tpContent : 'Materi Pembelajaran');
+        $clean = strip_tags($raw);
+        $clean = html_entity_decode($clean, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $clean = str_replace(["\xc2\xa0", '&nbsp;'], ' ', $clean);
+        $clean = preg_replace('/^(Judul\s+Materi|Uraian\s+Materi|Materi\s+Inti|Materi)\s*[:\-]\s*/i', '', trim($clean));
+        
+        $lines = explode("\n", $clean);
+        $firstLine = trim($lines[0] ?? $clean);
+        
+        if (mb_strlen($firstLine) > 60 && str_contains($firstLine, ':')) {
+            $parts = explode(':', $firstLine);
+            if (!empty($parts[0]) && mb_strlen($parts[0]) >= 5 && mb_strlen($parts[0]) <= 60) {
+                return trim($parts[0]);
+            }
+        }
+        
+        if (mb_strlen($firstLine) > 75) {
+            return mb_substr($firstLine, 0, 75);
+        }
+        
+        return $firstLine ?: 'Materi Pembelajaran';
+    }
+
     public static function sanitizeOutput($data)
     {
         if (is_string($data)) {
             $cleaned = html_entity_decode($data, ENT_QUOTES | ENT_HTML5, 'UTF-8');
             $cleaned = str_replace(["\xc2\xa0", '&nbsp;'], ' ', $cleaned);
+            $cleaned = preg_replace('/\[DOKUMEN MODUL AJAR TERHUBUNG\][\s\S]*/i', '', $cleaned);
+            $cleaned = preg_replace('/\[SPESIFIKASI ASESMEN YANG WAJIB DIHASILKAN\][\s\S]*/i', '', $cleaned);
+            
+            // Clean accidental leaked "Judul Materi: ... Uraian Materi: ..." inside short indicator strings
+            if (str_contains($cleaned, 'Judul Materi:') && str_contains($cleaned, 'Uraian Materi:')) {
+                if (preg_match('/Ketepatan konsep dan penerapan materi\s+Judul Materi:\s*([^:\n]+)/i', $cleaned, $m)) {
+                    $cleaned = "Ketepatan konsep dan penerapan materi " . trim($m[1]) . ".";
+                } elseif (preg_match('/Judul Materi:\s*([^:\n]+)/i', $cleaned, $m)) {
+                    $cleaned = trim($m[1]);
+                }
+            }
+            
             $cleaned = preg_replace('/[ \t]+/', ' ', $cleaned);
             return trim($cleaned);
         }
@@ -282,16 +319,14 @@ class InstructionalSmartService
         $description = $tp->description ?? '';
 
         // Ekstrak nama topik ringkas yang bersih untuk fallback template
-        $rawTopic = !empty($materialTitle) ? $materialTitle : (!empty($tp->content) ? $tp->content : 'materi ini');
-        $cleanShortTopic = self::sanitizeOutput(strip_tags($rawTopic));
-        if (empty($cleanShortTopic)) {
-            $cleanShortTopic = 'materi ini';
-        }
+        $cleanShortTopic = self::extractConciseTopic($materialTitle, $tp->content);
 
-        // Siapkan teks konteks mendalam khusus untuk dikirim ke AI Provider
+        // Siapkan teks konteks ringkas & padat untuk dikirim ke AI Provider (maksimal 500 kata agar AI fokus pada indikator)
         if (!empty($materialContent)) {
             $cleanMat = self::sanitizeOutput(strip_tags($materialContent));
-            $aiContextContent = "Judul Materi: " . $cleanShortTopic . "\nUraian Materi:\n" . $cleanMat;
+            $words = preg_split('/\s+/', $cleanMat);
+            $excerpt = implode(' ', array_slice($words, 0, 250));
+            $aiContextContent = "Topik: " . $cleanShortTopic . "\nRangkuman Esensial: " . $excerpt . "\n\nCatatan Penting: Hasilkan butir indikator, soal, dan rubrik yang RINGKAS, PADAT, dan KONTEKSTUAL (maksimal 1-2 kalimat). Jangan mengutip ulang teks materi ke dalam nama indikator.";
         } else {
             $aiContextContent = $cleanShortTopic;
         }
