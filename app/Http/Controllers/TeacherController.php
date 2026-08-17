@@ -16,7 +16,7 @@ class TeacherController extends Controller
                 'id'          => $t->id,
                 'name'        => $t->name,
                 'nip'         => $t->nip,
-                'photo'       => $t->photo,
+                'photo'       => $t->photo_url,
                 'subjects'    => $t->subjects->pluck('name')->join(', '),
                 'has_account' => $t->user_id !== null,
             ]);

@@ -387,18 +387,18 @@ class MaterialController extends Controller
             }
         }
 
-        // Ambil komentar untuk materi ini
-        $comments = \App\Models\LmsComment::with('user')
+        $comments = \App\Models\LmsComment::with(['user.teacher', 'user.student'])
             ->where('material_id', $material->id)
             ->latest()
             ->get()
             ->map(fn($c) => [
-                'id'         => $c->id,
-                'user_id'    => $c->user_id,
-                'user_name'  => $c->user->name ?? 'User Terhapus',
-                'user_role'  => $c->user ? ($c->user->role ?? ($c->user->teacher ? 'teacher' : 'student')) : 'student',
-                'body'       => $c->body,
-                'created_at' => $c->created_at->diffForHumans(),
+                'id'          => $c->id,
+                'user_id'     => $c->user_id,
+                'user_name'   => $c->user->name ?? 'User Terhapus',
+                'user_avatar' => $c->user?->avatar_url,
+                'user_role'   => $c->user ? ($c->user->role ?? ($c->user->teacher ? 'teacher' : 'student')) : 'student',
+                'body'        => $c->body,
+                'created_at'  => $c->created_at->diffForHumans(),
             ]);
 
         // Ambil refleksi siswa jika ada

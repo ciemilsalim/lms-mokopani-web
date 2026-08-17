@@ -119,9 +119,12 @@ export default function Teachers({ teachers }: TeachersProps) {
                                             <div className="flex items-center gap-3">
                                                 {teacher.photo ? (
                                                     <img
-                                                        src={`/storage/${teacher.photo}`}
+                                                        src={teacher.photo}
                                                         alt={teacher.name}
-                                                        className="h-9 w-9 rounded-full object-cover"
+                                                        className="h-9 w-9 rounded-full object-cover border border-border"
+                                                        onError={(e) => {
+                                                            (e.currentTarget as HTMLElement).style.display = 'none';
+                                                        }}
                                                     />
                                                 ) : (
                                                     <div className={`flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br ${avatarColors[idx % avatarColors.length]} text-white text-xs font-bold flex-shrink-0`}>

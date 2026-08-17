@@ -46,7 +46,7 @@ class SubjectController extends Controller
             'assignments_count' => $s->assignments_count,
             'teacher'           => ($user && $user->role === 'student' && $s->teachingAssignments->first()) ? [
                 'name'  => $s->teachingAssignments->first()->teacher?->name,
-                'photo' => $s->teachingAssignments->first()->teacher?->photo ? asset('storage/' . $s->teachingAssignments->first()->teacher->photo) : null,
+                'photo' => $s->teachingAssignments->first()->teacher?->photo_url,
             ] : null,
         ]);
 

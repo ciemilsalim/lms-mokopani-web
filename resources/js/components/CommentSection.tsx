@@ -11,6 +11,7 @@ interface Comment {
     id: number;
     user_id: number;
     user_name: string;
+    user_avatar?: string | null;
     user_role: string;
     body: string;
     created_at: string;
@@ -88,8 +89,19 @@ export default function CommentSection({ assignmentId, materialId, comments, aut
                 ) : (
                     comments.map((comment) => (
                         <div key={comment.id} className="flex gap-4 p-4 rounded-2xl bg-white dark:bg-[#1B1B25] border border-[#2C2C3A]/10 dark:border-[#2C2C3A] shadow-sm transition-all hover:shadow-md">
-                            <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl font-bold text-white ${comment.user_role === 'teacher' ? 'bg-[#5E6AD2]' : 'bg-[#5E6AD2]/70'}`}>
-                                <User className="h-5 w-5" />
+                            <div className="h-10 w-10 shrink-0 rounded-xl overflow-hidden bg-primary/10 flex items-center justify-center font-black text-xs text-primary border border-primary/20">
+                                {comment.user_avatar ? (
+                                    <img
+                                        src={comment.user_avatar}
+                                        alt={comment.user_name}
+                                        className="h-full w-full object-cover"
+                                        onError={(e) => {
+                                            (e.currentTarget as HTMLElement).style.display = 'none';
+                                        }}
+                                    />
+                                ) : (
+                                    <span>{comment.user_name ? comment.user_name.charAt(0).toUpperCase() : '?'}</span>
+                                )}
                             </div>
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center justify-between mb-1">

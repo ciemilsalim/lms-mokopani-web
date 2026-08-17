@@ -366,17 +366,18 @@ class AssignmentController extends Controller
         }
 
         // Ambil komentar untuk tugas ini
-        $comments = \App\Models\LmsComment::with('user')
+        $comments = \App\Models\LmsComment::with(['user.teacher', 'user.student'])
             ->where('assignment_id', $assignment->id)
             ->latest()
             ->get()
             ->map(fn($c) => [
-                'id'         => $c->id,
-                'user_id'    => $c->user_id,
-                'user_name'  => $c->user->name,
-                'user_role'  => $c->user->role ?? ($c->user->teacher ? 'teacher' : 'student'),
-                'body'       => $c->body,
-                'created_at' => $c->created_at->diffForHumans(),
+                'id'          => $c->id,
+                'user_id'     => $c->user_id,
+                'user_name'   => $c->user->name,
+                'user_avatar' => $c->user?->avatar_url,
+                'user_role'   => $c->user->role ?? ($c->user->teacher ? 'teacher' : 'student'),
+                'body'        => $c->body,
+                'created_at'  => $c->created_at->diffForHumans(),
             ]);
 
         $mySubmission = null;

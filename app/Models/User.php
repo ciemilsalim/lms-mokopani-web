@@ -36,9 +36,22 @@ class User extends Authenticatable
         return $this->hasOne(Student::class);
     }
 
-    public function parent()
+    protected $appends = ['avatar', 'avatar_url'];
+
+    public function getAvatarAttribute()
     {
-        return $this->hasOne(ParentModel::class);
+        return $this->getAvatarUrlAttribute();
+    }
+
+    public function getAvatarUrlAttribute()
+    {
+        if ($this->teacher && $this->teacher->photo_url) {
+            return $this->teacher->photo_url;
+        }
+        if ($this->student && $this->student->photo_url) {
+            return $this->student->photo_url;
+        }
+        return null;
     }
 
     /**
