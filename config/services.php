@@ -41,4 +41,10 @@ return [
         'base_url' => env('GEMINI_BASE_URL', 'https://generativelanguage.googleapis.com/v1beta'),
     ],
 
+    'absensi' => [
+        'local_url' => env('ABSENSI_LOCAL_URL', env('ABSENSI_URL', 'http://localhost:8000')),
+        'production_url' => env('ABSENSI_PRODUCTION_URL', env('ABSENSI_URL', 'https://presensi-smpn1biau.zahradev.id')),
+        'url' => env('ABSENSI_URL', 'https://presensi-smpn1biau.zahradev.id'),
+    ],
+
 ];

@@ -21,10 +21,10 @@ class SSOController extends Controller
             || str_ends_with($host, '.local');
 
         if ($isLocalHost) {
-            return env('ABSENSI_LOCAL_URL', env('ABSENSI_URL', 'http://localhost:8000'));
+            return config('services.absensi.local_url', 'http://localhost:8000');
         }
 
-        return env('ABSENSI_PRODUCTION_URL', env('ABSENSI_URL', 'https://presensi-smpn1biau.zahradev.id'));
+        return config('services.absensi.production_url', 'https://presensi-smpn1biau.zahradev.id');
     }
 
     /**
@@ -47,7 +47,13 @@ class SSOController extends Controller
         // 1. Generate a secure random token
         $token = Str::random(60);
 
-        // 2. Store the token in the shared database with a 10-minute expiration
+        // 2. Clean up any previous expired tokens for this user
+        DB::table('sso_tokens')
+            ->where('user_id', $user->id)
+            ->orWhere('expires_at', '<', now()->subMinutes(30))
+            ->delete();
+
+        // 3. Store the token in the shared database with a 10-minute expiration
         DB::table('sso_tokens')->insert([
             'user_id' => $user->id,
             'token' => $token,
@@ -56,10 +62,10 @@ class SSOController extends Controller
             'updated_at' => now(),
         ]);
 
-        // 3. Get target Absensi URL
+        // 4. Get target Absensi URL dynamically based on environment/host
         $presensiUrl = $this->getTargetPresensiUrl($request);
 
-        // 4. Redirect to the target Absensi SSO login route
+        // 5. Redirect to the target Absensi SSO login route
         return redirect()->away(rtrim($presensiUrl, '/') . '/sso/login?token=' . $token);
     }
 }
