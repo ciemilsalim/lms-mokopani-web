@@ -138,13 +138,11 @@ Route::middleware(['auth'])->group(function () {
     Route::post('comments', [\App\Http\Controllers\CommentController::class, 'store'])->name('comments.store');
     Route::delete('comments/{comment}', [\App\Http\Controllers\CommentController::class, 'destroy'])->name('comments.destroy');
 
-    // Laporan Nilai & Sesi Kelas (shared — dispatches teacher vs student in controller)
+    // Laporan Nilai (shared — dispatches teacher vs student in controller)
     Route::get('gradebook', [\App\Http\Controllers\GradebookController::class, 'index'])->name('gradebook.index');
-    Route::get('class-sessions', [\App\Http\Controllers\ClassSessionController::class, 'index'])->name('class-sessions.index');
 
     // ── Student-only ────────────────────────────────────────────────
     Route::middleware(['role:student'])->group(function () {
-        Route::get('class-sessions/{id}/student', [\App\Http\Controllers\ClassSessionController::class, 'studentLive'])->name('class-sessions.student-live');
         Route::post('assignments/{assignment}/submit', [AssignmentController::class, 'submit'])->name('assignments.submit');
         Route::post('reflections', [\App\Http\Controllers\ReflectionController::class, 'store'])->name('reflections.store');
         Route::post('materials/{material}/complete', [MaterialController::class, 'complete'])->name('materials.complete');
@@ -266,10 +264,6 @@ Route::middleware(['auth'])->group(function () {
         // Analitik Pembelajaran
         Route::get('analytics', [AnalyticsController::class, 'index'])->name('analytics.index');
         Route::get('analytics/{subjectId}/{classId}', [AnalyticsController::class, 'show'])->name('analytics.show');
-
-        // Class Sessions (PPA 2025 Execution)
-        Route::get('class-sessions/{id}/live', [\App\Http\Controllers\ClassSessionController::class, 'live'])->name('class-sessions.live');
-        Route::post('api/ai/generate-learning-steps', [\App\Http\Controllers\ClassSessionController::class, 'generateLearningSteps'])->name('ai.generate-learning-steps');
 
         // Rapor Processing (PPA 2025 Summative Calculation)
         Route::get('rapor/wizard', [\App\Http\Controllers\RaporReportController::class, 'wizard'])->name('rapor.wizard');

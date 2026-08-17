@@ -303,13 +303,13 @@ export default function Dashboard({ stats, identity, subjects, classes, recentAc
                                 <ClipboardList className="h-3.5 w-3.5" />
                                 + Asesmen
                             </Link>
-                            <Link href="/modul-ajar" className="shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 text-xs font-bold active:scale-95 transition">
-                                <Zap className="h-3.5 w-3.5" />
-                                Modul Ajar AI
+                            <Link href="/lesson-plans" className="shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 text-xs font-bold active:scale-95 transition">
+                                <FileText className="h-3.5 w-3.5" />
+                                Modul Ajar / RPP
                             </Link>
-                            <Link href="/class-sessions" className="shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-xs font-bold active:scale-95 transition">
-                                <Play className="h-3.5 w-3.5" />
-                                Live Class
+                            <Link href="/gradebook" className="shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-xs font-bold active:scale-95 transition">
+                                <Award className="h-3.5 w-3.5" />
+                                Nilai & Rapor
                             </Link>
                         </>
                     )}
