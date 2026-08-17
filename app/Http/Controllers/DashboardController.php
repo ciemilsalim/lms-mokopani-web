@@ -88,10 +88,22 @@ class DashboardController extends Controller
     private function teacherDashboard($user)
     {
         $teacher = $user->teacher;
+        if (!$teacher) {
+            $teacher = Teacher::where('user_id', $user->id)->orWhere('email', $user->email)->first();
+        }
+
+        if (!$teacher) {
+            \Illuminate\Support\Facades\Log::warning('[Dashboard] User memiliki peran guru namun data Teacher belum terhubung', [
+                'user_id' => $user->id,
+                'email'   => $user->email,
+            ]);
+            return $this->adminDashboard($user);
+        }
+
         $activeYear = AcademicYear::getActive();
         $activeSemester = Semester::getActive();
 
-        $teacher->load('subjects');
+        $teacher->loadMissing('subjects');
 
         $myMaterials = LmsMaterial::where('teacher_id', $teacher->id)
             ->where('academic_year_id', $activeYear?->id)
@@ -127,17 +139,17 @@ class DashboardController extends Controller
 
         $todaySchedule = $this->getTeacherSchedule($user);
 
-        $mapelList = $teacher->subjects->pluck('name')->join(', ');
-        $subjects = $teacher->subjects->values()->map(fn($s) => ['id' => $s->id, 'name' => $s->name]);
+        $mapelList = $teacher->subjects ? $teacher->subjects->pluck('name')->join(', ') : '';
+        $subjects = $teacher->subjects ? $teacher->subjects->values()->map(fn($s) => ['id' => $s->id, 'name' => $s->name]) : collect();
         $classes = \App\Models\SchoolClass::whereIn('id', $teachingClassIds)->get()->map(fn($c) => ['id' => $c->id, 'name' => $c->name]);
 
         return Inertia::render('dashboard', [
             'stats'               => $stats,
             'identity'            => [
-                'name'       => $teacher->name,
+                'name'       => $teacher->name ?? $user->name,
                 'role'       => 'teacher',
                 'idLabel'    => 'NIP',
-                'idValue'    => $teacher->nip,
+                'idValue'    => $teacher->nip ?? '-',
                 'extra'      => $mapelList ? "Mengajar: {$mapelList}" : null,
                 'sekolah'    => school_setting('school_name', config('app.name')),
                 'tahunAjaran' => $activeYear?->name,
@@ -157,6 +169,16 @@ class DashboardController extends Controller
     private function studentDashboard($user)
     {
         $student = $user->student;
+        if (!$student) {
+            $student = Student::where('user_id', $user->id)->orWhere('email', $user->email)->first();
+        }
+
+        if (!$student) {
+            \Illuminate\Support\Facades\Log::warning('[Dashboard] User memiliki peran siswa namun data Student belum terhubung', [
+                'user_id' => $user->id,
+            ]);
+            return $this->adminDashboard($user);
+        }
         $activeYear = AcademicYear::getActive();
         $activeSemester = Semester::getActive();
 
