@@ -61,30 +61,12 @@ const teacherNavSections: NavSection[] = [
 
 const studentNavSections: NavSection[] = [
     {
-        label: 'Utama',
+        label: 'Menu Utama',
         items: [
-            { title: 'Dashboard',           url: '/dashboard', icon: LayoutDashboard },
-            { title: 'Pengumuman',          url: '/announcements', icon: Bell },
-        ],
-    },
-    {
-        label: 'Belajar',
-        items: [
-            { title: 'Bahan Materi',        url: '/materials',     icon: Library },
-            { title: 'Bank Asesmen',        url: '/assignments',   icon: ClipboardList },
-            { title: 'Projek P5',           url: '/p5/saya',       icon: Heart },
-        ],
-    },
-    {
-        label: 'Hasil Belajar',
-        items: [
-            { title: 'Nilai & Rapor Saya',  url: '/gradebook',       icon: FileBarChart },
-        ],
-    },
-    {
-        label: 'Bantuan',
-        items: [
-            { title: 'Petunjuk Penggunaan', url: '/guide',     icon: Book },
+            { title: 'Beranda',             url: '/dashboard',   icon: LayoutDashboard },
+            { title: 'Materi Belajar',      url: '/materials',   icon: Library },
+            { title: 'Asesmen & Tugas',     url: '/assignments', icon: ClipboardList },
+            { title: 'Hasil Belajar',       url: '/gradebook',   icon: FileBarChart },
         ],
     },
 ];

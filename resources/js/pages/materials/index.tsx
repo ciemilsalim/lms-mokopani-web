@@ -336,81 +336,117 @@ function TeacherGroupedView({ groups, search }: { groups: TeacherClassGroup[]; s
 
 function StudentGroupedView({ groups, search }: { groups: SubjectGroup[]; search: string }) {
     const [expanded, setExpanded] = useState<Record<number, boolean>>({});
+    const [selectedSubjectId, setSelectedSubjectId] = useState<number | 'all'>('all');
 
     const visible = groups
+        .filter(g => selectedSubjectId === 'all' || g.subject_id === selectedSubjectId)
         .map(g => ({
             ...g,
             tps: g.tps.map(tp => ({
                 ...tp,
                 materials: tp.materials.filter(m => {
-                    const matchSearch = m.title.toLowerCase().includes(search.toLowerCase());
+                    const matchSearch = m.title.toLowerCase().includes(search.toLowerCase()) || m.subject_name.toLowerCase().includes(search.toLowerCase());
                     return matchSearch;
                 }),
             })).filter(tp => tp.materials.length > 0)
         }))
         .filter(g => g.tps.length > 0);
 
-    if (visible.length === 0) {
-        return (
-            <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
-                <BookOpen className="h-14 w-14 mb-4 opacity-25" />
-                <p className="text-sm font-medium">Belum ada materi</p>
-            </div>
-        );
-    }
-
     return (
-        <div className="grid gap-6">
-            {visible.map((group) => {
-                const isOpen = expanded[group.subject_id] !== false;
-                return (
-                    <div key={group.subject_id} className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-all hover:shadow-md">
+        <div className="space-y-6">
+            {/* Quick Subject Filter Pills */}
+            {groups.length > 1 && (
+                <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-thin">
+                    <button
+                        type="button"
+                        onClick={() => setSelectedSubjectId('all')}
+                        className={`shrink-0 rounded-2xl px-4 py-2 text-xs font-bold transition active:scale-95 ${
+                            selectedSubjectId === 'all'
+                                ? 'bg-primary text-primary-foreground shadow-md shadow-primary/20'
+                                : 'bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground'
+                        }`}
+                    >
+                        Semua Mata Pelajaran ({groups.reduce((acc, g) => acc + g.total, 0)})
+                    </button>
+                    {groups.map(g => (
                         <button
-                            onClick={() => setExpanded(prev => ({ ...prev, [group.subject_id]: !isOpen }))}
-                            className="flex w-full items-center justify-between border-b border-border bg-muted/30 px-6 py-4 text-left cursor-pointer"
+                            key={g.subject_id}
+                            type="button"
+                            onClick={() => setSelectedSubjectId(g.subject_id)}
+                            className={`shrink-0 rounded-2xl px-4 py-2 text-xs font-bold transition active:scale-95 ${
+                                selectedSubjectId === g.subject_id
+                                    ? 'bg-primary text-primary-foreground shadow-md shadow-primary/20'
+                                    : 'bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground'
+                            }`}
                         >
-                            <div className="flex items-center gap-3">
-                                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-background dark:bg-popover shadow-sm border border-border/50">
-                                    <BookOpen className="h-5 w-5 text-primary" />
-                                </div>
-                                <div className="min-w-0">
-                                    <h3 className="text-lg font-bold text-foreground truncate">{group.subject_name}</h3>
-                                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight truncate">
-                                        {group.tps.reduce((sum, tp) => sum + tp.materials.length, 0)} materi
-                                    </p>
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-3 shrink-0 ml-2">
-                                <span className="rounded-full bg-primary/10 border border-primary/20 px-3 py-1 text-xs font-bold text-primary whitespace-nowrap">
-                                    {group.total} total
-                                </span>
-                                {isOpen ? <ChevronDown className="h-5 w-5 text-muted-foreground" /> : <ChevronRight className="h-5 w-5 text-muted-foreground" />}
-                            </div>
+                            {g.subject_name} ({g.total})
                         </button>
-                        {isOpen && (
-                            <div className="p-6 space-y-6">
-                                {group.tps.map(tp => (
-                                    <div key={tp.tp_id || 'no-tp'} className="space-y-4">
-                                        <div className="flex items-center gap-2 pb-2 border-b border-border/60">
-                                            <div className="bg-primary/10 text-primary text-[10px] px-2 py-0.5 rounded font-black tracking-wider uppercase">
-                                                {tp.tp_code}
-                                            </div>
-                                            <h4 className="text-[13px] font-bold text-foreground/80 leading-snug">
-                                                {tp.tp_description}
-                                            </h4>
+                    ))}
+                </div>
+            )}
+
+            {visible.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-20 text-muted-foreground bg-card rounded-3xl border border-border">
+                    <BookOpen className="h-14 w-14 mb-4 opacity-25" />
+                    <p className="text-sm font-bold text-foreground">Tidak ada materi yang ditemukan</p>
+                    <p className="text-xs text-muted-foreground mt-1">Coba gunakan kata kunci pencarian yang lain.</p>
+                </div>
+            ) : (
+                <div className="grid gap-6">
+                    {visible.map((group) => {
+                        const isOpen = expanded[group.subject_id] !== false;
+                        const totalSubjectMaterials = group.tps.reduce((sum, tp) => sum + tp.materials.length, 0);
+
+                        return (
+                            <div key={group.subject_id} className="overflow-hidden rounded-3xl border border-border/80 bg-card shadow-sm transition-all hover:shadow-md">
+                                <button
+                                    onClick={() => setExpanded(prev => ({ ...prev, [group.subject_id]: !isOpen }))}
+                                    className="flex w-full items-center justify-between border-b border-border/60 bg-muted/20 px-6 py-4.5 text-left cursor-pointer"
+                                >
+                                    <div className="flex items-center gap-3.5 min-w-0">
+                                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary border border-primary/20 shadow-xs">
+                                            <BookOpen className="h-5 w-5" />
                                         </div>
-                                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                                            {tp.materials.map(m => (
-                                                <MaterialCard key={m.id} m={m} />
-                                            ))}
+                                        <div className="min-w-0">
+                                            <h3 className="text-base sm:text-lg font-bold text-foreground truncate">{group.subject_name}</h3>
+                                            <p className="text-xs text-muted-foreground font-medium">
+                                                {totalSubjectMaterials} materi pembelajaran aktif
+                                            </p>
                                         </div>
                                     </div>
-                                ))}
+                                    <div className="flex items-center gap-3 shrink-0 ml-2">
+                                        <span className="rounded-xl bg-primary/10 border border-primary/20 px-3 py-1 text-xs font-bold text-primary">
+                                            {totalSubjectMaterials} Materi
+                                        </span>
+                                        {isOpen ? <ChevronDown className="h-5 w-5 text-muted-foreground" /> : <ChevronRight className="h-5 w-5 text-muted-foreground" />}
+                                    </div>
+                                </button>
+                                {isOpen && (
+                                    <div className="p-6 space-y-6">
+                                        {group.tps.map(tp => (
+                                            <div key={tp.tp_id || 'no-tp'} className="space-y-3.5">
+                                                {tp.tp_description && (
+                                                    <div className="flex items-center gap-2 pb-2 border-b border-border/40">
+                                                        <span className="h-2 w-2 rounded-full bg-primary" />
+                                                        <h4 className="text-xs sm:text-sm font-bold text-foreground/90">
+                                                            {tp.tp_description}
+                                                        </h4>
+                                                    </div>
+                                                )}
+                                                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                                                    {tp.materials.map(m => (
+                                                        <MaterialCard key={m.id} m={m} />
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
-                        )}
-                    </div>
-                );
-            })}
+                        );
+                    })}
+                </div>
+            )}
         </div>
     );
 }

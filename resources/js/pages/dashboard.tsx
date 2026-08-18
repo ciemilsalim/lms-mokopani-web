@@ -5,7 +5,7 @@ import {
     BookOpen, ClipboardCheck, ClipboardList, GraduationCap, Library,
     TrendingUp, Users, Bell, ChevronRight, ChevronLeft, Clock, Award, BarChart3,
     MoreHorizontal, Play, Target, Calendar, CheckCircle2, Circle,
-    User, Star, FileText, Activity, ArrowUpRight, Zap, Heart, ArrowUpDown,
+    User, Star, FileText, Activity, ArrowUpRight, Zap, Heart, ArrowUpDown, Sparkles,
 } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';
 import { Cell, PieChart, Pie, ResponsiveContainer, RadialBarChart, RadialBar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, BarChart, Bar } from 'recharts';
@@ -181,8 +181,398 @@ const activityLabelMap: Record<string, string> = {
 
 
 
-export default function Dashboard({ stats, identity, subjects, classes, recentActivities, recentAnnouncements, todaySchedule, todayName }: DashboardProps) {
+function StudentDashboard({
+    stats,
+    identity,
+    recentActivities,
+    recentAnnouncements,
+    todaySchedule,
+    todayName,
+    auth,
+}: DashboardProps & { auth: any }) {
+    const safeStats = stats ?? {
+        total_students: 0, total_teachers: 0, total_subjects: 0,
+        total_materials: 0, total_assignments: 0, pending_submissions: 0,
+    };
+
+    const todayDate = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+    const pendingTasks = safeStats.pending_submissions ?? 0;
+    const upcomingDeadlines = safeStats.upcoming_deadlines ?? [];
+
+    return (
+        <AppLayout breadcrumbs={breadcrumbs}>
+            <Head title="Dashboard Siswa - LMS Mokopani" />
+
+            <div className="space-y-6 fade-in pb-12 md:pb-6">
+                {/* 1. Hero Banner Segar & Ceria */}
+                <div className="relative">
+                    <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-indigo-600 via-indigo-500 to-sky-500 p-6 sm:p-8 text-white shadow-xl shadow-indigo-500/10">
+                        <div className="relative z-10 max-w-2xl">
+                            <div className="inline-flex items-center gap-2 rounded-full bg-white/20 px-3 py-1 text-xs font-bold backdrop-blur-md mb-3">
+                                <Sparkles className="h-3.5 w-3.5 text-amber-300" />
+                                <span>Ruang Belajar Siswa</span>
+                            </div>
+                            <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
+                                Halo, {identity?.name ?? auth?.user?.name ?? 'Siswa'}! 👋
+                            </h1>
+                            <p className="mt-2 text-xs sm:text-sm text-white/90 leading-relaxed font-medium">
+                                Siap untuk belajar hari ini? Akses materi pelajaranmu, selesaikan tugas tepat waktu, dan pantau hasil belajarmu di sini.
+                            </p>
+
+                            {identity && (
+                                <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-white/95">
+                                    {identity.extra && (
+                                        <span className="bg-white/20 backdrop-blur-md px-3 py-1 rounded-xl font-bold">
+                                            {identity.extra}
+                                        </span>
+                                    )}
+                                    {identity.idValue && (
+                                        <span className="bg-black/25 px-3 py-1 rounded-xl font-mono font-semibold">
+                                            NISN: {identity.idValue}
+                                        </span>
+                                    )}
+                                    <span className="bg-white/15 px-3 py-1 rounded-xl font-medium">
+                                        {identity.sekolah} &bull; {identity.tahunAjaran} ({identity.semester})
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                    {/* Floating Illustration */}
+                    <div className="hidden md:block absolute right-8 bottom-0 z-20 pointer-events-none">
+                        <img 
+                            src="/student-illustration.png" 
+                            alt="Ilustrasi Siswa" 
+                            className="h-48 w-auto object-contain object-bottom drop-shadow-2xl translate-y-1 -scale-x-100" 
+                        />
+                    </div>
+                </div>
+
+                {/* 2. Tiga Pilar Utama Siswa (Materi, Asesmen/Tugas, Hasil Belajar) */}
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                    {/* Pilar 1: Materi Belajar */}
+                    <Link
+                        href="/materials"
+                        className="group relative flex flex-col justify-between overflow-hidden rounded-3xl border border-indigo-100 dark:border-indigo-950/50 bg-gradient-to-br from-indigo-50/80 via-card to-card p-6 shadow-sm transition-all duration-300 hover:shadow-xl hover:shadow-indigo-500/10 hover:-translate-y-1 active:scale-98"
+                    >
+                        <div className="flex items-center justify-between">
+                            <div className="flex h-13 w-13 items-center justify-center rounded-2xl bg-indigo-500 text-white shadow-md shadow-indigo-500/30 group-hover:scale-110 transition-transform">
+                                <BookOpen className="h-6 w-6" />
+                            </div>
+                            <span className="flex items-center gap-1 text-xs font-bold text-indigo-600 dark:text-indigo-400 group-hover:translate-x-1 transition-transform">
+                                Buka Materi <ChevronRight className="h-4 w-4" />
+                            </span>
+                        </div>
+                        <div className="mt-6">
+                            <p className="text-3xl font-black text-foreground tracking-tight">
+                                {safeStats.total_materials}
+                            </p>
+                            <h2 className="text-base font-bold text-foreground mt-1">Materi Pelajaran</h2>
+                            <p className="text-xs text-muted-foreground mt-1 line-clamp-1">
+                                Modul & bahan bacaan dari bapak/ibu guru
+                            </p>
+                        </div>
+                    </Link>
+
+                    {/* Pilar 2: Asesmen & Tugas */}
+                    <Link
+                        href="/assignments"
+                        className={`group relative flex flex-col justify-between overflow-hidden rounded-3xl border p-6 shadow-sm transition-all duration-300 hover:shadow-xl hover:-translate-y-1 active:scale-98 ${
+                            pendingTasks > 0
+                                ? 'border-amber-200 dark:border-amber-950/50 bg-gradient-to-br from-amber-50/80 via-card to-card hover:shadow-amber-500/10'
+                                : 'border-emerald-100 dark:border-emerald-950/50 bg-gradient-to-br from-emerald-50/80 via-card to-card hover:shadow-emerald-500/10'
+                        }`}
+                    >
+                        <div className="flex items-center justify-between">
+                            <div className={`flex h-13 w-13 items-center justify-center rounded-2xl text-white shadow-md group-hover:scale-110 transition-transform ${
+                                pendingTasks > 0 ? 'bg-amber-500 shadow-amber-500/30' : 'bg-emerald-500 shadow-emerald-500/30'
+                            }`}>
+                                <ClipboardList className="h-6 w-6" />
+                            </div>
+                            <span className={`flex items-center gap-1 text-xs font-bold group-hover:translate-x-1 transition-transform ${
+                                pendingTasks > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'
+                            }`}>
+                                Kerjakan Tugas <ChevronRight className="h-4 w-4" />
+                            </span>
+                        </div>
+                        <div className="mt-6">
+                            <div className="flex items-center gap-2">
+                                <p className="text-3xl font-black text-foreground tracking-tight">
+                                    {pendingTasks}
+                                </p>
+                                {pendingTasks > 0 ? (
+                                    <span className="rounded-full bg-amber-500/15 px-2.5 py-0.5 text-[10px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-wider">
+                                        Perlu Dikerjakan
+                                    </span>
+                                ) : (
+                                    <span className="rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
+                                        Tuntas
+                                    </span>
+                                )}
+                            </div>
+                            <h2 className="text-base font-bold text-foreground mt-1">Asesmen & Tugas</h2>
+                            <p className="text-xs text-muted-foreground mt-1 line-clamp-1">
+                                {pendingTasks > 0 ? 'Ada tugas yang menunggu penyelesaian' : 'Semua tugas telah selesai dikerjakan!'}
+                            </p>
+                        </div>
+                    </Link>
+
+                    {/* Pilar 3: Hasil Belajar & Nilai */}
+                    <Link
+                        href="/gradebook"
+                        className="group relative flex flex-col justify-between overflow-hidden rounded-3xl border border-emerald-100 dark:border-emerald-950/50 bg-gradient-to-br from-emerald-50/80 via-card to-card p-6 shadow-sm transition-all duration-300 hover:shadow-xl hover:shadow-emerald-500/10 hover:-translate-y-1 active:scale-98"
+                    >
+                        <div className="flex items-center justify-between">
+                            <div className="flex h-13 w-13 items-center justify-center rounded-2xl bg-emerald-500 text-white shadow-md shadow-emerald-500/30 group-hover:scale-110 transition-transform">
+                                <Award className="h-6 w-6" />
+                            </div>
+                            <span className="flex items-center gap-1 text-xs font-bold text-emerald-600 dark:text-emerald-400 group-hover:translate-x-1 transition-transform">
+                                Lihat Laporan <ChevronRight className="h-4 w-4" />
+                            </span>
+                        </div>
+                        <div className="mt-6">
+                            <p className="text-3xl font-black text-foreground tracking-tight">
+                                Rapor & Nilai
+                            </p>
+                            <h2 className="text-base font-bold text-foreground mt-1">Hasil Belajar</h2>
+                            <p className="text-xs text-muted-foreground mt-1 line-clamp-1">
+                                Capaian kompetensi mapel & projek P5
+                            </p>
+                        </div>
+                    </Link>
+                </div>
+
+                {/* 3. Konten Utama: 2 Kolom (Tugas Mendesak + Jadwal di Kiri, Pengumuman + Aktivitas di Kanan) */}
+                <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                    {/* Kolom Kiri: Tugas Mendesak & Jadwal Hari Ini */}
+                    <div className="lg:col-span-2 space-y-6">
+                        {/* Widget: Tugas Perlu Dikerjakan */}
+                        <Card className="rounded-3xl border border-border/70 shadow-sm overflow-hidden bg-card">
+                            <div className="flex items-center justify-between border-b border-border/50 px-6 py-4.5 bg-muted/20">
+                                <div className="flex items-center gap-2.5">
+                                    <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400">
+                                        <Clock className="h-4 w-4" />
+                                    </div>
+                                    <div>
+                                        <h2 className="font-bold text-foreground text-sm sm:text-base">Tugas & Asesmen Terdekat</h2>
+                                        <p className="text-xs text-muted-foreground">Tenggat waktu yang perlu kamu perhatikan</p>
+                                    </div>
+                                </div>
+                                <Link
+                                    href="/assignments"
+                                    className="text-xs font-bold text-primary hover:underline flex items-center gap-1"
+                                >
+                                    Lihat Semua <ChevronRight className="h-3.5 w-3.5" />
+                                </Link>
+                            </div>
+
+                            <CardContent className="p-0">
+                                {upcomingDeadlines.length > 0 ? (
+                                    <div className="divide-y divide-border/50">
+                                        {upcomingDeadlines.map((task) => (
+                                            <div
+                                                key={task.id}
+                                                className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 sm:p-5 transition hover:bg-muted/30"
+                                            >
+                                                <div className="space-y-1 min-w-0 flex-1">
+                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                        <span className="inline-flex rounded-lg bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
+                                                            {task.subject}
+                                                        </span>
+                                                        {task.is_urgent && (
+                                                            <span className="inline-flex rounded-lg bg-rose-500/15 px-2 py-0.5 text-[10px] font-bold text-rose-600 dark:text-rose-400">
+                                                                Mendesak
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <h3 className="text-sm font-bold text-foreground truncate">
+                                                        {task.title}
+                                                    </h3>
+                                                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                                        <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                                                        Batas pengumpulan: <span className="font-semibold text-foreground">{task.due_date}</span>
+                                                    </p>
+                                                </div>
+                                                <Link
+                                                    href={`/assignments/${task.id}`}
+                                                    className="shrink-0 inline-flex items-center justify-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-xs font-bold text-primary-foreground shadow-sm hover:bg-primary/90 transition active:scale-95"
+                                                >
+                                                    Kerjakan
+                                                    <ChevronRight className="h-3.5 w-3.5" />
+                                                </Link>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+                                        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600 mb-3">
+                                            <CheckCircle2 className="h-7 w-7" />
+                                        </div>
+                                        <h3 className="text-sm font-bold text-foreground">Semua Tugas Sudah Dikerjakan!</h3>
+                                        <p className="text-xs text-muted-foreground mt-1 max-w-sm">
+                                            Hebat! Tidak ada tugas mendesak saat ini. Kamu bisa memanfaatkan waktu untuk membaca materi baru.
+                                        </p>
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+
+                        {/* Widget: Jadwal Pelajaran Hari Ini */}
+                        <Card className="rounded-3xl border border-border/70 shadow-sm overflow-hidden bg-card">
+                            <div className="flex items-center justify-between border-b border-border/50 px-6 py-4.5 bg-muted/20">
+                                <div className="flex items-center gap-2.5">
+                                    <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-indigo-500/15 text-indigo-600 dark:text-indigo-400">
+                                        <Calendar className="h-4 w-4" />
+                                    </div>
+                                    <div>
+                                        <h2 className="font-bold text-foreground text-sm sm:text-base">Jadwal Pelajaran Hari Ini</h2>
+                                        <p className="text-xs text-muted-foreground">{todayName}, {todayDate}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <CardContent className="p-4 sm:p-5 space-y-2.5">
+                                {(todaySchedule ?? []).length === 0 ? (
+                                    <div className="py-8 text-center text-muted-foreground">
+                                        <BookOpen className="h-9 w-9 mx-auto text-muted-foreground/30 mb-2" />
+                                        <p className="text-xs sm:text-sm font-semibold">Tidak ada jadwal tatap muka hari ini.</p>
+                                        <p className="text-[11px] text-muted-foreground mt-0.5">Selamat beristirahat atau belajar mandiri!</p>
+                                    </div>
+                                ) : (
+                                    todaySchedule.map((s, i) => (
+                                        <div
+                                            key={i}
+                                            className={`flex items-center gap-3.5 rounded-2xl p-3.5 transition-all ${
+                                                s.is_current 
+                                                    ? 'bg-primary/10 border border-primary/20 shadow-xs' 
+                                                    : 'bg-muted/30 hover:bg-muted/60 border border-transparent'
+                                            }`}
+                                        >
+                                            <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-xs font-black ${
+                                                s.is_current ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+                                            }`}>
+                                                {i + 1}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center gap-2">
+                                                    <h3 className="text-xs sm:text-sm font-bold text-foreground truncate">{s.subject}</h3>
+                                                    {s.is_current && (
+                                                        <span className="inline-flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[9px] font-black text-primary-foreground animate-pulse">
+                                                            Live Sekarang
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                                                    {s.teacher ? `${s.teacher} • ` : ''}{s.time}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </CardContent>
+                        </Card>
+                    </div>
+
+                    {/* Kolom Kanan: Pengumuman Sekolah & Aktivitas Terbaru */}
+                    <div className="space-y-6">
+                        {/* Widget: Pengumuman Sekolah */}
+                        <Card className="rounded-3xl border border-border/70 shadow-sm overflow-hidden bg-card">
+                            <div className="flex items-center justify-between border-b border-border/50 px-6 py-4.5 bg-muted/20">
+                                <div className="flex items-center gap-2.5">
+                                    <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-rose-500/15 text-rose-600 dark:text-rose-400">
+                                        <Bell className="h-4 w-4" />
+                                    </div>
+                                    <h2 className="font-bold text-foreground text-sm sm:text-base">Pengumuman</h2>
+                                </div>
+                                <Link
+                                    href="/announcements"
+                                    className="text-xs font-bold text-primary hover:underline flex items-center gap-1"
+                                >
+                                    Semua <ChevronRight className="h-3.5 w-3.5" />
+                                </Link>
+                            </div>
+
+                            <CardContent className="p-4 space-y-2.5">
+                                {(recentAnnouncements ?? []).length === 0 ? (
+                                    <div className="py-8 text-center text-muted-foreground text-xs">
+                                        Belum ada pengumuman baru
+                                    </div>
+                                ) : (
+                                    recentAnnouncements.map((ann) => (
+                                        <Link
+                                            key={ann.id}
+                                            href="/announcements"
+                                            className="block p-3 rounded-2xl border border-border/50 bg-card hover:bg-muted/40 transition active:scale-98"
+                                        >
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <span className={`h-2 w-2 rounded-full ${
+                                                    ann.priority === 'important' ? 'bg-rose-500' :
+                                                    ann.priority === 'warning' ? 'bg-amber-500' : 'bg-primary'
+                                                }`} />
+                                                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                                                    {ann.teacher_name || 'Sekolah'}
+                                                </span>
+                                            </div>
+                                            <h3 className="text-xs font-bold text-foreground line-clamp-2">
+                                                {ann.title}
+                                            </h3>
+                                        </Link>
+                                    ))
+                                )}
+                            </CardContent>
+                        </Card>
+
+                        {/* Widget: Aktivitas Pembelajaran Terkini */}
+                        <Card className="rounded-3xl border border-border/70 shadow-sm overflow-hidden bg-card">
+                            <div className="flex items-center justify-between border-b border-border/50 px-6 py-4.5 bg-muted/20">
+                                <div className="flex items-center gap-2.5">
+                                    <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-indigo-500/15 text-indigo-600 dark:text-indigo-400">
+                                        <Activity className="h-4 w-4" />
+                                    </div>
+                                    <h2 className="font-bold text-foreground text-sm sm:text-base">Aktivitas Terkini</h2>
+                                </div>
+                            </div>
+
+                            <div className="divide-y divide-border/50">
+                                {(recentActivities ?? []).length === 0 ? (
+                                    <div className="py-8 text-center text-muted-foreground text-xs">
+                                        Belum ada aktivitas baru
+                                    </div>
+                                ) : (
+                                    recentActivities.slice(0, 5).map((act) => (
+                                        <div key={act.id} className="flex items-center gap-3 p-3.5 hover:bg-muted/30 transition">
+                                            <span className={`h-2 w-2 rounded-full shrink-0 ${act.type === 'material' ? 'bg-indigo-500' : 'bg-rose-500'}`} />
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-xs font-bold text-foreground truncate">{act.title}</p>
+                                                <p className="text-[10px] text-muted-foreground truncate">{act.subject}</p>
+                                            </div>
+                                            <span className="text-[9px] font-bold text-muted-foreground shrink-0 uppercase px-1.5 py-0.5 rounded bg-muted">
+                                                {act.type === 'material' ? 'Materi' : 'Tugas'}
+                                            </span>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </Card>
+                    </div>
+                </div>
+            </div>
+        </AppLayout>
+    );
+}
+
+export default function Dashboard(props: DashboardProps) {
+    const { stats, identity, subjects, classes, recentActivities, recentAnnouncements, todaySchedule, todayName } = props;
     const { auth, user_role } = usePage<SharedData>().props;
+
+    if (user_role === 'student') {
+        return (
+            <StudentDashboard
+                {...props}
+                auth={auth}
+            />
+        );
+    }
 
     useEffect(() => {
         console.group('[LMS Mokopani Dashboard Loaded]');

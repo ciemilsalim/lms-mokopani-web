@@ -12,6 +12,8 @@ use App\Models\Student;
 use App\Models\Subject;
 use App\Models\TeachingAssignment;
 use App\Models\GradebookFinalScore;
+use App\Models\LmsP5Project;
+use App\Models\LmsP5Dimensi;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
@@ -466,9 +468,63 @@ class GradebookController extends Controller
             ];
         })->values();
 
+        // Fetch P5 Projects for this student's class
+        $p5Projects = LmsP5Project::with(['scores'])
+            ->where('school_class_id', $student->school_class_id)
+            ->where('academic_year_id', $activeYear?->id)
+            ->where('semester_id', $activeSemester?->id)
+            ->get();
+
+        $allDimensiIds = $p5Projects->pluck('dimensi_ids')->flatten()->unique()->filter()->values()->toArray();
+        $allDimensi = LmsP5Dimensi::whereIn('id', $allDimensiIds)
+            ->with(['elements.subElements'])
+            ->get()
+            ->keyBy('id');
+
+        $formattedP5 = $p5Projects->map(function ($project) use ($student, $allDimensi) {
+            $projectDimensiIds = $project->dimensi_ids ?? [];
+            $dimensi = collect($projectDimensiIds)
+                ->map(fn($id) => $allDimensi->get($id))
+                ->filter();
+
+            $studentScores = $project->scores
+                ->where('student_id', $student->id)
+                ->keyBy('sub_element_id');
+
+            $dimensiData = $dimensi
+                ->map(fn($d) => [
+                    'id'       => $d->id,
+                    'kode'     => $d->kode,
+                    'nama'     => $d->nama,
+                    'elements' => $d->elements
+                        ->map(fn($e) => [
+                            'id'           => $e->id,
+                            'nama'         => $e->nama,
+                            'sub_elements' => $e->subElements
+                                ->map(fn($se) => [
+                                    'id'      => $se->id,
+                                    'nama'    => $se->nama,
+                                    'nilai'   => $studentScores->get($se->id)?->score ?? '-',
+                                    'catatan' => $studentScores->get($se->id)?->notes ?? '',
+                                ])->values()->all(),
+                        ])->values()->all(),
+                ])->values()->all();
+
+            return [
+                'id'            => $project->id,
+                'judul'         => $project->title,
+                'deskripsi'     => $project->description,
+                'tema'          => $project->theme,
+                'alokasi_waktu' => $project->duration_hours,
+                'status'        => $project->status,
+                'dimensi'       => $dimensiData,
+            ];
+        })->values()->all();
+
         return Inertia::render('gradebook/student', [
-            'report' => $report,
-            'period' => $activeYear?->name . ' - ' . $activeSemester?->name,
+            'report'      => $report,
+            'p5_projects' => $formattedP5,
+            'period'      => $activeYear?->name . ' - ' . $activeSemester?->name,
         ]);
     }
 

@@ -200,141 +200,168 @@ const sortAssignments = (assignments: Assignment[]) => {
     return assignments.sort((a, b) => (order[a.assessment_type || ''] || 99) - (order[b.assessment_type || ''] || 99));
 };
 
-function GroupedView({ groups, search, filterType }: { groups: SubjectGroup[]; search: string; filterType: string }) {
-    const [expandedSubjects, setExpandedSubjects] = useState<Record<number, boolean>>({});
-    const [expandedObjectives, setExpandedObjectives] = useState<Record<string, boolean>>({});
+function StudentAssignmentsView({ groups, search, studentStatusFilter, setStudentStatusFilter }: {
+    groups: SubjectGroup[];
+    search: string;
+    studentStatusFilter: 'all' | 'pending' | 'submitted' | 'graded';
+    setStudentStatusFilter: (status: 'all' | 'pending' | 'submitted' | 'graded') => void;
+}) {
+    const [selectedSubjectId, setSelectedSubjectId] = useState<number | 'all'>('all');
 
-    const toggleSubject = (id: number) => setExpandedSubjects(prev => ({ ...prev, [id]: !prev[id] }));
-    const toggleObjective = (id: number, objId: number) => {
-        const key = `${id}-${objId}`;
-        setExpandedObjectives(prev => ({ ...prev, [key]: !prev[key] }));
-    };
-
-    const visible = groups
-        .map(subject => ({
-            ...subject,
-            objectives: subject.objectives
-                .map(obj => ({
-                    ...obj,
-                    assignments: sortAssignments(obj.assignments.filter(a => {
-                        const matchSearch = a.title.toLowerCase().includes(search.toLowerCase());
-                        const matchType = filterType === 'all' || a.assessment_type === filterType;
-                        return matchSearch && matchType;
-                    })),
-                }))
-                .filter(obj => obj.assignments.length > 0),
-        }))
-        .filter(subject => subject.objectives.length > 0);
-
-    const handleExpandAll = () => {
-        const allSubs: Record<number, boolean> = {};
-        const allObjs: Record<string, boolean> = {};
-        visible.forEach(g => {
-            allSubs[g.subject_id] = true;
-            g.objectives.forEach(o => {
-                allObjs[`${g.subject_id}-${o.objective_id}`] = true;
+    // Flatten all assignments from all objectives with subject info
+    const allStudentAssignments = useMemo(() => {
+        const list: (Assignment & { subject_name: string; subject_id: number; topic?: string })[] = [];
+        groups.forEach(g => {
+            g.objectives.forEach(obj => {
+                obj.assignments.forEach(asgn => {
+                    list.push({
+                        ...asgn,
+                        subject_name: g.subject_name,
+                        subject_id: g.subject_id,
+                        topic: obj.objective_description,
+                    });
+                });
             });
         });
-        setExpandedSubjects(allSubs);
-        setExpandedObjectives(allObjs);
-    };
+        return list;
+    }, [groups]);
 
-    const handleCollapseAll = () => {
-        setExpandedSubjects({});
-        setExpandedObjectives({});
-    };
+    const filteredAssignments = useMemo(() => {
+        return allStudentAssignments.filter(asgn => {
+            const matchSearch = asgn.title.toLowerCase().includes(search.toLowerCase()) || asgn.subject_name.toLowerCase().includes(search.toLowerCase());
+            const matchSubject = selectedSubjectId === 'all' || asgn.subject_id === selectedSubjectId;
 
-    if (visible.length === 0) {
-        return (
-            <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
-                <ClipboardList className="h-14 w-14 mb-4 opacity-25" />
-                <p className="text-sm font-medium">Belum ada asesmen</p>
-            </div>
-        );
-    }
+            let matchStatus = true;
+            if (studentStatusFilter === 'pending') {
+                matchStatus = !asgn.student_submission;
+            } else if (studentStatusFilter === 'submitted') {
+                matchStatus = Boolean(asgn.student_submission && !asgn.student_submission.is_graded);
+            } else if (studentStatusFilter === 'graded') {
+                matchStatus = Boolean(asgn.student_submission && asgn.student_submission.is_graded);
+            }
+
+            return matchSearch && matchSubject && matchStatus;
+        });
+    }, [allStudentAssignments, search, selectedSubjectId, studentStatusFilter]);
 
     return (
-        <div className="space-y-4">
-            <div className="flex justify-end gap-2 text-xs font-bold text-muted-foreground">
-                <button
-                    type="button"
-                    onClick={handleExpandAll}
-                    className="px-3 py-1.5 rounded-lg bg-card border border-border hover:text-foreground hover:bg-muted/40 transition cursor-pointer"
-                >
-                    Buka Semua
-                </button>
-                <button
-                    type="button"
-                    onClick={handleCollapseAll}
-                    className="px-3 py-1.5 rounded-lg bg-card border border-border hover:text-foreground hover:bg-muted/40 transition cursor-pointer"
-                >
-                    Tutup Semua
-                </button>
-            </div>
-
-            <div className="flex flex-col gap-3">
-                {visible.map((group) => {
-                    const isSubjectExpanded = Boolean(search) || filterType !== 'all' || Boolean(expandedSubjects[group.subject_id]);
-                    const totalAsgn = group.objectives.reduce((acc, o) => acc + o.assignments.length, 0);
-
-                    return (
-                        <div key={group.subject_id} className="rounded-2xl border border-border/80 bg-card overflow-hidden shadow-xs hover:border-primary/30 transition-all">
-                            <div 
-                                onClick={() => toggleSubject(group.subject_id)}
-                                className="flex items-center justify-between px-4 sm:px-5 py-3.5 bg-card cursor-pointer hover:bg-muted/30 transition-colors"
+        <div className="space-y-6">
+            {/* Quick Subject Filter Pills */}
+            {groups.length > 1 && (
+                <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-thin">
+                    <button
+                        type="button"
+                        onClick={() => setSelectedSubjectId('all')}
+                        className={`shrink-0 rounded-2xl px-4 py-2 text-xs font-bold transition active:scale-95 ${
+                            selectedSubjectId === 'all'
+                                ? 'bg-primary text-primary-foreground shadow-md shadow-primary/20'
+                                : 'bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground'
+                        }`}
+                    >
+                        Semua Mata Pelajaran ({allStudentAssignments.length})
+                    </button>
+                    {groups.map(g => {
+                        const count = allStudentAssignments.filter(a => a.subject_id === g.subject_id).length;
+                        return (
+                            <button
+                                key={g.subject_id}
+                                type="button"
+                                onClick={() => setSelectedSubjectId(g.subject_id)}
+                                className={`shrink-0 rounded-2xl px-4 py-2 text-xs font-bold transition active:scale-95 ${
+                                    selectedSubjectId === g.subject_id
+                                        ? 'bg-primary text-primary-foreground shadow-md shadow-primary/20'
+                                        : 'bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground'
+                                }`}
                             >
-                                <div className="flex items-center gap-3">
-                                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary shrink-0">
-                                        <BookOpen className="h-4 w-4" />
+                                {g.subject_name} ({count})
+                            </button>
+                        );
+                    })}
+                </div>
+            )}
+
+            {filteredAssignments.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-20 text-muted-foreground bg-card rounded-3xl border border-border">
+                    <ClipboardList className="h-14 w-14 mb-4 opacity-25" />
+                    <p className="text-sm font-bold text-foreground">Tidak ada tugas dalam kategori ini</p>
+                    <p className="text-xs text-muted-foreground mt-1">Coba ganti filter status atau mata pelajaran.</p>
+                </div>
+            ) : (
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {filteredAssignments.map((asgn) => {
+                        const overdue = isOverdue(asgn.due_date);
+                        const isSubmitted = Boolean(asgn.student_submission);
+                        const isGraded = Boolean(asgn.student_submission?.is_graded);
+
+                        let statusBadge = (
+                            <span className="inline-flex items-center gap-1 rounded-lg bg-amber-500/15 text-amber-600 dark:text-amber-400 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider">
+                                <Clock className="h-3 w-3" /> Perlu Dikerjakan
+                            </span>
+                        );
+                        if (isGraded) {
+                            statusBadge = (
+                                <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider">
+                                    <CheckCircle2 className="h-3 w-3" /> Selesai Dinilai
+                                </span>
+                            );
+                        } else if (isSubmitted) {
+                            statusBadge = (
+                                <span className="inline-flex items-center gap-1 rounded-lg bg-sky-500/15 text-sky-600 dark:text-sky-400 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider">
+                                    <Clock className="h-3 w-3" /> Menunggu Penilaian
+                                </span>
+                            );
+                        }
+
+                        return (
+                            <div
+                                key={asgn.id}
+                                onClick={() => router.visit(route('assignments.show', asgn.id))}
+                                className="group relative flex flex-col justify-between rounded-3xl border border-border/80 bg-card p-5 shadow-sm transition-all duration-300 hover:shadow-xl hover:border-primary/40 hover:-translate-y-1 active:scale-98 cursor-pointer"
+                            >
+                                <div>
+                                    <div className="flex items-start justify-between gap-2 mb-3">
+                                        <span className="rounded-lg bg-primary/10 px-2.5 py-1 text-[10px] font-bold text-primary truncate max-w-[150px]">
+                                            {asgn.subject_name}
+                                        </span>
+                                        {statusBadge}
                                     </div>
-                                    <div>
-                                        <span className="text-xs sm:text-sm font-black text-foreground">{group.subject_name}</span>
-                                        <p className="text-[11px] text-muted-foreground">{group.objectives.length} Tujuan Pembelajaran</p>
-                                    </div>
+
+                                    <h3 className="text-base font-bold text-foreground group-hover:text-primary transition-colors leading-snug line-clamp-2">
+                                        {asgn.title}
+                                    </h3>
+
+                                    {asgn.topic && (
+                                        <p className="text-xs text-muted-foreground mt-1 line-clamp-1">
+                                            {asgn.topic}
+                                        </p>
+                                    )}
                                 </div>
-                                <div className="flex items-center gap-2">
-                                    <span className="text-[10px] font-bold bg-muted px-2.5 py-1 rounded-lg text-muted-foreground">{totalAsgn} Asesmen</span>
-                                    <div className={`p-1.5 rounded-lg bg-muted/50 text-muted-foreground transition-transform duration-200 ${isSubjectExpanded ? 'rotate-180' : ''}`}>
-                                        <ChevronDown className="h-4 w-4" />
+
+                                <div className="mt-5 pt-3.5 border-t border-border/50 flex items-center justify-between gap-2">
+                                    <div className="min-w-0">
+                                        <p className="text-[10px] font-bold uppercase text-muted-foreground">Tenggat Waktu</p>
+                                        <p className={`text-xs font-semibold truncate ${overdue && !isSubmitted ? 'text-destructive font-bold' : 'text-foreground'}`}>
+                                            {asgn.due_date ? asgn.due_date : 'Tidak ada batas'}
+                                        </p>
+                                    </div>
+
+                                    <div className="shrink-0">
+                                        {!isSubmitted ? (
+                                            <span className="inline-flex items-center gap-1 rounded-xl bg-primary px-3 py-1.5 text-xs font-bold text-primary-foreground shadow-xs group-hover:bg-primary/90">
+                                                Kerjakan <ChevronRight className="h-3.5 w-3.5" />
+                                            </span>
+                                        ) : (
+                                            <span className="inline-flex items-center gap-1 rounded-xl bg-muted px-3 py-1.5 text-xs font-bold text-foreground group-hover:bg-muted/80">
+                                                Lihat <ChevronRight className="h-3.5 w-3.5" />
+                                            </span>
+                                        )}
                                     </div>
                                 </div>
                             </div>
-                            {isSubjectExpanded && (
-                                <div className="border-t border-border/70 divide-y divide-border/40">
-                                    {group.objectives.map((obj) => {
-                                        const objKey = `${group.subject_id}-${obj.objective_id}`;
-                                        const isObjExpanded = Boolean(search) || filterType !== 'all' || expandedObjectives[objKey] !== false;
-                                        return (
-                                            <div key={obj.objective_id} className="bg-background/40">
-                                                <div 
-                                                    onClick={() => toggleObjective(group.subject_id, obj.objective_id || 0)}
-                                                    className="px-4 sm:px-5 py-2.5 flex items-center justify-between cursor-pointer hover:bg-muted/20 transition-colors"
-                                                >
-                                                    <div className="flex items-center gap-2 min-w-0">
-                                                        <span className="text-[10px] font-black text-primary bg-primary/10 px-2 py-0.5 rounded-md shrink-0">[{obj.objective_code}]</span>
-                                                        <span className="text-xs font-semibold text-foreground/90 truncate">{obj.objective_description}</span>
-                                                    </div>
-                                                    <div className="flex items-center gap-2 shrink-0">
-                                                        <span className="text-[10px] font-bold text-muted-foreground">{obj.assignments.length} Butir</span>
-                                                        {isObjExpanded ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
-                                                    </div>
-                                                </div>
-                                                {isObjExpanded && (
-                                                    <div className="flex flex-col divide-y divide-border/30 bg-card border-t border-border/30">
-                                                        {obj.assignments.map(asgn => (
-                                                            <AssignmentCard key={asgn.id} asgn={asgn} isTeacher={false} />
-                                                        ))}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            )}
-                        </div>
-                    );
-                })}
-            </div>
+                        );
+                    })}
+                </div>
+            )}
         </div>
     );
 }
@@ -564,6 +591,7 @@ function FlatView({ assignments, search, filterType }: { assignments: Assignment
 export default function Assignments({ assignments, grouped_assignments, teacher_grouped, active_year, active_semester, user_role }: AssignmentsProps) {
     const [search, setSearch] = useState('');
     const [filterType, setFilterType] = useState<string>('all');
+    const [studentStatusFilter, setStudentStatusFilter] = useState<'all' | 'pending' | 'submitted' | 'graded'>('all');
     const { flash } = usePage<{ flash: { success?: string; error?: string } }>().props;
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
@@ -582,27 +610,31 @@ export default function Assignments({ assignments, grouped_assignments, teacher_
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Asesmen – LMS Mokopani" />
+            <Head title="Asesmen & Tugas – LMS Mokopani" />
 
             <div className="flex h-full flex-1 flex-col gap-4 sm:gap-6 min-w-0 fade-in">
                 {/* Header */}
-                <div className="rounded-2xl bg-gradient-to-br from-primary via-primary/80 to-primary/60 p-8 text-white shadow-xl shadow-primary/20 dark:shadow-none">
+                <div className="rounded-2xl bg-gradient-to-br from-primary via-primary/80 to-primary/60 p-6 sm:p-8 text-white shadow-xl shadow-primary/20 dark:shadow-none">
                     <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                         <div className="flex items-center gap-4">
-                            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-md flex-shrink-0">
-                                <ClipboardList className="h-10 w-10" />
+                            <div className="flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-md flex-shrink-0">
+                                <ClipboardList className="h-8 w-8 sm:h-10 sm:w-10" />
                             </div>
                             <div>
                                 <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                                    <h1 className="text-2xl font-black">Asesmen</h1>
+                                    <h1 className="text-xl sm:text-2xl font-black">
+                                        {user_role === 'student' ? 'Asesmen & Tugas Siswa' : 'Bank Asesmen'}
+                                    </h1>
                                     {active_year && (
                                         <span className="rounded-full bg-white/20 px-2.5 py-0.5 text-[10px] font-bold text-white uppercase tracking-widest mt-1 sm:mt-0">
                                             {active_year} • {active_semester}
                                         </span>
                                     )}
                                 </div>
-                                <p className="text-sm font-bold text-white/70 mt-1">
-                                    {user_role === 'teacher' ? 'Kelola asesmen awal, formatif, dan sumatif' : 'Daftar asesmen awal, formatif, dan sumatif'}
+                                <p className="text-xs sm:text-sm font-medium text-white/80 mt-1">
+                                    {user_role === 'student'
+                                        ? 'Pantau dan kerjakan tugas serta asesmen belajarmu tepat waktu'
+                                        : 'Kelola asesmen awal, formatif, dan sumatif pembelajaran'}
                                 </p>
                             </div>
                         </div>
@@ -621,31 +653,56 @@ export default function Assignments({ assignments, grouped_assignments, teacher_
 
                 {/* Filter & Search */}
                 <div className="flex flex-col gap-4 md:flex-row md:items-center justify-between">
-                    <div className="flex p-1 bg-muted rounded-xl w-full sm:w-fit overflow-x-auto scrollbar-hide">
-                        {[
-                            { id: 'all', label: 'Semua' },
-                            { id: 'initial', label: 'Awal' },
-                            { id: 'formative', label: 'Formatif' },
-                            { id: 'summative', label: 'Sumatif' },
-                        ].map(f => (
-                            <button
-                                key={f.id}
-                                onClick={() => setFilterType(f.id)}
-                                className={`shrink-0 px-4 py-2 rounded-lg text-xs font-bold transition cursor-pointer ${filterType === f.id ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
-                            >
-                                {f.label}
-                            </button>
-                        ))}
-                    </div>
+                    {user_role === 'student' ? (
+                        <div className="flex p-1 bg-muted/70 rounded-2xl w-full sm:w-fit overflow-x-auto scrollbar-hide border border-border/50">
+                            {[
+                                { id: 'all', label: 'Semua Status' },
+                                { id: 'pending', label: 'Perlu Dikerjakan' },
+                                { id: 'submitted', label: 'Menunggu Penilaian' },
+                                { id: 'graded', label: 'Selesai Dinilai' },
+                            ].map(f => (
+                                <button
+                                    key={f.id}
+                                    type="button"
+                                    onClick={() => setStudentStatusFilter(f.id as any)}
+                                    className={`shrink-0 px-3.5 py-2 rounded-xl text-xs font-bold transition active:scale-95 cursor-pointer ${
+                                        studentStatusFilter === f.id
+                                            ? 'bg-primary text-primary-foreground shadow-xs'
+                                            : 'text-muted-foreground hover:text-foreground'
+                                    }`}
+                                >
+                                    {f.label}
+                                </button>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="flex p-1 bg-muted rounded-xl w-full sm:w-fit overflow-x-auto scrollbar-hide">
+                            {[
+                                { id: 'all', label: 'Semua' },
+                                { id: 'initial', label: 'Awal' },
+                                { id: 'formative', label: 'Formatif' },
+                                { id: 'summative', label: 'Sumatif' },
+                            ].map(f => (
+                                <button
+                                    key={f.id}
+                                    onClick={() => setFilterType(f.id)}
+                                    className={`shrink-0 px-4 py-2 rounded-lg text-xs font-bold transition cursor-pointer ${filterType === f.id ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                                >
+                                    {f.label}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+
                     <div className="relative max-w-xs flex-1">
                         <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                         <input
                             id="input-search-assignment"
                             type="text"
-                            placeholder="Cari asesmen..."
+                            placeholder="Cari tugas / mata pelajaran..."
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            className="w-full rounded-xl border border-border bg-background py-3 pl-11 pr-4 text-sm text-foreground placeholder-muted-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 dark:bg-popover transition"
+                            className="w-full rounded-2xl border border-border bg-background py-2.5 pl-11 pr-4 text-xs sm:text-sm text-foreground placeholder-muted-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 dark:bg-popover transition"
                         />
                     </div>
                 </div>
@@ -654,7 +711,12 @@ export default function Assignments({ assignments, grouped_assignments, teacher_
                 {user_role === 'teacher' ? (
                     <TeacherGroupedView groups={teacher_grouped ?? []} search={search} filterType={filterType} />
                 ) : user_role === 'student' ? (
-                    <GroupedView groups={grouped_assignments ?? []} search={search} filterType={filterType} />
+                    <StudentAssignmentsView
+                        groups={grouped_assignments ?? []}
+                        search={search}
+                        studentStatusFilter={studentStatusFilter}
+                        setStudentStatusFilter={setStudentStatusFilter}
+                    />
                 ) : (
                     <FlatView assignments={assignments ?? []} search={search} filterType={filterType} />
                 )}
