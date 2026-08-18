@@ -570,8 +570,16 @@ class AssignmentController extends Controller
 
                     if ($correctAnswerId !== null) {
                         $studentAnswer = $answers[$q['id']] ?? null;
-                        if ($studentAnswer == $correctAnswerId) {
-                            $calculatedScore += $points;
+                        if ($studentAnswer !== null) {
+                            $normStudent = strtolower(trim((string)$studentAnswer));
+                            $normCorrect = strtolower(trim((string)$correctAnswerId));
+                            if (
+                                $normStudent === $normCorrect ||
+                                (strlen($normStudent) === 1 && str_starts_with($normCorrect, $normStudent)) ||
+                                (strlen($normCorrect) === 1 && str_starts_with($normStudent, $normCorrect))
+                            ) {
+                                $calculatedScore += $points;
+                            }
                         }
                     } else {
                         $allAutoGradable = false;

@@ -456,7 +456,7 @@ export default function EditAssignment({ assignment, teachings, objectives, asse
                                                                     <div className="grid gap-2 sm:grid-cols-2">
                                                                         {(q.options || []).map((opt: any, optIdx: number) => {
                                                                             const optId = String(opt?.id || ['a', 'b', 'c', 'd', 'e'][optIdx] || String.fromCharCode(97 + optIdx)).toLowerCase();
-                                                                            const isCorrect = q.answer === optId || opt?.is_correct === true;
+                                                                            const isCorrect = String(q.answer || '').trim().toLowerCase() === optId || opt?.is_correct === true;
                                                                             return (
                                                                                 <div key={optIdx} className="flex items-center gap-2 relative group/opt">
                                                                                     <button

@@ -114,8 +114,11 @@ Jika Jenis Asesmen adalah 'Kuis / Survei Diagnostik' (Asesmen Awal), maka WAJIB 
 Buatkan instrumen asesmen lengkap dalam format JSON sesuai jenis yang diminta.
 PENTING: Setiap output JSON WAJIB menyertakan field 'description' di level root yang berisi deskripsi/instruksi tugas untuk siswa dalam bahasa Indonesia sederhana, ramah, dan mudah dipahami (1-3 kalimat).
 PENTING: Gunakan bahasa yang sederhana, jelas, komunikatif, dan mudah dipahami oleh siswa SMP (usia 12-15 tahun). Hindari penggunaan istilah ilmiah atau akademis yang terlalu tinggi. Jika ada istilah teknis, berikan penjelasan singkat di dalam tanda kurung. Pertanyaan kuis/soal harus dikemas dengan kalimat yang ringkas dan bersahabat bagi anak SMP.
-PENTING UNTUK EXIT TICKET: Pertanyaan refleksi wajib sangat pendek (maksimal 1 kalimat tanya sederhana per butir), santai, akrab, dan mudah dipahami siswa SMP. Hindari kalimat berbelit-belit, bertele-tele, atau teoretis.
-PENTING UNTUK PETA KONSEP (concept_map): Hasilkan JSON dengan key: 'description' (deskripsi/instruksi pengerjaan untuk siswa), 'central_topic' (topik utama peta konsep), 'submission_mode' (nilai default 'hybrid'), 'instructions' (petunjuk pengerjaan peta konsep yang sangat sederhana, ramah siswa SMP, maks 2-3 kalimat), dan 'keywords' (array 6-8 kata kunci acak yang sangat familiar bagi siswa SMP terkait materi).
+PENTING UNTUK INSTRUMEN TES / KUIS (formative_quiz, written_test, quiz_survey):
+- Hasilkan array 'questions' berisi 3-5 butir soal.
+- Setiap butir soal pilihan ganda wajib memiliki: 'id' (misal: 'q1'), 'type' ('multiple_choice'), 'text' (pertanyaan ringkas), 'options' (array 4 opsi: [{'id': 'a', 'text': '...'}, {'id': 'b', 'text': '...'}, {'id': 'c', 'text': '...'}, {'id': 'd', 'text': '...'}]), 'answer' (huruf kunci jawaban yang benar: 'a' / 'b' / 'c' / 'd'), dan 'points' (bobot nilai angka).
+- Salah satu opsi wajib memiliki 'is_correct': true sesuai dengan 'answer'.
+
 Kembalikan HANYA JSON tanpa markdown code fence.",
 
             'lkpd' => "Kamu adalah asisten cerdas perancang LKPD (Lembar Kerja Peserta Didik) kurikulum merdeka Indonesia.

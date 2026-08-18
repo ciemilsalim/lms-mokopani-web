@@ -790,7 +790,8 @@ export default function ShowAssignment({ assignment, students, my_submission, my
         const stats: { id: string; num: number; text: string; wrongCount: number; totalCount: number; wrongPct: number }[] = [];
         
         questions.forEach((q: any, idx: number) => {
-            const correctOptId = q.answer || q.options?.find((o: any) => o.is_correct)?.id;
+            const rawCorrectId = q.answer || q.options?.find((o: any) => o.is_correct)?.id || '';
+            const correctOptId = String(rawCorrectId).trim().toLowerCase();
             let wrongCount = 0;
             let totalCount = 0;
             
@@ -801,9 +802,10 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                     if (ans !== undefined && ans !== '') {
                         totalCount++;
                         const isMcq = q.type === 'multiple_choice';
+                        const normAns = String(ans).trim().toLowerCase();
                         const isCorrect = isMcq 
-                            ? (ans == correctOptId) 
-                            : (q.type === 'short_answer' && (q.correct_answer || q.answer) && ans?.trim().toLowerCase() == (q.correct_answer || q.answer)?.trim().toLowerCase());
+                            ? (normAns === correctOptId || (correctOptId.startsWith(normAns) && normAns.length === 1))
+                            : (q.type === 'short_answer' && (q.correct_answer || q.answer) && normAns === String(q.correct_answer || q.answer).trim().toLowerCase());
                         
                         if (!isCorrect) wrongCount++;
                     }
@@ -1884,12 +1886,14 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                 const studentAns = studentForm.data.answers[q.id];
                 const points = Number(q.points || 0);
                 if (q.type === 'multiple_choice') {
-                    const correctOptId = q.answer || q.options?.find((o: any) => o.is_correct)?.id;
-                    if (correctOptId && studentAns == correctOptId) totalScore += points;
+                    const rawCorrectId = q.answer || q.options?.find((o: any) => o.is_correct)?.id || '';
+                    const correctOptId = String(rawCorrectId).trim().toLowerCase();
+                    const normAns = String(studentAns ?? '').trim().toLowerCase();
+                    if (correctOptId && (normAns === correctOptId || (correctOptId.startsWith(normAns) && normAns.length === 1))) totalScore += points;
                     if (!correctOptId) canAutoGrade = false;
                 } else if (q.type === 'short_answer') {
                     const correctAns = q.correct_answer || q.answer;
-                    if (correctAns && studentAns?.trim().toLowerCase() == correctAns?.trim().toLowerCase()) {
+                    if (correctAns && String(studentAns ?? '').trim().toLowerCase() == String(correctAns).trim().toLowerCase()) {
                         totalScore += points;
                     }
                     if (!correctAns) canAutoGrade = false;
@@ -1918,11 +1922,13 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                     const studentAns = studentForm.data.answers[q.id];
                     const points = Number(q.points || 0);
                     if (q.type === 'multiple_choice') {
-                        const correctOptId = q.answer || q.options?.find((o: any) => o.is_correct)?.id;
-                        if (correctOptId && studentAns == correctOptId) totalScore += points;
+                        const rawCorrectId = q.answer || q.options?.find((o: any) => o.is_correct)?.id || '';
+                        const correctOptId = String(rawCorrectId).trim().toLowerCase();
+                        const normAns = String(studentAns ?? '').trim().toLowerCase();
+                        if (correctOptId && (normAns === correctOptId || (correctOptId.startsWith(normAns) && normAns.length === 1))) totalScore += points;
                     } else if (q.type === 'short_answer') {
                         const correctAns = q.correct_answer || q.answer;
-                        if (correctAns && studentAns?.trim().toLowerCase() == correctAns?.trim().toLowerCase()) {
+                        if (correctAns && String(studentAns ?? '').trim().toLowerCase() == String(correctAns).trim().toLowerCase()) {
                             totalScore += points;
                         }
                     } else if (q.type === 'essay') {
@@ -3612,8 +3618,14 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                     const studentAns = studentForm.data.answers[q.id];
                                                     
                                                     // Determine correct option for formative instant check
-                                                    const correctOptId = q.answer || q.options?.find((o: any) => o.is_correct)?.id;
-                                                    const isCorrect = isAnswered && studentAns == correctOptId;
+                                                    const rawCorrectId = q.answer || q.options?.find((o: any) => o.is_correct)?.id || '';
+                                                    const correctOptId = String(rawCorrectId).trim().toLowerCase();
+                                                    const normalizedStudentAns = String(studentAns ?? '').trim().toLowerCase();
+                                                    const isAnswerMatch = (a: string, b: string) => {
+                                                        if (!a || !b) return false;
+                                                        return a === b || (b.startsWith(a) && a.length === 1) || (a.startsWith(b) && b.length === 1);
+                                                    };
+                                                    const isCorrect = isAnswered && isAnswerMatch(normalizedStudentAns, correctOptId);
 
                                                     return (
                                                         <div 
@@ -3659,8 +3671,9 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                                                                     {q.type === 'multiple_choice' && (
                                                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                                                             {q.options?.map((opt: any, optIdx: number) => {
-                                                                                const isSelected = studentAns == opt.id;
-                                                                                const isOptCorrect = opt.id == correctOptId;
+                                                                                const optId = String(opt?.id || ['a', 'b', 'c', 'd', 'e'][optIdx] || String.fromCharCode(97 + optIdx)).toLowerCase();
+                                                                                const isSelected = isAnswerMatch(normalizedStudentAns, optId);
+                                                                                const isOptCorrect = isAnswerMatch(optId, correctOptId);
 
                                                                                 // For Formative Quiz: Show green if this option is correct (and question is answered), or red if selected but incorrect.
                                                                                 let btnStyle = 'border-slate-200 dark:border-slate-800 border-slate-100 bg-white dark:bg-slate-950/40 bg-slate-50 hover:bg-slate-50 dark:hover:bg-[#1F1F2E] hover:border-[#6E79D6]/50';
@@ -3686,13 +3699,13 @@ export default function ShowAssignment({ assignment, students, my_submission, my
 
                                                                                 return (
                                                                                     <button 
-                                                                                        key={opt.id}
+                                                                                        key={optId}
                                                                                         type="button"
                                                                                         disabled={isSummativeLocked}
                                                                                         onClick={() => {
                                                                                             // Prevent changing formative quiz answers to support active instant study
                                                                                             if (assignment.instrument_type === 'formative_quiz' && isAnswered) return;
-                                                                                            studentForm.setData('answers', { ...studentForm.data.answers, [q.id]: opt.id });
+                                                                                            studentForm.setData('answers', { ...studentForm.data.answers, [q.id]: optId });
                                                                                         }}
                                                                                         className={`flex items-center gap-3 p-3.5 rounded-xl border transition-all text-left group/opt ${btnStyle} ${isSummativeLocked ? 'opacity-55 cursor-not-allowed' : ''}`}
                                                                                     >

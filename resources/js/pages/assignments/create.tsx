@@ -253,10 +253,16 @@ export default function CreateAssignment({ teachings, objectives, assessment_typ
                         newConfig.questions = suggestedQuestions.map((q: any, idx: number) => {
                             let questionOptions: any[] | undefined = undefined;
                             const rawOptions = q.options || q.pilihan || q.choices || q.opsi;
-                            if (Array.isArray(rawOptions)) {
+                            let declaredAnswer = cleanAiText(q.answer || q.correct_answer || q.jawaban || q.kunci_jawaban || q.kunci || q.pembahasan || q.pedoman_penskoran || q.rubrik || '').trim();
+
+                            if (Array.isArray(rawOptions) && rawOptions.length > 0) {
+                                let detectedCorrectId = '';
+
                                 questionOptions = rawOptions.map((o: any, oIdx: number) => {
                                     let optId = '';
                                     let optText = '';
+                                    let optIsCorrect = false;
+
                                     if (typeof o === 'string') {
                                         const prefixMatch = o.match(/^([A-Za-z])[\.\)\:\-]\s*(.*)$/);
                                         if (prefixMatch) {
@@ -269,27 +275,71 @@ export default function CreateAssignment({ teachings, objectives, assessment_typ
                                     } else if (typeof o === 'object' && o !== null) {
                                         optId = o.id || o.key || o.option || o.label || o.kode || ['a', 'b', 'c', 'd', 'e'][oIdx] || String.fromCharCode(97 + oIdx);
                                         optText = o.text || o.teks || o.label || o.option || o.jawaban || o.pilihan || '';
+                                        optIsCorrect = !!o.is_correct;
                                     } else {
                                         optId = ['a', 'b', 'c', 'd', 'e'][oIdx] || String.fromCharCode(97 + oIdx);
                                         optText = String(o || '');
                                     }
 
                                     const finalId = String(optId || ['a', 'b', 'c', 'd', 'e'][oIdx] || String.fromCharCode(97 + oIdx)).toLowerCase();
+                                    const cleanedText = cleanAiText(optText);
+
+                                    // Detect if this option is the declared correct answer
+                                    if (optIsCorrect) {
+                                        detectedCorrectId = finalId;
+                                    } else if (declaredAnswer) {
+                                        const normDeclared = declaredAnswer.toLowerCase();
+                                        if (
+                                            normDeclared === finalId ||
+                                            normDeclared === `opsi ${finalId}` ||
+                                            normDeclared === `pilihan ${finalId}` ||
+                                            normDeclared.startsWith(`${finalId}.`) ||
+                                            normDeclared.startsWith(`${finalId})`) ||
+                                            normDeclared.startsWith(`${finalId} `)
+                                        ) {
+                                            detectedCorrectId = finalId;
+                                        } else if (cleanedText && (normDeclared === cleanedText.toLowerCase() || normDeclared.includes(cleanedText.toLowerCase()) || cleanedText.toLowerCase().includes(normDeclared))) {
+                                            detectedCorrectId = finalId;
+                                        }
+                                    }
+
                                     return {
                                         id: finalId,
-                                        text: cleanAiText(optText),
-                                        is_correct: (typeof o === 'object' && o !== null) ? !!o.is_correct : false
+                                        text: cleanedText,
+                                        is_correct: optIsCorrect
                                     };
                                 });
-                            }
 
-                            const cleanAnswer = cleanAiText(q.answer || q.correct_answer || q.jawaban || q.kunci_jawaban || q.kunci || q.pembahasan || q.pedoman_penskoran || q.rubrik || '');
+                                // Fallback: if declaredAnswer has a leading letter (e.g. "B" or "b"), match it
+                                if (!detectedCorrectId && declaredAnswer) {
+                                    const letterMatch = declaredAnswer.match(/^([A-Za-z])/);
+                                    if (letterMatch) {
+                                        const letter = letterMatch[1].toLowerCase();
+                                        if (questionOptions.some(opt => opt.id === letter)) {
+                                            detectedCorrectId = letter;
+                                        }
+                                    }
+                                }
+
+                                // Default to first option if still not detected for multiple choice
+                                if (!detectedCorrectId && questionOptions.length > 0) {
+                                    detectedCorrectId = questionOptions[0].id;
+                                }
+
+                                // Mark is_correct on options
+                                questionOptions = questionOptions.map(opt => ({
+                                    ...opt,
+                                    is_correct: opt.id === detectedCorrectId
+                                }));
+
+                                declaredAnswer = detectedCorrectId;
+                            }
 
                             return {
                                 ...q,
                                 id: q.id || `q_${idx + 1}`,
                                 text: cleanAiText(q.text || q.question || q.pertanyaan || q.description || q.soal || ''),
-                                answer: cleanAnswer,
+                                answer: declaredAnswer,
                                 points: q.points !== undefined ? Number(q.points) : (idx < remainder ? basePoints + 1 : basePoints),
                                 options: questionOptions
                             };
@@ -1042,7 +1092,7 @@ export default function CreateAssignment({ teachings, objectives, assessment_typ
                                                                                 <div className="grid gap-2 sm:grid-cols-2">
                                                                                     {(q.options || []).map((opt: any, optIdx: number) => {
                                                                                         const optId = String(opt?.id || ['a', 'b', 'c', 'd', 'e'][optIdx] || String.fromCharCode(97 + optIdx)).toLowerCase();
-                                                                                        const isCorrect = q.answer === optId || opt?.is_correct === true;
+                                                                                        const isCorrect = String(q.answer || '').trim().toLowerCase() === optId || opt?.is_correct === true;
                                                                                         return (
                                                                                             <div key={optIdx} className="flex items-center gap-2 relative group/opt">
                                                                                                 <button
