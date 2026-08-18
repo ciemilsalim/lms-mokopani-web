@@ -117,7 +117,7 @@ export default function RaporShowPage({ report }: RaporShowProps) {
                                 NILAI AKHIR RAPOR (MURNI SUMATIF)
                             </span>
                             <span className="text-[10px] text-slate-500">
-                                Metode: Opsi {report.calculation_method.toUpperCase()}
+                                Metode: Opsi {(report.calculation_method || '').toUpperCase()}
                             </span>
                         </div>
                         <div className="text-3xl font-extrabold font-mono text-indigo-700">

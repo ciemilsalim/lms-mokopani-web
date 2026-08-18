@@ -244,22 +244,56 @@ export default function CreateAssignment({ teachings, objectives, assessment_typ
 
                     if (suggestion.stimulus !== undefined) newConfig.stimulus = cleanAiText(suggestion.stimulus);
                     if (suggestion.criteria !== undefined) newConfig.criteria = cleanAiText(suggestion.criteria);
-                    let suggestedQuestions = suggestion.questions || suggestion.pertanyaan;
+                    let suggestedQuestions = suggestion.questions || suggestion.pertanyaan || suggestion.soal;
                     if (suggestedQuestions !== undefined && Array.isArray(suggestedQuestions)) {
                         const totalQuestions = suggestedQuestions.length;
                         const basePoints = totalQuestions > 0 ? Math.floor(100 / totalQuestions) : 0;
                         const remainder = totalQuestions > 0 ? 100 % totalQuestions : 0;
 
-                        newConfig.questions = suggestedQuestions.map((q: any, idx: number) => ({
-                            ...q,
-                            text: cleanAiText(q.text || q.question || q.pertanyaan || q.description || ''),
-                            answer: cleanAiText(q.answer || q.correct_answer || q.jawaban || q.kunci_jawaban || q.pembahasan || q.pedoman_penskoran || q.rubrik || ''),
-                            points: idx < remainder ? basePoints + 1 : basePoints,
-                            options: Array.isArray(q.options || q.pilihan) ? (q.options || q.pilihan).map((o: any) => ({
-                                ...o,
-                                text: cleanAiText(o.text || o.option || o.label || o.teks || '')
-                            })) : undefined
-                        }));
+                        newConfig.questions = suggestedQuestions.map((q: any, idx: number) => {
+                            let questionOptions: any[] | undefined = undefined;
+                            const rawOptions = q.options || q.pilihan || q.choices || q.opsi;
+                            if (Array.isArray(rawOptions)) {
+                                questionOptions = rawOptions.map((o: any, oIdx: number) => {
+                                    let optId = '';
+                                    let optText = '';
+                                    if (typeof o === 'string') {
+                                        const prefixMatch = o.match(/^([A-Za-z])[\.\)\:\-]\s*(.*)$/);
+                                        if (prefixMatch) {
+                                            optId = prefixMatch[1].toLowerCase();
+                                            optText = prefixMatch[2];
+                                        } else {
+                                            optId = ['a', 'b', 'c', 'd', 'e'][oIdx] || String.fromCharCode(97 + oIdx);
+                                            optText = o;
+                                        }
+                                    } else if (typeof o === 'object' && o !== null) {
+                                        optId = o.id || o.key || o.option || o.label || o.kode || ['a', 'b', 'c', 'd', 'e'][oIdx] || String.fromCharCode(97 + oIdx);
+                                        optText = o.text || o.teks || o.label || o.option || o.jawaban || o.pilihan || '';
+                                    } else {
+                                        optId = ['a', 'b', 'c', 'd', 'e'][oIdx] || String.fromCharCode(97 + oIdx);
+                                        optText = String(o || '');
+                                    }
+
+                                    const finalId = String(optId || ['a', 'b', 'c', 'd', 'e'][oIdx] || String.fromCharCode(97 + oIdx)).toLowerCase();
+                                    return {
+                                        id: finalId,
+                                        text: cleanAiText(optText),
+                                        is_correct: (typeof o === 'object' && o !== null) ? !!o.is_correct : false
+                                    };
+                                });
+                            }
+
+                            const cleanAnswer = cleanAiText(q.answer || q.correct_answer || q.jawaban || q.kunci_jawaban || q.kunci || q.pembahasan || q.pedoman_penskoran || q.rubrik || '');
+
+                            return {
+                                ...q,
+                                id: q.id || `q_${idx + 1}`,
+                                text: cleanAiText(q.text || q.question || q.pertanyaan || q.description || q.soal || ''),
+                                answer: cleanAnswer,
+                                points: q.points !== undefined ? Number(q.points) : (idx < remainder ? basePoints + 1 : basePoints),
+                                options: questionOptions
+                            };
+                        });
                     }
                     if (suggestion.indicators !== undefined && Array.isArray(suggestion.indicators)) {
                         newConfig.indicators = suggestion.indicators.map((ind: any) => ({
@@ -1007,18 +1041,23 @@ export default function CreateAssignment({ teachings, objectives, assessment_typ
                                                                                 </span>
                                                                                 <div className="grid gap-2 sm:grid-cols-2">
                                                                                     {(q.options || []).map((opt: any, optIdx: number) => {
-                                                                                        const isCorrect = q.answer === opt.id || opt.is_correct === true;
+                                                                                        const optId = String(opt?.id || ['a', 'b', 'c', 'd', 'e'][optIdx] || String.fromCharCode(97 + optIdx)).toLowerCase();
+                                                                                        const isCorrect = q.answer === optId || opt?.is_correct === true;
                                                                                         return (
                                                                                             <div key={optIdx} className="flex items-center gap-2 relative group/opt">
                                                                                                 <button
                                                                                                     type="button"
                                                                                                     onClick={() => {
                                                                                                         const newQs = [...(data.instrument_config?.questions || [])];
-                                                                                                        const newOpts = (newQs[qIdx].options || []).map((o: any) => ({
-                                                                                                            ...o,
-                                                                                                            is_correct: o.id === opt.id
-                                                                                                        }));
-                                                                                                        newQs[qIdx] = { ...newQs[qIdx], answer: opt.id, options: newOpts };
+                                                                                                        const newOpts = (newQs[qIdx].options || []).map((o: any, oIdx: number) => {
+                                                                                                            const currentId = String(o?.id || ['a', 'b', 'c', 'd', 'e'][oIdx] || String.fromCharCode(97 + oIdx)).toLowerCase();
+                                                                                                            return {
+                                                                                                                ...o,
+                                                                                                                id: currentId,
+                                                                                                                is_correct: currentId === optId
+                                                                                                            };
+                                                                                                        });
+                                                                                                        newQs[qIdx] = { ...newQs[qIdx], answer: optId, options: newOpts };
                                                                                                         setData('instrument_config', {
                                                                                                             ...data.instrument_config,
                                                                                                             questions: newQs
@@ -1031,13 +1070,13 @@ export default function CreateAssignment({ teachings, objectives, assessment_typ
                                                                                                             : 'bg-muted text-muted-foreground hover:bg-primary/10 hover:text-primary'
                                                                                                     }`}
                                                                                                 >
-                                                                                                    {opt.id}
+                                                                                                    {optId}
                                                                                                 </button>
                                                                                                 <input
                                                                                                     type="text"
-                                                                                                    value={opt.text || ''}
+                                                                                                    value={opt?.text || (typeof opt === 'string' ? opt : '')}
                                                                                                     onChange={(e) => updateOptionText(qIdx, optIdx, e.target.value)}
-                                                                                                    placeholder={`Opsi ${opt.id.toUpperCase()}`}
+                                                                                                    placeholder={`Opsi ${optId.toUpperCase()}`}
                                                                                                     className={`w-full h-9 rounded-xl border bg-card text-foreground px-3 text-xs outline-none transition ${
                                                                                                         isCorrect
                                                                                                             ? 'border-emerald-500 font-bold focus:border-emerald-500'

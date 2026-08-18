@@ -264,15 +264,16 @@ const renderAssessmentDetails = (assignments: Assignment[]) => {
                                             {/* Render options for multiple choice */}
                                             {(q.type === 'multiple_choice' || !q.type) && q.options && q.options.length > 0 && (
                                                 <div className="grid grid-cols-2 gap-2 pl-4 mt-1">
-                                                    {q.options.map((opt: any) => {
-                                                        const isCorrect = q.answer === opt.id;
+                                                    {q.options.map((opt: any, optIdx: number) => {
+                                                        const optId = String(opt?.id || ['a', 'b', 'c', 'd', 'e'][optIdx] || String.fromCharCode(97 + optIdx)).toLowerCase();
+                                                        const isCorrect = q.answer === optId || opt?.is_correct === true;
                                                         return (
-                                                            <div key={opt.id} className={`flex items-center gap-1.5 p-1 rounded border ${isCorrect ? 'border-emerald-500 bg-emerald-50/30' : 'border-transparent'}`}>
+                                                            <div key={optIdx} className={`flex items-center gap-1.5 p-1 rounded border ${isCorrect ? 'border-emerald-500 bg-emerald-50/30' : 'border-transparent'}`}>
                                                                 <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[9px] font-bold uppercase shrink-0 ${isCorrect ? 'bg-emerald-500 text-white' : 'bg-gray-100 text-gray-600'}`}>
-                                                                    {opt.id}
+                                                                    {optId}
                                                                 </span>
                                                                 <span className={`text-[9pt] ${isCorrect ? 'font-bold text-emerald-800' : 'text-gray-700'}`}>
-                                                                    {opt.text || `(Opsi ${opt.id.toUpperCase()})`}
+                                                                    {opt?.text || `(Opsi ${optId.toUpperCase()})`}
                                                                 </span>
                                                                 {isCorrect && <span className="text-[8px] font-black text-emerald-600 uppercase ml-1">(Kunci)</span>}
                                                             </div>

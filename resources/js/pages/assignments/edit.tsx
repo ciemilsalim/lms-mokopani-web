@@ -455,18 +455,23 @@ export default function EditAssignment({ assignment, teachings, objectives, asse
                                                                     </div>
                                                                     <div className="grid gap-2 sm:grid-cols-2">
                                                                         {(q.options || []).map((opt: any, optIdx: number) => {
-                                                                            const isCorrect = q.answer === opt.id || opt.is_correct === true;
+                                                                            const optId = String(opt?.id || ['a', 'b', 'c', 'd', 'e'][optIdx] || String.fromCharCode(97 + optIdx)).toLowerCase();
+                                                                            const isCorrect = q.answer === optId || opt?.is_correct === true;
                                                                             return (
                                                                                 <div key={optIdx} className="flex items-center gap-2 relative group/opt">
                                                                                     <button
                                                                                         type="button"
                                                                                         onClick={() => {
                                                                                             const newQs = [...(data.instrument_config?.questions || [])];
-                                                                                            const newOpts = (newQs[qIdx].options || []).map((o: any) => ({
-                                                                                                ...o,
-                                                                                                is_correct: o.id === opt.id
-                                                                                            }));
-                                                                                            newQs[qIdx] = { ...newQs[qIdx], answer: opt.id, options: newOpts };
+                                                                                            const newOpts = (newQs[qIdx].options || []).map((o: any, oIdx: number) => {
+                                                                                                const currentId = String(o?.id || ['a', 'b', 'c', 'd', 'e'][oIdx] || String.fromCharCode(97 + oIdx)).toLowerCase();
+                                                                                                return {
+                                                                                                    ...o,
+                                                                                                    id: currentId,
+                                                                                                    is_correct: currentId === optId
+                                                                                                };
+                                                                                            });
+                                                                                            newQs[qIdx] = { ...newQs[qIdx], answer: optId, options: newOpts };
                                                                                             setData('instrument_config', {
                                                                                                 ...data.instrument_config,
                                                                                                 questions: newQs
@@ -479,13 +484,13 @@ export default function EditAssignment({ assignment, teachings, objectives, asse
                                                                                                 : 'bg-muted text-muted-foreground hover:bg-primary/10 hover:text-primary'
                                                                                         }`}
                                                                                     >
-                                                                                        {opt.id}
+                                                                                        {optId}
                                                                                     </button>
                                                                                     <input
                                                                                         type="text"
-                                                                                        value={opt.text || ''}
+                                                                                        value={opt?.text || (typeof opt === 'string' ? opt : '')}
                                                                                         onChange={(e) => updateOptionText(qIdx, optIdx, e.target.value)}
-                                                                                        placeholder={`Opsi ${opt.id.toUpperCase()}`}
+                                                                                        placeholder={`Opsi ${optId.toUpperCase()}`}
                                                                                         className={`w-full h-8 rounded border bg-popover text-foreground px-3 text-[11px] outline-none transition ${
                                                                                             isCorrect
                                                                                                 ? 'border-emerald-500 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20'
