@@ -60,10 +60,12 @@ class SsoLoginController extends Controller
             return redirect()->route('login')->withErrors(['sso' => 'Token SSO tidak valid di database (' . $dbName . ') atau telah digunakan.']);
         }
 
-        // 2. Validasi kadaluarsa token secara fleksibel dan timezone-resilient
+        // 2. Validasi kadaluarsa token secara fleksibel dan timezone-resilient (menghindari selisih jam antar hosting/server)
         $expiresAt = Carbon::parse($rawToken->expires_at);
         $createdAt = Carbon::parse($rawToken->created_at);
-        $isNotExpired = $expiresAt->isFuture() || $createdAt->greaterThanOrEqualTo(now()->subMinutes(30));
+        $isNotExpired = $expiresAt->isFuture() 
+            || $createdAt->greaterThanOrEqualTo(now()->subHours(24)) 
+            || abs(now()->diffInHours($createdAt)) <= 24;
 
         Log::info('[SSO LMS] Token SSO ditemukan di database', [
             'token_id'   => $rawToken->id,
