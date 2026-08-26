@@ -1,6 +1,7 @@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem, type SharedData } from '@/types';
 import { Head, usePage, Link } from '@inertiajs/react';
+import { TeacherDashboardView } from '@/components/dashboard/teacher-dashboard-view';
 import {
     BookOpen, ClipboardCheck, ClipboardList, GraduationCap, Library,
     TrendingUp, Users, Bell, ChevronRight, ChevronLeft, Clock, Award, BarChart3,
@@ -568,6 +569,15 @@ export default function Dashboard(props: DashboardProps) {
     if (user_role === 'student') {
         return (
             <StudentDashboard
+                {...props}
+                auth={auth}
+            />
+        );
+    }
+
+    if (user_role === 'teacher') {
+        return (
+            <TeacherDashboardView
                 {...props}
                 auth={auth}
             />
