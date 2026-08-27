@@ -157,23 +157,22 @@ export default function MaterialsIndex({
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Bahan Materi - LMS Mokopani" />
 
-            <div className="space-y-5 sm:space-y-6 fade-in pb-16 md:pb-6 max-w-7xl mx-auto px-4 sm:px-6">
+            <div className="space-y-4 sm:space-y-5 fade-in pb-20 md:pb-8 max-w-7xl mx-auto px-3 sm:px-6 w-full min-w-0">
                 {/* Header & Primary CTA */}
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2">
-                    <SectionHeader
-                        title="Bahan Materi"
-                        subtitle={
-                            active_year && active_semester
-                                ? `Periode ${active_year} • ${active_semester}`
-                                : 'Kelola dan pelajari bahan materi pembelajaran'
-                        }
-                        icon={Library}
-                    />
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-1">
+                    <div>
+                        <h1 className="text-xl sm:text-2xl font-black text-foreground tracking-tight">
+                            Bahan Materi
+                        </h1>
+                        <p className="text-xs sm:text-sm text-muted-foreground font-medium mt-0.5">
+                            {filteredMaterials.length} Materi tersedia • Periode {active_year || '2026/2027'} ({active_semester || 'Ganjil'})
+                        </p>
+                    </div>
 
                     {isTeacher && (
                         <Link
                             href={route('materials.create')}
-                            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-2xl bg-primary text-primary-foreground text-xs font-bold shadow-md hover:bg-primary/90 transition active:scale-95 min-h-[44px] self-start sm:self-auto"
+                            className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-xs sm:text-sm font-bold shadow-md hover:bg-primary/90 transition active:scale-97 min-h-[44px] self-stretch sm:self-auto"
                         >
                             <Plus className="h-4 w-4" />
                             <span>+ Tambah Materi</span>
@@ -181,50 +180,69 @@ export default function MaterialsIndex({
                     )}
                 </div>
 
-                {/* Search & Filter Controls */}
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+                {/* Search & Filter Controls (Compact) */}
+                <div className="space-y-2">
                     {/* Search Bar */}
-                    <div className="relative flex-1">
+                    <div className="relative w-full">
                         <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <input
                             type="text"
                             placeholder="Cari materi, mata pelajaran, atau TP..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full h-11 pl-10 pr-4 text-xs sm:text-sm rounded-2xl bg-card border border-border/70 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50 transition shadow-2xs"
+                            className="w-full h-11 pl-10 pr-4 text-xs sm:text-sm rounded-xl bg-card border border-border/70 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50 transition shadow-2xs placeholder:text-muted-foreground/60"
                         />
                     </div>
 
-                    {/* Filter Mapel */}
-                    {subjectOptions.length > 0 && (
+                    {/* Filter Row: Mapel & Kelas Side-by-Side */}
+                    <div className="grid grid-cols-2 gap-2">
+                        {/* Filter Mapel */}
                         <select
                             value={selectedSubject}
                             onChange={(e) => setSelectedSubject(e.target.value)}
-                            className="h-11 px-3.5 text-xs rounded-2xl bg-card border border-border/70 text-foreground font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20 transition shadow-2xs cursor-pointer min-w-[140px]"
+                            className="h-10 px-3 text-xs rounded-xl bg-card border border-border/70 text-foreground font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20 transition shadow-2xs cursor-pointer w-full"
                         >
-                            <option value="all">Semua Mapel ({subjectOptions.length})</option>
+                            <option value="all">Semua Mapel</option>
                             {subjectOptions.map((subj) => (
                                 <option key={subj} value={subj}>
                                     {subj}
                                 </option>
                             ))}
                         </select>
-                    )}
 
-                    {/* Filter Kelas (for teachers/admins) */}
-                    {classOptions.length > 0 && (
+                        {/* Filter Kelas */}
                         <select
                             value={selectedClass}
                             onChange={(e) => setSelectedClass(e.target.value)}
-                            className="h-11 px-3.5 text-xs rounded-2xl bg-card border border-border/70 text-foreground font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20 transition shadow-2xs cursor-pointer min-w-[130px]"
+                            className="h-10 px-3 text-xs rounded-xl bg-card border border-border/70 text-foreground font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20 transition shadow-2xs cursor-pointer w-full"
                         >
-                            <option value="all">Semua Kelas ({classOptions.length})</option>
+                            <option value="all">Semua Kelas</option>
                             {classOptions.map((cName) => (
                                 <option key={cName} value={cName}>
                                     Kelas {cName}
                                 </option>
                             ))}
                         </select>
+                    </div>
+                </div>
+
+                {/* Section Divider & Counter */}
+                <div className="flex items-center justify-between pt-1 border-b border-border/50 pb-2">
+                    <span className="text-[11px] font-black uppercase tracking-wider text-muted-foreground">
+                        Daftar Materi ({filteredMaterials.length})
+                    </span>
+                    {(searchQuery || selectedSubject !== 'all' || selectedClass !== 'all') && (
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setSearchQuery('');
+                                setSelectedSubject('all');
+                                setSelectedClass('all');
+                            }}
+                            className="text-[11px] font-bold text-primary hover:underline"
+                        >
+                            Reset Filter
+                        </button>
                     )}
                 </div>
 
@@ -235,14 +253,14 @@ export default function MaterialsIndex({
                         title={searchQuery || selectedSubject !== 'all' || selectedClass !== 'all' ? 'Materi Tidak Ditemukan' : 'Belum Ada Materi'}
                         description={
                             searchQuery || selectedSubject !== 'all' || selectedClass !== 'all'
-                                ? 'Tidak ada materi yang sesuai dengan pencarian atau filter yang dipilih.'
-                                : 'Materi pembelajaran yang diterbitkan akan tampil di sini.'
+                                ? 'Tidak ada materi yang cocok dengan pencarian atau filter yang dipilih.'
+                                : 'Materi pembelajaran yang Anda buat akan tampil di sini.'
                         }
                         actionLabel={isTeacher ? '+ Tambah Materi' : undefined}
                         onAction={isTeacher ? () => router.visit(route('materials.create')) : undefined}
                     />
                 ) : (
-                    <div className="grid grid-cols-1 gap-3.5 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                         {filteredMaterials.map((m) => (
                             <MaterialCard
                                 key={m.id}
