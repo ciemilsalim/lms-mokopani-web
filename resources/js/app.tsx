@@ -10,6 +10,46 @@ declare global {
     const route: typeof routeFn;
 }
 
+// Safely guard window.history.state against null values to prevent Inertia.js scrollRegions TypeError
+if (typeof window !== 'undefined' && window.history) {
+    try {
+        const originalStateDescriptor = Object.getOwnPropertyDescriptor(History.prototype, 'state');
+        const originalGetter = originalStateDescriptor?.get;
+
+        if (originalGetter) {
+            Object.defineProperty(window.history, 'state', {
+                get() {
+                    try {
+                        const currentState = originalGetter.call(this);
+                        if (currentState === null || currentState === undefined) {
+                            return { scrollRegions: [] };
+                        }
+                        if (typeof currentState === 'object' && !('scrollRegions' in currentState)) {
+                            return { ...currentState, scrollRegions: [] };
+                        }
+                        return currentState;
+                    } catch {
+                        return { scrollRegions: [] };
+                    }
+                },
+                configurable: true,
+                enumerable: true,
+            });
+        }
+    } catch {
+        // Fallback popstate event guard
+        window.addEventListener('popstate', () => {
+            if (window.history && window.history.state === null) {
+                try {
+                    window.history.replaceState({ scrollRegions: [] }, '');
+                } catch {
+                    // Ignore
+                }
+            }
+        }, { capture: true });
+    }
+}
+
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
 createInertiaApp({
