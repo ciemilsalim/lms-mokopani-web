@@ -21,7 +21,7 @@ export interface QuickActionGridProps {
 const defaultTeacherActions: QuickActionItem[] = [
     {
         id: 'create-material',
-        title: 'Tambah Materi',
+        title: 'Materi',
         description: 'Bahan ajar & media',
         href: '/materials/create',
         icon: BookOpen,
@@ -29,7 +29,7 @@ const defaultTeacherActions: QuickActionItem[] = [
     },
     {
         id: 'create-assessment',
-        title: 'Buat Asesmen',
+        title: 'Asesmen',
         description: 'Tugas, kuis & tes',
         href: '/assignments/create',
         icon: ClipboardList,
@@ -37,7 +37,7 @@ const defaultTeacherActions: QuickActionItem[] = [
     },
     {
         id: 'presensi-kelas',
-        title: 'Presensi Kelas',
+        title: 'Presensi',
         description: 'Absensi harian guru',
         href: '/sso/presensi',
         icon: CalendarCheck,
@@ -46,8 +46,8 @@ const defaultTeacherActions: QuickActionItem[] = [
     },
     {
         id: 'modul-ajar',
-        title: 'Modul Ajar / RPP',
-        description: 'RPP PPA & AI Wizard',
+        title: 'Modul Ajar',
+        description: 'RPP & AI Wizard',
         href: '/lesson-plans',
         icon: FileText,
         variant: 'success',
@@ -83,31 +83,30 @@ const actionStyles = {
 };
 
 /**
- * QuickActionGrid & QuickActionCard
- * Reusable Mobile-First 2x2 Grid for primary teacher actions.
- * Minimum interactive height target >= 52px for thumb friendliness.
+ * QuickActionGrid
+ * Reusable Mobile-First 4-item action grid with compact thumb targets.
  */
 export function QuickActionGrid({
     actions = defaultTeacherActions,
     className = '',
 }: QuickActionGridProps) {
     return (
-        <div className={`grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4 ${className}`}>
+        <div className={`grid grid-cols-2 xs:grid-cols-4 gap-2 sm:gap-3 w-full min-w-0 ${className}`}>
             {actions.map((act) => {
                 const Icon = act.icon;
                 const style = actionStyles[act.variant || 'primary'];
 
                 const content = (
-                    <div className={`group flex items-center gap-2.5 sm:gap-3 p-3 sm:p-3.5 rounded-2xl border ${style.border} bg-card hover:bg-muted/40 transition-all shadow-2xs h-full min-h-[56px] w-full min-w-0`}>
-                        <div className={`flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl ${style.badgeBg} shadow-2xs`}>
-                            <Icon className="h-4 w-4 sm:h-5 sm:w-5" strokeWidth={2.2} />
+                    <div className={`group flex flex-col xs:flex-row items-center gap-2 xs:gap-2.5 p-2.5 sm:p-3 rounded-2xl border ${style.border} bg-card hover:bg-muted/40 transition-all shadow-2xs h-full min-h-[52px] w-full min-w-0`}>
+                        <div className={`flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl ${style.badgeBg} shadow-2xs`}>
+                            <Icon className="h-4 w-4 sm:h-4.5 sm:w-4.5" strokeWidth={2.2} />
                         </div>
-                        <div className="flex-1 min-w-0">
-                            <h3 className="text-xs sm:text-sm font-bold text-foreground truncate leading-tight group-hover:text-primary transition-colors">
+                        <div className="flex-1 min-w-0 text-center xs:text-left">
+                            <h3 className="text-xs sm:text-xs font-bold text-foreground truncate leading-tight group-hover:text-primary transition-colors">
                                 {act.title}
                             </h3>
                             {act.description && (
-                                <p className="text-[10px] text-muted-foreground truncate mt-0.5">
+                                <p className="text-[10px] text-muted-foreground truncate hidden xs:block mt-0.5">
                                     {act.description}
                                 </p>
                             )}
@@ -120,7 +119,7 @@ export function QuickActionGrid({
                         <a
                             key={act.id}
                             href={act.href}
-                            className="block h-full min-w-0 active:scale-97 transition-transform focus:outline-none focus:ring-2 focus:ring-primary/20 rounded-2xl"
+                            className="block min-w-0 w-full focus:outline-none focus:ring-2 focus:ring-primary/30 rounded-2xl active:scale-97 transition-transform"
                         >
                             {content}
                         </a>
@@ -131,7 +130,7 @@ export function QuickActionGrid({
                     <Link
                         key={act.id}
                         href={act.href}
-                        className="block h-full min-w-0 active:scale-97 transition-transform focus:outline-none focus:ring-2 focus:ring-primary/20 rounded-2xl"
+                        className="block min-w-0 w-full focus:outline-none focus:ring-2 focus:ring-primary/30 rounded-2xl active:scale-97 transition-transform"
                     >
                         {content}
                     </Link>

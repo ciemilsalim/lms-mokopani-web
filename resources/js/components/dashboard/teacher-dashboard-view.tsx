@@ -135,12 +135,17 @@ export function TeacherDashboardView({
 
     const pendingGradingItems = stats?.pending_grading_list ?? [];
 
+    const totalCalculated = courseData.length;
+    const sumProgress = courseData.reduce((acc, curr) => acc + (curr.progress || 0), 0);
+    const avgProgress = totalCalculated > 0 ? Math.round(sumProgress / totalCalculated) : 0;
+    const needingAttentionCount = courseData.filter((c) => (c.progress || 0) < 60).length;
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Dashboard Guru - LMS Mokopani" />
 
-            <div className="space-y-5 sm:space-y-6 fade-in pb-16 md:pb-6 max-w-7xl mx-auto w-full min-w-0">
-                {/* 1. WELCOME CARD (Hero Identity Banner) */}
+            <div className="space-y-4 sm:space-y-5 fade-in pb-16 md:pb-6 max-w-7xl mx-auto w-full min-w-0">
+                {/* 1. COMPACT HERO GREETING BANNER */}
                 <WelcomeCard
                     identity={identity || {
                         name: auth?.user?.name || 'Guru',
@@ -153,15 +158,38 @@ export function TeacherDashboardView({
                     illustrationSrc="/teacher-illustration.png"
                 />
 
-                {/* 2. RINGKASAN HARI INI (Summary Cards 2x2 Grid) */}
+                {/* 2. HERO PRIORITY: AGENDA HARI INI (What class do I teach now?) */}
+                <ScheduleList
+                    schedules={todaySchedule}
+                    dayName={todayName || 'Hari Ini'}
+                    dateText={todayDateText}
+                />
+
+                {/* 3. ACTION PRIORITY: PERLU TINDAKAN (Assignments awaiting grading) */}
+                <PendingTaskList
+                    items={pendingGradingItems}
+                    actionHref="/assignments"
+                />
+
+                {/* 4. AKSI CEPAT GURU (4 Compact Action Tiles) */}
+                <div className="w-full min-w-0">
+                    <SectionHeader
+                        title="Aksi Cepat Guru"
+                        subtitle="Pintasan pembuatan materi & asesmen"
+                        className="mb-2"
+                    />
+                    <QuickActionGrid />
+                </div>
+
+                {/* 5. RINGKASAN PEMBELAJARAN (Compact Stats) */}
                 <div className="w-full min-w-0">
                     <SectionHeader
                         title="Ringkasan Pembelajaran"
-                        subtitle="Statistik & kuantitas data diampu"
+                        subtitle="Statistik data diampu semester ini"
                         icon={GraduationCap}
-                        className="mb-2.5"
+                        className="mb-2"
                     />
-                    <div className="grid grid-cols-2 gap-2.5 sm:gap-4 sm:grid-cols-4 w-full min-w-0">
+                    <div className="grid grid-cols-2 gap-2 sm:gap-3.5 sm:grid-cols-4 w-full min-w-0">
                         <SummaryCard
                             label="Siswa"
                             value={stats?.total_students ?? 0}
@@ -193,71 +221,100 @@ export function TeacherDashboardView({
                     </div>
                 </div>
 
-                {/* 3. AKSI CEPAT GURU (Quick Action 2x2 Grid) */}
-                <div className="w-full min-w-0">
-                    <SectionHeader
-                        title="Aksi Cepat Guru"
-                        subtitle="Pintasan pembuatan materi & asesmen"
-                        className="mb-2.5"
-                    />
-                    <QuickActionGrid />
-                </div>
-
-                {/* 4. MAIN CONTENT TWO-COLUMN LAYOUT ON TABLET/DESKTOP */}
-                <div className="grid gap-5 sm:gap-6 lg:grid-cols-2 w-full min-w-0">
-                    {/* LEFT COLUMN: Pending Grading & Schedule */}
-                    <div className="space-y-5 sm:space-y-6 w-full min-w-0">
-                        {/* TUGAS PERLU DINILAI (Prominent Focal Point) */}
-                        <PendingTaskList
-                            items={pendingGradingItems}
-                            actionHref="/assignments"
-                        />
-
-                        {/* JADWAL HARI INI */}
-                        <ScheduleList
-                            schedules={todaySchedule}
-                            dayName={todayName || 'Hari Ini'}
-                            dateText={todayDateText}
-                        />
-                    </div>
-
-                    {/* RIGHT COLUMN: Recent Activity & Announcements */}
-                    <div className="space-y-5 sm:space-y-6 w-full min-w-0">
-                        {/* AKTIVITAS TERBARU */}
+                {/* 6. SECONDARY INSIGHTS & UPDATES TWO-COLUMN ON TABLET/DESKTOP */}
+                <div className="grid gap-4 sm:gap-5 lg:grid-cols-2 w-full min-w-0">
+                    {/* LEFT: AKTIVITAS TERKINI (Max 3 Items) */}
+                    <div className="w-full min-w-0">
                         <ActivityList
                             activities={recentActivities}
                         />
+                    </div>
 
-                        {/* PENGUMUMAN SEKOLAH */}
-                        <Card className="rounded-2xl border border-border/70 shadow-xs bg-card overflow-hidden w-full min-w-0">
-                            <div className="flex items-center justify-between border-b border-border/60 p-3.5 sm:p-5 bg-muted/20 w-full min-w-0">
-                                <div className="flex items-center gap-2 min-w-0 flex-1">
-                                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-rose-500/15 text-rose-600 dark:text-rose-400">
-                                        <Bell className="h-4 w-4" />
+                    {/* RIGHT: PROGRESS PEMBELAJARAN & PENGUMUMAN SEKOLAH */}
+                    <div className="space-y-4 sm:space-y-5 w-full min-w-0">
+                        {/* PROGRESS PEMBELAJARAN SISWA (High-Level Insight Card) */}
+                        {courseData.length > 0 && (
+                            <Card className="rounded-2xl border border-border/70 shadow-xs bg-card overflow-hidden w-full min-w-0">
+                                <div className="p-3.5 sm:p-5 border-b border-border/60 bg-muted/20 flex items-center justify-between">
+                                    <div className="min-w-0 flex-1">
+                                        <h2 className="text-sm sm:text-base font-bold text-foreground leading-tight flex items-center gap-2">
+                                            <GraduationCap className="h-4 w-4 text-emerald-500 shrink-0" />
+                                            <span>Progress Siswa</span>
+                                        </h2>
+                                        <p className="text-[11px] sm:text-xs text-muted-foreground mt-0.5 truncate">
+                                            {stats?.total_students ?? totalFiltered} Siswa terdaftar
+                                        </p>
                                     </div>
-                                    <h2 className="font-bold text-foreground text-sm sm:text-base truncate">Pengumuman Sekolah</h2>
+                                    <Link
+                                        href="/students"
+                                        className="text-xs font-bold text-primary hover:underline flex items-center gap-1 min-h-[44px] px-2 py-1 rounded-lg shrink-0"
+                                    >
+                                        <span>Detail</span>
+                                        <ChevronRight className="h-3.5 w-3.5" />
+                                    </Link>
+                                </div>
+
+                                <CardContent className="p-3.5 sm:p-4 space-y-3">
+                                    <div className="flex items-center justify-between gap-2">
+                                        <div>
+                                            <span className="text-2xl sm:text-3xl font-black text-foreground">{avgProgress}%</span>
+                                            <span className="text-[11px] text-muted-foreground block">Rata-rata progres pembelajaran</span>
+                                        </div>
+                                        {needingAttentionCount > 0 ? (
+                                            <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 px-2.5 py-1 text-[11px] font-bold">
+                                                ⚠️ {needingAttentionCount} siswa perlu perhatian
+                                            </span>
+                                        ) : (
+                                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 px-2.5 py-1 text-[11px] font-bold">
+                                                ✓ Siswa aktif belajar
+                                            </span>
+                                        )}
+                                    </div>
+
+                                    <div className="space-y-1">
+                                        <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+                                            <div
+                                                className={`h-full rounded-full transition-all duration-500 ${
+                                                    avgProgress >= 80 ? 'bg-emerald-500' : avgProgress >= 60 ? 'bg-primary' : avgProgress >= 40 ? 'bg-amber-500' : 'bg-rose-500'
+                                                }`}
+                                                style={{ width: `${Math.min(100, Math.max(0, avgProgress))}%` }}
+                                            />
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        )}
+
+                        {/* PENGUMUMAN SEKOLAH (Compact 72-88px height) */}
+                        <Card className="rounded-2xl border border-border/70 shadow-xs bg-card overflow-hidden w-full min-w-0">
+                            <div className="flex items-center justify-between border-b border-border/60 p-3 sm:p-4 bg-muted/20 w-full min-w-0">
+                                <div className="flex items-center gap-2 min-w-0 flex-1">
+                                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-rose-500/15 text-rose-600 dark:text-rose-400">
+                                        <Bell className="h-3.5 w-3.5" />
+                                    </div>
+                                    <h2 className="font-bold text-foreground text-xs sm:text-sm truncate">Pengumuman Sekolah</h2>
                                 </div>
                                 <Link
                                     href="/announcements"
-                                    className="text-xs font-bold text-primary hover:underline flex items-center gap-1 min-h-[44px] px-2 py-1 rounded-lg shrink-0"
+                                    className="text-xs font-bold text-primary hover:underline flex items-center gap-0.5 min-h-[38px] px-2 py-1 rounded-lg shrink-0"
                                 >
-                                    <span>Semua</span> <ChevronRight className="h-3.5 w-3.5" />
+                                    <span>Semua</span> <ChevronRight className="h-3 w-3" />
                                 </Link>
                             </div>
 
-                            <CardContent className="p-3.5 sm:p-4 space-y-2.5 w-full min-w-0">
+                            <CardContent className="p-3 sm:p-3.5 space-y-2 w-full min-w-0">
                                 {recentAnnouncements.length === 0 ? (
-                                    <div className="py-4 text-center text-muted-foreground text-xs font-medium">
+                                    <div className="py-2.5 text-center text-muted-foreground text-xs font-medium">
                                         Belum ada pengumuman baru
                                     </div>
                                 ) : (
-                                    recentAnnouncements.slice(0, 2).map((ann) => (
+                                    recentAnnouncements.slice(0, 1).map((ann) => (
                                         <Link
                                             key={ann.id}
                                             href="/announcements"
-                                            className="block p-3 rounded-xl border border-border/50 bg-card hover:bg-muted/40 transition active:scale-98 min-h-[48px] w-full min-w-0"
+                                            className="block p-2.5 rounded-xl border border-border/50 bg-card hover:bg-muted/40 transition active:scale-98 min-h-[44px] w-full min-w-0"
                                         >
-                                            <div className="flex items-center gap-2 mb-1 w-full min-w-0">
+                                            <div className="flex items-center gap-2 mb-0.5 w-full min-w-0">
                                                 <span className={`h-2 w-2 rounded-full shrink-0 ${
                                                     ann.priority === 'important' ? 'bg-rose-500' :
                                                     ann.priority === 'warning' ? 'bg-amber-500' : 'bg-primary'
@@ -267,7 +324,7 @@ export function TeacherDashboardView({
                                                 </span>
                                                 <span className="text-[10px] text-muted-foreground ml-auto shrink-0">{ann.created_at}</span>
                                             </div>
-                                            <h3 className="text-xs font-bold text-foreground line-clamp-2 leading-snug">
+                                            <h3 className="text-xs font-bold text-foreground line-clamp-1 leading-snug">
                                                 {ann.title}
                                             </h3>
                                         </Link>

@@ -41,71 +41,61 @@ export function WelcomeCard({
     const defaultIllustration = userRole === 'student' ? '/student-illustration.png' : '/teacher-illustration.png';
     const imgSrc = illustrationSrc || defaultIllustration;
 
+    const firstName = identity?.name ? identity.name.trim().split(' ')[0] : 'Guru';
+    const cleanSubject = identity?.extra ? identity.extra.replace(/^Mengajar:\s*/i, '') : '';
+
+    // Dynamic greeting based on current local hour
+    const hour = new Date().getHours();
+    const greetingTime = hour < 11 ? 'pagi' : hour < 15 ? 'siang' : hour < 18 ? 'sore' : 'malam';
+
     return (
-        <div className={`relative overflow-hidden rounded-2xl md:rounded-3xl bg-gradient-to-br from-primary via-primary/95 to-indigo-700 p-5 sm:p-6 text-primary-foreground shadow-md ${className}`}>
+        <div className={`relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-primary/95 to-indigo-700 p-4 sm:p-5 text-primary-foreground shadow-sm ${className}`}>
             <div className="relative z-10 flex items-start justify-between">
-                <div className="min-w-0 flex-1 pr-0 sm:pr-40">
-                    <p className="text-xs font-medium text-white/80">
-                        Selamat datang kembali,
+                <div className="min-w-0 flex-1 pr-0 sm:pr-36">
+                    <p className="text-xs font-semibold text-white/80 flex items-center gap-1.5">
+                        <span>Selamat {greetingTime}, {firstName}</span>
+                        <span className="inline-block animate-wave origin-[70%_70%]">👋</span>
                     </p>
 
                     <div className="mt-1 flex flex-wrap items-center gap-2">
-                        <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white leading-tight">
+                        <h1 className="text-lg sm:text-xl font-black tracking-tight text-white leading-tight">
                             {identity?.name ?? 'Pengguna'}
                         </h1>
-                        <span className="inline-flex items-center rounded-full bg-white/20 px-2.5 py-0.5 text-[11px] font-bold tracking-wide backdrop-blur-xs text-white">
+                        <span className="inline-flex items-center rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-bold tracking-wide backdrop-blur-xs text-white">
                             {roleLabelMap[userRole] ?? userRole}
                         </span>
                     </div>
 
-                    {identity ? (
-                        <div className="mt-3 flex flex-col gap-1.5 text-xs text-white/90">
-                            {/* NIP / ID Row */}
-                            {identity.idLabel && identity.idValue && (
-                                <div className="flex items-center gap-2 max-w-full">
-                                    <span className="inline-block bg-black/25 px-2 py-0.5 rounded-md font-mono font-bold text-[11px] text-white tracking-wide max-w-full truncate">
-                                        {identity.idLabel}: {identity.idValue}
-                                    </span>
-                                </div>
-                            )}
-
-                            {/* Extra / Teaching Subject */}
-                            {identity.extra && (
-                                <div className="flex items-center gap-1.5 text-white/90 text-xs font-medium max-w-full">
-                                    <span className="opacity-80 shrink-0">Mengajar:</span>
-                                    <span className="font-bold text-white bg-white/15 px-2 py-0.5 rounded-md text-[11px] max-w-full truncate">
-                                        {identity.extra.replace(/^Mengajar:\s*/i, '')}
-                                    </span>
-                                </div>
-                            )}
-
-                            {/* School & Period Context */}
-                            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-white/80 pt-0.5">
-                                <span className="font-semibold text-white/90">{identity.sekolah}</span>
-                                {identity.tahunAjaran && (
-                                    <>
-                                        <span className="text-white/40">•</span>
-                                        <span>
-                                            {identity.tahunAjaran} {identity.semester ? `(${identity.semester})` : ''}
-                                        </span>
-                                    </>
-                                )}
-                            </div>
-                        </div>
-                    ) : (
-                        <p className="mt-1 text-xs text-white/80">
-                            Pantau aktivitas dan progres pembelajaran hari ini
-                        </p>
-                    )}
+                    <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-white/90">
+                        {cleanSubject && (
+                            <span className="font-semibold text-white">
+                                {cleanSubject}
+                            </span>
+                        )}
+                        {cleanSubject && identity?.sekolah && (
+                            <span className="text-white/40">•</span>
+                        )}
+                        {identity?.sekolah && (
+                            <span className="text-white/80">{identity.sekolah}</span>
+                        )}
+                        {identity?.tahunAjaran && (
+                            <>
+                                <span className="text-white/40">•</span>
+                                <span className="text-white/70 text-[11px]">
+                                    {identity.tahunAjaran} {identity.semester ? `(${identity.semester})` : ''}
+                                </span>
+                            </>
+                        )}
+                    </div>
                 </div>
             </div>
 
             {/* Pop-out Illustration on Desktop/Tablet */}
-            <div className="hidden sm:block absolute right-6 bottom-0 z-20 pointer-events-none">
+            <div className="hidden sm:block absolute right-4 bottom-0 z-20 pointer-events-none">
                 <img
                     src={imgSrc}
                     alt="Ilustrasi Profile"
-                    className="h-40 sm:h-44 w-auto object-contain object-bottom drop-shadow-xl translate-y-1 -scale-x-100"
+                    className="h-28 sm:h-32 w-auto object-contain object-bottom drop-shadow-xl translate-y-1 -scale-x-100"
                     onError={(e) => {
                         e.currentTarget.style.display = 'none';
                     }}
