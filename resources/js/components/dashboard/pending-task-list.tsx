@@ -31,7 +31,7 @@ export function PendingTaskList({
     className = '',
 }: PendingTaskListProps) {
     return (
-        <Card className={`rounded-2xl border border-border/70 shadow-xs bg-card overflow-hidden ${className}`}>
+        <Card className={`rounded-2xl border border-border/70 shadow-xs bg-card overflow-hidden w-full min-w-0 ${className}`}>
             <div className="p-4 sm:p-5 border-b border-border/60 bg-muted/20">
                 <SectionHeader
                     title="Tugas Perlu Dinilai"

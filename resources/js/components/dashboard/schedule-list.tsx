@@ -31,7 +31,7 @@ export function ScheduleList({
     className = '',
 }: ScheduleListProps) {
     return (
-        <Card className={`rounded-2xl border border-border/70 shadow-xs bg-card overflow-hidden ${className}`}>
+        <Card className={`rounded-2xl border border-border/70 shadow-xs bg-card overflow-hidden w-full min-w-0 ${className}`}>
             <div className="p-4 sm:p-5 border-b border-border/60 bg-muted/20 flex items-center justify-between">
                 <div>
                     <h2 className="text-base sm:text-lg font-bold text-foreground leading-tight">

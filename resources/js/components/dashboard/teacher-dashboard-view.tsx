@@ -229,7 +229,7 @@ export function TeacherDashboardView({
                         />
 
                         {/* PENGUMUMAN SEKOLAH */}
-                        <Card className="rounded-2xl border border-border/70 shadow-xs bg-card overflow-hidden">
+                        <Card className="rounded-2xl border border-border/70 shadow-xs bg-card overflow-hidden w-full min-w-0">
                             <div className="flex items-center justify-between border-b border-border/60 p-4 sm:p-5 bg-muted/20">
                                 <div className="flex items-center gap-2.5">
                                     <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-rose-500/15 text-rose-600 dark:text-rose-400">
@@ -280,7 +280,7 @@ export function TeacherDashboardView({
 
                 {/* 5. SECONDARY DATA SECTION: PROGRESS PEMBELAJARAN (Summary-First on Mobile, Table on Desktop) */}
                 {courseData.length > 0 && (
-                    <Card className="rounded-2xl border border-border/70 shadow-xs bg-card overflow-hidden">
+                    <Card className="rounded-2xl border border-border/70 shadow-xs bg-card overflow-hidden w-full min-w-0">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/60 p-4 sm:p-5 bg-muted/20">
                             <div>
                                 <h2 className="font-bold text-foreground text-base sm:text-lg">Progress Pembelajaran Siswa</h2>

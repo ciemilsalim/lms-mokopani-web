@@ -67,8 +67,8 @@ export function SummaryCard({
     const style = variantStyles[variant] || variantStyles.primary;
 
     const cardNode = (
-        <Card className={`rounded-2xl border border-border/70 shadow-xs hover:shadow-md transition-all duration-200 bg-card overflow-hidden h-full ${className}`}>
-            <CardContent className="p-4 sm:p-5 flex flex-col justify-between h-full min-h-[96px]">
+        <Card className={`rounded-2xl border border-border/70 shadow-xs hover:shadow-md transition-all duration-200 bg-card overflow-hidden h-full w-full min-w-0 ${className}`}>
+            <CardContent className="p-3.5 sm:p-5 flex flex-col justify-between h-full min-h-[96px] w-full min-w-0">
                 <div className="flex items-center justify-between gap-2">
                     <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider truncate">
                         {label}

@@ -98,9 +98,9 @@ export function QuickActionGrid({
                 const style = actionStyles[act.variant || 'primary'];
 
                 const content = (
-                    <div className={`group flex items-center gap-3 p-3 sm:p-3.5 rounded-2xl border ${style.border} bg-card hover:bg-muted/40 transition-all shadow-2xs h-full min-h-[56px]`}>
-                        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${style.badgeBg} shadow-2xs`}>
-                            <Icon className="h-5 w-5" strokeWidth={2.2} />
+                    <div className={`group flex items-center gap-2.5 sm:gap-3 p-3 sm:p-3.5 rounded-2xl border ${style.border} bg-card hover:bg-muted/40 transition-all shadow-2xs h-full min-h-[56px] w-full min-w-0`}>
+                        <div className={`flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl ${style.badgeBg} shadow-2xs`}>
+                            <Icon className="h-4 w-4 sm:h-5 sm:w-5" strokeWidth={2.2} />
                         </div>
                         <div className="flex-1 min-w-0">
                             <h3 className="text-xs sm:text-sm font-bold text-foreground truncate leading-tight group-hover:text-primary transition-colors">
