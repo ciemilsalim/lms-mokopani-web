@@ -144,7 +144,7 @@ class MaterialController extends Controller
         ]);
     }
 
-    public function create()
+    public function create(Request $request)
     {
         $teacher = Auth::user()->teacher;
         $activeYear = \App\Models\AcademicYear::getActive();
@@ -167,9 +167,14 @@ class MaterialController extends Controller
             ->doesntHave('subObjectives')
             ->get();
 
+        $initialClassId = $request->query('class_id');
+        $initialSubjectId = $request->query('subject_id');
+
         return Inertia::render('materials/create', [
-            'teachings'  => $teachings,
-            'objectives' => $objectives,
+            'teachings'          => $teachings,
+            'objectives'         => $objectives,
+            'initial_class_id'   => $initialClassId ? (int)$initialClassId : null,
+            'initial_subject_id' => $initialSubjectId ? (int)$initialSubjectId : null,
         ]);
     }
 

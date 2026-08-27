@@ -116,6 +116,8 @@ export interface MaterialFormProps {
     mode: 'create' | 'edit';
     teachings: Teaching[];
     objectives: Objective[];
+    initialClassId?: number | null;
+    initialSubjectId?: number | null;
     // Edit-only props
     materialId?: number;
     initialData?: {
@@ -136,6 +138,8 @@ export function MaterialForm({
     mode,
     teachings,
     objectives,
+    initialClassId,
+    initialSubjectId,
     materialId,
     initialData,
     existingResources = [],
@@ -143,9 +147,22 @@ export function MaterialForm({
     errors = {},
     processing = false,
 }: MaterialFormProps) {
+    const uniqueSubjects = Array.from(
+        new Map(teachings.map(t => [t.subject_id, { id: t.subject_id, name: t.subject?.name }])).values()
+    );
+
+    // Default subject auto-selection
+    const defaultSubjectId = initialData?.subject_id
+        || (initialSubjectId ? initialSubjectId.toString() : '')
+        || (uniqueSubjects.length === 1 ? uniqueSubjects[0].id.toString() : '');
+
+    // Default class auto-selection
+    const defaultSchoolClasses = initialData?.school_classes
+        || (initialClassId ? [initialClassId] : []);
+
     // --- Form State ---
-    const [subjectId, setSubjectId] = useState(initialData?.subject_id || '');
-    const [schoolClasses, setSchoolClasses] = useState<number[]>(initialData?.school_classes || []);
+    const [subjectId, setSubjectId] = useState(defaultSubjectId);
+    const [schoolClasses, setSchoolClasses] = useState<number[]>(defaultSchoolClasses);
     const [learningObjectiveId, setLearningObjectiveId] = useState(initialData?.learning_objective_id || '');
     const [title, setTitle] = useState(initialData?.title || '');
     const [content, setContent] = useState(initialData?.content || '');
@@ -153,6 +170,11 @@ export function MaterialForm({
     const [mainFile, setMainFile] = useState<File | null>(null);
     const [thumbnail, setThumbnail] = useState<File | null>(null);
     const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
+
+    // --- Progressive Disclosure Media Toggles ---
+    const [showLinkInput, setShowLinkInput] = useState(Boolean(externalLink));
+    const [showFileInput, setShowFileInput] = useState(Boolean(mainFile));
+    const [showImageSection, setShowImageSection] = useState(false);
 
     // --- Resource State ---
     const [newResources, setNewResources] = useState<NewResource[]>([]);
@@ -177,10 +199,6 @@ export function MaterialForm({
     const existingImages = initialExistingImages.filter(img => !imagesToDelete.includes(img.id));
     const totalImages = existingImages.length + imageFiles.length + imageUrls.length;
     const maxImages = 6;
-
-    const uniqueSubjects = Array.from(
-        new Map(teachings.map(t => [t.subject_id, { id: t.subject_id, name: t.subject?.name }])).values()
-    );
 
     const classesForSubject = teachings
         .filter(t => t.subject_id === parseInt(subjectId))
@@ -257,7 +275,7 @@ export function MaterialForm({
         setImagesToDelete(prev => [...prev, id]);
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = (e: React.FormEvent, isDraft = false) => {
         e.preventDefault();
         setIsSubmitting(true);
 
@@ -312,13 +330,13 @@ export function MaterialForm({
 
     return (
         <>
-            <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-8 pb-20 md:pb-8">
+            <form onSubmit={(e) => handleSubmit(e, false)} className="space-y-4 sm:space-y-6">
                 {/* Global Error Summary */}
                 {Object.keys(errors).length > 0 && (
-                    <div className="rounded-2xl bg-destructive/10 p-4 border border-destructive/20 text-destructive text-sm font-medium flex flex-col gap-1.5">
+                    <div className="rounded-2xl bg-destructive/10 p-3.5 sm:p-4 border border-destructive/20 text-destructive text-xs sm:text-sm font-medium flex flex-col gap-1.5">
                         <p className="font-bold flex items-center gap-2">
                             <AlertTriangle className="h-4 w-4" />
-                            {mode === 'create' ? 'Gagal menyimpan materi.' : 'Gagal memperbarui materi.'} Silakan periksa kesalahan berikut:
+                            {mode === 'create' ? 'Gagal menyimpan materi.' : 'Gagal memperbarui materi.'} Silakan periksa kolom berikut:
                         </p>
                         <ul className="list-disc pl-5 text-xs space-y-0.5">
                             {Object.values(errors).map((err, i) => (
@@ -328,22 +346,22 @@ export function MaterialForm({
                     </div>
                 )}
 
-                {/* ═══════ SECTION 1: Konteks Pembelajaran ═══════ */}
+                {/* ═══════ SECTION 1: Untuk Kelas (Konteks) ═══════ */}
                 <MaterialFormSection
                     icon={BookOpen}
-                    title="Konteks Pembelajaran"
-                    description="Tentukan mata pelajaran, kelas, dan tujuan pembelajaran."
+                    title="1. Untuk Siapa?"
+                    description="Pilih mata pelajaran, kelas sasaran, dan tujuan pembelajaran."
                 >
                     {/* Mata Pelajaran */}
-                    <div className="space-y-2">
-                        <label className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
-                            <BookOpen className="h-3.5 w-3.5 text-primary/60" />
+                    <div className="space-y-1.5">
+                        <label className="flex items-center gap-1.5 text-xs font-bold text-foreground">
+                            <BookOpen className="h-3.5 w-3.5 text-primary" />
                             Mata Pelajaran
                         </label>
                         <select
                             value={subjectId}
                             onChange={(e) => handleSubjectChange(e.target.value)}
-                            className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition min-h-[48px]"
+                            className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-xs sm:text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition min-h-[44px]"
                         >
                             <option value="">Pilih Mata Pelajaran</option>
                             {uniqueSubjects.map(s => (
@@ -363,16 +381,22 @@ export function MaterialForm({
                     />
 
                     {/* Tujuan Pembelajaran */}
-                    <div className="space-y-2">
-                        <label className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
-                            <Target className="h-3.5 w-3.5 text-primary/60" />
-                            Tujuan Pembelajaran (TP)
-                        </label>
+                    <div className="space-y-1.5 pt-1">
+                        <div className="flex items-center justify-between">
+                            <label className="flex items-center gap-1.5 text-xs font-bold text-foreground">
+                                <Target className="h-3.5 w-3.5 text-primary" />
+                                Tujuan Pembelajaran (TP)
+                            </label>
+                            <span className="text-[10px] text-muted-foreground font-semibold">Opsional</span>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground">
+                            Hubungkan materi dengan TP agar pembelajaran lebih terstruktur.
+                        </p>
                         <select
                             value={learningObjectiveId}
                             onChange={(e) => setLearningObjectiveId(e.target.value)}
                             disabled={!subjectId}
-                            className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition disabled:opacity-50 min-h-[48px]"
+                            className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-xs sm:text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition disabled:opacity-50 min-h-[44px]"
                         >
                             <option value="">Pilih TP (Opsional)</option>
                             {filteredObjectives.map(obj => (
@@ -385,21 +409,21 @@ export function MaterialForm({
 
                     {/* AI Assistant Panel (Create Only) */}
                     {mode === 'create' && learningObjectiveId && (
-                        <div className="space-y-3 p-4 rounded-2xl border border-primary/15 bg-gradient-to-r from-violet-500/5 to-indigo-500/5">
+                        <div className="space-y-3 p-3.5 sm:p-4 rounded-2xl border border-primary/20 bg-gradient-to-r from-violet-500/5 to-indigo-500/5 mt-2">
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                                 <div className="space-y-0.5">
-                                    <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
+                                    <h4 className="text-xs sm:text-sm font-bold text-foreground flex items-center gap-2">
                                         <Sparkles className="h-4 w-4 text-primary" />
                                         Asisten AI Mokopani
                                     </h4>
-                                    <p className="text-xs text-muted-foreground">Buat draf judul dan isi materi secara otomatis berdasarkan TP.</p>
+                                    <p className="text-[11px] text-muted-foreground">Buat draf judul dan isi materi secara otomatis berdasarkan TP.</p>
                                 </div>
                                 <div className="flex items-center gap-2 shrink-0">
                                     <button
                                         type="button"
                                         onClick={() => setIsPromptModalOpen(true)}
                                         title="Pengaturan Prompt AI"
-                                        className="p-2.5 rounded-xl border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted transition-all min-h-[44px] min-w-[44px] flex items-center justify-center"
+                                        className="p-2 rounded-xl border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted transition-all min-h-[40px] min-w-[40px] flex items-center justify-center"
                                     >
                                         <Settings className="h-4 w-4" />
                                     </button>
@@ -407,16 +431,16 @@ export function MaterialForm({
                                         type="button"
                                         onClick={handleSuggestAI}
                                         disabled={isSuggesting}
-                                        className="shrink-0 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 px-5 py-2.5 text-xs font-bold text-white shadow-lg shadow-violet-500/25 transition-all hover:brightness-110 active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50 min-h-[44px]"
+                                        className="shrink-0 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 px-4 py-2 text-xs font-bold text-white shadow-md shadow-violet-500/20 transition-all hover:brightness-110 active:scale-[0.98] flex items-center justify-center gap-1.5 disabled:opacity-50 min-h-[40px]"
                                     >
-                                        <Sparkles className={`h-4 w-4 ${isSuggesting ? 'animate-pulse' : ''}`} />
+                                        <Sparkles className={`h-3.5 w-3.5 ${isSuggesting ? 'animate-pulse' : ''}`} />
                                         {isSuggesting ? 'Merancang...' : 'Rancang dengan AI'}
                                     </button>
                                 </div>
                             </div>
 
                             {aiNotification && (
-                                <div className={`p-3 rounded-xl border flex items-start gap-2 text-xs ${
+                                <div className={`p-2.5 rounded-xl border flex items-start gap-2 text-xs ${
                                     aiNotification.type === 'error'
                                         ? 'bg-destructive/10 border-destructive/20 text-destructive'
                                         : 'bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400'
@@ -429,35 +453,33 @@ export function MaterialForm({
                     )}
                 </MaterialFormSection>
 
-                {/* ═══════ SECTION 2: Informasi Materi ═══════ */}
+                {/* ═══════ SECTION 2: Isi Materi ═══════ */}
                 <MaterialFormSection
-                    icon={Zap}
-                    title="Informasi Materi"
-                    description="Berikan judul yang jelas dan menarik."
+                    icon={AlignLeft}
+                    title="2. Materinya Apa?"
+                    description="Tulis judul yang jelas dan isi materi pembelajaran."
                 >
-                    <div className="space-y-2">
-                        <label className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
-                            <Zap className="h-3.5 w-3.5 text-primary/60" />
+                    <div className="space-y-1.5">
+                        <label className="flex items-center gap-1.5 text-xs font-bold text-foreground">
+                            <Zap className="h-3.5 w-3.5 text-primary" />
                             Judul Materi
                         </label>
+                        <p className="text-[11px] text-muted-foreground">Berikan judul yang mudah dipahami siswa.</p>
                         <input
                             type="text"
                             placeholder="Contoh: Algoritma dan Pemrograman Dasar"
                             value={title}
                             onChange={(e) => setTitle(e.target.value)}
-                            className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm font-medium text-foreground outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition min-h-[48px]"
+                            className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-xs sm:text-sm font-medium text-foreground outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition min-h-[44px]"
                         />
                         {errors.title && <p className="text-xs text-destructive font-medium">{errors.title}</p>}
                     </div>
-                </MaterialFormSection>
 
-                {/* ═══════ SECTION 3: Isi Materi ═══════ */}
-                <MaterialFormSection
-                    icon={AlignLeft}
-                    title="Isi Materi"
-                    description="Tuliskan materi yang akan dipelajari siswa."
-                >
-                    <div className="space-y-2">
+                    <div className="space-y-1.5 pt-2">
+                        <label className="flex items-center gap-1.5 text-xs font-bold text-foreground">
+                            <AlignLeft className="h-3.5 w-3.5 text-primary" />
+                            Isi Materi Pembelajaran
+                        </label>
                         <div className="rounded-2xl overflow-hidden border border-border bg-card text-card-foreground">
                             <ReactQuill
                                 theme="snow"
@@ -465,57 +487,104 @@ export function MaterialForm({
                                 value={content}
                                 onChange={(val) => setContent(val)}
                                 className="material-quill-editor text-foreground"
-                                placeholder="Tuliskan isi materi secara detail atau ringkasan kompetensi di sini..."
+                                placeholder="Tuliskan isi materi pembelajaran, poin-poin penjelasan, atau panduan tugas di sini..."
                             />
                         </div>
                         {errors.content && <p className="text-xs text-destructive font-medium">{errors.content}</p>}
                     </div>
                 </MaterialFormSection>
 
-                {/* ═══════ SECTION 4: Media & Lampiran ═══════ */}
+                {/* ═══════ SECTION 3: Media & Lampiran (Progressive Disclosure) ═══════ */}
                 <MaterialFormSection
                     icon={Upload}
-                    title="Media & Lampiran"
-                    description="Tambahkan berkas, link, dan gambar pendukung."
+                    title="3. Tambahkan Pendukung (Opsional)"
+                    description="Lengkapi materi dengan link, berkas modul, atau gambar."
                 >
-                    {/* External Link */}
-                    <div className="space-y-2">
-                        <label className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
-                            <LinkIcon className="h-3.5 w-3.5 text-primary/60" />
-                            Link Eksternal
-                        </label>
-                        <input
-                            type="url"
-                            placeholder="https://..."
-                            value={externalLink}
-                            onChange={(e) => setExternalLink(e.target.value)}
-                            className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition min-h-[44px]"
-                        />
-                        {errors.external_link && <p className="text-xs text-destructive font-medium">{errors.external_link}</p>}
+                    {/* Action Pills to add Media Types */}
+                    <div className="flex flex-wrap gap-2 pb-1">
+                        <button
+                            type="button"
+                            onClick={() => setShowLinkInput(!showLinkInput)}
+                            className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all min-h-[38px] border ${
+                                showLinkInput || externalLink
+                                    ? 'bg-primary/10 border-primary/40 text-primary'
+                                    : 'bg-muted/50 border-border/70 text-muted-foreground hover:text-foreground'
+                            }`}
+                        >
+                            <LinkIcon className="h-3.5 w-3.5" />
+                            <span>{showLinkInput || externalLink ? '✓ Link Eksternal' : '+ Tambah Link'}</span>
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() => setShowFileInput(!showFileInput)}
+                            className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all min-h-[38px] border ${
+                                showFileInput || mainFile
+                                    ? 'bg-primary/10 border-primary/40 text-primary'
+                                    : 'bg-muted/50 border-border/70 text-muted-foreground hover:text-foreground'
+                            }`}
+                        >
+                            <Upload className="h-3.5 w-3.5" />
+                            <span>{showFileInput || mainFile ? '✓ File Dokumen' : '+ Tambah File'}</span>
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setShowImageSection(true);
+                                setIsImageModalOpen(true);
+                            }}
+                            className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all min-h-[38px] border ${
+                                totalImages > 0
+                                    ? 'bg-primary/10 border-primary/40 text-primary'
+                                    : 'bg-muted/50 border-border/70 text-muted-foreground hover:text-foreground'
+                            }`}
+                        >
+                            <ImagePlus className="h-3.5 w-3.5" />
+                            <span>{totalImages > 0 ? `✓ ${totalImages} Gambar` : '+ Tambah Gambar'}</span>
+                        </button>
                     </div>
 
+                    {/* External Link Field */}
+                    {showLinkInput && (
+                        <div className="space-y-1.5 p-3 rounded-xl bg-muted/20 border border-border/60 fade-in">
+                            <label className="flex items-center justify-between text-xs font-semibold text-foreground">
+                                <span>Link / URL Pembelajaran</span>
+                                <button
+                                    type="button"
+                                    onClick={() => { setExternalLink(''); setShowLinkInput(false); }}
+                                    className="text-[11px] text-muted-foreground hover:text-destructive"
+                                >
+                                    Hapus
+                                </button>
+                            </label>
+                            <input
+                                type="url"
+                                placeholder="https://youtube.com/... atau https://drive.google.com/..."
+                                value={externalLink}
+                                onChange={(e) => setExternalLink(e.target.value)}
+                                className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-xs sm:text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition min-h-[44px]"
+                            />
+                            {errors.external_link && <p className="text-xs text-destructive font-medium">{errors.external_link}</p>}
+                        </div>
+                    )}
+
                     {/* Main File Upload */}
-                    <div className="space-y-2">
-                        <label className="text-xs font-semibold text-muted-foreground">File Utama</label>
-                        <div className="relative group">
-                            <div className={`flex flex-col items-center justify-center rounded-2xl border-2 border-dashed p-6 transition-all hover:border-primary/50 cursor-pointer min-h-[100px] ${
-                                mainFile ? 'border-primary bg-primary/5' : 'border-border bg-muted/10'
-                            }`}>
-                                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-card shadow-sm mb-2">
-                                    <Upload className={`h-5 w-5 ${mainFile ? 'text-primary' : 'text-muted-foreground'}`} />
-                                </div>
-                                <p className="text-xs font-bold text-muted-foreground">
-                                    {mainFile ? 'File Terpilih' : 'Upload File'}
-                                </p>
-                                <p className="mt-1 text-[10px] text-muted-foreground/60">PDF, DOC, PPT, Video (maks 10MB)</p>
-                                <input
-                                    type="file"
-                                    onChange={(e) => setMainFile(e.target.files ? e.target.files[0] : null)}
-                                    className="absolute inset-0 cursor-pointer opacity-0"
-                                />
-                            </div>
-                            {mainFile && (
-                                <div className="mt-2 flex items-center gap-2 rounded-xl bg-primary/5 p-3 border border-primary/10">
+                    {showFileInput && (
+                        <div className="space-y-1.5 p-3 rounded-xl bg-muted/20 border border-border/60 fade-in">
+                            <label className="flex items-center justify-between text-xs font-semibold text-foreground">
+                                <span>File Modul / Dokumen (PDF, DOC, PPT)</span>
+                                <button
+                                    type="button"
+                                    onClick={() => { setMainFile(null); setShowFileInput(false); }}
+                                    className="text-[11px] text-muted-foreground hover:text-destructive"
+                                >
+                                    Tutup
+                                </button>
+                            </label>
+                            
+                            {mainFile ? (
+                                <div className="flex items-center gap-2 rounded-xl bg-primary/5 p-3 border border-primary/20">
                                     <FileText className="h-4 w-4 text-primary shrink-0" />
                                     <span className="text-xs font-bold text-primary truncate flex-1">{mainFile.name}</span>
                                     <button
@@ -526,26 +595,41 @@ export function MaterialForm({
                                         <X className="h-3.5 w-3.5" />
                                     </button>
                                 </div>
+                            ) : (
+                                <div className="relative flex items-center justify-center rounded-xl border-2 border-dashed border-border bg-card p-4 hover:border-primary/50 transition cursor-pointer min-h-[72px]">
+                                    <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground">
+                                        <Upload className="h-4 w-4 text-primary" />
+                                        <span>Pilih File dari Perangkat (Maks. 10MB)</span>
+                                    </div>
+                                    <input
+                                        type="file"
+                                        onChange={(e) => setMainFile(e.target.files ? e.target.files[0] : null)}
+                                        className="absolute inset-0 cursor-pointer opacity-0"
+                                    />
+                                </div>
                             )}
                         </div>
-                    </div>
+                    )}
 
-                    {/* Media Belajar / Images */}
-                    <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                            <label className="text-xs font-semibold text-muted-foreground">
-                                Media Belajar / Gambar
-                            </label>
-                            <span className="text-[10px] font-bold text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
-                                {totalImages} / {maxImages}
-                            </span>
-                        </div>
+                    {/* Media Belajar / Images Preview */}
+                    {totalImages > 0 && (
+                        <div className="space-y-2 p-3 rounded-xl bg-muted/20 border border-border/60 fade-in">
+                            <div className="flex items-center justify-between">
+                                <span className="text-xs font-semibold text-foreground">
+                                    Gambar Terlampir ({totalImages}/{maxImages})
+                                </span>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsImageModalOpen(true)}
+                                    className="text-xs font-bold text-primary hover:underline"
+                                >
+                                    + Kelola Gambar
+                                </button>
+                            </div>
 
-                        {/* Image Preview */}
-                        {totalImages > 0 && (
                             <div className="grid grid-cols-3 gap-2">
                                 {existingImages.map((img) => (
-                                    <div key={`existing-${img.id}`} className="relative group aspect-square rounded-xl overflow-hidden border border-border bg-muted/30">
+                                    <div key={`existing-${img.id}`} className="relative aspect-square rounded-xl overflow-hidden border border-border bg-muted/30">
                                         <img src={img.path} className="w-full h-full object-cover" alt="Gambar materi" />
                                         <span className="absolute bottom-1 left-1 text-[8px] font-bold bg-black/60 text-white px-1.5 py-0.5 rounded">
                                             {img.type === 'legacy' ? 'Thumb' : 'Tersimpan'}
@@ -565,21 +649,10 @@ export function MaterialForm({
                                     </div>
                                 ))}
                             </div>
-                        )}
+                        </div>
+                    )}
 
-                        {totalImages < maxImages && (
-                            <button
-                                type="button"
-                                onClick={() => setIsImageModalOpen(true)}
-                                className="w-full flex flex-col items-center justify-center gap-2 py-5 rounded-2xl border-2 border-dashed border-border bg-muted/10 hover:border-primary/50 hover:bg-primary/5 transition-all cursor-pointer group min-h-[80px]"
-                            >
-                                <ImagePlus className="h-5 w-5 text-muted-foreground/40 group-hover:text-primary transition" />
-                                <span className="text-[10px] font-bold text-muted-foreground uppercase">Tambah Gambar</span>
-                            </button>
-                        )}
-                    </div>
-
-                    {/* Resources */}
+                    {/* Resources Editor */}
                     <MaterialResourceEditor
                         newResources={newResources}
                         onAddResource={addResource}
@@ -591,49 +664,30 @@ export function MaterialForm({
                     />
                 </MaterialFormSection>
 
-                {/* ═══════ SECTION 6: Review & Submit ═══════ */}
-                <div className="space-y-4 pt-2">
-                    {/* Review Summary */}
-                    <div className="flex flex-wrap gap-2">
-                        {subjectId && uniqueSubjects.find(s => s.id === parseInt(subjectId)) && (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-primary/10 text-primary text-[10px] font-bold">
-                                <BookOpen className="h-3 w-3" />
-                                {uniqueSubjects.find(s => s.id === parseInt(subjectId))?.name}
-                            </span>
-                        )}
-                        {schoolClasses.length > 0 && (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-muted text-foreground text-[10px] font-bold">
-                                {schoolClasses.length} kelas
-                            </span>
-                        )}
-                        {title && (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-muted text-foreground text-[10px] font-bold truncate max-w-[200px]">
-                                {title}
-                            </span>
-                        )}
-                    </div>
+                {/* ═══════ STICKY ACTION BAR & BOTTOM BUTTONS ═══════ */}
+                <div className="fixed md:static bottom-0 left-0 right-0 p-3 sm:p-0 bg-card/95 md:bg-transparent backdrop-blur-md md:backdrop-blur-none border-t border-border/80 md:border-none z-30 flex items-center gap-2.5 shadow-lg md:shadow-none max-w-3xl mx-auto w-full min-w-0">
+                    {/* Secondary Submit: Simpan Draft */}
+                    <button
+                        type="button"
+                        onClick={(e) => handleSubmit(e, true)}
+                        disabled={isProcessing}
+                        className="flex-1 md:w-auto px-4 py-3 rounded-xl border border-border bg-muted/70 text-foreground font-bold text-xs sm:text-sm hover:bg-muted transition active:scale-97 min-h-[48px] flex items-center justify-center gap-1.5"
+                    >
+                        <Save className="h-4 w-4 text-muted-foreground" />
+                        <span>Simpan Draf</span>
+                    </button>
 
-                    {/* Primary Submit */}
+                    {/* Primary Submit: Terbitkan Materi */}
                     <button
                         type="submit"
                         disabled={isProcessing}
-                        className="w-full rounded-2xl bg-primary py-3.5 text-sm font-extrabold text-primary-foreground shadow-md hover:bg-primary/90 transition active:scale-[0.98] disabled:opacity-50 min-h-[48px] flex items-center justify-center gap-2"
+                        className="flex-1 md:flex-initial md:px-8 py-3 rounded-xl bg-primary text-primary-foreground font-black text-xs sm:text-sm hover:bg-primary/90 shadow-md transition active:scale-97 disabled:opacity-50 min-h-[48px] flex items-center justify-center gap-2"
                     >
                         {isProcessing ? (
-                            <><Loader2 className="h-4 w-4 animate-spin" /> {mode === 'create' ? 'Menerbitkan...' : 'Menyimpan...'}</>
+                            <><Loader2 className="h-4 w-4 animate-spin" /> Menerbitkan...</>
                         ) : (
-                            <><Save className="h-4 w-4" /> {mode === 'create' ? 'Terbitkan Materi' : 'Simpan Perubahan'}</>
+                            <><Sparkles className="h-4 w-4" /> {mode === 'create' ? 'Terbitkan Materi' : 'Simpan Perubahan'}</>
                         )}
-                    </button>
-
-                    {/* Secondary Cancel */}
-                    <button
-                        type="button"
-                        onClick={() => window.history.back()}
-                        disabled={isProcessing}
-                        className="w-full rounded-2xl border border-border py-3 text-sm font-bold text-muted-foreground hover:bg-muted/50 transition min-h-[44px]"
-                    >
-                        Batal
                     </button>
                 </div>
             </form>

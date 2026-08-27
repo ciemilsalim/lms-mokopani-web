@@ -22,32 +22,36 @@ interface Teaching {
 interface CreateMaterialProps {
     teachings: Teaching[];
     objectives: Objective[];
+    initial_class_id?: number | null;
+    initial_subject_id?: number | null;
     errors?: Record<string, string>;
 }
 
 const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Dashboard', href: '/dashboard' },
     { title: 'Bahan Materi', href: '/materials' },
     { title: 'Tambah Materi', href: '/materials/create' },
 ];
 
-export default function CreateMaterial({ teachings, objectives, errors = {} }: CreateMaterialProps) {
+export default function CreateMaterial({
+    teachings,
+    objectives,
+    initial_class_id,
+    initial_subject_id,
+    errors = {},
+}: CreateMaterialProps) {
     return (
-        <AppLayout breadcrumbs={breadcrumbs}>
+        <AppLayout breadcrumbs={breadcrumbs} hideBottomNav={true}>
             <Head title="Tambah Materi – LMS Mokopani" />
 
-            <div className="max-w-3xl mx-auto px-4 sm:px-6 fade-in">
-                {/* Page Header */}
-                <div className="space-y-1 mb-6 sm:mb-8">
-                    <button
-                        onClick={() => window.history.back()}
-                        className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground hover:text-foreground transition mb-3 min-h-[44px] -ml-1 px-1"
-                    >
-                        <ChevronLeft className="h-4 w-4" />
-                        Kembali
-                    </button>
-                    <h1 className="text-xl sm:text-2xl font-black text-foreground">Tambah Materi</h1>
-                    <p className="text-sm text-muted-foreground">Lengkapi informasi materi pembelajaran</p>
+            <div className="max-w-3xl mx-auto px-3 sm:px-6 fade-in pb-28 md:pb-12 w-full min-w-0">
+                {/* Form Subtitle / Header */}
+                <div className="mb-4 sm:mb-6 pt-1">
+                    <h1 className="text-xl sm:text-2xl font-black text-foreground tracking-tight">
+                        Tambah Materi
+                    </h1>
+                    <p className="text-xs sm:text-sm text-muted-foreground font-medium mt-0.5">
+                        Lengkapi informasi dan materi pembelajaran untuk siswa
+                    </p>
                 </div>
 
                 {/* Form */}
@@ -55,6 +59,8 @@ export default function CreateMaterial({ teachings, objectives, errors = {} }: C
                     mode="create"
                     teachings={teachings}
                     objectives={objectives}
+                    initialClassId={initial_class_id}
+                    initialSubjectId={initial_subject_id}
                     errors={errors}
                 />
             </div>
