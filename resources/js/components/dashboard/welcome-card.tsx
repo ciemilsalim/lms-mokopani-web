@@ -74,7 +74,7 @@ export function WelcomeCard({
                                 <div className="flex items-center gap-1.5 text-white/90 text-xs font-medium max-w-full">
                                     <span className="opacity-80 shrink-0">Mengajar:</span>
                                     <span className="font-bold text-white bg-white/15 px-2 py-0.5 rounded-md text-[11px] max-w-full truncate">
-                                        {identity.extra}
+                                        {identity.extra.replace(/^Mengajar:\s*/i, '')}
                                     </span>
                                 </div>
                             )}

@@ -139,7 +139,7 @@ export function TeacherDashboardView({
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Dashboard Guru - LMS Mokopani" />
 
-            <div className="space-y-5 sm:space-y-6 fade-in pb-16 md:pb-6 max-w-7xl mx-auto px-3.5 sm:px-6">
+            <div className="space-y-5 sm:space-y-6 fade-in pb-16 md:pb-6 max-w-7xl mx-auto w-full min-w-0">
                 {/* 1. WELCOME CARD (Hero Identity Banner) */}
                 <WelcomeCard
                     identity={identity || {
@@ -154,14 +154,14 @@ export function TeacherDashboardView({
                 />
 
                 {/* 2. RINGKASAN HARI INI (Summary Cards 2x2 Grid) */}
-                <div>
+                <div className="w-full min-w-0">
                     <SectionHeader
                         title="Ringkasan Pembelajaran"
                         subtitle="Statistik & kuantitas data diampu"
                         icon={GraduationCap}
                         className="mb-2.5"
                     />
-                    <div className="grid grid-cols-2 gap-2.5 sm:gap-4 sm:grid-cols-4">
+                    <div className="grid grid-cols-2 gap-2.5 sm:gap-4 sm:grid-cols-4 w-full min-w-0">
                         <SummaryCard
                             label="Siswa"
                             value={stats?.total_students ?? 0}
@@ -194,7 +194,7 @@ export function TeacherDashboardView({
                 </div>
 
                 {/* 3. AKSI CEPAT GURU (Quick Action 2x2 Grid) */}
-                <div>
+                <div className="w-full min-w-0">
                     <SectionHeader
                         title="Aksi Cepat Guru"
                         subtitle="Pintasan pembuatan materi & asesmen"
