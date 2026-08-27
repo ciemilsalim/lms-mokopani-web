@@ -49,10 +49,11 @@ export default function ClassShow({
     const [activeTab, setActiveTab] = useState<ClassTabKey>('overview');
     const [studentSearch, setStudentSearch] = useState('');
 
+    const cleanClassName = schoolClass.name.replace(/^Kelas\s+Kelas\s*/i, 'Kelas ').replace(/^Kelas\s*(\d)/i, 'Kelas $1');
+
     const breadcrumbs: BreadcrumbItem[] = [
-        { title: 'Dashboard', href: '/dashboard' },
-        { title: 'Daftar Kelas', href: '/classes' },
-        { title: schoolClass.name, href: `/classes/${schoolClass.id}` },
+        { title: 'Kelas Saya', href: '/classes' },
+        { title: cleanClassName, href: `/classes/${schoolClass.id}` },
     ];
 
     const filteredStudents = useMemo(() => {
@@ -63,20 +64,62 @@ export default function ClassShow({
         );
     }, [students, studentSearch]);
 
+    const pendingAssignments = useMemo(() => {
+        return assignments.filter((a) => (a.pending_count || 0) > 0);
+    }, [assignments]);
+
+    // Class specific quick actions with direct action verbs
+    const classQuickActions = [
+        {
+            id: 'presensi',
+            title: 'Mulai Presensi',
+            description: 'Buka form absensi',
+            href: '/sso/presensi',
+            icon: CalendarCheck,
+            variant: 'info' as const,
+            isExternal: true,
+        },
+        {
+            id: 'materi',
+            title: 'Tambah Materi',
+            description: 'Unggah modul & bahan',
+            href: '/materials/create',
+            icon: BookOpen,
+            variant: 'primary' as const,
+        },
+        {
+            id: 'asesmen',
+            title: 'Buat Asesmen',
+            description: 'Tugas, tes & kuis',
+            href: '/assignments/create',
+            icon: ClipboardList,
+            variant: 'destructive' as const,
+        },
+        {
+            id: 'siswa',
+            title: 'Kelola Siswa',
+            description: `${students.length} siswa terdaftar`,
+            href: '#',
+            icon: Users,
+            variant: 'success' as const,
+            onClick: () => setActiveTab('students'),
+        },
+    ];
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title={`Kelas ${schoolClass.name} - LMS Mokopani`} />
+            <Head title={`${cleanClassName} - LMS Mokopani`} />
 
-            <div className="space-y-5 sm:space-y-6 fade-in pb-16 md:pb-6 max-w-7xl mx-auto px-4 sm:px-6">
-                {/* Contextual Header */}
+            <div className="space-y-4 sm:space-y-5 fade-in pb-16 md:pb-6 max-w-7xl mx-auto w-full min-w-0">
+                {/* 1. Compact Contextual Hero Banner */}
                 <ClassHeader
-                    className={`Kelas ${schoolClass.name}`}
+                    className={cleanClassName}
                     subjects={schoolClass.subjects}
-                    studentsCount={schoolClass.students_count}
+                    studentsCount={students.length}
                     backUrl="/classes"
                 />
 
-                {/* Touch-Friendly Segmented Tabs */}
+                {/* 2. Touch-Friendly Navigation Tabs */}
                 <ClassTabs
                     activeTab={activeTab}
                     onTabChange={setActiveTab}
@@ -85,13 +128,13 @@ export default function ClassShow({
                     assignmentsCount={assignments.length}
                 />
 
-                {/* TAB 1: RINGKASAN OVERVIEW */}
+                {/* TAB 1: RINGKASAN RUANG KERJA (OVERVIEW) */}
                 {activeTab === 'overview' && (
-                    <div className="space-y-5 sm:space-y-6 fade-in">
-                        {/* Summary Cards */}
-                        <div className="grid grid-cols-2 gap-2.5 sm:gap-4 sm:grid-cols-4">
+                    <div className="space-y-4 sm:space-y-5 fade-in w-full min-w-0">
+                        {/* Summary Metrics Bar */}
+                        <div className="grid grid-cols-2 xs:grid-cols-4 gap-2 sm:gap-3 w-full min-w-0">
                             <SummaryCard
-                                label="Total Siswa"
+                                label="Siswa"
                                 value={students.length}
                                 icon={Users}
                                 variant="primary"
@@ -105,7 +148,7 @@ export default function ClassShow({
                                 variant="success"
                             />
                             <SummaryCard
-                                label="Bahan Materi"
+                                label="Materi"
                                 value={materials.length}
                                 icon={Library}
                                 variant="warning"
@@ -122,16 +165,158 @@ export default function ClassShow({
                             />
                         </div>
 
-                        {/* Quick Actions Grid for this class */}
-                        <div>
+                        {/* Aksi Cepat Kelas */}
+                        <div className="w-full min-w-0">
                             <SectionHeader
                                 title="Aksi Cepat Kelas"
-                                subtitle={`Aksi langsung untuk Kelas ${schoolClass.name}`}
-                                icon={BookOpen}
-                                className="mb-2.5"
+                                subtitle={`Tindakan langsung untuk ${cleanClassName}`}
+                                className="mb-2"
                             />
-                            <QuickActionGrid />
+                            <div className="grid grid-cols-2 xs:grid-cols-4 gap-2 sm:gap-3 w-full min-w-0">
+                                {classQuickActions.map((act) => {
+                                    const Icon = act.icon;
+                                    const cardContent = (
+                                        <div className="group flex flex-col xs:flex-row items-center gap-2 xs:gap-2.5 p-2.5 sm:p-3 rounded-2xl border border-border/70 bg-card hover:bg-muted/40 transition-all shadow-2xs h-full min-h-[52px] w-full min-w-0">
+                                            <div className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary shadow-2xs">
+                                                <Icon className="h-4 w-4" />
+                                            </div>
+                                            <div className="flex-1 min-w-0 text-center xs:text-left">
+                                                <h3 className="text-xs font-bold text-foreground truncate leading-tight group-hover:text-primary transition-colors">
+                                                    {act.title}
+                                                </h3>
+                                                <p className="text-[10px] text-muted-foreground truncate hidden xs:block mt-0.5">
+                                                    {act.description}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    );
+
+                                    if (act.onClick) {
+                                        return (
+                                            <button
+                                                key={act.id}
+                                                type="button"
+                                                onClick={act.onClick}
+                                                className="block min-w-0 w-full focus:outline-none focus:ring-2 focus:ring-primary/30 rounded-2xl active:scale-97 transition-transform text-left"
+                                            >
+                                                {cardContent}
+                                            </button>
+                                        );
+                                    }
+
+                                    if (act.isExternal) {
+                                        return (
+                                            <a
+                                                key={act.id}
+                                                href={act.href}
+                                                className="block min-w-0 w-full focus:outline-none focus:ring-2 focus:ring-primary/30 rounded-2xl active:scale-97 transition-transform"
+                                            >
+                                                {cardContent}
+                                            </a>
+                                        );
+                                    }
+
+                                    return (
+                                        <Link
+                                            key={act.id}
+                                            href={act.href}
+                                            className="block min-w-0 w-full focus:outline-none focus:ring-2 focus:ring-primary/30 rounded-2xl active:scale-97 transition-transform"
+                                        >
+                                            {cardContent}
+                                        </Link>
+                                    );
+                                })}
+                            </div>
                         </div>
+
+                        {/* Perlu Tindakan */}
+                        {pendingAssignments.length > 0 && (
+                            <Card className="rounded-2xl border border-rose-200/60 dark:border-rose-900/40 bg-rose-50/20 dark:bg-rose-950/10 p-3.5 sm:p-4 w-full min-w-0">
+                                <div className="flex items-center justify-between gap-3">
+                                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-rose-500/15 text-rose-600 dark:text-rose-400">
+                                            <AlertCircle className="h-4 w-4" />
+                                        </div>
+                                        <div className="min-w-0 flex-1">
+                                            <h3 className="text-xs sm:text-sm font-bold text-foreground truncate">
+                                                {pendingAssignments.reduce((sum, a) => sum + (a.pending_count || 0), 0)} tugas perlu dinilai di {cleanClassName}
+                                            </h3>
+                                            <p className="text-[11px] text-muted-foreground truncate mt-0.5">
+                                                {pendingAssignments.map(a => a.title).join(', ')}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <Link
+                                        href={`/assignments/${pendingAssignments[0].id}/grade-view`}
+                                        className="inline-flex items-center gap-1 text-xs font-bold text-rose-600 dark:text-rose-400 hover:underline shrink-0"
+                                    >
+                                        <span>Periksa</span>
+                                        <ChevronRight className="h-3.5 w-3.5" />
+                                    </Link>
+                                </div>
+                            </Card>
+                        )}
+
+                        {/* Aktivitas Terakhir Kelas */}
+                        <Card className="rounded-2xl border border-border/70 shadow-xs bg-card overflow-hidden w-full min-w-0">
+                            <div className="p-3 sm:p-4 border-b border-border/60 bg-muted/20 flex items-center justify-between">
+                                <h3 className="text-xs sm:text-sm font-bold text-foreground">Aktivitas Terakhir Kelas</h3>
+                                <button
+                                    type="button"
+                                    onClick={() => setActiveTab('materials')}
+                                    className="text-xs font-bold text-primary hover:underline flex items-center gap-0.5"
+                                >
+                                    <span>Semua</span>
+                                    <ChevronRight className="h-3 w-3" />
+                                </button>
+                            </div>
+                            <CardContent className="p-0">
+                                {materials.length === 0 && assignments.length === 0 ? (
+                                    <div className="py-5 text-center text-xs text-muted-foreground">
+                                        Belum ada aktivitas di kelas ini
+                                    </div>
+                                ) : (
+                                    <div className="divide-y divide-border/50">
+                                        {materials.slice(0, 2).map((m) => (
+                                            <Link
+                                                key={m.id}
+                                                href={`/materials/${m.id}`}
+                                                className="flex items-center justify-between p-3 sm:p-3.5 hover:bg-muted/30 transition text-xs"
+                                            >
+                                                <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-amber-500/15 text-amber-600 dark:text-amber-400">
+                                                        <BookOpen className="h-3.5 w-3.5" />
+                                                    </div>
+                                                    <div className="min-w-0 flex-1">
+                                                        <span className="font-bold text-foreground truncate block">{m.title}</span>
+                                                        <span className="text-[10px] text-muted-foreground">Materi Pembelajaran</span>
+                                                    </div>
+                                                </div>
+                                                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                            </Link>
+                                        ))}
+                                        {assignments.slice(0, 1).map((a) => (
+                                            <Link
+                                                key={a.id}
+                                                href={`/assignments/${a.id}/grade-view`}
+                                                className="flex items-center justify-between p-3 sm:p-3.5 hover:bg-muted/30 transition text-xs"
+                                            >
+                                                <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-rose-500/15 text-rose-600 dark:text-rose-400">
+                                                        <ClipboardList className="h-3.5 w-3.5" />
+                                                    </div>
+                                                    <div className="min-w-0 flex-1">
+                                                        <span className="font-bold text-foreground truncate block">{a.title}</span>
+                                                        <span className="text-[10px] text-muted-foreground">Penugasan & Asesmen</span>
+                                                    </div>
+                                                </div>
+                                                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                            </Link>
+                                        ))}
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
                     </div>
                 )}
 

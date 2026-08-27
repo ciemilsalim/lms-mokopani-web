@@ -34,7 +34,7 @@ export function ClassTabs({
     ];
 
     return (
-        <div className="w-full overflow-x-auto scrollbar-none py-1">
+        <div className="w-full overflow-x-auto scrollbar-none py-0.5">
             <div className="flex items-center gap-1.5 p-1 bg-muted/60 rounded-2xl border border-border/50 min-w-max">
                 {tabs.map((tab) => {
                     const isActive = activeTab === tab.key;
@@ -45,17 +45,17 @@ export function ClassTabs({
                             key={tab.key}
                             type="button"
                             onClick={() => onTabChange(tab.key)}
-                            className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all min-h-[44px] active:scale-95 ${
+                            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all min-h-[40px] active:scale-95 ${
                                 isActive
                                     ? 'bg-background text-primary shadow-2xs font-black'
-                                    : 'text-muted-foreground hover:text-foreground hover:bg-background/50'
+                                    : 'text-muted-foreground hover:text-foreground hover:bg-background/40'
                             }`}
                         >
-                            <Icon className={`h-4 w-4 ${isActive ? 'text-primary' : 'text-muted-foreground'}`} />
+                            <Icon className={`h-3.5 w-3.5 ${isActive ? 'text-primary' : 'text-muted-foreground'}`} />
                             <span>{tab.label}</span>
                             {typeof tab.badgeCount === 'number' && tab.badgeCount > 0 && (
                                 <span
-                                    className={`px-1.5 py-0.5 rounded-md text-[10px] font-black ${
+                                    className={`px-1.5 py-0.2 rounded-md text-[10px] font-black ${
                                         isActive ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'
                                     }`}
                                 >
