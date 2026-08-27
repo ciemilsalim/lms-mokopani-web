@@ -19,7 +19,14 @@ class AssignmentController extends Controller
         $activeYear = \App\Models\AcademicYear::getActive();
         $activeSemester = \App\Models\Semester::getActive();
 
-        $query = LmsAssignment::with(['subject', 'schoolClasses', 'learningObjective'])
+        $query = LmsAssignment::with([
+            'subject',
+            'schoolClasses' => function ($q) {
+                $q->withCount('students');
+            },
+            'learningObjective',
+            'submissions.student'
+        ])
             ->where('academic_year_id', $activeYear?->id)
             ->where('semester_id', $activeSemester?->id);
 
@@ -35,14 +42,9 @@ class AssignmentController extends Controller
             }
         }
 
-        $models = $query->withCount([
-            'submissions',
-            'submissions as pending_grading_count' => function ($q) {
-                $q->whereNull('score');
-            }
-        ])->latest()->get();
+        $models = $query->latest()->get();
 
-        $totalPendingGrading = $models->sum('pending_grading_count');
+        $totalPendingGrading = 0;
         $totalActiveAssessments = $models->count();
 
         $studentSubmissions = [];
@@ -67,37 +69,47 @@ class AssignmentController extends Controller
                 }
             }
 
-            $teacherGrouped = collect($classAssignments)->map(function ($item, $classId) {
+            $teacherGrouped = collect($classAssignments)->map(function ($item, $classId) use (&$totalPendingGrading) {
                 $classItems = collect($item['assignments']);
                 $firstClassItem = $classItems->first();
+                $classStudentsCount = $item['class']->students_count ?? 0;
                 
-                $subjectGroups = $classItems->groupBy('subject_id')->map(function ($subjectItems, $subjectId) {
+                $subjectGroups = $classItems->groupBy('subject_id')->map(function ($subjectItems, $subjectId) use ($classId, $classStudentsCount, &$totalPendingGrading) {
                     $firstSubjectItem = $subjectItems->first();
                     
                     $tpGroups = $subjectItems->groupBy(function ($item) {
                         return $item->learning_objective_id ?? 'null';
                     });
                     
-                    $objectives = $tpGroups->map(function ($tpItems, $tpId) {
+                    $objectives = $tpGroups->map(function ($tpItems, $tpId) use ($classId, $classStudentsCount, &$totalPendingGrading) {
                         $firstTp = $tpItems->first();
                         return [
                             'objective_id'          => $firstTp->learning_objective_id,
                             'objective_code'        => $firstTp->learningObjective?->code ?: ('TP ' . ($firstTp->learningObjective?->order ?? '?')),
                             'objective_description' => $firstTp->learningObjective?->description ?? 'Tanpa TP',
-                            'assignments'           => $tpItems->map(fn ($a) => [
-                                'id'                    => $a->id,
-                                'title'                 => $a->title,
-                                'description'           => $a->description,
-                                'subject_name'          => $a->subject?->name ?? '-',
-                                'subject_id'            => $a->subject_id,
-                                'due_date'              => $a->due_date?->format('d M Y'),
-                                'max_points'            => $a->max_points,
-                                'assessment_type'       => $a->assessment_type,
-                                'instrument_type'       => $a->instrument_type,
-                                'scoring_tool'          => $a->scoring_tool,
-                                'submissions_count'     => $a->submissions_count,
-                                'pending_grading_count' => $a->pending_grading_count ?? 0,
-                            ])->values(),
+                            'assignments'           => $tpItems->map(function ($a) use ($classId, $classStudentsCount, &$totalPendingGrading) {
+                                $classSubmissions = $a->submissions->filter(fn ($s) => $s->student?->school_class_id == $classId);
+                                $classPending = $classSubmissions->whereNull('score')->count();
+                                $classGraded = $classSubmissions->whereNotNull('score')->count();
+                                $totalPendingGrading += $classPending;
+
+                                return [
+                                    'id'                    => $a->id,
+                                    'title'                 => $a->title,
+                                    'description'           => $a->description,
+                                    'subject_name'          => $a->subject?->name ?? '-',
+                                    'subject_id'            => $a->subject_id,
+                                    'due_date'              => $a->due_date?->format('d M Y'),
+                                    'max_points'            => $a->max_points,
+                                    'assessment_type'       => $a->assessment_type,
+                                    'instrument_type'       => $a->instrument_type,
+                                    'scoring_tool'          => $a->scoring_tool,
+                                    'submissions_count'     => $classSubmissions->count(),
+                                    'graded_count'          => $classGraded,
+                                    'pending_grading_count' => $classPending,
+                                    'students_count'        => $classStudentsCount,
+                                ];
+                            })->values(),
                         ];
                     })->values();
                     
@@ -109,11 +121,20 @@ class AssignmentController extends Controller
                 })->values();
 
                 return [
-                    'class_id'   => (int) $classId,
-                    'class_name' => $item['class']->name ?? 'Kelas',
-                    'subjects'   => $subjectGroups,
+                    'class_id'       => (int) $classId,
+                    'class_name'     => $item['class']->name ?? 'Kelas',
+                    'students_count' => $classStudentsCount,
+                    'subjects'       => $subjectGroups,
                 ];
             })->values();
+
+            // Count assignments by type
+            $countsByType = [
+                'all'       => $models->count(),
+                'initial'   => $models->where('assessment_type', 'initial')->count(),
+                'formative' => $models->where('assessment_type', 'formative')->count(),
+                'summative' => $models->where('assessment_type', 'summative')->count(),
+            ];
 
             return Inertia::render('assignments/index', [
                 'teacher_grouped'  => $teacherGrouped,
@@ -124,6 +145,7 @@ class AssignmentController extends Controller
                     'total_pending_grading' => $totalPendingGrading,
                     'total_active'          => $totalActiveAssessments,
                 ],
+                'counts_by_type'   => $countsByType,
             ]);
         }
 
