@@ -3,9 +3,11 @@ import { useForm, router } from '@inertiajs/react';
 import {
     ChevronLeft, ChevronRight, CheckCircle2, AlertCircle,
     BookOpen, Users, Target, GraduationCap, Info, FileText, Plus, Trash2,
-    Check, Lock, Sparkles, Layers, ListChecks, Calendar, ArrowRight, Save
+    Check, Lock, Sparkles, Layers, ListChecks, Calendar, ArrowRight, Save,
+    Loader2, RefreshCw
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import axios from 'axios';
 
 interface Objective {
     id: number;
@@ -59,6 +61,8 @@ export function AssessmentForm({
 }: AssessmentFormProps) {
     const [currentStep, setCurrentStep] = useState(1);
     const [holidayWarning, setHolidayWarning] = useState<string | null>(null);
+    const [aiLoading, setAiLoading] = useState(false);
+    const [aiSuccessMessage, setAiSuccessMessage] = useState<string | null>(null);
 
     // Initial Form State
     const { data, setData, post, processing, errors } = useForm({
@@ -135,6 +139,72 @@ export function AssessmentForm({
             setHolidayWarning(null);
         }
     }, [data.due_date, holidays]);
+
+    // AI Generation Handler
+    const handleAiGenerate = async () => {
+        if (!data.learning_objective_id) return;
+        setAiLoading(true);
+        setAiSuccessMessage(null);
+
+        try {
+            const res = await axios.post(route('instructional-design.auto-suggest'), {
+                learning_objective_id: Number(data.learning_objective_id),
+                assessment_type: data.assessment_type || 'formative',
+                instrument_type: data.instrument_type || 'written_test',
+                regenerate: true
+            });
+
+            if (res.data) {
+                const d = res.data;
+                
+                // Set suggested Title & Description if empty or update
+                if (d.title) {
+                    setData('title', d.title);
+                } else if (!data.title) {
+                    const activeTp = objectives.find(o => o.id === Number(data.learning_objective_id));
+                    const typeName = data.assessment_type === 'initial' ? 'Asesmen Awal' : data.assessment_type === 'summative' ? 'Asesmen Sumatif' : 'LKPD Formatif';
+                    setData('title', `${typeName}: ${activeTp?.description || 'Pembelajaran'}`);
+                }
+
+                if (d.description || d.instructions || d.stimulus) {
+                    setData('description', d.description || d.instructions || d.stimulus || '');
+                }
+
+                // Process generated Questions
+                if (d.questions && Array.isArray(d.questions) && d.questions.length > 0) {
+                    const formattedQuestions = d.questions.map((q: any, idx: number) => {
+                        const isMcq = q.type === 'multiple_choice' || (q.options && q.options.length > 0);
+                        return {
+                            id: q.id || `q_${Date.now()}_${idx}`,
+                            type: isMcq ? 'multiple_choice' : (q.type || 'short_answer'),
+                            question: q.question || q.text || '',
+                            points: q.points || 10,
+                            options: isMcq && q.options ? q.options.map((opt: any, optIdx: number) => ({
+                                id: opt.id || `opt_${optIdx}_${Date.now()}`,
+                                text: opt.text || opt.label || '',
+                                is_correct: Boolean(opt.is_correct || optIdx === 0)
+                            })) : [
+                                { id: `opt_1_${Date.now()}`, text: '', is_correct: true },
+                                { id: `opt_2_${Date.now()}`, text: '', is_correct: false },
+                            ]
+                        };
+                    });
+
+                    setData('instrument_config', {
+                        ...data.instrument_config,
+                        questions: formattedQuestions
+                    });
+                }
+
+                setAiSuccessMessage('✨ Soal dan draf asesmen berhasil dibuat oleh AI!');
+                setTimeout(() => setAiSuccessMessage(null), 4500);
+            }
+        } catch (err) {
+            console.error('AI Generate Error:', err);
+        } finally {
+            setAiLoading(false);
+        }
+    };
 
     // Question Builder Handlers
     const handleAddQuestion = () => {
@@ -271,7 +341,7 @@ export function AssessmentForm({
 
     return (
         <div className="w-full space-y-3.5 pb-24">
-            {/* Header Stepper Navigation (33% Equal Width, Compact 52px Height) */}
+            {/* Header Stepper Navigation (33% Equal Width, Compact 46px Height) */}
             <div className="w-full bg-card rounded-2xl border border-border p-1.5 shadow-xs">
                 <div className="grid grid-cols-3 gap-1 w-full">
                     {steps.map((step) => {
@@ -283,7 +353,7 @@ export function AssessmentForm({
                                 key={step.id}
                                 type="button"
                                 onClick={() => setCurrentStep(step.id)}
-                                className={`flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl text-xs font-bold transition cursor-pointer min-h-[42px] truncate ${
+                                className={`flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl text-xs font-bold transition cursor-pointer min-h-[40px] truncate ${
                                     isCurrent
                                         ? 'bg-primary text-primary-foreground shadow-xs font-black'
                                         : isCompleted
@@ -432,6 +502,50 @@ export function AssessmentForm({
                             </div>
                         </div>
 
+                        {/* AI Assistant Banner */}
+                        <div className="p-3.5 rounded-2xl bg-gradient-to-r from-primary/10 via-primary/5 to-purple-500/10 border border-primary/20 space-y-2">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                                <div className="flex items-center gap-2">
+                                    <Sparkles className="h-4 w-4 text-primary shrink-0" />
+                                    <div>
+                                        <h4 className="text-xs font-bold text-foreground">Asisten AI Kurikulum Merdeka</h4>
+                                        <p className="text-[11px] text-muted-foreground">Buat draf judul, petunjuk, dan butir soal otomatis sesuai TP.</p>
+                                    </div>
+                                </div>
+                                <button
+                                    type="button"
+                                    disabled={aiLoading || !data.learning_objective_id}
+                                    onClick={handleAiGenerate}
+                                    className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-bold shadow-xs hover:bg-primary/90 transition active:scale-95 cursor-pointer disabled:opacity-50 shrink-0"
+                                >
+                                    {aiLoading ? (
+                                        <>
+                                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                            <span>Menyusun Soal...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Sparkles className="h-3.5 w-3.5" />
+                                            <span>Buat Soal dengan AI</span>
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+
+                            {!data.learning_objective_id && (
+                                <p className="text-[10px] text-amber-700 dark:text-amber-300 font-medium">
+                                    💡 Tips: Pilih Tujuan Pembelajaran (TP) pada Langkah 1 untuk mengaktifkan perumusan soal otomatis AI.
+                                </p>
+                            )}
+
+                            {aiSuccessMessage && (
+                                <div className="p-2 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 text-xs font-bold flex items-center gap-1.5 animate-in fade-in">
+                                    <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                                    <span>{aiSuccessMessage}</span>
+                                </div>
+                            )}
+                        </div>
+
                         {/* Assessment Type 3-Button Grid */}
                         <div className="space-y-1.5">
                             <label className="text-xs font-bold text-foreground">
@@ -509,7 +623,7 @@ export function AssessmentForm({
                                 <div className="flex items-center justify-between">
                                     <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
                                         <ListChecks className="h-3.5 w-3.5 text-primary" />
-                                        <span>Daftar Soal ({data.instrument_config.questions?.length || 0})</span>
+                                        <span>Daftar Butir Soal ({data.instrument_config.questions?.length || 0})</span>
                                     </span>
                                     <button
                                         type="button"
@@ -522,8 +636,11 @@ export function AssessmentForm({
                                 </div>
 
                                 {(!data.instrument_config.questions || data.instrument_config.questions.length === 0) ? (
-                                    <div className="text-center py-6 border border-dashed border-border rounded-xl p-4 bg-muted/20">
-                                        <p className="text-xs font-medium text-muted-foreground">Belum ada butir soal. Anda juga dapat membuat soal nanti.</p>
+                                    <div className="text-center py-6 border border-dashed border-border rounded-xl p-4 bg-muted/20 space-y-1.5">
+                                        <p className="text-xs font-medium text-muted-foreground">Belum ada butir soal.</p>
+                                        <p className="text-[11px] text-primary font-bold">
+                                            Gunakan tombol "Buat Soal dengan AI" di atas atau tekan "Tambah Soal" manual.
+                                        </p>
                                     </div>
                                 ) : (
                                     <div className="space-y-2.5">
