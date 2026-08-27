@@ -19,6 +19,7 @@ const teacherNavSections: NavSection[] = [
         label: 'Utama',
         items: [
             { title: 'Dashboard',           url: '/dashboard', icon: LayoutDashboard },
+            { title: 'Daftar Kelas',        url: '/classes', icon: GraduationCap },
             { title: 'Pengumuman',          url: '/announcements', icon: Bell },
         ],
     },

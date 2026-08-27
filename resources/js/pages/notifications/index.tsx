@@ -1,29 +1,24 @@
+import React, { useState, useMemo } from 'react';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router } from '@inertiajs/react';
-import { Bell, Calendar, ChevronRight, CheckCheck, ArrowLeft } from 'lucide-react';
+import { Bell, CheckCheck, Sparkles, Activity } from 'lucide-react';
+import { ActivityItem, ActivityFilter, type ActivityFilterKey, type ActivityNotificationItem } from '@/components/activity';
+import { EmptyState, SectionHeader } from '@/components/dashboard';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: '/dashboard' },
-    { title: 'Notifikasi', href: '/notifications' },
+    { title: 'Aktivitas & Notifikasi', href: '/notifications' },
 ];
 
-interface NotificationItem {
-    id: number;
-    type: string;
-    title: string;
-    message: string | null;
-    data: Record<string, any> | null;
-    is_read: boolean;
-    created_at: string;
-}
-
 interface NotificationsPageProps {
-    notifications: NotificationItem[];
+    notifications: ActivityNotificationItem[];
     unread_count: number;
 }
 
-export default function NotificationsIndex({ notifications, unread_count }: NotificationsPageProps) {
+export default function NotificationsIndex({ notifications = [], unread_count = 0 }: NotificationsPageProps) {
+    const [activeFilter, setActiveFilter] = useState<ActivityFilterKey>('all');
+
     const markAsRead = (id: number) => {
         router.post(`/notifications/${id}/read`, {}, {
             preserveScroll: true,
@@ -38,81 +33,91 @@ export default function NotificationsIndex({ notifications, unread_count }: Noti
         });
     };
 
+    const filteredNotifications = useMemo(() => {
+        if (activeFilter === 'all') return notifications;
+        if (activeFilter === 'unread') return notifications.filter(n => !n.is_read);
+        return notifications.filter(n => n.type === activeFilter);
+    }, [notifications, activeFilter]);
+
+    const handleItemClick = (n: ActivityNotificationItem) => {
+        if (!n.is_read) {
+            markAsRead(n.id);
+        }
+
+        if (n.type === 'assignment' && n.data?.assignment_id) {
+            router.visit(route('assignments.show', n.data.assignment_id));
+        } else if (n.type === 'submission' && n.data?.assignment_id) {
+            router.visit(route('assignments.grade-view', { assignment: n.data.assignment_id }));
+        } else if (n.type === 'material' && n.data?.material_id) {
+            router.visit(route('materials.show', n.data.material_id));
+        } else if (n.type === 'announcement') {
+            router.visit(route('announcements.index'));
+        }
+    };
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Notifikasi – LMS Mokopani" />
+            <Head title="Aktivitas & Notifikasi – LMS Mokopani" />
 
-            <div className="flex h-full flex-1 flex-col gap-6 p-6">
-                <div className="flex items-center justify-between">
+            <div className="space-y-5 sm:space-y-6 fade-in pb-16 md:pb-6 max-w-5xl mx-auto px-4 sm:px-6">
+                {/* Header & Mark All Read Action */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pt-2">
                     <div>
                         <div className="flex items-center gap-3">
-                            <h1 className="text-2xl font-bold text-foreground">Notifikasi</h1>
+                            <h1 className="text-xl sm:text-2xl font-black text-foreground tracking-tight">
+                                Aktivitas & Notifikasi
+                            </h1>
                             {unread_count > 0 && (
-                                <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary">
-                                    {unread_count} belum dibaca
+                                <span className="rounded-full bg-primary/10 border border-primary/20 px-3 py-1 text-xs font-bold text-primary animate-pulse">
+                                    {unread_count} baru
                                 </span>
                             )}
                         </div>
-                        <p className="text-sm text-muted-foreground mt-1">Pemberitahuan dan informasi terbaru</p>
+                        <p className="text-xs sm:text-sm text-muted-foreground mt-1 font-medium">
+                            Pusat pembaruan materi, asesmen, tugas masuk, dan pengumuman sekolah
+                        </p>
                     </div>
+
                     {unread_count > 0 && (
                         <button
                             onClick={markAllAsRead}
-                            className="inline-flex items-center gap-2 rounded-xl bg-primary/10 px-4 py-2 text-sm font-medium text-primary hover:bg-primary/20 transition"
+                            className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary text-primary-foreground px-4 py-2.5 text-xs font-bold shadow-xs hover:bg-primary/90 transition min-h-[44px] shrink-0 active:scale-95"
                         >
                             <CheckCheck className="h-4 w-4" />
-                            Tandai Semua Dibaca
+                            <span>Tandai Semua Dibaca</span>
                         </button>
                     )}
                 </div>
 
-                <div className="space-y-2">
-                    {notifications.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-24 text-muted-foreground">
-                            <Bell className="h-16 w-16 mb-4 opacity-20" />
-                            <p className="text-lg font-medium">Tidak ada notifikasi</p>
-                            <p className="text-sm">Belum ada pemberitahuan untuk Anda.</p>
-                        </div>
+                {/* Filter Pills */}
+                <ActivityFilter
+                    activeFilter={activeFilter}
+                    onFilterChange={setActiveFilter}
+                    unreadCount={unread_count}
+                />
+
+                {/* Feed List */}
+                <div className="space-y-3">
+                    {filteredNotifications.length === 0 ? (
+                        <EmptyState
+                            icon={Bell}
+                            title={activeFilter === 'unread' ? 'Tidak Ada Notifikasi Baru' : 'Belum Ada Aktivitas'}
+                            description={
+                                activeFilter === 'unread'
+                                    ? 'Semua notifikasi terbaru Anda sudah dibaca.'
+                                    : 'Aktivitas pembuatan materi, asesmen, dan tugas masuk akan muncul di sini.'
+                            }
+                        />
                     ) : (
-                        notifications.map((n) => (
-                            <div
-                                key={n.id}
-                                className={`group relative flex items-start gap-4 rounded-xl border p-5 transition hover:shadow-sm cursor-pointer ${
-                                    n.is_read
-                                        ? 'bg-card border-border'
-                                        : 'bg-primary/5 border-primary/20'
-                                }`}
-                                onClick={() => {
-                                    if (!n.is_read) markAsRead(n.id);
-                                    if (n.type === 'assignment' && n.data?.assignment_id) {
-                                        router.visit(route('assignments.show', n.data.assignment_id));
-                                    } else if (n.type === 'announcement') {
-                                        router.visit(route('announcements.index'));
-                                    }
-                                }}
-                            >
-                                <div className={`mt-1.5 h-2.5 w-2.5 rounded-full flex-shrink-0 ${
-                                    n.is_read ? 'bg-muted-foreground/30' : 'bg-primary'
-                                }`} />
-                                <div className="flex-1 min-w-0">
-                                    <h3 className={`text-sm leading-snug ${
-                                        n.is_read ? 'text-muted-foreground' : 'text-foreground font-semibold'
-                                    }`}>
-                                        {n.title}
-                                    </h3>
-                                    {n.message && (
-                                        <p className="text-sm text-muted-foreground mt-1">{n.message}</p>
-                                    )}
-                                    <p className="text-xs text-muted-foreground/60 mt-2 flex items-center gap-1.5">
-                                        <Calendar className="h-3 w-3" />
-                                        {n.created_at}
-                                    </p>
-                                </div>
-                                {!n.is_read && (
-                                    <span className="h-2 w-2 rounded-full bg-primary flex-shrink-0 mt-1.5" />
-                                )}
-                            </div>
-                        ))
+                        <div className="space-y-2.5">
+                            {filteredNotifications.map((n) => (
+                                <ActivityItem
+                                    key={n.id}
+                                    item={n}
+                                    onClick={() => handleItemClick(n)}
+                                />
+                            ))}
+                        </div>
                     )}
                 </div>
             </div>

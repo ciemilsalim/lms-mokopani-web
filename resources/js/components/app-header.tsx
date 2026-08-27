@@ -45,7 +45,7 @@ const parentMobileNavItems: NavItem[] = [
     { title: 'Anak Saya', url: '/parent/dashboard', icon: Heart },
 ];
 
-const activeItemStyles = 'text-[#1B1B25] dark:bg-[#1F1F2E] dark:text-[#F1F1F4]';
+const activeItemStyles = 'text-foreground dark:bg-muted dark:text-foreground font-bold';
 
 interface AppHeaderProps {
     breadcrumbs?: BreadcrumbItem[];
@@ -75,7 +75,7 @@ export function AppHeader({ breadcrumbs = [] }: AppHeaderProps) {
                     <div className="lg:hidden">
                         <Sheet>
                             <SheetTrigger asChild>
-                                <Button variant="ghost" size="icon" className="mr-2 h-[34px] w-[34px]">
+                                <Button variant="ghost" size="icon" className="mr-2 h-11 w-11 rounded-xl">
                                     <Menu className="h-5 w-5" />
                                 </Button>
                             </SheetTrigger>
@@ -99,13 +99,13 @@ export function AppHeader({ breadcrumbs = [] }: AppHeaderProps) {
                                                                 className={cn(
                                                                     'w-full flex items-center justify-between rounded-lg px-3 py-2.5 font-medium transition-colors text-left text-sm',
                                                                     semester.id === activeSemesterId
-                                                                        ? 'bg-[#5E6AD2]/10 text-[#5E6AD2] dark:bg-[#1F1F2E] dark:text-[#F1F1F4]'
-                                                                        : 'text-[#8A8F98] hover:bg-[#F1F1F4]/50 dark:text-[#8A8F98] dark:hover:bg-[#1F1F2E]'
+                                                                        ? 'bg-primary/10 text-primary dark:bg-muted dark:text-foreground font-bold'
+                                                                        : 'text-muted-foreground hover:bg-muted/50 dark:hover:bg-muted'
                                                                 )}
                                                             >
                                                                 <span className="truncate">{semester.name} {semester.academic_year ? `(${semester.academic_year})` : ''}</span>
                                                                 {semester.is_active && (
-                                                                    <span className="inline-flex items-center rounded-sm bg-green-500/10 px-1.5 py-0.5 text-[10px] font-medium text-green-600 dark:text-green-400">
+                                                                    <span className="inline-flex items-center rounded-sm bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
                                                                         Aktif
                                                                     </span>
                                                                 )}
@@ -128,8 +128,8 @@ export function AppHeader({ breadcrumbs = [] }: AppHeaderProps) {
                                                         className={cn(
                                                             'flex items-center space-x-3 rounded-lg px-3 py-2.5 font-medium transition-colors',
                                                             isItemActive
-                                                                ? 'bg-[#5E6AD2]/10 text-[#5E6AD2] dark:bg-[#1F1F2E] dark:text-[#F1F1F4]'
-                                                                : 'text-[#8A8F98] hover:bg-[#F1F1F4]/50 dark:text-[#8A8F98] dark:hover:bg-[#1F1F2E]'
+                                                                ? 'bg-primary/10 text-primary dark:bg-muted dark:text-foreground font-bold'
+                                                                : 'text-muted-foreground hover:bg-muted/50 dark:hover:bg-muted'
                                                         )}
                                                     >
                                                         {Icon && <Icon className="h-5 w-5" />}

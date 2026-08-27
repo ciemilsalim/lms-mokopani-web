@@ -3,11 +3,14 @@ import { Head, router, Link } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { ChevronLeft, ChevronRight, Save, CheckCircle2, FileText, Image as ImageIcon, Camera, UploadCloud, AlertCircle, Target, Info, CheckSquare, Square, Star } from 'lucide-react';
+import {
+    ChevronLeft, ChevronRight, Save, CheckCircle2, FileText,
+    Camera, AlertCircle, Target, Info, CheckSquare, Square, Users, ArrowRight
+} from 'lucide-react';
 import { KktpModal } from '@/components/assignments/KktpModal';
+import { StudentSwitcher } from '@/components/assignments/student-switcher';
 import axios from 'axios';
 
 interface GradeSplitProps {
@@ -15,12 +18,12 @@ interface GradeSplitProps {
     students: any[];
 }
 
-export default function GradeSplitPage({ assignment, students }: GradeSplitProps) {
+export default function GradeSplitPage({ assignment, students = [] }: GradeSplitProps) {
     const [currentStudentIndex, setCurrentStudentIndex] = useState(0);
     const currentStudent = students[currentStudentIndex];
-    
-    const submission = assignment.submissions.find((s: any) => s.student_id === currentStudent?.id);
-    
+
+    const submission = assignment.submissions?.find((s: any) => s.student_id === currentStudent?.id);
+
     // States for grading
     const [score, setScore] = useState<number | string>(submission?.score ?? '');
     const [feedback, setFeedback] = useState(submission?.feedback ?? '');
@@ -44,7 +47,7 @@ export default function GradeSplitPage({ assignment, students }: GradeSplitProps
             if (isOffline) {
                 textContent = '';
             }
-        } catch(e) {}
+        } catch (e) {}
     }
 
     // Update states when student changes
@@ -54,7 +57,7 @@ export default function GradeSplitPage({ assignment, students }: GradeSplitProps
         setKktpDetails(submission?.kktp_details ?? {});
     }, [currentStudentIndex, submission]);
 
-    const handleSave = async () => {
+    const handleSave = async (autoNext = false) => {
         if (!currentStudent) return;
         setIsSaving(true);
         try {
@@ -66,6 +69,12 @@ export default function GradeSplitPage({ assignment, students }: GradeSplitProps
                 kktp_details: kktpDetails
             });
             showNotification('Nilai berhasil disimpan!', 'success');
+
+            if (autoNext && currentStudentIndex < students.length - 1) {
+                setCurrentStudentIndex(prev => prev + 1);
+            } else {
+                router.reload({ only: ['assignment'] });
+            }
         } catch (error) {
             showNotification('Gagal menyimpan nilai.', 'error');
         } finally {
@@ -86,34 +95,20 @@ export default function GradeSplitPage({ assignment, students }: GradeSplitProps
             await axios.post(route('assignments.upload-proof', assignment.id), formData);
             showNotification('Karya fisik berhasil difoto/diunggah!', 'success');
             router.reload({ only: ['assignment'] });
-        } catch(err) {
+        } catch (err) {
             showNotification('Gagal mengunggah foto.', 'error');
         } finally {
             setIsUploadingProof(false);
         }
     };
 
-    const handleNext = () => {
-        if (currentStudentIndex < students.length - 1) {
-            setCurrentStudentIndex(prev => prev + 1);
-        }
-    };
-
-    const handlePrev = () => {
-        if (currentStudentIndex > 0) {
-            setCurrentStudentIndex(prev => prev - 1);
-        }
-    };
-
     const handleRubricClick = (criterionIndex: number, levelScore: number, levelName: string) => {
         const newDetails = { ...kktpDetails, [criterionIndex]: levelName };
         setKktpDetails(newDetails);
-        
-        // Auto-calculate score if using simple rubric
+
         if (assignment.scoring_tool === 'rubric' && assignment.instrument_config?.kktp?.criteria) {
             const totalCriteria = assignment.instrument_config.kktp.criteria.length;
             const currentTotal = Object.keys(newDetails).reduce((acc, key) => {
-                // simple weight logic based on string
                 let val = 0;
                 if (newDetails[key] === 'Sangat Baik') val = 100;
                 else if (newDetails[key] === 'Baik') val = 75;
@@ -121,8 +116,7 @@ export default function GradeSplitPage({ assignment, students }: GradeSplitProps
                 else if (newDetails[key] === 'Perlu Bimbingan') val = 25;
                 return acc + val;
             }, 0);
-            
-            // Just a rough estimate for auto-scoring
+
             const autoScore = Math.round((currentTotal / (totalCriteria * 100)) * (assignment.max_points || 100));
             setScore(autoScore);
         }
@@ -134,46 +128,44 @@ export default function GradeSplitPage({ assignment, students }: GradeSplitProps
         try {
             parsed = JSON.parse(contentString);
         } catch {
-            // Plain text fallback
             return (
-                <div className="p-5 bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3">
-                    <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-                        <span className="text-xs font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest flex items-center gap-2">
+                <div className="p-4 sm:p-5 bg-card rounded-2xl border border-border shadow-xs space-y-3">
+                    <div className="flex items-center justify-between border-b border-border pb-3">
+                        <span className="text-xs font-bold text-primary flex items-center gap-2">
                             <FileText className="w-4 h-4" /> Teks Jawaban / Laporan Siswa
                         </span>
                     </div>
-                    <div className="text-sm text-slate-700 dark:text-slate-200 whitespace-pre-wrap leading-relaxed font-medium bg-slate-50/50 dark:bg-slate-950/50 p-4 rounded-lg border border-slate-100 dark:border-slate-800/60">
+                    <div className="text-xs sm:text-sm text-foreground whitespace-pre-wrap leading-relaxed font-medium bg-muted/40 p-4 rounded-xl border border-border">
                         {contentString}
                     </div>
                 </div>
             );
         }
 
-        // Handle Written Test / Objective Quiz / Quiz Response
         if (parsed.type === 'written_test' || parsed.type === 'formative_quiz' || parsed.type === 'quiz_response' || (parsed && typeof parsed === 'object' && parsed.answers && !parsed.type)) {
             const questions = assignment?.instrument_config?.questions || [];
             const answers = parsed.answers || {};
 
             return (
                 <div className="space-y-4">
-                    <div className="flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-950/40 dark:to-purple-950/40 border border-indigo-100 dark:border-indigo-900/40">
+                    <div className="flex items-center justify-between p-4 rounded-2xl bg-primary/10 border border-primary/20">
                         <div className="flex items-center gap-2.5">
-                            <div className="p-2 rounded-lg bg-indigo-500 text-white shadow-2xs">
+                            <div className="p-2 rounded-xl bg-primary text-primary-foreground shadow-2xs">
                                 <CheckCircle2 className="w-4 h-4" />
                             </div>
                             <div>
-                                <h4 className="text-xs font-black text-indigo-950 dark:text-indigo-200 uppercase tracking-wider">
+                                <h4 className="text-xs font-bold text-foreground">
                                     {parsed.type === 'written_test' ? 'Tes Tertulis / Objektif' : parsed.type === 'formative_quiz' ? 'Kuis Formatif' : 'Jawaban Evaluasi'}
                                 </h4>
-                                <p className="text-[10px] text-indigo-700 dark:text-indigo-300/80 font-bold">
+                                <p className="text-[11px] text-muted-foreground font-medium">
                                     {questions.length > 0 ? `Total ${questions.length} Butir Soal` : `Total ${Object.keys(answers).length} Jawaban`}
                                 </p>
                             </div>
                         </div>
                         {parsed.auto_score !== undefined && (
                             <div className="text-right">
-                                <span className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest block">Skor Sistem</span>
-                                <span className="text-2xl font-black text-indigo-950 dark:text-indigo-100 tracking-tight">{parsed.auto_score}</span>
+                                <span className="text-[10px] font-bold text-primary block">Skor Sistem</span>
+                                <span className="text-xl sm:text-2xl font-black text-foreground">{parsed.auto_score}</span>
                             </div>
                         )}
                     </div>
@@ -188,40 +180,40 @@ export default function GradeSplitPage({ assignment, students }: GradeSplitProps
                                 const isCorrect = isMcq ? (correctOpt?.id == studentAns) : (studentAns && (q.correct_answer || q.answer) && studentAns.trim().toLowerCase() == (q.correct_answer || q.answer).trim().toLowerCase());
 
                                 return (
-                                    <div key={q.id || idx} className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-3">
+                                    <div key={q.id || idx} className="p-4 rounded-2xl bg-card border border-border shadow-xs space-y-3">
                                         <div className="flex items-start justify-between gap-3">
                                             <div className="flex items-start gap-2.5">
-                                                <span className="h-6 w-6 shrink-0 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-black text-xs flex items-center justify-center mt-0.5">
+                                                <span className="h-6 w-6 shrink-0 rounded-lg bg-muted text-foreground font-bold text-xs flex items-center justify-center mt-0.5">
                                                     {idx + 1}
                                                 </span>
                                                 <div>
-                                                    <p className="text-xs font-bold text-slate-800 dark:text-slate-200 leading-relaxed">{q.text}</p>
+                                                    <p className="text-xs font-bold text-foreground leading-relaxed">{q.question || q.text}</p>
                                                     {q.image_url && (
-                                                        <img src={q.image_url} alt="Soal" className="mt-2 max-h-36 rounded-lg border border-slate-200 dark:border-slate-700 object-contain" />
+                                                        <img src={q.image_url} alt="Soal" className="mt-2 max-h-36 rounded-xl border border-border object-contain" />
                                                     )}
                                                 </div>
                                             </div>
-                                            <span className={`shrink-0 text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full border ${
-                                                q.type === 'essay' 
-                                                    ? 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800' 
-                                                    : isCorrect 
-                                                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800' 
-                                                        : 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800'
+                                            <span className={`shrink-0 text-[10px] font-bold px-2.5 py-1 rounded-full border ${
+                                                q.type === 'essay'
+                                                    ? 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/40 dark:text-purple-300'
+                                                    : isCorrect
+                                                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300'
+                                                        : 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300'
                                             }`}>
                                                 {q.type === 'essay' ? 'Esai / Review' : isCorrect ? 'Benar' : 'Salah'}
                                             </span>
                                         </div>
 
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2 border-t border-slate-100 dark:border-slate-800/80 text-xs">
-                                            <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-950/60 border border-slate-200/60 dark:border-slate-800/60">
-                                                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Jawaban Siswa:</span>
-                                                <p className={`font-bold ${isCorrect ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-800 dark:text-slate-200'}`}>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2 border-t border-border/60 text-xs">
+                                            <div className="p-2.5 rounded-xl bg-muted/40 border border-border">
+                                                <span className="text-[10px] font-bold text-muted-foreground block mb-1">Jawaban Siswa:</span>
+                                                <p className={`font-bold ${isCorrect ? 'text-emerald-600 dark:text-emerald-400' : 'text-foreground'}`}>
                                                     {isMcq ? (studentOpt?.text || studentAns || '(Tidak dijawab)') : (studentAns || '(Kosong)')}
                                                 </p>
                                             </div>
-                                            <div className="p-2.5 rounded-lg bg-emerald-50/40 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30">
-                                                <span className="text-[9px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest block mb-1">Kunci / Referensi:</span>
-                                                <p className="font-bold text-emerald-800 dark:text-emerald-300">
+                                            <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                                                <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 block mb-1">Kunci / Referensi:</span>
+                                                <p className="font-bold text-emerald-700 dark:text-emerald-300">
                                                     {isMcq ? (correctOpt?.text || '(Belum diatur)') : (q.correct_answer || q.answer || '(Belum diatur)')}
                                                 </p>
                                             </div>
@@ -231,232 +223,39 @@ export default function GradeSplitPage({ assignment, students }: GradeSplitProps
                             })
                         ) : (
                             Object.entries(answers).map(([key, val]: [string, any], idx: number) => (
-                                <div key={key} className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs flex items-center justify-between">
+                                <div key={key} className="p-4 rounded-2xl bg-card border border-border shadow-xs flex items-center justify-between">
                                     <div>
-                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Soal / Butir {key}</span>
-                                        <p className="text-xs font-bold text-slate-800 dark:text-slate-200 mt-1">{String(val || '(Kosong)')}</p>
+                                        <span className="text-[10px] font-bold text-muted-foreground block">Soal / Butir {key}</span>
+                                        <p className="text-xs font-bold text-foreground mt-1">{String(val || '(Kosong)')}</p>
                                     </div>
-                                    <span className="text-xs font-black text-slate-400">#{idx + 1}</span>
+                                    <span className="text-xs font-bold text-muted-foreground">#{idx + 1}</span>
                                 </div>
                             ))
                         )}
                     </div>
-
-                    {parsed.note && (
-                        <div className="p-4 rounded-xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-900/40">
-                            <p className="text-[10px] font-black text-amber-700 dark:text-amber-400 uppercase tracking-widest mb-1">Catatan Tambahan Siswa:</p>
-                            <p className="text-xs text-amber-900 dark:text-amber-200 italic font-medium">"{parsed.note}"</p>
-                        </div>
-                    )}
                 </div>
             );
         }
 
-        // Handle Self Assessment
-        if (parsed.type === 'self_assessment') {
-            if (parsed.assessment_mode === 'checklist') {
-                return (
-                    <div className="p-5 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 space-y-4">
-                        <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">Penilaian Diri - Ceklis</p>
-                        {(parsed.indicators || []).map((ind: any, idx: number) => (
-                            <div key={idx} className="flex items-center gap-3 p-3 rounded-xl bg-muted/30 border border-border">
-                                {ind.checked ? <CheckSquare className="h-4 w-4 text-emerald-500 shrink-0" /> : <Square className="h-4 w-4 text-muted-foreground/30 shrink-0" />}
-                                <span className={`text-xs font-medium ${ind.checked ? 'text-foreground font-bold' : 'text-muted-foreground'}`}>{ind.name}</span>
-                            </div>
-                        ))}
-                    </div>
-                );
-            }
-            if (parsed.assessment_mode === 'simple_rubric') {
-                const levelColors: Record<string, string> = { 'Perlu Bimbingan': 'text-red-600 bg-red-50', 'Cukup': 'text-amber-600 bg-amber-50', 'Baik': 'text-blue-600 bg-blue-50', 'Sangat Baik': 'text-emerald-600 bg-emerald-50' };
-                return (
-                    <div className="p-5 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 space-y-4">
-                        <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">Penilaian Diri - Rubrik Sederhana</p>
-                        {(parsed.indicators || []).map((ind: any, idx: number) => (
-                            <div key={idx} className="p-3 rounded-xl bg-muted/30 border border-border space-y-2">
-                                <p className="text-xs font-bold text-foreground">{ind.name}</p>
-                                <span className={`inline-block px-3 py-1 rounded-full text-[10px] font-bold uppercase ${levelColors[ind.selected_level] || 'bg-muted text-muted-foreground'}`}>{ind.selected_level || '-'}</span>
-                            </div>
-                        ))}
-                    </div>
-                );
-            }
-            const feelingMap: any = {
-                very_happy: { label: 'Sangat Senang', icon: '🤩' },
-                happy: { label: 'Senang', icon: '😊' },
-                neutral: { label: 'Kurang Senang', icon: '😐' },
-            };
-            return (
-                <div className="p-5 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 space-y-5">
-                    <div className="flex flex-wrap gap-3">
-                        <div className="px-4 py-2 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/30 flex items-center gap-2">
-                            <span className="text-xl">{feelingMap[parsed.feeling]?.icon}</span>
-                            <p className="text-xs font-bold text-amber-700 dark:text-amber-400">{feelingMap[parsed.feeling]?.label || 'Biasa Saja'}</p>
-                        </div>
-                        <div className="px-4 py-2 rounded-xl bg-sky-50 dark:bg-sky-950/20 border border-sky-100 dark:border-sky-900/30">
-                            <p className="text-[8px] font-black text-sky-400 uppercase tracking-widest">Skala Usaha Siswa</p>
-                            <p className="text-xs font-bold text-sky-700 dark:text-sky-400">{parsed.effort_scale} / 4</p>
-                        </div>
-                    </div>
-                    {parsed.feeling_reason && (
-                        <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800">
-                            <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mb-1.5">Alasan Perasaan:</p>
-                            <p className="text-xs text-slate-700 dark:text-slate-250 font-medium leading-relaxed italic">"{parsed.feeling_reason}"</p>
-                        </div>
-                    )}
-                    {parsed.reflection_notes && (
-                        <div className="p-4 rounded-xl bg-indigo-50/40 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/30">
-                            <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-1.5">Catatan Refleksi Siswa:</p>
-                            <p className="text-xs text-slate-800 dark:text-slate-200 leading-relaxed font-bold italic">"{parsed.reflection_notes}"</p>
-                        </div>
-                    )}
-                </div>
-            );
-        }
-
-        // Handle Peer Assessment
-        if (parsed.type === 'peer_assessment') {
-            if (parsed.assessment_mode === 'checklist') {
-                return (
-                    <div className="p-5 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 space-y-4">
-                        <div className="flex items-center gap-3 mb-2">
-                            <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">Penilaian Antarteman - Ceklis</p>
-                            {parsed.peer_name && <span className="text-xs font-bold text-foreground">→ {parsed.peer_name}</span>}
-                        </div>
-                        {(parsed.indicators || []).map((ind: any, idx: number) => (
-                            <div key={idx} className="flex items-center gap-3 p-3 rounded-xl bg-muted/30 border border-border">
-                                {ind.checked ? <CheckSquare className="h-4 w-4 text-emerald-500 shrink-0" /> : <Square className="h-4 w-4 text-muted-foreground/30 shrink-0" />}
-                                <span className={`text-xs font-medium ${ind.checked ? 'text-foreground font-bold' : 'text-muted-foreground'}`}>{ind.name}</span>
-                            </div>
-                        ))}
-                    </div>
-                );
-            }
-            return (
-                <div className="p-5 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 space-y-5">
-                    <div className="flex flex-wrap gap-3">
-                        <div className="px-5 py-3 rounded-xl bg-indigo-50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/30">
-                            <p className="text-[8px] font-black text-indigo-500 uppercase tracking-widest mb-1">Menilai Teman:</p>
-                            <p className="text-sm font-black text-foreground">{parsed.peer_name || '-'}</p>
-                        </div>
-                        {parsed.rating && (
-                            <div className="px-5 py-3 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/30 flex items-center gap-3">
-                                <div className="flex items-center gap-1">
-                                    {[1, 2, 3, 4, 5].map((s) => (
-                                        <Star key={s} className={`h-3 w-3 ${parsed.rating >= s ? 'text-amber-400 fill-amber-400' : 'text-slate-300'}`} />
-                                    ))}
-                                </div>
-                                <p className="text-xs font-black text-amber-700 dark:text-amber-400">{parsed.rating} / 5</p>
-                            </div>
-                        )}
-                    </div>
-                    {parsed.best_performer && (
-                        <div className="p-4 rounded-xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30">
-                            <p className="text-[9px] font-black text-emerald-500 uppercase tracking-widest mb-1">Terbaik di Kelompok:</p>
-                            <p className="text-xs font-bold text-slate-700 dark:text-slate-200">"{parsed.best_performer}"</p>
-                        </div>
-                    )}
-                    {parsed.obstacles && (
-                        <div className="p-4 rounded-xl bg-muted border border-border shadow-sm">
-                            <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mb-1">Kendala Kelompok:</p>
-                            <p className="text-xs text-slate-600 dark:text-slate-300 font-medium leading-relaxed italic">"{parsed.obstacles}"</p>
-                        </div>
-                    )}
-                </div>
-            );
-        }
-
-        // Handle Project / Structured Assignment / Assignment
-        if (parsed.type === 'structured_assignment' || parsed.type === 'project' || parsed.type === 'assignment') {
-            return (
-                <div className="p-5 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
-                    <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest leading-none">
-                        {parsed.type === 'structured_assignment' ? 'Jawaban LKPD Murid' : parsed.type === 'project' ? 'Deskripsi & Laporan Proyek' : 'Laporan / Teks Jawaban'}
-                    </p>
-                    <div className="text-sm font-semibold text-foreground whitespace-pre-wrap leading-relaxed bg-slate-50 dark:bg-slate-950/60 p-4 rounded-xl border border-slate-100 dark:border-slate-800/80">
-                        {parsed.answer_text || parsed.description || parsed.report_text || '(Tidak ada teks jawaban)'}
-                    </div>
-                    {(parsed.process_notes || parsed.analysis_notes) && (
-                        <>
-                            <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest leading-none mt-4">Catatan Proses / Analisis</p>
-                            <div className="text-xs font-semibold text-muted-foreground whitespace-pre-wrap leading-relaxed bg-slate-50 dark:bg-slate-950/60 p-3.5 rounded-lg border border-slate-100 dark:border-slate-800/80">
-                                {parsed.process_notes || parsed.analysis_notes}
-                            </div>
-                        </>
-                    )}
-                </div>
-            );
-        }
-
-        if (parsed.type === 'portfolio') {
-            return (
-                <div className="p-5 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
-                    <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest leading-none mb-3">Refleksi Portofolio</p>
-                    {(parsed.reflections || []).map((ref: any, idx: number) => (
-                        <div key={idx} className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 space-y-1">
-                            <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Refleksi {idx + 1}</p>
-                            <p className="text-sm font-semibold text-foreground whitespace-pre-wrap">{ref.answer || '-'}</p>
-                        </div>
-                    ))}
-                </div>
-            );
-        }
-
-        if (parsed.type === 'reflective_journal') {
-            return (
-                <div className="p-5 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
-                    <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest leading-none mb-3">Refleksi Jurnal Murid</p>
-                    {(parsed.answers || []).map((ans: any, idx: number) => (
-                        <div key={idx} className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 space-y-1">
-                            <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">{ans.question || `Pertanyaan ${idx + 1}`}</p>
-                            <p className="text-sm font-semibold text-foreground whitespace-pre-wrap">{ans.answer || '-'}</p>
-                        </div>
-                    ))}
-                </div>
-            );
-        }
-
-        // Generic JSON Fallback
         return (
-            <div className="p-5 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
-                <span className="text-xs font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest block mb-3">
-                    Data Jawaban Terstruktur ({parsed.type || 'Form Data'})
-                </span>
-                <div className="grid grid-cols-1 gap-2.5">
-                    {Object.entries(parsed).map(([k, v]) => {
-                        if (k === 'type' || k === 'submitted_offline') return null;
-                        if (typeof v === 'object' && v !== null) {
-                            return (
-                                <div key={k} className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200/60 dark:border-slate-800 text-xs">
-                                    <span className="font-bold text-slate-500 uppercase tracking-wider block mb-1.5">{k}:</span>
-                                    <pre className="text-[11px] text-slate-700 dark:text-slate-300 whitespace-pre-wrap overflow-x-auto font-mono">{JSON.stringify(v, null, 2)}</pre>
-                                </div>
-                            );
-                        }
-                        return (
-                            <div key={k} className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200/60 dark:border-slate-800 text-xs gap-2">
-                                <span className="font-bold text-slate-500 uppercase tracking-wider">{k}:</span>
-                                <span className="font-semibold text-slate-800 dark:text-slate-200">{String(v || '-')}</span>
-                            </div>
-                        );
-                    })}
-                </div>
+            <div className="p-4 bg-card rounded-2xl border border-border shadow-xs space-y-3">
+                <p className="text-xs text-foreground whitespace-pre-wrap">{contentString}</p>
             </div>
         );
     };
 
     const renderSubmissionContent = () => {
         const infoBanner = (
-            <div className="p-4 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 border border-blue-200/80 dark:border-blue-800/50 flex items-start gap-3 text-left shadow-2xs shrink-0">
-                <div className="p-2 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5">
-                    <Info className="h-5 w-5" />
+            <div className="p-4 rounded-2xl bg-primary/10 border border-primary/20 flex items-start gap-3 text-left shadow-2xs shrink-0">
+                <div className="p-2 rounded-xl bg-primary/10 text-primary shrink-0 mt-0.5">
+                    <Info className="h-4 w-4" />
                 </div>
                 <div className="space-y-1">
-                    <p className="text-xs font-black text-blue-900 dark:text-blue-300 tracking-wide">
-                        MODE PENILAIAN LAYAR TERBELAH (SPLIT-SCREEN & OFFLINE)
+                    <p className="text-xs font-bold text-foreground">
+                        MODE PENILAIAN GURU (MOBILE-FIRST & OFFLINE)
                     </p>
-                    <p className="text-xs text-blue-800/90 dark:text-blue-300/80 leading-relaxed font-medium">
-                        Halaman ini digunakan guru saat tidak memungkinkan bagi siswa untuk <span className="font-bold underline decoration-blue-400">plug-in / terhubung langsung</span> secara daring (misalnya tugas fisik, LKPD cetak, portofolio manual, atau saat siswa terkendala perangkat/sinyal). Anda dapat memfoto karya siswa melalui tombol kamera di bawah dan langsung menilai di panel kanan.
+                    <p className="text-xs text-muted-foreground leading-relaxed font-medium">
+                        Penilaian karya fisik siswa (LKPD cetak/portofolio) dapat difoto langsung via kamera HP di bawah, atau langsung diberi nilai dan umpan balik pada panel kanan.
                     </p>
                 </div>
             </div>
@@ -464,13 +263,13 @@ export default function GradeSplitPage({ assignment, students }: GradeSplitProps
 
         const cameraSection = (
             <div className="mt-auto pt-4 shrink-0">
-                <label className={`flex items-center justify-center gap-2 w-full p-4 rounded-xl border-2 border-dashed ${isUploadingProof ? 'opacity-50 cursor-not-allowed border-slate-300 bg-slate-100' : 'cursor-pointer border-indigo-300 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:border-indigo-800 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/50 dark:text-indigo-300'}`}>
+                <label className={`flex items-center justify-center gap-2 w-full p-4 rounded-2xl border-2 border-dashed transition min-h-[48px] ${isUploadingProof ? 'opacity-50 cursor-not-allowed border-border bg-muted' : 'cursor-pointer border-primary/40 bg-primary/5 hover:bg-primary/10 text-primary'}`}>
                     <Camera className="w-5 h-5" />
-                    <span className="font-bold text-sm">
-                        {isUploadingProof ? 'Mengunggah...' : 'Kamera Portofolio (Foto Karya Siswa)'}
+                    <span className="font-bold text-xs sm:text-sm">
+                        {isUploadingProof ? 'Mengunggah...' : 'Foto / Unggah Karya Fisik Siswa'}
                     </span>
-                    <input 
-                        type="file" 
+                    <input
+                        type="file"
                         accept="image/*"
                         capture="environment"
                         className="hidden"
@@ -485,10 +284,10 @@ export default function GradeSplitPage({ assignment, students }: GradeSplitProps
             return (
                 <div className="h-full flex flex-col justify-between space-y-4">
                     {infoBanner}
-                    <div className="flex flex-col items-center justify-center flex-1 text-slate-500 bg-white dark:bg-slate-900 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 p-8 text-center my-auto shadow-2xs">
-                        <FileText className="w-12 h-12 mb-3 text-slate-300 dark:text-slate-600" />
-                        <p className="font-bold text-slate-700 dark:text-slate-300 text-base">Siswa belum mengumpulkan tugas secara daring.</p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-md leading-relaxed">Gunakan fitur kamera di bawah untuk memfoto dan melampirkan karya fisik siswa jika siswa mengumpulkan secara langsung/luring di kelas.</p>
+                    <div className="flex flex-col items-center justify-center flex-1 text-muted-foreground bg-card rounded-2xl border border-dashed border-border p-8 text-center my-auto shadow-2xs">
+                        <FileText className="w-12 h-12 mb-3 text-muted-foreground/40" />
+                        <p className="font-bold text-foreground text-sm sm:text-base">Siswa belum mengumpulkan tugas secara daring.</p>
+                        <p className="text-xs text-muted-foreground mt-1 max-w-md leading-relaxed">Gunakan tombol foto karya fisik di bawah untuk menyertakan bukti penyerahan luring.</p>
                     </div>
                     {cameraSection}
                 </div>
@@ -503,28 +302,28 @@ export default function GradeSplitPage({ assignment, students }: GradeSplitProps
                 {infoBanner}
 
                 {isOffline && !submission.file_path && (
-                    <div className="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl shrink-0 shadow-2xs">
-                        <h4 className="font-bold text-amber-800 dark:text-amber-400">Tugas Diserahkan Langsung (Luring)</h4>
-                        <p className="text-sm text-amber-700 dark:text-amber-500 mt-0.5">Siswa melapor bahwa tugas fisik telah diserahkan di kelas.</p>
+                    <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl shrink-0 shadow-2xs">
+                        <h4 className="font-bold text-amber-700 dark:text-amber-400 text-xs">Tugas Diserahkan Langsung (Luring)</h4>
+                        <p className="text-xs text-amber-800/80 dark:text-amber-300 mt-0.5">Siswa melapor bahwa tugas fisik telah diserahkan di kelas.</p>
                     </div>
                 )}
-                
+
                 {textContent && (
                     <div className="flex-1 overflow-y-auto pr-1 space-y-4 min-h-0">
                         {renderFormattedAnswer(textContent, assignment)}
                     </div>
                 )}
-                
+
                 {submission.file_path && (
-                    <div className="flex-1 bg-slate-100 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden flex flex-col relative min-h-[400px] shadow-2xs">
+                    <div className="flex-1 bg-muted/40 rounded-2xl border border-border overflow-hidden flex flex-col relative min-h-[300px] shadow-2xs">
                         {isImage ? (
                             <img src={`/storage/${submission.file_path}`} alt="Submission" className="object-contain w-full h-full" />
                         ) : isPdf ? (
                             <iframe src={`/storage/${submission.file_path}`} className="w-full h-full border-0" title="PDF Viewer" />
                         ) : (
-                            <div className="flex items-center justify-center h-full flex-col text-slate-500 p-6 text-center">
-                                <FileText className="w-16 h-16 mb-4 text-slate-300 dark:text-slate-600" />
-                                <a href={`/storage/${submission.file_path}`} target="_blank" rel="noreferrer" className="text-indigo-600 dark:text-indigo-400 font-bold hover:underline flex items-center text-sm">
+                            <div className="flex items-center justify-center h-full flex-col text-muted-foreground p-6 text-center">
+                                <FileText className="w-14 h-14 mb-3 text-muted-foreground/40" />
+                                <a href={`/storage/${submission.file_path}`} target="_blank" rel="noreferrer" className="text-primary font-bold hover:underline flex items-center text-xs">
                                     Download / Buka File Lampiran
                                 </a>
                             </div>
@@ -538,150 +337,158 @@ export default function GradeSplitPage({ assignment, students }: GradeSplitProps
     };
 
     return (
-        <AppLayout title="Penilaian Layar Terbelah">
-            <Head title="Penilaian Tugas" />
+        <AppLayout title="Penilaian Asesmen Guru">
+            <Head title={`Penilaian ${assignment.title} – LMS Mokopani`} />
 
-            <div className="min-h-[calc(100vh-65px)] md:h-[calc(100vh-65px)] flex flex-col mt-[-24px]">
+            <div className="min-h-[calc(100vh-65px)] flex flex-col space-y-4 max-w-6xl mx-auto px-4 sm:px-6 pt-2 pb-16 fade-in">
                 {/* Header Bar */}
-                <div className="flex-none bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 p-4 flex flex-col md:flex-row justify-between items-center z-10 gap-4">
-                    <div className="flex items-center gap-4 w-full md:w-auto">
-                        <Link href={route('assignments.show', assignment.id)} className="text-slate-500 hover:text-slate-700 dark:hover:text-slate-300">
-                            <ChevronLeft className="w-5 h-5" />
+                <div className="flex items-center justify-between gap-3 border-b border-border/60 pb-3">
+                    <div className="flex items-center gap-2">
+                        <Link href={route('assignments.show', assignment.id)} className="p-2 rounded-xl border border-border text-muted-foreground hover:text-foreground transition min-h-[40px] min-w-[40px] flex items-center justify-center">
+                            <ChevronLeft className="w-4 h-4" />
                         </Link>
                         <div>
-                            <h1 className="font-bold text-lg leading-tight truncate max-w-[300px]">{assignment.title}</h1>
-                            <p className="text-xs text-slate-500">Mode Penilaian Layar Terbelah</p>
+                            <h1 className="font-bold text-sm sm:text-base text-foreground leading-tight truncate max-w-[260px] sm:max-w-md">{assignment.title}</h1>
+                            <p className="text-xs text-muted-foreground">Mode Penilaian Guru (Mobile-First)</p>
                         </div>
                     </div>
-                    
-                    <div className="flex flex-wrap items-center gap-2 md:gap-4 w-full md:w-auto justify-between md:justify-end">
-                        <button
-                            onClick={() => setIsKktpModalOpen(true)}
-                            className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-black bg-purple-50 text-purple-700 hover:bg-purple-100 dark:bg-purple-950/30 dark:text-purple-400 transition uppercase tracking-widest border border-purple-200/60 dark:border-purple-800/40 shadow-2xs mr-2"
-                        >
-                            <Target className="h-3.5 w-3.5 text-purple-500" />
-                            <span className="hidden sm:inline">Pendekatan KKTP</span>
-                        </button>
-                        <div className="flex items-center gap-2 mr-2">
-                            <Button variant="outline" size="icon" onClick={handlePrev} disabled={currentStudentIndex === 0}>
-                                <ChevronLeft className="w-4 h-4" />
-                            </Button>
-                            <span className="text-sm font-medium w-32 text-center truncate px-2">
-                                {currentStudent?.name || 'Siswa'}
-                            </span>
-                            <Button variant="outline" size="icon" onClick={handleNext} disabled={currentStudentIndex === students.length - 1}>
-                                <ChevronRight className="w-4 h-4" />
-                            </Button>
-                        </div>
-                        <Badge variant={submission?.score !== null ? 'default' : 'secondary'} className={submission?.score !== null ? 'bg-emerald-500 hidden sm:inline-flex' : 'hidden sm:inline-flex'}>
-                            {submission?.score !== null ? 'Dinilai' : 'Belum Dinilai'}
-                        </Badge>
-                        <Button onClick={handleSave} disabled={isSaving} className="bg-indigo-600 text-white">
-                            <Save className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">{isSaving ? 'Menyimpan...' : 'Simpan Nilai'}</span>
-                        </Button>
-                    </div>
+
+                    <button
+                        onClick={() => setIsKktpModalOpen(true)}
+                        className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition min-h-[40px]"
+                    >
+                        <Target className="h-3.5 w-3.5" />
+                        <span className="hidden sm:inline">Info KKTP</span>
+                    </button>
                 </div>
 
-                {/* Split Content */}
-                <div className="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-hidden">
-                    {/* Left Side: Student Work Viewer */}
-                    <div className="w-full md:w-7/12 border-b md:border-b-0 md:border-r border-slate-200 dark:border-slate-800 p-4 overflow-y-auto bg-slate-50 dark:bg-slate-950 flex flex-col shrink-0 min-h-[350px] md:min-h-0 md:h-full">
+                {/* Student Switcher Toolbar */}
+                <StudentSwitcher
+                    students={students}
+                    currentIndex={currentStudentIndex}
+                    onSelectIndex={(idx) => setCurrentStudentIndex(idx)}
+                />
+
+                {/* Split Responsive Content */}
+                <div className="flex-1 flex flex-col lg:flex-row gap-5">
+                    {/* Left: Student Submission Viewer */}
+                    <div className="w-full lg:w-7/12 border border-border rounded-2xl p-4 bg-card flex flex-col min-h-[320px] shadow-xs">
                         {renderSubmissionContent()}
                     </div>
 
-                    {/* Right Side: Rubric & Grading */}
-                    <div className="w-full md:w-5/12 p-4 md:p-6 overflow-y-auto bg-white dark:bg-slate-900 flex flex-col gap-6 shrink-0 min-h-[450px] md:min-h-0 md:h-full">
-                        
+                    {/* Right: Rubric & Grading Form */}
+                    <div className="w-full lg:w-5/12 p-4 sm:p-5 rounded-2xl border border-border bg-card flex flex-col gap-5 shadow-xs">
                         {/* Interactive Rubric Section */}
                         {assignment.scoring_tool === 'rubric' && assignment.instrument_config?.kktp?.criteria ? (
-                            <div className="space-y-4">
-                                <h3 className="font-bold text-sm text-slate-700 dark:text-slate-300 flex items-center">
-                                    <CheckCircle2 className="w-4 h-4 mr-2 text-indigo-500" />
-                                    Rubrik Penilaian (Klik Cepat)
+                            <div className="space-y-3">
+                                <h3 className="font-bold text-xs sm:text-sm text-foreground flex items-center gap-2">
+                                    <CheckCircle2 className="w-4 h-4 text-primary" />
+                                    <span>Rubrik Penilaian Cepat</span>
                                 </h3>
-                                
+
                                 <div className="space-y-3">
-                                {assignment.instrument_config.kktp.criteria.map((crit: any, i: number) => (
-                                    <div key={i} className="border border-slate-200 dark:border-slate-700 rounded-lg p-3">
-                                        <p className="font-semibold text-sm mb-3">{crit.name}</p>
-                                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
-                                            {['Perlu Bimbingan', 'Cukup', 'Baik', 'Sangat Baik'].map((lvl) => {
-                                                const isSelected = kktpDetails[i] === lvl;
-                                                return (
-                                                    <button
-                                                        key={lvl}
-                                                        onClick={() => handleRubricClick(i, 0, lvl)}
-                                                        className={`text-sm p-4 py-3 rounded-lg border text-center transition-all ${
-                                                            isSelected 
-                                                                ? 'bg-indigo-100 border-indigo-500 text-indigo-700 font-bold dark:bg-indigo-900/50 dark:border-indigo-400 dark:text-indigo-200' 
-                                                                : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400'
-                                                        }`}
-                                                    >
-                                                        {lvl}
-                                                    </button>
-                                                );
-                                            })}
+                                    {assignment.instrument_config.kktp.criteria.map((crit: any, i: number) => (
+                                        <div key={i} className="border border-border rounded-xl p-3 space-y-2">
+                                            <p className="font-bold text-xs text-foreground">{crit.name}</p>
+                                            <div className="grid grid-cols-2 gap-1.5">
+                                                {['Perlu Bimbingan', 'Cukup', 'Baik', 'Sangat Baik'].map((lvl) => {
+                                                    const isSelected = kktpDetails[i] === lvl;
+                                                    return (
+                                                        <button
+                                                            key={lvl}
+                                                            type="button"
+                                                            onClick={() => handleRubricClick(i, 0, lvl)}
+                                                            className={`text-xs p-2.5 rounded-xl border text-center font-bold transition min-h-[40px] ${
+                                                                isSelected
+                                                                    ? 'bg-primary text-primary-foreground border-primary shadow-xs'
+                                                                    : 'bg-background border-border text-muted-foreground hover:text-foreground'
+                                                            }`}
+                                                        >
+                                                            {lvl}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    ))}
                                 </div>
                             </div>
                         ) : (
-                            <div className="p-5 bg-slate-50 dark:bg-slate-800 rounded-xl text-sm text-slate-500 text-center border border-dashed border-slate-300 dark:border-slate-700 space-y-3">
-                                <p className="font-semibold text-slate-600 dark:text-slate-400">Tidak ada rubrik kualitatif cepat (Klik Cepat) diatur untuk asesmen ini.</p>
+                            <div className="p-4 rounded-xl bg-muted/40 border border-dashed border-border text-center space-y-2">
+                                <p className="text-xs font-bold text-muted-foreground">Tidak ada rubrik terstruktur khusus untuk asesmen ini.</p>
                                 <button
+                                    type="button"
                                     onClick={() => setIsKktpModalOpen(true)}
-                                    className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:text-indigo-300 transition"
+                                    className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline"
                                 >
-                                    <Target className="w-3.5 h-3.5" /> Lihat Info & Pendekatan KKTP
+                                    <Target className="w-3.5 h-3.5" /> Lihat Pendekatan KKTP
                                 </button>
                             </div>
                         )}
 
-                        {/* Final Score & Feedback */}
-                        <div className="space-y-4 bg-indigo-50/50 dark:bg-indigo-900/10 p-5 rounded-xl border border-indigo-100 dark:border-indigo-800/30 mt-auto">
-                            <div>
-                                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+                        {/* Final Score & Qualitative Feedback Input */}
+                        <div className="space-y-4 bg-primary/5 p-4 sm:p-5 rounded-2xl border border-primary/10 mt-auto">
+                            <div className="space-y-1.5">
+                                <label className="block text-xs font-bold text-foreground">
                                     Skor Akhir (0 - {assignment.max_points || 100})
                                 </label>
-                                <Input 
-                                    type="number" 
-                                    value={score} 
+                                <Input
+                                    type="number"
+                                    min={0}
+                                    max={assignment.max_points || 100}
+                                    value={score}
                                     onChange={(e) => setScore(e.target.value)}
-                                    className="text-2xl font-bold w-full max-wxs h-12 text-indigo-700 dark:text-indigo-400"
+                                    className="text-xl font-bold w-full h-12 text-primary rounded-xl"
                                 />
                             </div>
-                            
-                            <div>
-                                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+
+                            <div className="space-y-1.5">
+                                <label className="block text-xs font-bold text-foreground">
                                     Umpan Balik (Feedback)
                                 </label>
-                                <Textarea 
-                                    placeholder="Berikan umpan balik konstruktif untuk siswa..."
+                                <Textarea
+                                    rows={3}
+                                    placeholder="Tuliskan catatan umpan balik untuk siswa..."
                                     value={feedback}
                                     onChange={(e) => setFeedback(e.target.value)}
-                                    className="min-h-[120px] bg-white dark:bg-slate-800"
+                                    className="rounded-xl border border-border bg-background text-xs sm:text-sm text-foreground p-3 min-h-[100px]"
                                 />
                             </div>
-                        </div>
 
+                            {/* Dual Primary Actions */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2">
+                                <button
+                                    type="button"
+                                    disabled={isSaving}
+                                    onClick={() => handleSave(false)}
+                                    className="w-full inline-flex items-center justify-center gap-1.5 px-4 py-3 rounded-xl border border-border bg-background text-foreground font-bold text-xs hover:bg-muted transition min-h-[48px] cursor-pointer"
+                                >
+                                    <Save className="w-4 h-4" />
+                                    <span>{isSaving ? 'Menyimpan...' : 'Simpan Nilai'}</span>
+                                </button>
+
+                                <button
+                                    type="button"
+                                    disabled={isSaving || currentStudentIndex === students.length - 1}
+                                    onClick={() => handleSave(true)}
+                                    className="w-full inline-flex items-center justify-center gap-1.5 px-4 py-3 rounded-xl bg-primary text-primary-foreground font-bold text-xs shadow-xs hover:bg-primary/90 transition min-h-[48px] cursor-pointer disabled:opacity-40"
+                                >
+                                    <span>Simpan & Berikutnya</span>
+                                    <ArrowRight className="w-4 h-4" />
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            {/* Custom Toast Notification */}
+            {/* Custom Notification Toast */}
             {toastMessage && (
-                <div className={`fixed bottom-6 right-6 z-50 px-5 py-3 rounded-xl shadow-xl flex items-center gap-3 animate-in fade-in slide-in-from-bottom-4 ${
-                    toastMessage.type === 'success' 
-                        ? 'bg-emerald-600 text-white' 
-                        : 'bg-rose-600 text-white'
+                <div className={`fixed bottom-6 right-6 z-50 px-4 py-3 rounded-2xl shadow-lg flex items-center gap-2.5 animate-in fade-in slide-in-from-bottom-4 ${
+                    toastMessage.type === 'success' ? 'bg-emerald-600 text-white' : 'bg-destructive text-destructive-foreground'
                 }`}>
-                    {toastMessage.type === 'success' ? (
-                        <CheckCircle2 className="w-5 h-5" />
-                    ) : (
-                        <AlertCircle className="w-5 h-5" />
-                    )}
-                    <span className="font-semibold text-sm">{toastMessage.message}</span>
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span className="font-bold text-xs">{toastMessage.message}</span>
                 </div>
             )}
 

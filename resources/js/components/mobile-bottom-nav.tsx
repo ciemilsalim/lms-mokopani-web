@@ -36,8 +36,8 @@ export function MobileBottomNav() {
             case 'teacher':
                 return [
                     { title: 'Beranda', url: '/dashboard', icon: LayoutDashboard },
+                    { title: 'Kelas', url: '/classes', icon: GraduationCap },
                     { title: 'Materi', url: '/materials', icon: BookOpen },
-                    { title: 'Asesmen', url: '/assignments', icon: ClipboardList },
                     { title: 'Presensi', url: '/sso/presensi', icon: CalendarCheck, isExternal: true },
                 ];
             case 'student':

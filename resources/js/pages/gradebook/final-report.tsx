@@ -1,14 +1,9 @@
+import React, { useState } from 'react';
 import AppLayout from '@/layouts/app-layout';
-import { Head, router } from '@inertiajs/react';
-import { 
-    Printer, 
-    ChevronLeft, 
-    Download,
-    FileText,
-    User,
-    CheckCircle2
-} from 'lucide-react';
-import { useState } from 'react';
+import { type BreadcrumbItem } from '@/types';
+import { Head } from '@inertiajs/react';
+import { PredicateBadge } from '@/components/gradebook';
+import { ReportHeader, ReportActions } from '@/components/report';
 
 interface ReportRow {
     nis: string;
@@ -32,7 +27,20 @@ interface FinalReportProps {
     headmaster_nip?: string;
 }
 
-export default function FinalReport({ reportData, subject_name, class_name, teacher_name, period, subject_id, class_id, kktp = 75, school_name, school_address, headmaster_name, headmaster_nip }: FinalReportProps) {
+export default function FinalReport({ 
+    reportData = [], 
+    subject_name, 
+    class_name, 
+    teacher_name, 
+    period, 
+    subject_id, 
+    class_id, 
+    kktp = 75, 
+    school_name, 
+    school_address, 
+    headmaster_name, 
+    headmaster_nip 
+}: FinalReportProps) {
     const [downloading, setDownloading] = useState(false);
 
     const handleDownloadPdf = () => {
@@ -42,50 +50,80 @@ export default function FinalReport({ reportData, subject_name, class_name, teac
         setTimeout(() => setDownloading(false), 2000);
     };
 
+    const breadcrumbs: BreadcrumbItem[] = [
+        { title: 'Dashboard', href: '/dashboard' },
+        { title: 'Penilaian', href: '/gradebook' },
+        { title: 'Laporan Akhir Mapel', href: '#' },
+    ];
+
     return (
-        <AppLayout breadcrumbs={[
-            { title: 'Dashboard', href: '/dashboard' },
-            { title: 'Penilaian', href: '/gradebook' },
-            { title: 'Laporan Akhir Mapel', href: '#' },
-        ]}>
+        <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`Laporan Akhir ${subject_name} – LMS Mokopani`} />
 
-            <div className="flex h-full flex-1 flex-col gap-6 min-w-0 print:p-0">
+            <div className="space-y-5 sm:space-y-6 fade-in pb-16 md:pb-6 max-w-5xl mx-auto px-4 sm:px-6 print:p-0 print:m-0">
                 {/* Actions (Hidden on Print) */}
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between print:hidden">
-                    <button 
-                        onClick={() => window.history.back()}
-                        className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition self-start sm:self-auto"
-                    >
-                        <ChevronLeft className="h-4 w-4" />
-                        Kembali
-                    </button>
-                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-                        {subject_id && class_id && (
-                            <button 
-                                onClick={handleDownloadPdf}
-                                disabled={downloading}
-                                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-primary hover:bg-primary-hover px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-primary/20 transition disabled:opacity-50 cursor-pointer"
-                            >
-                                <Download className="h-4 w-4" />
-                                {downloading ? 'Mengunduh...' : 'Unduh PDF Rapor'}
-                            </button>
-                        )}
-                        <button 
-                            onClick={() => window.print()}
-                            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-5 py-2.5 text-sm font-bold text-primary hover:bg-primary/10 transition dark:border-primary/30 dark:bg-primary/5 dark:text-primary cursor-pointer"
-                        >
-                            <Printer className="h-4 w-4" />
-                            Cetak Laporan
-                        </button>
-                    </div>
+                <ReportActions
+                    subjectId={subject_id}
+                    classId={class_id}
+                    downloading={downloading}
+                    onDownloadPdf={handleDownloadPdf}
+                    onPrint={() => window.print()}
+                    onBack={() => window.history.back()}
+                />
+
+                {/* Report Header Identity */}
+                <div className="print:hidden">
+                    <ReportHeader
+                        subjectName={subject_name}
+                        classNameStr={class_name}
+                        teacherName={teacher_name}
+                        periodStr={period}
+                        schoolName={school_name}
+                        schoolAddress={school_address}
+                    />
                 </div>
 
-                {/* Report Document Style */}
-                <div className="mx-auto w-full max-w-5xl rounded-3xl border border-border bg-card p-12 shadow-2xl print:shadow-none print:border-none print:p-0">
-                    
-                    {/* Document Header */}
-                    <div className="mb-12 border-b-4 border-double border-border pb-8 text-center">
+                {/* ── Mobile Student Card Feed (md:hidden when not printing) ── */}
+                <div className="md:hidden space-y-3 print:hidden">
+                    {reportData.length === 0 ? (
+                        <div className="py-16 text-center text-muted-foreground text-xs italic bg-card rounded-2xl border border-border/60 p-6">
+                            Belum ada data nilai siswa untuk ditampilkan.
+                        </div>
+                    ) : (
+                        reportData.map((row, idx) => (
+                            <div key={idx} className="rounded-2xl border border-border/70 bg-card p-4 shadow-xs space-y-3">
+                                <div className="flex items-center justify-between gap-3">
+                                    <div className="flex items-center gap-3 min-w-0">
+                                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary font-bold text-xs shrink-0">
+                                            {row.name.charAt(0).toUpperCase()}
+                                        </div>
+                                        <div className="min-w-0">
+                                            <h3 className="text-xs sm:text-sm font-bold text-foreground truncate">{row.name}</h3>
+                                            <p className="text-[10px] font-mono text-muted-foreground">NIS: {row.nis || '-'}</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="text-right shrink-0">
+                                        <span className="text-sm font-black text-foreground block">{row.final_score}</span>
+                                        <PredicateBadge score={row.final_score} kktpThreshold={kktp} />
+                                    </div>
+                                </div>
+
+                                {row.description && (
+                                    <div className="p-3 rounded-xl bg-muted/30 border border-border/50 text-xs">
+                                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">Deskripsi Capaian Rapor:</p>
+                                        <p className="text-foreground italic leading-relaxed">{row.description}</p>
+                                    </div>
+                                )}
+                            </div>
+                        ))
+                    )}
+                </div>
+
+                {/* ── Main Document Table View (Desktop & Print) ── */}
+                <div className="hidden md:block print:block rounded-3xl border border-border bg-card p-8 sm:p-10 shadow-2xl print:shadow-none print:border-none print:p-0">
+                    {/* Document Print Header */}
+                    <div className="hidden print:block mb-8 border-b-4 border-double border-border pb-6 text-center">
                         {school_name && (
                             <>
                                 <h1 className="text-2xl font-black uppercase tracking-widest text-foreground">{school_name}</h1>
@@ -112,30 +150,30 @@ export default function FinalReport({ reportData, subject_name, class_name, teac
                     </div>
 
                     {/* Table Content */}
-                    <div className="overflow-hidden rounded-xl border border-border">
-                        <table className="w-full text-left text-sm">
-                            <thead className="bg-muted/60 dark:bg-muted/20 text-foreground font-bold uppercase tracking-wider border-b border-border">
+                    <div className="overflow-hidden rounded-2xl border border-border">
+                        <table className="w-full text-left text-xs sm:text-sm">
+                            <thead className="bg-muted/50 text-foreground font-bold uppercase tracking-wider border-b border-border">
                                 <tr>
-                                    <th className="px-6 py-4 w-12 text-center">No</th>
-                                    <th className="px-6 py-4 w-32">NIS</th>
-                                    <th className="px-6 py-4 w-64">Nama Siswa</th>
-                                    <th className="px-6 py-4 w-24 text-center">Nilai Akhir</th>
-                                    <th className="px-6 py-4">Deskripsi Capaian Kompetensi</th>
+                                    <th className="px-4 py-3.5 w-12 text-center">No</th>
+                                    <th className="px-4 py-3.5 w-28">NIS</th>
+                                    <th className="px-4 py-3.5 w-56">Nama Siswa</th>
+                                    <th className="px-4 py-3.5 w-24 text-center">Nilai Akhir</th>
+                                    <th className="px-4 py-3.5">Deskripsi Capaian Kompetensi</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-border">
+                            <tbody className="divide-y divide-border/60">
                                 {reportData.map((row, index) => (
                                     <tr key={index} className="hover:bg-muted/30 transition-colors">
-                                        <td className="px-6 py-4 text-center text-foreground/70 dark:text-slate-400 font-medium">{index + 1}</td>
-                                        <td className="px-6 py-4 font-mono text-xs text-foreground/85 dark:text-slate-300">{row.nis}</td>
-                                        <td className="px-6 py-4 font-bold text-foreground">{row.name}</td>
-                                        <td className="px-6 py-4 text-center">
-                                            <span className={`inline-block w-10 py-1 rounded-lg font-black ${row.final_score >= kktp ? 'text-success bg-success/10' : 'text-destructive bg-destructive/10'}`}>
+                                        <td className="px-4 py-3.5 text-center text-muted-foreground font-medium">{index + 1}</td>
+                                        <td className="px-4 py-3.5 font-mono text-xs text-muted-foreground">{row.nis}</td>
+                                        <td className="px-4 py-3.5 font-bold text-foreground">{row.name}</td>
+                                        <td className="px-4 py-3.5 text-center">
+                                            <span className={`inline-block px-2.5 py-1 rounded-lg font-black text-xs ${row.final_score >= kktp ? 'text-emerald-600 bg-emerald-500/10 dark:text-emerald-400' : 'text-rose-600 bg-rose-500/10 dark:text-rose-400'}`}>
                                                 {row.final_score}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-4">
-                                            <p className="text-xs leading-relaxed text-foreground/90 font-medium italic dark:text-slate-200">
+                                        <td className="px-4 py-3.5">
+                                            <p className="text-xs leading-relaxed text-foreground font-medium italic">
                                                 "{row.description}"
                                             </p>
                                         </td>
@@ -145,20 +183,19 @@ export default function FinalReport({ reportData, subject_name, class_name, teac
                         </table>
                     </div>
 
-                    {/* Document Footer / Signatures (Only for print) */}
+                    {/* Signatures Footer (Only for Print) */}
                     <div className="mt-16 hidden print:grid grid-cols-2 gap-20">
                         <div className="text-center">
-                            <p className="text-sm font-medium">Mengetahui,</p>
-                            <p className="text-sm font-bold mt-1">Kepala Sekolah</p>
-                            <div className="mt-20 h-px w-48 mx-auto bg-muted-foreground"></div>
-                            <p className="text-xs font-bold mt-1">{headmaster_name || '(...................................................)'}</p>
-                            {headmaster_nip && <p className="text-[10px] text-muted-foreground mt-1">NIP. {headmaster_nip}</p>}
+                            <p className="text-sm font-medium text-muted-foreground">Mengetahui,</p>
+                            <p className="text-sm font-bold text-foreground">Kepala Sekolah</p>
+                            <div className="h-20"></div>
+                            <p className="text-sm font-bold text-foreground underline">{headmaster_name || '........................................'}</p>
+                            {headmaster_nip && <p className="text-xs text-muted-foreground">NIP. {headmaster_nip}</p>}
                         </div>
                         <div className="text-center">
-                            <p className="text-sm font-medium">{school_name ? `${school_name}, ` : ''}{new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
-                            <p className="text-sm font-bold mt-1">Guru Mata Pelajaran</p>
-                            <div className="mt-20 h-px w-48 mx-auto bg-muted-foreground"></div>
-                            <p className="text-xs font-bold mt-1">{teacher_name}</p>
+                            <p className="text-sm font-medium text-muted-foreground">Guru Mata Pelajaran,</p>
+                            <div className="h-24"></div>
+                            <p className="text-sm font-bold text-foreground underline">{teacher_name}</p>
                         </div>
                     </div>
                 </div>

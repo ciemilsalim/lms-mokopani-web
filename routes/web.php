@@ -258,6 +258,10 @@ Route::middleware(['auth'])->group(function () {
         Route::post('announcements/{announcement}', [AnnouncementController::class, 'update'])->name('announcements.update');
         Route::delete('announcements/{announcement}', [AnnouncementController::class, 'destroy'])->name('announcements.destroy');
 
+        // Data kelas & detail kelas (Mobile-First Class Hub)
+        Route::get('classes', [\App\Http\Controllers\SchoolClassController::class, 'index'])->name('classes.index');
+        Route::get('classes/{schoolClass}', [\App\Http\Controllers\SchoolClassController::class, 'show'])->name('classes.show');
+
         // Data siswa
         Route::get('students', [StudentController::class, 'index'])->name('students.index');
 

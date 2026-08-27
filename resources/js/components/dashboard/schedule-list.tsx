@@ -80,7 +80,7 @@ export function ScheduleList({
                                         {item.subject}
                                     </h3>
                                     {item.is_current && (
-                                        <span className="inline-flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[9px] font-black text-primary-foreground animate-pulse">
+                                        <span className="inline-flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[10px] font-black text-primary-foreground animate-pulse">
                                             Sedang Berlangsung
                                         </span>
                                     )}

@@ -163,7 +163,7 @@ export function TeacherDashboardView({
                     />
                     <div className="grid grid-cols-2 gap-2.5 sm:gap-4 sm:grid-cols-4">
                         <SummaryCard
-                            label="Siswa Diampu"
+                            label="Siswa"
                             value={stats?.total_students ?? 0}
                             icon={GraduationCap}
                             variant="primary"
@@ -177,14 +177,14 @@ export function TeacherDashboardView({
                             href="/subjects"
                         />
                         <SummaryCard
-                            label="Bahan Materi"
+                            label="Materi"
                             value={stats?.total_materials ?? 0}
                             icon={Library}
                             variant="warning"
                             href="/materials"
                         />
                         <SummaryCard
-                            label="Bank Asesmen"
+                            label="Asesmen"
                             value={stats?.total_assignments ?? 0}
                             icon={ClipboardList}
                             variant="destructive"

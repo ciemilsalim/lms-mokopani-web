@@ -62,6 +62,12 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import {
+    AssessmentDetailHeader,
+    AssessmentInstructions,
+    AssessmentDetailTeacherOverview,
+} from '@/components/assignments';
+
 
 interface Submission {
     id: number;
@@ -2108,91 +2114,35 @@ export default function ShowAssignment({ assignment, students, my_submission, my
 
             <>
                 <div className="flex h-full flex-1 flex-col gap-6 min-w-0 fade-in max-w-7xl mx-auto w-full">
-                {/* Back Button & Actions */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <button 
-                        onClick={() => window.history.back()}
-                        className="flex items-center gap-2 text-sm font-bold text-muted-foreground hover:text-primary transition uppercase tracking-widest w-fit"
-                    >
-                        <ChevronLeft className="h-4 w-4" />
-                        Kembali
-                    </button>
-                    {user_role === 'teacher' && (
-                        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-start sm:justify-end">
-                            <button 
-                                onClick={() => setIsKktpModalOpen(true)}
-                                className="flex-1 sm:flex-initial justify-center flex items-center gap-2 rounded-xl px-3 sm:px-4 py-2 text-xs font-black bg-purple-50 text-purple-700 hover:bg-purple-100 dark:bg-purple-950/30 dark:text-purple-400 transition uppercase tracking-widest border border-purple-200/60 dark:border-purple-800/40 shadow-2xs whitespace-nowrap"
-                            >
-                                <Target className="h-4 w-4 text-purple-500 shrink-0" />
-                                Lihat Pendekatan KKTP
-                            </button>
-                            <Link 
-                                href={route('assignments.grade-view', assignment.id)}
-                                className="flex-1 sm:flex-initial justify-center flex items-center gap-2 rounded-xl px-3 sm:px-4 py-2 text-xs font-black bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:text-indigo-400 transition uppercase tracking-widest whitespace-nowrap"
-                            >
-                                <ListChecks className="h-4 w-4 shrink-0" />
-                                Penilaian Split-Screen
-                            </Link>
-                            <button 
-                                onClick={() => setShowDeleteConfirm(true)}
-                                className="flex-1 sm:flex-initial justify-center flex items-center gap-2 rounded-xl px-3 sm:px-4 py-2 text-xs font-black text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition uppercase tracking-widest whitespace-nowrap"
-                            >
-                                <Trash2 className="h-4 w-4 shrink-0" />
-                                Hapus Asesmen
-                            </button>
-                        </div>
-                    )}
-                </div>
+                <AssessmentDetailHeader
+                    id={assignment.id}
+                    title={assignment.title}
+                    subjectName={assignment.subject}
+                    schoolClasses={assignment.school_classes}
+                    dueDate={assignment.due_date}
+                    maxPoints={assignment.max_points}
+                    passingGrade={assignment.passing_grade}
+                    assessmentType={assignment.assessment_type}
+                    isTeacher={user_role === 'teacher' || user_role === 'admin'}
+                    onDelete={handleDelete}
+                />
 
-                {/* Assignment Info Card */}
-                <div className="rounded-xl border border-border bg-white dark:bg-slate-900 p-4 sm:p-6 md:p-8 shadow-2xl shadow-slate-100/50 dark:shadow-none">
-                    <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
-                        <div className="space-y-3">
-                            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                                <span className="inline-flex rounded-full bg-sky-50 dark:bg-sky-950/40 px-3 py-1 text-[10px] font-black text-primary uppercase tracking-widest border border-sky-100 dark:border-sky-900/30">
-                                    {assignment.subject}
-                                </span>
-                                {assignment.assessment_type === 'initial' && (
-                                    <span className="inline-flex rounded-full bg-amber-50 dark:bg-amber-950/40 px-3 py-1 text-[10px] font-black text-warning uppercase tracking-widest border border-amber-100 dark:border-amber-900/30">
-                                        Asesmen Diagnostik
-                                    </span>
-                                )}
-                                {assignment.scoring_tool && (
-                                    <span className="inline-flex rounded-full bg-emerald-50 dark:bg-emerald-950/40 px-3 py-1 text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest border border-emerald-100 dark:border-emerald-900/30">
-                                        Skoring: {scoringToolLabels[assignment.scoring_tool] || assignment.scoring_tool}
-                                    </span>
-                                )}
-                            </div>
-                            <h1 className="text-xl sm:text-2xl md:text-3xl font-black text-foreground tracking-tight leading-snug">{assignment.title}</h1>
-                            <div className="flex flex-wrap items-center gap-3 sm:gap-6 pt-2 text-[11px] sm:text-xs font-bold text-muted-foreground uppercase tracking-widest">
-                                <span className="flex items-center gap-1.5 sm:gap-2">
-                                    <Calendar className="h-4 w-4 text-amber-500 shrink-0" />
-                                    Tenggat: <span className="text-slate-600 dark:text-slate-300">{assignment.due_date}</span>
-                                </span>
-                                {assignment.instrument_type !== 'reflective_journal' && assignment.instrument_type !== 'self_assessment' && assignment.instrument_type !== 'peer_assessment' && assignment.instrument_type !== 'exit_ticket' ? (
-                                    <span className="flex items-center gap-1.5 sm:gap-2">
-                                        <Star className="h-4 w-4 text-emerald-500 shrink-0" />
-                                        Poin Maks: <span className="text-slate-600 dark:text-slate-300">{assignment.max_points} pts</span>
-                                    </span>
-                                ) : (
-                                    <span className="flex items-center gap-1.5 sm:gap-2">
-                                        <Star className="h-4 w-4 text-emerald-500 shrink-0" />
-                                        Penilaian: <span className="text-slate-600 dark:text-slate-300">Deskriptif (KKTP)</span>
-                                    </span>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                    <div className="mt-6 sm:mt-8 border-t border-slate-50 dark:border-slate-800 pt-6 sm:pt-8">
-                        <div className="flex items-center gap-2 mb-4">
-                            <FileText className="h-4 w-4 text-primary" />
-                            <h3 className="text-xs font-black text-foreground uppercase tracking-widest">Instruksi & Deskripsi</h3>
-                        </div>
-                        <p className="whitespace-pre-wrap text-sm text-slate-600 dark:text-muted-foreground leading-relaxed font-medium">
-                            {assignment.description}
-                        </p>
-                    </div>
-                </div>
+                <AssessmentInstructions
+                    description={assignment.description}
+                    instrumentType={assignment.instrument_type}
+                    scoringTool={assignment.scoring_tool}
+                    onOpenKktpModal={() => setIsKktpModalOpen(true)}
+                />
+
+                {user_role === 'teacher' && (
+                    <AssessmentDetailTeacherOverview
+                        assignmentId={assignment.id}
+                        submissions={assignment.submissions || []}
+                        studentsCount={students.length}
+                        maxPoints={assignment.max_points}
+                    />
+                )}
+
 
                 {/* Content based on Role */}
                 {user_role === 'teacher' ? (
