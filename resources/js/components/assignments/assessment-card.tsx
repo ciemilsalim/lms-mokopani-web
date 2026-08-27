@@ -42,6 +42,7 @@ interface AssessmentCardProps {
     assignment: AssignmentItem;
     isTeacher?: boolean;
     viewMode?: 'row' | 'card';
+    classId?: number;
     onDelete?: (id: number) => void;
 }
 
@@ -49,6 +50,7 @@ export function AssessmentCard({
     assignment,
     isTeacher = false,
     viewMode = 'row',
+    classId,
     onDelete,
 }: AssessmentCardProps) {
     const overdue = isOverdue(assignment.due_date);
@@ -68,7 +70,11 @@ export function AssessmentCard({
     };
 
     const handleNavigate = () => {
-        router.visit(route('assignments.show', assignment.id));
+        if (classId) {
+            router.visit(route('assignments.show', { assignment: assignment.id, class_id: classId }));
+        } else {
+            router.visit(route('assignments.show', assignment.id));
+        }
     };
 
     // --- Standalone Card View (used in Student view or Grid) ---

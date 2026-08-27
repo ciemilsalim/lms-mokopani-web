@@ -395,7 +395,7 @@ function TeacherGroupedView({
                                                                     {isObjExpanded && (
                                                                         <div className="flex flex-col divide-y divide-border/30 bg-card">
                                                                             {obj.assignments.map(asgn => (
-                                                                                <AssessmentCard key={asgn.id} assignment={asgn} isTeacher={true} viewMode="row" />
+                                                                                <AssessmentCard key={asgn.id} assignment={asgn} isTeacher={true} viewMode="row" classId={cls.class_id} />
                                                                             ))}
                                                                         </div>
                                                                     )}

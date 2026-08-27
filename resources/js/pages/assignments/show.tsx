@@ -614,9 +614,22 @@ interface ShowAssignmentProps {
     user_role: string;
     auth_id: number;
     available_peers?: Student[];
+    selected_class_id?: number | 'all';
+    assigned_classes?: { id: number; name: string; students_count?: number }[];
 }
 
-export default function ShowAssignment({ assignment, students, my_submission, my_reflection, comments, user_role, auth_id, available_peers = [] }: ShowAssignmentProps) {
+export default function ShowAssignment({
+    assignment,
+    students,
+    my_submission,
+    my_reflection,
+    comments,
+    user_role,
+    auth_id,
+    available_peers = [],
+    selected_class_id,
+    assigned_classes = [],
+}: ShowAssignmentProps) {
     const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
     const isSummativeLocked = assignment.assessment_type === 'summative' && my_submission && !my_submission.is_remedial_open;
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
@@ -2328,6 +2341,8 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                         <TeacherGradingWorkspace
                             assignment={assignment}
                             students={students}
+                            assignedClasses={assigned_classes}
+                            selectedClassId={selected_class_id}
                             onOpenObservationModal={openObservationModal}
                             onOpenAnecdotalModal={openAnecdotalModal}
                             onOpenRubricModal={openRubricModal}

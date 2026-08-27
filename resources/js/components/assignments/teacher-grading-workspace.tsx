@@ -34,6 +34,8 @@ interface Submission {
 interface TeacherGradingWorkspaceProps {
     assignment: any;
     students: Student[];
+    assignedClasses?: { id: number; name: string; students_count?: number }[];
+    selectedClassId?: number | 'all';
     onOpenObservationModal: (student: Student, existingSubmission?: Submission) => void;
     onOpenAnecdotalModal: (student: Student, existingSubmission?: Submission) => void;
     onOpenRubricModal: (student: Student, existingSubmission?: Submission) => void;
@@ -48,6 +50,8 @@ interface TeacherGradingWorkspaceProps {
 export function TeacherGradingWorkspace({
     assignment,
     students = [],
+    assignedClasses = [],
+    selectedClassId,
     onOpenObservationModal,
     onOpenAnecdotalModal,
     onOpenRubricModal,
@@ -202,17 +206,28 @@ export function TeacherGradingWorkspace({
         'concept_map'
     ].includes(assignment.instrument_type);
 
+    const selectedClassName = useMemo(() => {
+        if (selectedClassId === 'all') return 'Semua Kelas';
+        const found = assignedClasses.find(c => c.id === selectedClassId);
+        return found ? found.name : (assignedClasses[0]?.name ?? null);
+    }, [selectedClassId, assignedClasses]);
+
     return (
         <div className="space-y-5">
             {/* Real-time Progress & Workspace Header Card */}
             <div className="rounded-2xl border border-border bg-card p-4 sm:p-6 shadow-xs space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="space-y-1">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                             <span className="h-2.5 w-2.5 rounded-full bg-primary animate-pulse" />
                             <h2 className="text-sm sm:text-base font-black text-foreground uppercase tracking-wider">
                                 Workspace Penilaian Siswa
                             </h2>
+                            {selectedClassName && (
+                                <span className="rounded-lg bg-primary/10 px-2 py-0.5 text-[11px] font-black text-primary border border-primary/20">
+                                    {selectedClassName} ({totalStudents} Siswa)
+                                </span>
+                            )}
                         </div>
                         <p className="text-xs text-muted-foreground font-medium">
                             Masukkan nilai secara cepat atau buka lembar instrumen lengkap per siswa.
@@ -230,6 +245,46 @@ export function TeacherGradingWorkspace({
                         </button>
                     </div>
                 </div>
+
+                {/* Class Switcher for Multi-Class Assignments */}
+                {assignedClasses.length > 1 && (
+                    <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-1 border-t border-border/40 scrollbar-hide">
+                        <span className="text-[10px] font-black text-muted-foreground uppercase tracking-wider shrink-0">
+                            Pilih Kelas:
+                        </span>
+                        {assignedClasses.map((cls) => {
+                            const isActive = selectedClassId === cls.id || (!selectedClassId && assignedClasses[0]?.id === cls.id);
+                            return (
+                                <button
+                                    key={cls.id}
+                                    type="button"
+                                    onClick={() => router.visit(route('assignments.show', { assignment: assignment.id, class_id: cls.id }), { preserveScroll: true })}
+                                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                                        isActive
+                                            ? 'bg-primary text-primary-foreground shadow-xs font-black'
+                                            : 'bg-muted/40 hover:bg-muted/75 text-muted-foreground hover:text-foreground border border-border/50'
+                                    }`}
+                                >
+                                    <span>{cls.name}</span>
+                                    <span className={`text-[10px] px-1.5 py-0.2 rounded-md ${isActive ? 'bg-primary-foreground/20 text-primary-foreground' : 'bg-muted text-muted-foreground font-semibold'}`}>
+                                        {cls.students_count ?? 0}
+                                    </span>
+                                </button>
+                            );
+                        })}
+                        <button
+                            type="button"
+                            onClick={() => router.visit(route('assignments.show', { assignment: assignment.id, class_id: 'all' }), { preserveScroll: true })}
+                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                                selectedClassId === 'all'
+                                    ? 'bg-primary text-primary-foreground shadow-xs font-black'
+                                    : 'bg-muted/40 hover:bg-muted/75 text-muted-foreground hover:text-foreground border border-border/50'
+                            }`}
+                        >
+                            <span>Semua Siswa</span>
+                        </button>
+                    </div>
+                )}
 
                 {/* Progress Bar & Status Pill Counters */}
                 <div className="space-y-2 pt-1">

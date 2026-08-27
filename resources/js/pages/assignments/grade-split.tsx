@@ -16,9 +16,16 @@ import axios from 'axios';
 interface GradeSplitProps {
     assignment: any;
     students: any[];
+    selected_class_id?: number | 'all';
+    assigned_classes?: { id: number; name: string; students_count?: number }[];
 }
 
-export default function GradeSplitPage({ assignment, students = [] }: GradeSplitProps) {
+export default function GradeSplitPage({
+    assignment,
+    students = [],
+    selected_class_id,
+    assigned_classes = [],
+}: GradeSplitProps) {
     const [currentStudentIndex, setCurrentStudentIndex] = useState(0);
     const currentStudent = students[currentStudentIndex];
 
@@ -342,24 +349,69 @@ export default function GradeSplitPage({ assignment, students = [] }: GradeSplit
 
             <div className="min-h-[calc(100vh-65px)] flex flex-col space-y-4 max-w-6xl mx-auto px-4 sm:px-6 pt-2 pb-16 fade-in">
                 {/* Header Bar */}
-                <div className="flex items-center justify-between gap-3 border-b border-border/60 pb-3">
-                    <div className="flex items-center gap-2">
-                        <Link href={route('assignments.show', assignment.id)} className="p-2 rounded-xl border border-border text-muted-foreground hover:text-foreground transition min-h-[40px] min-w-[40px] flex items-center justify-center">
-                            <ChevronLeft className="w-4 h-4" />
-                        </Link>
-                        <div>
-                            <h1 className="font-bold text-sm sm:text-base text-foreground leading-tight truncate max-w-[260px] sm:max-w-md">{assignment.title}</h1>
-                            <p className="text-xs text-muted-foreground">Mode Penilaian Guru (Mobile-First)</p>
+                <div className="flex flex-col gap-3 border-b border-border/60 pb-3">
+                    <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2">
+                            <Link 
+                                href={route('assignments.show', selected_class_id && selected_class_id !== 'all' ? { assignment: assignment.id, class_id: selected_class_id } : assignment.id)} 
+                                className="p-2 rounded-xl border border-border text-muted-foreground hover:text-foreground transition min-h-[40px] min-w-[40px] flex items-center justify-center cursor-pointer"
+                            >
+                                <ChevronLeft className="w-4 h-4" />
+                            </Link>
+                            <div>
+                                <h1 className="font-bold text-sm sm:text-base text-foreground leading-tight truncate max-w-[260px] sm:max-w-md">{assignment.title}</h1>
+                                <p className="text-xs text-muted-foreground">Mode Penilaian Split-Screen ({students.length} Siswa)</p>
+                            </div>
                         </div>
+
+                        <button
+                            onClick={() => setIsKktpModalOpen(true)}
+                            className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition min-h-[40px] cursor-pointer"
+                        >
+                            <Target className="h-3.5 w-3.5" />
+                            <span className="hidden sm:inline">Info KKTP</span>
+                        </button>
                     </div>
 
-                    <button
-                        onClick={() => setIsKktpModalOpen(true)}
-                        className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition min-h-[40px]"
-                    >
-                        <Target className="h-3.5 w-3.5" />
-                        <span className="hidden sm:inline">Info KKTP</span>
-                    </button>
+                    {/* Class Switcher for Multi-Class Assignments */}
+                    {assigned_classes.length > 1 && (
+                        <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-1 border-t border-border/40 scrollbar-hide">
+                            <span className="text-[10px] font-black text-muted-foreground uppercase tracking-wider shrink-0">
+                                Pilih Kelas:
+                            </span>
+                            {assigned_classes.map((cls) => {
+                                const isActive = selected_class_id === cls.id || (!selected_class_id && assigned_classes[0]?.id === cls.id);
+                                return (
+                                    <button
+                                        key={cls.id}
+                                        type="button"
+                                        onClick={() => router.visit(route('assignments.grade-view', { assignment: assignment.id, class_id: cls.id }), { preserveScroll: true })}
+                                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                                            isActive
+                                                ? 'bg-primary text-primary-foreground shadow-xs font-black'
+                                                : 'bg-muted/40 hover:bg-muted/75 text-muted-foreground hover:text-foreground border border-border/50'
+                                        }`}
+                                    >
+                                        <span>{cls.name}</span>
+                                        <span className={`text-[10px] px-1.5 py-0.2 rounded-md ${isActive ? 'bg-primary-foreground/20 text-primary-foreground' : 'bg-muted text-muted-foreground font-semibold'}`}>
+                                            {cls.students_count ?? 0}
+                                        </span>
+                                    </button>
+                                );
+                            })}
+                            <button
+                                type="button"
+                                onClick={() => router.visit(route('assignments.grade-view', { assignment: assignment.id, class_id: 'all' }), { preserveScroll: true })}
+                                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                                    selected_class_id === 'all'
+                                        ? 'bg-primary text-primary-foreground shadow-xs font-black'
+                                        : 'bg-muted/40 hover:bg-muted/75 text-muted-foreground hover:text-foreground border border-border/50'
+                                }`}
+                            >
+                                <span>Semua Siswa</span>
+                            </button>
+                        </div>
+                    )}
                 </div>
 
                 {/* Student Switcher Toolbar */}

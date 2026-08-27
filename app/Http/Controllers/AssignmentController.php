@@ -353,10 +353,25 @@ class AssignmentController extends Controller
         return redirect()->route('assignments.index')->with('success', 'Tugas berhasil dibuat.');
     }
 
-    public function show(LmsAssignment $assignment)
+    public function show(Request $request, LmsAssignment $assignment)
     {
         $user = Auth::user();
-        $assignment->load(['subject', 'submissions.student']);
+        $assignment->load(['subject', 'submissions.student', 'schoolClasses']);
+
+        $assignedClasses = $assignment->schoolClasses;
+        $assignedClassIds = $assignedClasses->pluck('id')->toArray();
+
+        // Determine active class filter (e.g. from query param or default to the first class if multiple classes exist)
+        $classParam = $request->query('class_id');
+        if ($classParam && in_array((int)$classParam, $assignedClassIds)) {
+            $selectedClassId = (int)$classParam;
+        } elseif ($classParam === 'all') {
+            $selectedClassId = 'all';
+        } elseif (count($assignedClassIds) > 0) {
+            $selectedClassId = $assignedClassIds[0];
+        } else {
+            $selectedClassId = null;
+        }
 
         $readinessStatus = null;
         if ($user->student) {
@@ -407,21 +422,30 @@ class AssignmentController extends Controller
 
         $students = [];
         if ($user->teacher) {
-            $students = \App\Models\Student::whereIn('school_class_id', $assignment->schoolClasses->pluck('id'))
+            $studentsQuery = \App\Models\Student::query();
+            if ($selectedClassId && $selectedClassId !== 'all') {
+                $studentsQuery->where('school_class_id', $selectedClassId);
+            } elseif (!empty($assignedClassIds)) {
+                $studentsQuery->whereIn('school_class_id', $assignedClassIds);
+            }
+
+            $students = $studentsQuery->with('schoolClass')
                 ->orderBy('name')
                 ->get()
                 ->map(fn($s) => [
-                    'id'        => $s->id,
-                    'name'      => $s->name,
-                    'nis'       => $s->nis,
-                    'photo_url' => $s->photo_url,
+                    'id'              => $s->id,
+                    'name'            => $s->name,
+                    'nis'             => $s->nis,
+                    'photo_url'       => $s->photo_url,
+                    'school_class_id' => $s->school_class_id,
+                    'school_class'    => $s->schoolClass?->name,
                 ]);
         }
 
         // Available peers for peer assessment (student viewing)
         $availablePeers = [];
-        if ($user->student && $assignment->instrument_type === 'peer_assessment' && $assignment->schoolClasses->count() > 0) {
-            $classmates = \App\Models\Student::whereIn('school_class_id', $assignment->schoolClasses->pluck('id'))
+        if ($user->student && $assignment->instrument_type === 'peer_assessment' && $assignedClasses->count() > 0) {
+            $classmates = \App\Models\Student::whereIn('school_class_id', $assignedClassIds)
                 ->where('id', '!=', $user->student->id)
                 ->orderBy('name')
                 ->get();
@@ -507,11 +531,17 @@ class AssignmentController extends Controller
                 'feedback'         => $mySubmission->feedback,
                 'submitted_at'     => $mySubmission->created_at->format('d M Y, H:i'),
             ] : null,
-            'my_reflection'   => $myReflection,
-            'user_role'       => $user->role ?? ($user->teacher ? 'teacher' : 'student'),
-            'auth_id'         => $user->id,
-            'available_peers' => $availablePeers,
-            'readiness_status' => $readinessStatus,
+            'my_reflection'     => $myReflection,
+            'user_role'         => $user->role ?? ($user->teacher ? 'teacher' : 'student'),
+            'auth_id'           => $user->id,
+            'available_peers'   => $availablePeers,
+            'readiness_status'  => $readinessStatus,
+            'selected_class_id' => $selectedClassId,
+            'assigned_classes'  => $assignedClasses->map(fn($c) => [
+                'id'             => $c->id,
+                'name'           => $c->name,
+                'students_count' => \App\Models\Student::where('school_class_id', $c->id)->count(),
+            ]),
         ]);
     }
 
@@ -739,7 +769,7 @@ class AssignmentController extends Controller
         return back()->with('success', 'Bukti fisik berhasil diunggah.');
     }
 
-    public function gradeView(LmsAssignment $assignment)
+    public function gradeView(Request $request, LmsAssignment $assignment)
     {
         $user = Auth::user();
         if (!$user->teacher) {
@@ -748,13 +778,37 @@ class AssignmentController extends Controller
 
         $assignment->load(['subject', 'submissions.student', 'schoolClasses']);
 
-        $students = \App\Models\Student::whereIn('school_class_id', $assignment->schoolClasses->pluck('id'))
+        $assignedClasses = $assignment->schoolClasses;
+        $assignedClassIds = $assignedClasses->pluck('id')->toArray();
+
+        $classParam = $request->query('class_id');
+        if ($classParam && in_array((int)$classParam, $assignedClassIds)) {
+            $selectedClassId = (int)$classParam;
+        } elseif ($classParam === 'all') {
+            $selectedClassId = 'all';
+        } elseif (count($assignedClassIds) > 0) {
+            $selectedClassId = $assignedClassIds[0];
+        } else {
+            $selectedClassId = null;
+        }
+
+        $studentsQuery = \App\Models\Student::query();
+        if ($selectedClassId && $selectedClassId !== 'all') {
+            $studentsQuery->where('school_class_id', $selectedClassId);
+        } elseif (!empty($assignedClassIds)) {
+            $studentsQuery->whereIn('school_class_id', $assignedClassIds);
+        }
+
+        $students = $studentsQuery->with('schoolClass')
             ->orderBy('name')
             ->get()
             ->map(fn($s) => [
-                'id'   => $s->id,
-                'name' => $s->name,
-                'nis'  => $s->nis,
+                'id'              => $s->id,
+                'name'            => $s->name,
+                'nis'             => $s->nis,
+                'photo_url'       => $s->photo_url,
+                'school_class_id' => $s->school_class_id,
+                'school_class'    => $s->schoolClass?->name,
             ]);
 
         return Inertia::render('assignments/grade-split', [
@@ -780,7 +834,13 @@ class AssignmentController extends Controller
                     'submitted_at'     => $s->created_at->format('d M Y, H:i'),
                 ]),
             ],
-            'students' => $students,
+            'students'          => $students,
+            'selected_class_id' => $selectedClassId,
+            'assigned_classes'  => $assignedClasses->map(fn($c) => [
+                'id'             => $c->id,
+                'name'           => $c->name,
+                'students_count' => \App\Models\Student::where('school_class_id', $c->id)->count(),
+            ]),
         ]);
     }
 
