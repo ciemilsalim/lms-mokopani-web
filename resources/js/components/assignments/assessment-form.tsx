@@ -4,7 +4,7 @@ import {
     ChevronLeft, ChevronRight, CheckCircle2, AlertCircle,
     BookOpen, Users, Target, GraduationCap, Info, FileText, Plus, Trash2,
     Check, Lock, Sparkles, Layers, ListChecks, Calendar, ArrowRight, Save,
-    Loader2, RefreshCw
+    Loader2, RefreshCw, Eye, HelpCircle
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import axios from 'axios';
@@ -140,6 +140,102 @@ export function AssessmentForm({
         }
     }, [data.due_date, holidays]);
 
+    // Dynamic Context-Aware AI Metadata
+    const aiContext = useMemo(() => {
+        const inst = data.instrument_type;
+        switch (inst) {
+            case 'written_test':
+            case 'formative_quiz':
+            case 'quiz_survey':
+                return {
+                    name: 'Tes Tertulis / Kuis',
+                    desc: 'Buat butir soal pilihan ganda, isian, atau esai beserta kunci jawaban yang selaras dengan TP.',
+                    capabilities: ['Pilihan Ganda & Esai', 'Kunci Jawaban Otomatis', 'Indikator Penilaian'],
+                    ctaLabel: 'Buat Soal dengan AI',
+                    manualLabel: 'Tambah Soal Manual',
+                    loadingLabel: 'Menyusun Soal...',
+                    icon: ListChecks
+                };
+            case 'observation_checklist':
+            case 'observation':
+                return {
+                    name: 'Lembar Observasi',
+                    desc: 'Buat indikator observasi dan lembar pengamatan terstruktur sesuai aktivitas pembelajaran.',
+                    capabilities: ['Indikator Pengamatan', 'Skala Ketercapaian', 'Catatan Guru'],
+                    ctaLabel: 'Buat Instrumen Observasi',
+                    manualLabel: 'Tambah Indikator Manual',
+                    loadingLabel: 'Menyusun Indikator...',
+                    icon: Eye
+                };
+            case 'performance':
+            case 'project':
+            case 'performance_task':
+            case 'assignment':
+                return {
+                    name: 'Tugas Kinerja / LKPD',
+                    desc: 'Buat instruksi penugasan praktik, kriteria keberhasilan, dan rubrik penilaian kinerja.',
+                    capabilities: ['Instruksi Langkah Kerja', 'Kriteria Penilaian Karya', 'Skala KKTP'],
+                    ctaLabel: 'Buat Rubrik & Panduan Kinerja',
+                    manualLabel: 'Tambah Kriteria Manual',
+                    loadingLabel: 'Menyusun Rubrik & Panduan...',
+                    icon: FileText
+                };
+            case 'reflective_journal':
+            case 'reflection':
+                return {
+                    name: 'Jurnal Reflektif',
+                    desc: 'Buat pertanyaan refleksi mendalam yang memandu siswa mengevaluasi proses belajarnya.',
+                    capabilities: ['Pertanyaan Pemantik Refleksi', 'Evaluasi Diri Siswa', 'Rangkuman Umpan Balik'],
+                    ctaLabel: 'Buat Pertanyaan Refleksi',
+                    manualLabel: 'Tambah Pertanyaan Manual',
+                    loadingLabel: 'Menyusun Pertanyaan Refleksi...',
+                    icon: HelpCircle
+                };
+            case 'self_assessment':
+                return {
+                    name: 'Penilaian Diri',
+                    desc: 'Buat lembar checklist penilaian diri berbasis indikator ketuntasan belajar.',
+                    capabilities: ['Checklist Kemampuan Diri', 'Bahasa Ramah Siswa', 'Refleksi Pemahaman'],
+                    ctaLabel: 'Buat Lembar Penilaian Diri',
+                    manualLabel: 'Tambah Pernyataan Manual',
+                    loadingLabel: 'Menyusun Penilaian Diri...',
+                    icon: CheckCircle2
+                };
+            case 'peer_assessment':
+                return {
+                    name: 'Penilaian Antarteman',
+                    desc: 'Buat kriteria pengamatan antarteman dan panduan feedback konstruktif dalam kolaborasi.',
+                    capabilities: ['Kriteria Kolaborasi Tim', 'Rubrik Bahasa Positif', 'Panduan Umpan Balik'],
+                    ctaLabel: 'Buat Instrumen Antarteman',
+                    manualLabel: 'Tambah Kriteria Manual',
+                    loadingLabel: 'Menyusun Penilaian Antarteman...',
+                    icon: Users
+                };
+            case 'exit_ticket':
+            case 'cats':
+                return {
+                    name: 'Exit Ticket / CATs',
+                    desc: 'Buat pertanyaan cepat 1–2 menit di akhir sesi untuk memetakan pemahaman siswa.',
+                    capabilities: ['Pertanyaan Cepat Ringkas', 'Identifikasi Miskonsepsi', 'Tindak Lanjut Cepat'],
+                    ctaLabel: 'Buat Pertanyaan Exit Ticket',
+                    manualLabel: 'Tambah Pertanyaan Manual',
+                    loadingLabel: 'Menyusun Exit Ticket...',
+                    icon: Sparkles
+                };
+            case 'rubric':
+            default:
+                return {
+                    name: 'Rubrik Kriteria KKTP',
+                    desc: 'Buat deskriptor rubrik kualitatif 4 level (Perlu Bimbingan, Cukup, Baik, Sangat Baik) sesuai TP.',
+                    capabilities: ['4 Level Kualitatif KKTP', 'Deskriptor Ketercapaian Jelas', 'Panduan Interval Nilai'],
+                    ctaLabel: 'Buat Rubrik KKTP dengan AI',
+                    manualLabel: 'Tambah Kriteria Manual',
+                    loadingLabel: 'Menyusun Rubrik KKTP...',
+                    icon: Layers
+                };
+        }
+    }, [data.instrument_type]);
+
     // AI Generation Handler
     const handleAiGenerate = async () => {
         if (!data.learning_objective_id) return;
@@ -196,7 +292,7 @@ export function AssessmentForm({
                     });
                 }
 
-                setAiSuccessMessage('✨ Soal dan draf asesmen berhasil dibuat oleh AI!');
+                setAiSuccessMessage(`✨ Instrumen ${aiContext.name} berhasil disusun oleh AI!`);
                 setTimeout(() => setAiSuccessMessage(null), 4500);
             }
         } catch (err) {
@@ -487,7 +583,7 @@ export function AssessmentForm({
                     </div>
                 )}
 
-                {/* ── STEP 2: TIPE ASESMEN, INSTRUMEN & SOAL ── */}
+                {/* ── STEP 2: TIPE ASESMEN, INSTRUMEN & ASISTEN AI KONTEKSTUAL ── */}
                 {currentStep === 2 && (
                     <div className="w-full rounded-2xl border border-border bg-card p-4 sm:p-5 space-y-4 shadow-xs fade-in">
                         <div className="flex items-center gap-2 border-b border-border/50 pb-2.5">
@@ -502,54 +598,10 @@ export function AssessmentForm({
                             </div>
                         </div>
 
-                        {/* AI Assistant Banner */}
-                        <div className="p-3.5 rounded-2xl bg-gradient-to-r from-primary/10 via-primary/5 to-purple-500/10 border border-primary/20 space-y-2">
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-                                <div className="flex items-center gap-2">
-                                    <Sparkles className="h-4 w-4 text-primary shrink-0" />
-                                    <div>
-                                        <h4 className="text-xs font-bold text-foreground">Asisten AI Kurikulum Merdeka</h4>
-                                        <p className="text-[11px] text-muted-foreground">Buat draf judul, petunjuk, dan butir soal otomatis sesuai TP.</p>
-                                    </div>
-                                </div>
-                                <button
-                                    type="button"
-                                    disabled={aiLoading || !data.learning_objective_id}
-                                    onClick={handleAiGenerate}
-                                    className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-bold shadow-xs hover:bg-primary/90 transition active:scale-95 cursor-pointer disabled:opacity-50 shrink-0"
-                                >
-                                    {aiLoading ? (
-                                        <>
-                                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                            <span>Menyusun Soal...</span>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Sparkles className="h-3.5 w-3.5" />
-                                            <span>Buat Soal dengan AI</span>
-                                        </>
-                                    )}
-                                </button>
-                            </div>
-
-                            {!data.learning_objective_id && (
-                                <p className="text-[10px] text-amber-700 dark:text-amber-300 font-medium">
-                                    💡 Tips: Pilih Tujuan Pembelajaran (TP) pada Langkah 1 untuk mengaktifkan perumusan soal otomatis AI.
-                                </p>
-                            )}
-
-                            {aiSuccessMessage && (
-                                <div className="p-2 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 text-xs font-bold flex items-center gap-1.5 animate-in fade-in">
-                                    <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
-                                    <span>{aiSuccessMessage}</span>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Assessment Type 3-Button Grid */}
+                        {/* 1. Assessment Type 3-Button Grid */}
                         <div className="space-y-1.5">
                             <label className="text-xs font-bold text-foreground">
-                                Tipe Asesmen <span className="text-destructive">*</span>
+                                1. Tipe Asesmen <span className="text-destructive">*</span>
                             </label>
                             <div className="grid grid-cols-3 gap-2">
                                 {[
@@ -580,10 +632,10 @@ export function AssessmentForm({
                             </div>
                         </div>
 
-                        {/* Instrument Selection Grid */}
+                        {/* 2. Instrument Selection Grid */}
                         <div className="space-y-1.5 pt-1">
                             <label className="text-xs font-bold text-foreground">
-                                Instrumen Penilaian
+                                2. Pilih Instrumen Penilaian <span className="text-destructive">*</span>
                             </label>
                             <div className="grid gap-2 sm:grid-cols-2">
                                 {(instruments[data.assessment_type] || [
@@ -600,7 +652,7 @@ export function AssessmentForm({
                                             onClick={() => setData('instrument_type', inst.id)}
                                             className={`flex items-start gap-2.5 p-3 rounded-xl border text-left transition min-h-[54px] cursor-pointer ${
                                                 isSelected
-                                                    ? 'bg-primary/10 border-primary text-foreground shadow-2xs'
+                                                    ? 'bg-primary/10 border-primary text-foreground shadow-2xs font-bold'
                                                     : 'bg-background hover:bg-muted/40 border-border text-foreground'
                                             }`}
                                         >
@@ -617,7 +669,74 @@ export function AssessmentForm({
                             </div>
                         </div>
 
-                        {/* Embedded Question Builder for Quiz / Test */}
+                        {/* 3. Context-Aware AI Assistant Card (Adapts dynamically to the chosen instrument!) */}
+                        {data.instrument_type && (
+                            <div className="p-3.5 rounded-2xl bg-gradient-to-r from-primary/10 via-primary/5 to-purple-500/10 border border-primary/25 space-y-2.5 transition-all">
+                                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                                    <div className="space-y-1 min-w-0">
+                                        <div className="flex items-center gap-2">
+                                            <Sparkles className="h-4 w-4 text-primary shrink-0 animate-pulse" />
+                                            <h4 className="text-xs font-bold text-foreground">
+                                                ✨ Asisten AI Asesmen ({aiContext.name})
+                                            </h4>
+                                        </div>
+                                        <p className="text-[11px] text-muted-foreground leading-relaxed">
+                                            {aiContext.desc}
+                                        </p>
+
+                                        {/* Dynamic Capabilities Checklist */}
+                                        <div className="flex flex-wrap gap-1.5 pt-1">
+                                            {aiContext.capabilities.map((cap, idx) => (
+                                                <span
+                                                    key={idx}
+                                                    className="inline-flex items-center gap-1 text-[10px] font-bold bg-background/80 border border-border/80 px-2 py-0.5 rounded-md text-foreground"
+                                                >
+                                                    <Check className="h-2.5 w-2.5 text-primary stroke-[3]" />
+                                                    <span>{cap}</span>
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Action Buttons: AI Button & Manual Button */}
+                                    <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                                        <button
+                                            type="button"
+                                            disabled={aiLoading || !data.learning_objective_id}
+                                            onClick={handleAiGenerate}
+                                            className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-black shadow-xs hover:bg-primary/90 transition active:scale-95 cursor-pointer disabled:opacity-50"
+                                        >
+                                            {aiLoading ? (
+                                                <>
+                                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                                    <span>{aiContext.loadingLabel}</span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Sparkles className="h-3.5 w-3.5" />
+                                                    <span>{aiContext.ctaLabel}</span>
+                                                </>
+                                            )}
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {!data.learning_objective_id && (
+                                    <p className="text-[10px] text-amber-700 dark:text-amber-300 font-medium">
+                                        💡 Tips: Pilih Tujuan Pembelajaran (TP) pada Langkah 1 untuk mengaktifkan perumusan otomatis dari AI.
+                                    </p>
+                                )}
+
+                                {aiSuccessMessage && (
+                                    <div className="p-2 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 text-xs font-bold flex items-center gap-1.5 animate-in fade-in">
+                                        <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                                        <span>{aiSuccessMessage}</span>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* 4. Question & Instrument Content Editor */}
                         {['written_test', 'formative_quiz', 'quiz_survey'].includes(data.instrument_type) && (
                             <div className="space-y-3 pt-2 border-t border-border/50">
                                 <div className="flex items-center justify-between">
@@ -628,18 +747,18 @@ export function AssessmentForm({
                                     <button
                                         type="button"
                                         onClick={handleAddQuestion}
-                                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-primary text-primary-foreground text-xs font-bold shadow-xs hover:bg-primary/90 transition cursor-pointer"
+                                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-background border border-border text-foreground hover:bg-muted text-xs font-bold transition cursor-pointer"
                                     >
-                                        <Plus className="h-3 w-3" />
-                                        <span>Tambah Soal</span>
+                                        <Plus className="h-3 w-3 text-primary" />
+                                        <span>{aiContext.manualLabel}</span>
                                     </button>
                                 </div>
 
                                 {(!data.instrument_config.questions || data.instrument_config.questions.length === 0) ? (
                                     <div className="text-center py-6 border border-dashed border-border rounded-xl p-4 bg-muted/20 space-y-1.5">
-                                        <p className="text-xs font-medium text-muted-foreground">Belum ada butir soal.</p>
+                                        <p className="text-xs font-medium text-muted-foreground">Belum ada butir instrumen.</p>
                                         <p className="text-[11px] text-primary font-bold">
-                                            Gunakan tombol "Buat Soal dengan AI" di atas atau tekan "Tambah Soal" manual.
+                                            Gunakan tombol "{aiContext.ctaLabel}" di atas atau tekan "{aiContext.manualLabel}".
                                         </p>
                                     </div>
                                 ) : (
