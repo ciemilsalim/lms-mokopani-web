@@ -322,13 +322,21 @@ export default function ClassShow({
 
                 {/* TAB 2: SISWA (ROSTER CARD LIST) */}
                 {activeTab === 'students' && (
-                    <div className="space-y-4 fade-in">
+                    <div className="space-y-4 fade-in w-full min-w-0">
                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                            <SectionHeader
-                                title={`Roster Siswa (${filteredStudents.length})`}
-                                subtitle={`Daftar siswa terdaftar di Kelas ${schoolClass.name}`}
-                                icon={Users}
-                            />
+                            <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                                    <Users className="h-4 w-4" />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                    <h2 className="text-sm sm:text-base font-bold text-foreground truncate leading-tight">
+                                        Roster Siswa ({filteredStudents.length})
+                                    </h2>
+                                    <p className="text-[11px] sm:text-xs text-muted-foreground mt-0.5 truncate">
+                                        Daftar siswa terdaftar di {cleanClassName}
+                                    </p>
+                                </div>
+                            </div>
 
                             {/* Student Search Bar */}
                             <div className="relative max-w-xs w-full">
@@ -350,7 +358,7 @@ export default function ClassShow({
                                 description={
                                     studentSearch
                                         ? `Tidak ada siswa yang sesuai dengan "${studentSearch}".`
-                                        : `Belum ada data siswa yang dimasukkan ke Kelas ${schoolClass.name}.`
+                                        : `Belum ada data siswa yang dimasukkan ke ${cleanClassName}.`
                                 }
                             />
                         ) : (
@@ -365,19 +373,27 @@ export default function ClassShow({
 
                 {/* TAB 3: MATERI */}
                 {activeTab === 'materials' && (
-                    <div className="space-y-4 fade-in">
-                        <div className="flex items-center justify-between">
-                            <SectionHeader
-                                title={`Bahan Materi (${materials.length})`}
-                                subtitle={`Materi pembelajaran untuk Kelas ${schoolClass.name}`}
-                                icon={Library}
-                            />
+                    <div className="space-y-4 fade-in w-full min-w-0">
+                        <div className="flex items-center justify-between gap-2.5">
+                            <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                                    <Library className="h-4 w-4" />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                    <h2 className="text-sm sm:text-base font-bold text-foreground truncate leading-tight">
+                                        Bahan Materi ({materials.length})
+                                    </h2>
+                                    <p className="text-[11px] sm:text-xs text-muted-foreground mt-0.5 truncate">
+                                        Materi pembelajaran untuk {cleanClassName}
+                                    </p>
+                                </div>
+                            </div>
                             <Link
                                 href="/materials/create"
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary text-primary-foreground text-xs font-bold shadow-xs hover:bg-primary/90 transition active:scale-95 min-h-[38px]"
+                                className="inline-flex items-center justify-center gap-1.5 px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-xl bg-primary text-primary-foreground text-xs font-bold shadow-xs hover:bg-primary/90 transition active:scale-95 shrink-0 whitespace-nowrap min-h-[36px]"
                             >
-                                <Plus className="h-4 w-4" />
-                                <span>+ Materi</span>
+                                <Plus className="h-3.5 w-3.5 shrink-0" />
+                                <span>Tambah Materi</span>
                             </Link>
                         </div>
 
@@ -385,7 +401,7 @@ export default function ClassShow({
                             <EmptyState
                                 icon={Library}
                                 title="Belum Ada Materi"
-                                description={`Belum ada bahan materi yang diunggah untuk Kelas ${schoolClass.name}.`}
+                                description={`Belum ada bahan materi yang diunggah untuk ${cleanClassName}.`}
                                 actionLabel="+ Tambah Materi"
                                 actionHref="/materials/create"
                             />
@@ -395,10 +411,10 @@ export default function ClassShow({
                                     <Link
                                         key={mat.id}
                                         href={`/materials/${mat.id}`}
-                                        className="group p-4 rounded-2xl bg-card border border-border/70 hover:border-primary/40 shadow-2xs transition-all active:scale-[0.98] flex items-center justify-between min-h-[56px]"
+                                        className="group p-3.5 sm:p-4 rounded-2xl bg-card border border-border/70 hover:border-primary/40 shadow-2xs transition-all active:scale-[0.98] flex items-center justify-between min-h-[56px]"
                                     >
                                         <div className="flex items-center gap-3 min-w-0">
-                                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 group-hover:bg-amber-500 group-hover:text-white transition-colors">
+                                            <div className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 group-hover:bg-amber-500 group-hover:text-white transition-colors">
                                                 <BookOpen className="h-4 w-4" />
                                             </div>
                                             <div className="min-w-0">
@@ -420,19 +436,27 @@ export default function ClassShow({
 
                 {/* TAB 4: ASESMEN */}
                 {activeTab === 'assignments' && (
-                    <div className="space-y-4 fade-in">
-                        <div className="flex items-center justify-between">
-                            <SectionHeader
-                                title={`Asesmen & Tugas (${assignments.length})`}
-                                subtitle={`Penilaian aktif untuk Kelas ${schoolClass.name}`}
-                                icon={ClipboardList}
-                            />
+                    <div className="space-y-4 fade-in w-full min-w-0">
+                        <div className="flex items-center justify-between gap-2.5">
+                            <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400">
+                                    <ClipboardList className="h-4 w-4" />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                    <h2 className="text-sm sm:text-base font-bold text-foreground truncate leading-tight">
+                                        Asesmen & Tugas ({assignments.length})
+                                    </h2>
+                                    <p className="text-[11px] sm:text-xs text-muted-foreground mt-0.5 truncate">
+                                        Penilaian aktif untuk {cleanClassName}
+                                    </p>
+                                </div>
+                            </div>
                             <Link
                                 href="/assignments/create"
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-600 text-white text-xs font-bold shadow-xs hover:bg-rose-700 transition active:scale-95 min-h-[38px]"
+                                className="inline-flex items-center justify-center gap-1.5 px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-xl bg-rose-600 text-white text-xs font-bold shadow-xs hover:bg-rose-700 transition active:scale-95 shrink-0 whitespace-nowrap min-h-[36px]"
                             >
-                                <Plus className="h-4 w-4" />
-                                <span>+ Asesmen</span>
+                                <Plus className="h-3.5 w-3.5 shrink-0" />
+                                <span>Buat Asesmen</span>
                             </Link>
                         </div>
 
@@ -440,7 +464,7 @@ export default function ClassShow({
                             <EmptyState
                                 icon={ClipboardList}
                                 title="Belum Ada Asesmen"
-                                description={`Belum ada tugas atau asesmen yang dibuat untuk Kelas ${schoolClass.name}.`}
+                                description={`Belum ada tugas atau asesmen yang dibuat untuk ${cleanClassName}.`}
                                 actionLabel="+ Buat Asesmen"
                                 actionHref="/assignments/create"
                             />
@@ -450,10 +474,10 @@ export default function ClassShow({
                                     <Link
                                         key={asg.id}
                                         href={`/assignments/${asg.id}/grade-view`}
-                                        className="group p-4 rounded-2xl bg-card border border-border/70 hover:border-primary/40 shadow-2xs transition-all active:scale-[0.98] flex items-center justify-between min-h-[64px]"
+                                        className="group p-3.5 sm:p-4 rounded-2xl bg-card border border-border/70 hover:border-primary/40 shadow-2xs transition-all active:scale-[0.98] flex items-center justify-between min-h-[64px]"
                                     >
                                         <div className="flex items-center gap-3 min-w-0">
-                                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 group-hover:bg-rose-500 group-hover:text-white transition-colors">
+                                            <div className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 group-hover:bg-rose-500 group-hover:text-white transition-colors">
                                                 <ClipboardList className="h-4 w-4" />
                                             </div>
                                             <div className="min-w-0">
