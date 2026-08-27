@@ -49,47 +49,47 @@ export default function CommentSection({ assignmentId, materialId, comments, aut
     };
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-4">
             <div className="flex items-center gap-2">
-                <MessageSquare className="h-5 w-5 text-[#5E6AD2]" />
-                <h3 className="text-lg font-bold text-[#1B1B25] dark:text-[#F1F1F4]">Diskusi & Komentar</h3>
-                <span className="rounded-full bg-[#F1F1F4]/50 dark:bg-[#2C2C3A] px-2 py-0.5 text-xs font-bold text-[#8A8F98]">
+                <MessageSquare className="h-4.5 w-4.5 text-primary" />
+                <h3 className="text-sm sm:text-base font-bold text-foreground">Diskusi Pembelajaran</h3>
+                <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-bold text-muted-foreground">
                     {comments.length}
                 </span>
             </div>
 
             {/* Post Comment */}
-            <form onSubmit={handleSubmit} className="relative">
+            <form onSubmit={handleSubmit} className="relative space-y-2">
                 <textarea
                     rows={3}
-                    placeholder="Tuliskan pertanyaan atau komentar Anda..."
+                    placeholder="Ada yang belum kamu pahami atau ingin didiskusikan? Tanyakan di sini..."
                     value={data.body}
                     onChange={(e) => setData('body', e.target.value)}
-                    className="w-full rounded-2xl border border-[#2C2C3A]/20 bg-white p-4 text-sm outline-none focus:border-[#5E6AD2] focus:ring-4 focus:ring-[#5E6AD2]/10 dark:border-[#2C2C3A] dark:bg-[#1B1B25] dark:text-[#F1F1F4] shadow-sm transition"
+                    className="w-full rounded-2xl border border-border bg-card p-3.5 text-xs sm:text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 shadow-2xs transition placeholder:text-muted-foreground/60"
                 ></textarea>
-                <div className="mt-2 flex justify-end">
+                <div className="flex justify-end">
                     <button
                         type="submit"
                         disabled={processing || !data.body.trim()}
-                        className="inline-flex items-center gap-2 rounded-xl bg-[#5E6AD2] px-5 py-2 text-sm font-bold text-white shadow-lg shadow-[#5E6AD2]/20 transition hover:bg-[#4B55A8] disabled:opacity-50 dark:shadow-none"
+                        className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-xs font-bold text-primary-foreground shadow-xs transition hover:bg-primary/90 disabled:opacity-50 min-h-[40px]"
                     >
-                        <Send className="h-4 w-4" />
-                        Kirim
+                        <Send className="h-3.5 w-3.5" />
+                        Kirim Pertanyaan
                     </button>
                 </div>
-                {errors.body && <p className="mt-1 text-xs text-[#EB5757]">{errors.body}</p>}
+                {errors.body && <p className="mt-1 text-xs text-destructive">{errors.body}</p>}
             </form>
 
             {/* Comment List */}
-            <div className="space-y-4">
+            <div className="space-y-3 pt-2">
                 {comments.length === 0 ? (
-                    <div className="py-10 text-center text-[#8A8F98]/60">
-                        <p className="text-sm">Belum ada diskusi. Jadilah yang pertama bertanya!</p>
+                    <div className="py-8 text-center text-muted-foreground/70 rounded-2xl border border-dashed border-border/70 p-4">
+                        <p className="text-xs font-medium">Belum ada pertanyaan. Jadilah yang pertama berdiskusi dengan guru dan teman sekelas!</p>
                     </div>
                 ) : (
                     comments.map((comment) => (
-                        <div key={comment.id} className="flex gap-4 p-4 rounded-2xl bg-white dark:bg-[#1B1B25] border border-[#2C2C3A]/10 dark:border-[#2C2C3A] shadow-sm transition-all hover:shadow-md">
-                            <div className="h-10 w-10 shrink-0 rounded-xl overflow-hidden bg-primary/10 flex items-center justify-center font-black text-xs text-primary border border-primary/20">
+                        <div key={comment.id} className="flex gap-3 p-3.5 rounded-2xl bg-card border border-border/70 shadow-2xs transition-all">
+                            <div className="h-9 w-9 shrink-0 rounded-xl overflow-hidden bg-primary/10 flex items-center justify-center font-bold text-xs text-primary border border-primary/20">
                                 {comment.user_avatar ? (
                                     <img
                                         src={comment.user_avatar}

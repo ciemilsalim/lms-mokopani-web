@@ -75,7 +75,6 @@ export default function MaterialShow({
     const isStudent = user_role === 'student';
 
     const breadcrumbs: BreadcrumbItem[] = [
-        { title: 'Dashboard', href: '/dashboard' },
         { title: 'Bahan Materi', href: '/materials' },
         { title: material.title, href: `/materials/${material.id}` },
     ];
@@ -92,26 +91,41 @@ export default function MaterialShow({
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`${material.title} - LMS Mokopani`} />
 
-            <div className="space-y-5 sm:space-y-6 fade-in pb-16 md:pb-6 max-w-4xl mx-auto px-4 sm:px-6">
-                {/* Contextual Header */}
+            <div className="space-y-4 sm:space-y-5 fade-in pb-16 md:pb-6 max-w-4xl mx-auto px-3 sm:px-6 w-full min-w-0">
+                {/* 1. Contextual Header Banner */}
                 <MaterialDetailHeader
                     id={material.id}
                     title={material.title}
                     subjectName={material.subject_name}
                     className={material.school_class_name}
                     tpCode={material.tp_code}
+                    tpDesc={material.tp_desc}
                     teacherName={material.teacher_name}
                     createdAt={material.created_at}
+                    commentsCount={comments.length}
                     accessStatus={material.access_status}
                     isTeacher={isTeacher}
                     onDelete={() => setIsDeleting(true)}
                     backUrl="/materials"
                 />
 
-                {/* Main Content Area */}
+                {/* 2. Tujuan Pembelajaran (Explicit Goal Card) */}
+                {material.tp_desc && (
+                    <div className="p-3.5 sm:p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-foreground space-y-1 fade-in">
+                        <div className="flex items-center gap-2 text-xs font-bold text-amber-700 dark:text-amber-300">
+                            <Sparkles className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                            <span>Tujuan Pembelajaran {material.tp_code ? `(TP: ${material.tp_code})` : ''}</span>
+                        </div>
+                        <p className="text-xs sm:text-sm text-foreground/90 font-medium leading-relaxed pl-5.5">
+                            {material.tp_desc}
+                        </p>
+                    </div>
+                )}
+
+                {/* 3. Main Content Area */}
                 {material.content && (
-                    <div className="p-5 sm:p-7 rounded-3xl bg-card border border-border/70 shadow-xs space-y-4">
-                        <div className="flex items-center gap-2 text-xs font-bold text-primary uppercase tracking-wider">
+                    <div className="p-4 sm:p-6 rounded-3xl bg-card border border-border/70 shadow-xs space-y-3 w-full min-w-0">
+                        <div className="flex items-center gap-2 text-xs font-bold text-primary uppercase tracking-wider pb-1 border-b border-border/40">
                             <BookOpen className="h-4 w-4" />
                             <span>Isi Pembelajaran Utama</span>
                         </div>
@@ -122,19 +136,19 @@ export default function MaterialShow({
                     </div>
                 )}
 
-                {/* Resources & Media Section */}
+                {/* 4. Learning Steps / Jalur Belajar Diferensiasi (Interactive Tabs) */}
+                <LearningStepsSection
+                    understandingActivity={material.understanding_activity}
+                    applicationActivity={material.application_activity}
+                    reflectionActivity={material.reflection_activity}
+                />
+
+                {/* 5. Resources & Media Section */}
                 <MaterialResourcesSection
                     resources={material.resources}
                     mainFilePath={material.file_path}
                     mainFileType={material.file_type}
                     externalLink={material.external_link}
-                />
-
-                {/* Learning Steps (Pedagogis) */}
-                <LearningStepsSection
-                    understandingActivity={material.understanding_activity}
-                    applicationActivity={material.application_activity}
-                    reflectionActivity={material.reflection_activity}
                 />
 
                 {/* Student Action Bar (Mark Complete) */}
@@ -159,7 +173,7 @@ export default function MaterialShow({
                 )}
 
                 {/* Comment & Discussion Section */}
-                <div className="pt-4 border-t border-border/50">
+                <div id="diskusi" className="pt-4 border-t border-border/50 scroll-mt-16">
                     <CommentSection
                         materialId={material.id}
                         comments={comments}
