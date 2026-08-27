@@ -139,7 +139,7 @@ export function TeacherDashboardView({
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Dashboard Guru - LMS Mokopani" />
 
-            <div className="space-y-5 sm:space-y-6 fade-in pb-16 md:pb-6 max-w-7xl mx-auto px-4 sm:px-6">
+            <div className="space-y-5 sm:space-y-6 fade-in pb-16 md:pb-6 max-w-7xl mx-auto px-3.5 sm:px-6">
                 {/* 1. WELCOME CARD (Hero Identity Banner) */}
                 <WelcomeCard
                     identity={identity || {

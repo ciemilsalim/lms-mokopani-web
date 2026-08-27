@@ -94,7 +94,7 @@ export function SummaryCard({
 
     if (href) {
         return (
-            <Link href={href} className="block h-full min-h-[48px] active:scale-97 transition-transform focus:outline-none focus:ring-2 focus:ring-primary/30 rounded-2xl">
+            <Link href={href} className="block h-full min-w-0 min-h-[48px] active:scale-97 transition-transform focus:outline-none focus:ring-2 focus:ring-primary/30 rounded-2xl">
                 {cardNode}
             </Link>
         );

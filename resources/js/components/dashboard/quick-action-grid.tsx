@@ -120,7 +120,7 @@ export function QuickActionGrid({
                         <a
                             key={act.id}
                             href={act.href}
-                            className="block h-full active:scale-97 transition-transform focus:outline-none focus:ring-2 focus:ring-primary/20 rounded-2xl"
+                            className="block h-full min-w-0 active:scale-97 transition-transform focus:outline-none focus:ring-2 focus:ring-primary/20 rounded-2xl"
                         >
                             {content}
                         </a>
@@ -131,7 +131,7 @@ export function QuickActionGrid({
                     <Link
                         key={act.id}
                         href={act.href}
-                        className="block h-full active:scale-97 transition-transform focus:outline-none focus:ring-2 focus:ring-primary/20 rounded-2xl"
+                        className="block h-full min-w-0 active:scale-97 transition-transform focus:outline-none focus:ring-2 focus:ring-primary/20 rounded-2xl"
                     >
                         {content}
                     </Link>

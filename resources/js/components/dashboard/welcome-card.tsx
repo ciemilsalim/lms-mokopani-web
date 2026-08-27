@@ -62,8 +62,8 @@ export function WelcomeCard({
                         <div className="mt-3 flex flex-col gap-1.5 text-xs text-white/90">
                             {/* NIP / ID Row */}
                             {identity.idLabel && identity.idValue && (
-                                <div className="flex items-center gap-2">
-                                    <span className="inline-block bg-black/25 px-2 py-0.5 rounded-md font-mono font-bold text-[11px] text-white tracking-wide">
+                                <div className="flex items-center gap-2 max-w-full">
+                                    <span className="inline-block bg-black/25 px-2 py-0.5 rounded-md font-mono font-bold text-[11px] text-white tracking-wide max-w-full truncate">
                                         {identity.idLabel}: {identity.idValue}
                                     </span>
                                 </div>
@@ -71,9 +71,9 @@ export function WelcomeCard({
 
                             {/* Extra / Teaching Subject */}
                             {identity.extra && (
-                                <div className="flex items-center gap-1.5 text-white/90 text-xs font-medium">
-                                    <span className="opacity-80">Mengajar:</span>
-                                    <span className="font-bold text-white bg-white/15 px-2 py-0.5 rounded-md text-[11px]">
+                                <div className="flex items-center gap-1.5 text-white/90 text-xs font-medium max-w-full">
+                                    <span className="opacity-80 shrink-0">Mengajar:</span>
+                                    <span className="font-bold text-white bg-white/15 px-2 py-0.5 rounded-md text-[11px] max-w-full truncate">
                                         {identity.extra}
                                     </span>
                                 </div>

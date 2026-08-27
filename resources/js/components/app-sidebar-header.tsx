@@ -55,10 +55,10 @@ export function AppSidebarHeader({ breadcrumbs = [] }: { breadcrumbs?: Breadcrum
     const prevBreadcrumb = hasBackHistory ? breadcrumbs[breadcrumbs.length - 2] : null;
 
     return (
-        <header className="sticky top-0 z-30 flex h-14 md:h-14 shrink-0 items-center justify-between gap-2 border-b border-border/60 bg-card/95 backdrop-blur-md px-3 md:px-5 shadow-xs transition-all">
+        <header className="sticky top-0 z-30 flex h-14 md:h-14 w-full max-w-full shrink-0 items-center justify-between gap-1.5 sm:gap-2 border-b border-border/60 bg-card/95 backdrop-blur-md px-2.5 sm:px-4 shadow-xs transition-all overflow-hidden">
 
             {/* ── Left: sidebar trigger + breadcrumbs / mobile logo & back ── */}
-            <div className="flex items-center gap-2 min-w-0 flex-1">
+            <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1">
                 {/* Desktop Sidebar Trigger */}
                 <SidebarTrigger className="text-sidebar-foreground hover:bg-muted/80 transition hidden md:flex shrink-0 h-9 w-9 rounded-lg" />
 
@@ -70,11 +70,11 @@ export function AppSidebarHeader({ breadcrumbs = [] }: { breadcrumbs?: Breadcrum
                 {/* Mobile: Back button if nested, or Logo if at root */}
                 <div className="md:hidden flex items-center gap-1.5 min-w-0">
                     {hasBackHistory ? (
-                        <div className="flex items-center gap-2 min-w-0">
+                        <div className="flex items-center gap-1.5 min-w-0">
                             {prevBreadcrumb?.href ? (
                                 <Link
                                     href={prevBreadcrumb.href}
-                                    className="flex h-9 w-9 items-center justify-center rounded-xl bg-muted/60 text-foreground active:scale-95 transition-transform"
+                                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted/60 text-foreground active:scale-95 transition-transform"
                                     aria-label="Kembali"
                                 >
                                     <ArrowLeft className="h-4 w-4" />
@@ -83,14 +83,14 @@ export function AppSidebarHeader({ breadcrumbs = [] }: { breadcrumbs?: Breadcrum
                                 <button
                                     type="button"
                                     onClick={() => window.history.back()}
-                                    className="flex h-9 w-9 items-center justify-center rounded-xl bg-muted/60 text-foreground active:scale-95 transition-transform"
+                                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted/60 text-foreground active:scale-95 transition-transform"
                                     aria-label="Kembali"
                                 >
                                     <ArrowLeft className="h-4 w-4" />
                                 </button>
                             )}
                             <div className="flex flex-col min-w-0">
-                                <span className="text-sm font-bold text-foreground truncate max-w-[140px] xs:max-w-[180px]">
+                                <span className="text-xs sm:text-sm font-bold text-foreground truncate max-w-[110px] xs:max-w-[160px]">
                                     {breadcrumbs[breadcrumbs.length - 1]?.title}
                                 </span>
                                 {prevBreadcrumb && (
@@ -101,7 +101,7 @@ export function AppSidebarHeader({ breadcrumbs = [] }: { breadcrumbs?: Breadcrum
                             </div>
                         </div>
                     ) : (
-                        <Link href="/dashboard" className="flex items-center gap-2">
+                        <Link href="/dashboard" className="flex items-center gap-1.5 min-w-0">
                             <AppLogo />
                         </Link>
                     )}
@@ -109,7 +109,7 @@ export function AppSidebarHeader({ breadcrumbs = [] }: { breadcrumbs?: Breadcrum
             </div>
 
             {/* ── Right: semester + theme/notif controls + user ── */}
-            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            <div className="flex items-center gap-1 sm:gap-2 shrink-0">
 
                 {/* Semester dropdown (Desktop & Mobile) */}
                 {semestersList && semestersList.length > 0 && (
@@ -117,11 +117,11 @@ export function AppSidebarHeader({ breadcrumbs = [] }: { breadcrumbs?: Breadcrum
                         <DropdownMenuTrigger asChild>
                             <Button
                                 variant="outline"
-                                className="flex h-8 items-center gap-1 border-border/60 bg-muted/40 px-2 sm:px-2.5 text-xs font-semibold shadow-none hover:bg-accent/50 hover:text-accent-foreground focus-visible:ring-1 focus-visible:ring-ring rounded-lg max-w-[105px] sm:max-w-[155px] lg:max-w-[200px]"
+                                className="flex h-8 items-center gap-1 border-border/60 bg-muted/40 px-1.5 sm:px-2.5 text-xs font-semibold shadow-none hover:bg-accent/50 hover:text-accent-foreground focus-visible:ring-1 focus-visible:ring-ring rounded-lg max-w-[70px] xs:max-w-[105px] sm:max-w-[155px] lg:max-w-[200px] shrink-0"
                             >
-                                <Calendar className="h-3 w-3 text-primary shrink-0 sm:hidden" />
+                                <Calendar className="h-3 w-3 text-primary shrink-0 hidden xs:inline" />
                                 {/* mobile & compact view */}
-                                <span className="truncate text-[11px] sm:text-xs">{activeSemester?.name || 'Semester'}</span>
+                                <span className="truncate text-[10px] sm:text-xs">{activeSemester?.name || 'Sem'}</span>
                                 <ChevronDown className="h-3 w-3 opacity-50 shrink-0" />
                             </Button>
                         </DropdownMenuTrigger>
@@ -157,7 +157,7 @@ export function AppSidebarHeader({ breadcrumbs = [] }: { breadcrumbs?: Breadcrum
                 <div className="h-5 w-px bg-border/70 hidden sm:block shrink-0" />
 
                 {/* ── User block ── */}
-                <div className="flex items-center gap-1.5 sm:gap-2">
+                <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                     <Link
                         href="/profile"
                         className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full hover:opacity-90 active:scale-95 transition"
