@@ -111,7 +111,6 @@ export default function GradeSplitPage({
     // Keyboard Shortcuts (Arrow Left / Right, Alt+S for save)
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
-            // Ignore if active in input/textarea
             const isEditing = ['INPUT', 'TEXTAREA', 'SELECT'].includes((document.activeElement?.tagName || ''));
             
             if (e.altKey && e.key === 'ArrowRight') {
@@ -154,7 +153,6 @@ export default function GradeSplitPage({
 
             if (autoNext && currentStudentIndex < students.length - 1) {
                 setCurrentStudentIndex(prev => prev + 1);
-                // On mobile, reset to work tab or keep in current workflow
             } else {
                 router.reload({ only: ['assignment'], preserveScroll: true });
             }
@@ -236,11 +234,11 @@ export default function GradeSplitPage({
             parsed = JSON.parse(contentString);
         } catch {
             return (
-                <div className="p-3 bg-muted/30 rounded-xl border border-border space-y-1.5">
+                <div className="p-2.5 sm:p-3 bg-muted/30 rounded-xl border border-border space-y-1.5 overflow-hidden">
                     <span className="text-[11px] font-bold text-primary flex items-center gap-1.5 uppercase tracking-wider">
                         <FileText className="w-3.5 h-3.5" /> Jawaban / Laporan Siswa
                     </span>
-                    <div className="text-xs text-foreground whitespace-pre-wrap leading-relaxed">
+                    <div className="text-xs text-foreground whitespace-pre-wrap leading-relaxed break-words">
                         {contentString}
                     </div>
                 </div>
@@ -252,16 +250,16 @@ export default function GradeSplitPage({
             const answers = parsed.answers || {};
 
             return (
-                <div className="space-y-2.5">
+                <div className="space-y-2.5 w-full">
                     <div className="flex items-center justify-between p-2.5 rounded-xl bg-primary/10 border border-primary/20">
-                        <div className="flex items-center gap-1.5">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-primary" />
-                            <h4 className="text-xs font-bold text-foreground">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-primary shrink-0" />
+                            <h4 className="text-xs font-bold text-foreground truncate">
                                 {parsed.type === 'written_test' ? 'Tes Tertulis' : 'Kuis Formatif'}
                             </h4>
                         </div>
                         {parsed.auto_score !== undefined && (
-                            <span className="text-xs font-black text-primary">
+                            <span className="text-xs font-black text-primary shrink-0">
                                 Skor Auto: {parsed.auto_score}
                             </span>
                         )}
@@ -276,9 +274,9 @@ export default function GradeSplitPage({
                             const isCorrect = isMcq ? (correctOpt?.id == studentAns) : (studentAns && (q.correct_answer || q.answer) && studentAns.trim().toLowerCase() == (q.correct_answer || q.answer).trim().toLowerCase());
 
                             return (
-                                <div key={q.id || idx} className="p-2.5 rounded-xl bg-card border border-border shadow-2xs space-y-1.5">
-                                    <div className="flex items-start justify-between gap-2">
-                                        <p className="text-xs font-bold text-foreground leading-snug">
+                                <div key={q.id || idx} className="p-2.5 rounded-xl bg-card border border-border shadow-2xs space-y-1.5 overflow-hidden">
+                                    <div className="flex items-start justify-between gap-1.5">
+                                        <p className="text-xs font-bold text-foreground leading-snug break-words flex-1 min-w-0">
                                             {idx + 1}. {q.question || q.text}
                                         </p>
                                         <span className={`shrink-0 text-[9px] font-black uppercase px-1.5 py-0.5 rounded ${
@@ -288,15 +286,15 @@ export default function GradeSplitPage({
                                         </span>
                                     </div>
                                     <div className="text-[11px] grid grid-cols-2 gap-2 pt-1 border-t border-border/50">
-                                        <div>
+                                        <div className="min-w-0">
                                             <span className="text-muted-foreground block text-[10px]">Jawaban:</span>
-                                            <span className={`font-bold ${isCorrect ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                            <span className={`font-bold truncate block ${isCorrect ? 'text-emerald-600' : 'text-rose-600'}`}>
                                                 {isMcq ? (studentOpt?.text || studentAns || '—') : (studentAns || '—')}
                                             </span>
                                         </div>
-                                        <div>
+                                        <div className="min-w-0">
                                             <span className="text-muted-foreground block text-[10px]">Kunci:</span>
-                                            <span className="font-bold text-emerald-600">
+                                            <span className="font-bold text-emerald-600 truncate block">
                                                 {isMcq ? (correctOpt?.text || '—') : (q.correct_answer || q.answer || '—')}
                                             </span>
                                         </div>
@@ -310,7 +308,7 @@ export default function GradeSplitPage({
         }
 
         return (
-            <div className="p-3 bg-muted/30 rounded-xl border border-border text-xs text-foreground whitespace-pre-wrap">
+            <div className="p-2.5 sm:p-3 bg-muted/30 rounded-xl border border-border text-xs text-foreground whitespace-pre-wrap break-words">
                 {contentString}
             </div>
         );
@@ -322,17 +320,17 @@ export default function GradeSplitPage({
         const isPdf = submission?.file_path && /\.pdf$/i.test(submission.file_path);
 
         return (
-            <div className="flex flex-col h-full space-y-2.5">
+            <div className="flex flex-col h-full space-y-2.5 w-full min-w-0">
                 {/* Collapsible Mini Guide */}
-                <div className="flex items-center justify-between gap-2 px-3 py-1.5 rounded-xl bg-muted/30 border border-border text-xs">
-                    <span className="font-bold text-foreground text-[11px] flex items-center gap-1.5">
-                        <ImageIcon className="h-3.5 w-3.5 text-primary" />
-                        <span>Karya Siswa (Fisik / Digital)</span>
+                <div className="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-xl bg-muted/30 border border-border text-xs w-full">
+                    <span className="font-bold text-foreground text-[11px] flex items-center gap-1.5 min-w-0 truncate">
+                        <ImageIcon className="h-3.5 w-3.5 text-primary shrink-0" />
+                        <span className="truncate">Karya Siswa (Fisik / Digital)</span>
                     </span>
                     <button
                         type="button"
                         onClick={() => setShowInfoBanner(!showInfoBanner)}
-                        className="text-[10px] font-bold text-primary hover:underline cursor-pointer flex items-center gap-0.5"
+                        className="text-[10px] font-bold text-primary hover:underline cursor-pointer flex items-center gap-0.5 shrink-0"
                     >
                         <span>{showInfoBanner ? 'Tutup Info' : 'Panduan'}</span>
                         <Info className="h-3 w-3" />
@@ -347,7 +345,7 @@ export default function GradeSplitPage({
 
                 {/* Submissions Viewer / Content Area */}
                 {submission && (submission.file_path || textContent || isOffline) ? (
-                    <div className="flex-1 overflow-y-auto space-y-2.5 min-h-[200px]">
+                    <div className="flex-1 overflow-y-auto space-y-2.5 min-h-[180px] w-full min-w-0">
                         {isOffline && !submission.file_path && (
                             <div className="p-2.5 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs text-amber-800 dark:text-amber-300 font-bold">
                                 📝 Tugas LKPD diserahkan secara fisik di kelas
@@ -357,7 +355,7 @@ export default function GradeSplitPage({
                         {textContent && renderFormattedAnswer(textContent, assignment)}
 
                         {submission.file_path && (
-                            <div className="relative rounded-xl border border-border overflow-hidden bg-muted/20 min-h-[180px] flex items-center justify-center">
+                            <div className="relative rounded-xl border border-border overflow-hidden bg-muted/20 min-h-[180px] flex items-center justify-center w-full">
                                 {isImage ? (
                                     <div className="relative group w-full h-full flex flex-col items-center">
                                         <img
@@ -378,9 +376,9 @@ export default function GradeSplitPage({
                                         </div>
                                     </div>
                                 ) : isPdf ? (
-                                    <iframe src={`/storage/${submission.file_path}`} className="w-full h-[320px] border-0" title="PDF Viewer" />
+                                    <iframe src={`/storage/${submission.file_path}`} className="w-full h-[300px] border-0" title="PDF Viewer" />
                                 ) : (
-                                    <div className="p-6 text-center text-xs space-y-2">
+                                    <div className="p-5 text-center text-xs space-y-2">
                                         <FileText className="w-8 h-8 mx-auto text-muted-foreground/50" />
                                         <a href={`/storage/${submission.file_path}`} target="_blank" rel="noreferrer" className="text-primary font-bold hover:underline block">
                                             Buka Berkas Lampiran
@@ -392,7 +390,7 @@ export default function GradeSplitPage({
                     </div>
                 ) : (
                     /* Compact Empty State */
-                    <div className="flex-1 flex flex-col items-center justify-center p-5 text-center bg-muted/15 rounded-xl border border-dashed border-border min-h-[160px] space-y-1.5">
+                    <div className="flex-1 flex flex-col items-center justify-center p-4 text-center bg-muted/15 rounded-xl border border-dashed border-border min-h-[150px] space-y-1.5 w-full">
                         <FileText className="w-7 h-7 text-muted-foreground/40" />
                         <p className="text-xs font-bold text-foreground">Belum ada karya digital</p>
                         <p className="text-[11px] text-muted-foreground max-w-xs leading-tight">
@@ -402,7 +400,7 @@ export default function GradeSplitPage({
                 )}
 
                 {/* Direct Action Buttons for Photo & Upload */}
-                <div className="pt-2 border-t border-border/60 grid grid-cols-2 gap-2 shrink-0">
+                <div className="pt-2 border-t border-border/60 grid grid-cols-2 gap-2 shrink-0 w-full">
                     <input
                         ref={cameraInputRef}
                         type="file"
@@ -426,10 +424,10 @@ export default function GradeSplitPage({
                         type="button"
                         disabled={isUploadingProof}
                         onClick={() => cameraInputRef.current?.click()}
-                        className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-bold shadow-xs transition active:scale-98 cursor-pointer disabled:opacity-50"
+                        className="inline-flex items-center justify-center gap-1.5 px-2.5 py-2 sm:py-2.5 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-bold shadow-xs transition active:scale-98 cursor-pointer disabled:opacity-50 truncate"
                     >
-                        <Camera className="w-4 h-4" />
-                        <span>{isUploadingProof ? 'Mengunggah...' : (submission?.file_path ? 'Ganti Foto' : 'Ambil Foto LKPD')}</span>
+                        <Camera className="w-3.5 h-3.5 shrink-0" />
+                        <span className="truncate">{isUploadingProof ? 'Mengunggah...' : (submission?.file_path ? 'Ganti Foto' : 'Ambil Foto LKPD')}</span>
                     </button>
 
                     {/* Secondary Button: Upload File */}
@@ -437,10 +435,10 @@ export default function GradeSplitPage({
                         type="button"
                         disabled={isUploadingProof}
                         onClick={() => fileInputRef.current?.click()}
-                        className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border border-border bg-card text-foreground hover:bg-muted text-xs font-bold transition active:scale-98 cursor-pointer disabled:opacity-50"
+                        className="inline-flex items-center justify-center gap-1.5 px-2.5 py-2 sm:py-2.5 rounded-xl border border-border bg-card text-foreground hover:bg-muted text-xs font-bold transition active:scale-98 cursor-pointer disabled:opacity-50 truncate"
                     >
-                        <Upload className="w-4 h-4" />
-                        <span>Upload File</span>
+                        <Upload className="w-3.5 h-3.5 shrink-0" />
+                        <span className="truncate">Upload File</span>
                     </button>
                 </div>
             </div>
@@ -450,15 +448,15 @@ export default function GradeSplitPage({
     // Grading Form Component (Score + Rubric + Feedback)
     const renderGradingForm = () => {
         return (
-            <div className="flex flex-col space-y-3.5 h-full">
+            <div className="flex flex-col space-y-3 h-full w-full min-w-0">
                 {/* ① Final Score Input (Clear & Prominent) */}
-                <div className="p-3 rounded-xl bg-primary/5 border border-primary/15 space-y-1.5">
-                    <div className="flex items-center justify-between">
-                        <label className="text-xs font-bold text-foreground">
+                <div className="p-3 rounded-xl bg-primary/5 border border-primary/15 space-y-1.5 w-full">
+                    <div className="flex items-center justify-between gap-2">
+                        <label className="text-xs font-bold text-foreground truncate">
                             Nilai Akhir (0 - {assignment.max_points || 100})
                         </label>
                         {assignment.passing_grade && (
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-background border border-border text-muted-foreground">
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-background border border-border text-muted-foreground shrink-0">
                                 KKTP: {assignment.passing_grade}
                             </span>
                         )}
@@ -483,16 +481,16 @@ export default function GradeSplitPage({
 
                 {/* ② Interactive Rubric Accordion (if configured) */}
                 {hasRubric && (
-                    <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                            <h4 className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                                <CheckCircle2 className="w-3.5 h-3.5 text-primary" />
-                                <span>Rubrik Kriteria Penilaian</span>
+                    <div className="space-y-2 w-full">
+                        <div className="flex items-center justify-between gap-2">
+                            <h4 className="text-xs font-bold text-foreground flex items-center gap-1.5 min-w-0 truncate">
+                                <CheckCircle2 className="w-3.5 h-3.5 text-primary shrink-0" />
+                                <span className="truncate">Rubrik Kriteria Penilaian</span>
                             </h4>
                             <button
                                 type="button"
                                 onClick={() => setShowRubricDetails(!showRubricDetails)}
-                                className="text-[10px] font-bold text-muted-foreground hover:text-foreground flex items-center gap-0.5 cursor-pointer"
+                                className="text-[10px] font-bold text-muted-foreground hover:text-foreground flex items-center gap-0.5 shrink-0 cursor-pointer"
                             >
                                 <span>{showRubricDetails ? 'Ringkas' : 'Perluas'}</span>
                                 {showRubricDetails ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
@@ -500,18 +498,19 @@ export default function GradeSplitPage({
                         </div>
 
                         {showRubricDetails && (
-                            <div className="space-y-2 animate-in fade-in duration-150">
+                            <div className="space-y-2 animate-in fade-in duration-150 w-full">
                                 {assignment.instrument_config.kktp.criteria.map((crit: any, i: number) => (
-                                    <div key={i} className="p-2.5 rounded-xl border border-border/80 bg-muted/20 space-y-1.5">
-                                        <div className="flex items-center justify-between text-xs">
-                                            <span className="font-bold text-foreground">{crit.name}</span>
+                                    <div key={i} className="p-2 sm:p-2.5 rounded-xl border border-border/80 bg-muted/20 space-y-1.5 w-full overflow-hidden">
+                                        <div className="flex items-center justify-between text-xs gap-2">
+                                            <span className="font-bold text-foreground truncate flex-1">{crit.name}</span>
                                             {kktpDetails[i] && (
-                                                <span className="text-[10px] font-black text-primary px-1.5 py-0.2 rounded bg-primary/10">
+                                                <span className="text-[9px] sm:text-[10px] font-black text-primary px-1.5 py-0.2 rounded bg-primary/10 shrink-0">
                                                     {kktpDetails[i]}
                                                 </span>
                                             )}
                                         </div>
-                                        <div className="grid grid-cols-4 gap-1 text-[10px]">
+                                        {/* 2-columns on mobile, 4-columns on tablet/desktop to avoid overflow */}
+                                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 text-[10px] sm:text-[11px] w-full">
                                             {[
                                                 { label: 'Bimbingan', full: 'Perlu Bimbingan' },
                                                 { label: 'Cukup', full: 'Cukup' },
@@ -524,7 +523,7 @@ export default function GradeSplitPage({
                                                         key={lvl.full}
                                                         type="button"
                                                         onClick={() => handleRubricClick(i, 0, lvl.full)}
-                                                        className={`p-1.5 rounded-lg border text-center font-bold transition cursor-pointer leading-tight ${
+                                                        className={`p-1.5 rounded-lg border text-center font-bold transition cursor-pointer leading-tight truncate ${
                                                             isSelected
                                                                 ? 'bg-primary text-primary-foreground border-primary shadow-2xs font-black'
                                                                 : 'bg-background border-border/60 text-muted-foreground hover:text-foreground hover:bg-muted/50'
@@ -543,20 +542,20 @@ export default function GradeSplitPage({
                 )}
 
                 {/* ③ Qualitative Feedback Section */}
-                <div className="space-y-2 flex-1 flex flex-col">
-                    <label className="text-xs font-bold text-foreground flex items-center justify-between">
-                        <span>Umpan Balik (Feedback)</span>
-                        <span className="text-[10px] text-muted-foreground font-normal">Klik chip untuk respon cepat</span>
+                <div className="space-y-1.5 flex-1 flex flex-col w-full">
+                    <label className="text-xs font-bold text-foreground flex items-center justify-between gap-2">
+                        <span className="truncate">Umpan Balik (Feedback)</span>
+                        <span className="text-[10px] text-muted-foreground font-normal shrink-0">Pilihan cepat:</span>
                     </label>
 
                     {/* Quick Feedback Chips */}
-                    <div className="flex flex-wrap gap-1 pb-1">
+                    <div className="flex flex-wrap gap-1 pb-0.5 w-full">
                         {QUICK_FEEDBACK_CHIPS.map((chip, idx) => (
                             <button
                                 key={idx}
                                 type="button"
                                 onClick={() => appendFeedback(chip.text)}
-                                className="text-[10px] font-bold px-2 py-1 rounded-lg border border-border bg-muted/20 hover:bg-primary/10 hover:border-primary/30 text-muted-foreground hover:text-primary transition active:scale-95 cursor-pointer"
+                                className="text-[10px] font-bold px-2 py-0.5 sm:py-1 rounded-lg border border-border bg-muted/20 hover:bg-primary/10 hover:border-primary/30 text-muted-foreground hover:text-primary transition active:scale-95 cursor-pointer"
                             >
                                 {chip.label}
                             </button>
@@ -569,7 +568,7 @@ export default function GradeSplitPage({
                         value={feedback}
                         onChange={(e) => setFeedback(e.target.value)}
                         onBlur={handleAutosaveOnBlur}
-                        className="w-full p-2.5 rounded-xl border border-border bg-background text-xs text-foreground placeholder:text-muted-foreground/60 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none resize-y min-h-[65px]"
+                        className="w-full p-2.5 rounded-xl border border-border bg-background text-xs text-foreground placeholder:text-muted-foreground/60 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none resize-y min-h-[60px]"
                     />
                 </div>
             </div>
@@ -577,39 +576,39 @@ export default function GradeSplitPage({
     };
 
     return (
-        <AppLayout title="Penilaian Asesmen Guru">
+        <AppLayout title="Penilaian Asesmen Guru" hideBottomNav={true}>
             <Head title={`Penilaian ${assignment.title} – LMS Mokopani`} />
 
-            <div className="min-h-[calc(100vh-70px)] flex flex-col space-y-2.5 max-w-6xl mx-auto px-3 sm:px-6 pt-2 pb-28 fade-in">
+            <div className="w-full max-w-6xl mx-auto px-2.5 sm:px-6 pt-1.5 pb-20 space-y-2 overflow-x-hidden">
                 {/* ① Compact Header Bar */}
-                <div className="flex items-center justify-between gap-2 border-b border-border/60 pb-2">
-                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                <div className="flex items-center justify-between gap-2 border-b border-border/60 pb-1.5 w-full">
+                    <div className="flex items-center gap-1.5 min-w-0 flex-1">
                         <Link 
                             href={route('assignments.show', selected_class_id && selected_class_id !== 'all' ? { assignment: assignment.id, class_id: selected_class_id } : assignment.id)} 
-                            className="p-1.5 rounded-xl border border-border text-muted-foreground hover:text-foreground transition min-h-[34px] min-w-[34px] flex items-center justify-center cursor-pointer shrink-0"
+                            className="p-1 rounded-xl border border-border text-muted-foreground hover:text-foreground transition h-8 w-8 flex items-center justify-center cursor-pointer shrink-0"
                             title="Kembali ke Ringkasan Asesmen"
                         >
                             <ChevronLeft className="w-4 h-4" />
                         </Link>
-                        <div className="min-w-0">
+                        <div className="min-w-0 flex-1">
                             <h1 className="font-bold text-xs sm:text-sm text-foreground leading-tight truncate">
                                 {assignment.title}
                             </h1>
-                            <p className="text-[11px] text-muted-foreground flex items-center gap-1.5 leading-tight">
-                                <span className="font-bold text-primary">{selectedClassName}</span>
+                            <p className="text-[10px] sm:text-[11px] text-muted-foreground flex items-center gap-1 leading-tight truncate">
+                                <span className="font-bold text-primary truncate">{selectedClassName}</span>
                                 <span>•</span>
-                                <span>{assessmentTypeLabel}</span>
+                                <span className="truncate">{assessmentTypeLabel}</span>
                             </p>
                         </div>
                     </div>
 
                     {/* Quick Class Dropdown & KKTP */}
-                    <div className="flex items-center gap-1.5 shrink-0">
+                    <div className="flex items-center gap-1 shrink-0">
                         {assigned_classes.length > 1 && (
                             <select
                                 value={selected_class_id || assigned_classes[0]?.id}
                                 onChange={(e) => router.visit(route('assignments.grade-view', { assignment: assignment.id, class_id: e.target.value }), { preserveScroll: true })}
-                                className="rounded-xl border border-border bg-card px-2 py-1 text-xs font-bold text-foreground outline-none cursor-pointer h-8"
+                                className="rounded-xl border border-border bg-card px-2 py-1 text-xs font-bold text-foreground outline-none cursor-pointer h-8 max-w-[110px] sm:max-w-none truncate"
                             >
                                 {assigned_classes.map(c => (
                                     <option key={c.id} value={c.id}>
@@ -622,7 +621,7 @@ export default function GradeSplitPage({
                         <button
                             type="button"
                             onClick={() => setIsKktpModalOpen(true)}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-bold bg-muted/40 hover:bg-muted text-muted-foreground hover:text-foreground border border-border transition cursor-pointer h-8"
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded-xl text-xs font-bold bg-muted/40 hover:bg-muted text-muted-foreground hover:text-foreground border border-border transition cursor-pointer h-8 shrink-0"
                         >
                             <Target className="h-3.5 w-3.5 text-primary" />
                             <span>KKTP</span>
@@ -639,44 +638,44 @@ export default function GradeSplitPage({
                 />
 
                 {/* ③ Mobile Segmented Tab Switcher (Visible only on < lg) */}
-                <div className="grid grid-cols-2 gap-1.5 p-1 bg-muted/40 rounded-xl border border-border lg:hidden">
+                <div className="grid grid-cols-2 gap-1 p-1 bg-muted/40 rounded-xl border border-border lg:hidden w-full">
                     <button
                         type="button"
                         onClick={() => setMobileTab('work')}
-                        className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-bold transition cursor-pointer ${
+                        className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-bold transition cursor-pointer truncate ${
                             mobileTab === 'work'
                                 ? 'bg-background text-foreground shadow-xs'
                                 : 'text-muted-foreground hover:text-foreground'
                         }`}
                     >
-                        <FileText className="w-3.5 h-3.5" />
-                        <span>Karya Siswa</span>
+                        <FileText className="w-3.5 h-3.5 shrink-0" />
+                        <span className="truncate">Karya Siswa</span>
                     </button>
                     <button
                         type="button"
                         onClick={() => setMobileTab('grade')}
-                        className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-bold transition cursor-pointer ${
+                        className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-bold transition cursor-pointer truncate ${
                             mobileTab === 'grade'
                                 ? 'bg-background text-foreground shadow-xs'
                                 : 'text-muted-foreground hover:text-foreground'
                         }`}
                     >
-                        <PenTool className="w-3.5 h-3.5" />
-                        <span>Penilaian {score !== '' && score !== undefined && score !== null ? `(${score})` : ''}</span>
+                        <PenTool className="w-3.5 h-3.5 shrink-0" />
+                        <span className="truncate">Penilaian {score !== '' && score !== undefined && score !== null ? `(${score})` : ''}</span>
                     </button>
                 </div>
 
                 {/* ④ Responsive Workspace Content */}
-                <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-3.5">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 w-full">
                     {/* Left Panel: Student Submission Viewer (Always on Desktop, Tab on Mobile) */}
-                    <div className={`lg:col-span-7 border border-border rounded-2xl p-3.5 sm:p-4 bg-card flex flex-col min-h-[300px] shadow-xs ${
+                    <div className={`lg:col-span-7 border border-border rounded-2xl p-3 sm:p-4 bg-card flex flex-col min-h-[260px] shadow-xs w-full overflow-hidden ${
                         mobileTab === 'work' ? 'block' : 'hidden lg:flex'
                     }`}>
                         {renderSubmissionContent()}
                     </div>
 
                     {/* Right Panel: Grading Form (Always on Desktop, Tab on Mobile) */}
-                    <div className={`lg:col-span-5 border border-border rounded-2xl p-3.5 sm:p-4 bg-card flex flex-col space-y-3.5 shadow-xs ${
+                    <div className={`lg:col-span-5 border border-border rounded-2xl p-3 sm:p-4 bg-card flex flex-col space-y-3 shadow-xs w-full overflow-hidden ${
                         mobileTab === 'grade' ? 'block' : 'hidden lg:flex'
                     }`}>
                         {renderGradingForm()}
@@ -684,57 +683,57 @@ export default function GradeSplitPage({
                 </div>
             </div>
 
-            {/* ⑤ Sticky Bottom Action Footer (Safe-Area Guarded) */}
-            <div className="fixed bottom-0 left-0 right-0 z-40 bg-card/95 backdrop-blur-md border-t border-border shadow-lg py-2 px-4 sm:px-8">
-                <div className="max-w-6xl mx-auto flex items-center justify-between gap-3">
+            {/* ⑤ Sticky Bottom Action Footer (Safe-Area Guarded & Compact on Mobile) */}
+            <div className="fixed bottom-0 left-0 right-0 z-40 bg-card/95 backdrop-blur-md border-t border-border shadow-lg py-2 px-2.5 sm:px-8 w-full">
+                <div className="max-w-6xl mx-auto flex items-center justify-between gap-2 w-full">
                     {/* Left: Autosave Indicator */}
-                    <div className="flex items-center gap-2 text-xs">
+                    <div className="flex items-center gap-1.5 text-xs min-w-0 flex-1">
                         {saveStatus === 'saving' ? (
-                            <span className="inline-flex items-center gap-1.5 text-primary font-bold animate-pulse">
-                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                <span className="text-[11px] sm:text-xs">Menyimpan...</span>
+                            <span className="inline-flex items-center gap-1 text-primary font-bold animate-pulse text-[10px] sm:text-xs truncate">
+                                <Loader2 className="h-3 w-3 animate-spin shrink-0" />
+                                <span className="truncate">Menyimpan...</span>
                             </span>
                         ) : (
-                            <span className="inline-flex items-center gap-1 text-muted-foreground font-medium text-[11px] sm:text-xs">
-                                <Check className="h-3.5 w-3.5 text-emerald-500" />
-                                <span>Tersimpan {lastSavedTime && `(${lastSavedTime})`}</span>
+                            <span className="inline-flex items-center gap-1 text-muted-foreground font-medium text-[10px] sm:text-xs truncate">
+                                <Check className="h-3 w-3 text-emerald-500 shrink-0" />
+                                <span className="truncate">Tersimpan {lastSavedTime && `(${lastSavedTime})`}</span>
                             </span>
                         )}
                     </div>
 
                     {/* Right: Previous & Save/Next Actions */}
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 shrink-0">
                         <button
                             type="button"
                             disabled={currentStudentIndex === 0}
                             onClick={() => setCurrentStudentIndex(prev => prev - 1)}
-                            className="inline-flex items-center gap-1 px-3 py-2 rounded-xl border border-border bg-background text-xs font-bold text-foreground hover:bg-muted transition cursor-pointer disabled:opacity-30 disabled:pointer-events-none"
+                            className="inline-flex items-center justify-center h-8 sm:h-9 px-2 sm:px-3 rounded-xl border border-border bg-background text-xs font-bold text-foreground hover:bg-muted transition cursor-pointer disabled:opacity-30 disabled:pointer-events-none"
                             title="Siswa Sebelumnya"
                         >
                             <ChevronLeft className="w-4 h-4" />
-                            <span className="hidden sm:inline">Sebelumnya</span>
+                            <span className="hidden sm:inline ml-0.5">Sebelumnya</span>
                         </button>
 
                         <button
                             type="button"
                             disabled={isSaving}
                             onClick={() => handleSave(true)}
-                            className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-primary-foreground font-bold text-xs shadow-xs hover:bg-primary/90 active:scale-98 transition cursor-pointer disabled:opacity-50"
+                            className="inline-flex items-center justify-center gap-1 h-8 sm:h-9 px-3 sm:px-4 rounded-xl bg-primary text-primary-foreground font-bold text-xs shadow-xs hover:bg-primary/90 active:scale-98 transition cursor-pointer disabled:opacity-50"
                         >
                             {isSaving ? (
                                 <>
-                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                    <span>Menyimpan...</span>
+                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                    <span>Menyimpan</span>
                                 </>
                             ) : currentStudentIndex === students.length - 1 ? (
                                 <>
-                                    <CheckCircle2 className="w-4 h-4" />
-                                    <span>Selesai Menilai</span>
+                                    <CheckCircle2 className="w-3.5 h-3.5" />
+                                    <span>Selesai</span>
                                 </>
                             ) : (
                                 <>
-                                    <span>Simpan & Berikutnya</span>
-                                    <ArrowRight className="w-4 h-4" />
+                                    <span>Berikutnya</span>
+                                    <ArrowRight className="w-3.5 h-3.5" />
                                 </>
                             )}
                         </button>
@@ -752,7 +751,7 @@ export default function GradeSplitPage({
                         <button
                             type="button"
                             onClick={() => setPreviewImageModal(null)}
-                            className="absolute -top-10 right-0 p-2 text-white hover:text-slate-300 transition"
+                            className="absolute -top-10 right-0 p-2 text-white hover:text-slate-300 transition cursor-pointer"
                         >
                             <X className="w-6 h-6" />
                         </button>
@@ -768,11 +767,11 @@ export default function GradeSplitPage({
 
             {/* Notification Toast */}
             {toastMessage && (
-                <div className={`fixed bottom-16 right-6 z-50 px-4 py-2.5 rounded-xl shadow-lg flex items-center gap-2 text-xs font-bold animate-in slide-in-from-bottom-3 ${
+                <div className={`fixed bottom-14 right-4 z-50 px-3.5 py-2 rounded-xl shadow-lg flex items-center gap-2 text-xs font-bold animate-in slide-in-from-bottom-3 ${
                     toastMessage.type === 'success' ? 'bg-emerald-600 text-white' : 'bg-destructive text-destructive-foreground'
                 }`}>
-                    <CheckCircle2 className="w-4 h-4" />
-                    <span>{toastMessage.message}</span>
+                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                    <span className="truncate">{toastMessage.message}</span>
                 </div>
             )}
 
