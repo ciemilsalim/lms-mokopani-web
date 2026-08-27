@@ -169,7 +169,17 @@ function StudentAssignmentsView({ groups, search, studentStatusFilter }: {
 }
 
 // ── Teacher Accordion View ───────────────────────────────────────────
-function TeacherGroupedView({ groups, search, filterType }: { groups: TeacherClassGroup[]; search: string; filterType: string }) {
+function TeacherGroupedView({
+    groups,
+    search,
+    filterType,
+    stats,
+}: {
+    groups: TeacherClassGroup[];
+    search: string;
+    filterType: string;
+    stats?: { total_pending_grading: number; total_active: number };
+}) {
     const [expandedClasses, setExpandedClasses] = useState<Record<number, boolean>>({});
     const [expandedSubjects, setExpandedSubjects] = useState<Record<string, boolean>>({});
     const [expandedObjectives, setExpandedObjectives] = useState<Record<string, boolean>>({});
@@ -238,66 +248,99 @@ function TeacherGroupedView({ groups, search, filterType }: { groups: TeacherCla
             <EmptyState
                 icon={ClipboardList}
                 title="Belum Ada Asesmen"
-                description="Asesmen pembelajaran yang Anda buat akan muncul di sini."
-                actionLabel="+ Tambah Asesmen"
+                description={
+                    search || filterType !== 'all'
+                        ? 'Tidak ada asesmen yang sesuai dengan filter atau pencarian Anda.'
+                        : 'Asesmen pembelajaran yang Anda buat akan muncul di sini.'
+                }
+                actionLabel="+ Buat Asesmen Baru"
                 onAction={() => router.visit(route('assignments.create'))}
             />
         );
     }
 
     return (
-        <div className="space-y-4">
-            {/* Toolbar: Expand / Collapse All */}
-            <div className="flex items-center justify-between gap-3 bg-card p-3 sm:px-4 rounded-2xl border border-border/70 shadow-xs">
-                <span className="text-xs font-bold text-muted-foreground">
-                    Menampilkan <strong className="text-foreground">{visible.length} Kelas</strong>
+        <div className="space-y-3.5">
+            {/* Toolbar: Counter & Clean Expand/Collapse Toggle */}
+            <div className="flex items-center justify-between gap-2 pt-1 border-b border-border/50 pb-2">
+                <span className="text-[11px] font-black uppercase tracking-wider text-muted-foreground">
+                    Menampilkan {visible.length} Kelas
                 </span>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3">
                     <button
                         type="button"
                         onClick={handleExpandAll}
-                        className="px-3 py-1.5 rounded-xl bg-background border border-border text-[11px] font-bold text-muted-foreground hover:text-foreground transition cursor-pointer min-h-[36px]"
+                        className="text-[11px] font-bold text-primary hover:underline cursor-pointer"
                     >
                         Buka Semua
                     </button>
+                    <span className="text-border text-xs">•</span>
                     <button
                         type="button"
                         onClick={handleCollapseAll}
-                        className="px-3 py-1.5 rounded-xl bg-background border border-border text-[11px] font-bold text-muted-foreground hover:text-foreground transition cursor-pointer min-h-[36px]"
+                        className="text-[11px] font-bold text-muted-foreground hover:text-foreground cursor-pointer"
                     >
                         Tutup Semua
                     </button>
                 </div>
             </div>
 
-            {/* Accordion Group */}
-            <div className="flex flex-col gap-3">
+            {/* Class Cards with Status */}
+            <div className="flex flex-col gap-2.5">
                 {visible.map((cls) => {
                     const isClassExpanded = Boolean(search) || filterType !== 'all' || Boolean(expandedClasses[cls.class_id]);
                     const totalAsgnInClass = cls.subjects.reduce((acc, sub) => acc + sub.objectives.reduce((oAcc, obj) => oAcc + obj.assignments.length, 0), 0);
+                    
+                    // Count pending grading across all assignments in this class
+                    let classPendingGrading = 0;
+                    cls.subjects.forEach(sub => {
+                        sub.objectives.forEach(obj => {
+                            obj.assignments.forEach(a => {
+                                if (a.pending_grading_count && a.pending_grading_count > 0) {
+                                    classPendingGrading += a.pending_grading_count;
+                                }
+                            });
+                        });
+                    });
 
                     return (
-                        <div key={cls.class_id} className="rounded-2xl border border-border/80 bg-card overflow-hidden shadow-xs hover:border-primary/30 transition-all">
+                        <div key={cls.class_id} className="rounded-2xl border border-border/70 bg-card overflow-hidden shadow-2xs hover:border-primary/40 transition-all">
                             {/* Class Header */}
                             <div
                                 onClick={() => toggleClass(cls.class_id)}
-                                className="flex items-center justify-between px-4 sm:px-5 py-3.5 bg-card cursor-pointer hover:bg-muted/30 transition-colors"
+                                className="flex items-center justify-between px-3.5 sm:px-4 py-3 bg-card cursor-pointer hover:bg-muted/30 transition-colors gap-2"
                             >
-                                <div className="flex items-center gap-3 min-w-0">
-                                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary shrink-0">
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                    <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary shrink-0">
                                         <Users className="h-4 w-4" />
                                     </div>
                                     <div className="min-w-0">
-                                        <span className="text-xs sm:text-sm font-black text-foreground truncate block">{cls.class_name}</span>
-                                        <p className="text-[11px] text-muted-foreground mt-0.5">{cls.subjects.length} Mata Pelajaran</p>
+                                        <span className="text-xs sm:text-sm font-black text-foreground truncate block">
+                                            {cls.class_name}
+                                        </span>
+                                        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground mt-0.5">
+                                            <span>{totalAsgnInClass} Asesmen</span>
+                                            {classPendingGrading > 0 ? (
+                                                <>
+                                                    <span>•</span>
+                                                    <span className="font-bold text-amber-700 dark:text-amber-300">
+                                                        🟠 {classPendingGrading} perlu dinilai
+                                                    </span>
+                                                </>
+                                            ) : totalAsgnInClass > 0 ? (
+                                                <>
+                                                    <span>•</span>
+                                                    <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                                                        🟢 Selesai dinilai
+                                                    </span>
+                                                </>
+                                            ) : null}
+                                        </div>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-2.5 shrink-0">
-                                    <span className="text-[10px] font-bold bg-primary/10 text-primary px-2.5 py-1 rounded-xl">
-                                        {totalAsgnInClass} Asesmen
-                                    </span>
-                                    <div className={`p-1.5 rounded-lg bg-muted/50 text-muted-foreground transition-transform duration-200 ${isClassExpanded ? 'rotate-180' : ''}`}>
-                                        <ChevronDown className="h-4 w-4" />
+                                <div className="flex items-center gap-2 shrink-0">
+                                    <div className={`p-1.5 rounded-lg bg-muted/60 text-muted-foreground transition-transform duration-200 ${isClassExpanded ? 'rotate-180' : ''}`}>
+                                        <ChevronDown className="h-3.5 w-3.5" />
                                     </div>
                                 </div>
                             </div>
@@ -315,15 +358,15 @@ function TeacherGroupedView({ groups, search, filterType }: { groups: TeacherCla
                                                 {/* Subject Header */}
                                                 <div
                                                     onClick={() => toggleSubject(cls.class_id, sub.subject_id)}
-                                                    className="px-4 sm:px-5 py-2.5 flex items-center justify-between cursor-pointer hover:bg-muted/20 transition-colors"
+                                                    className="px-3.5 sm:px-4 py-2 flex items-center justify-between cursor-pointer hover:bg-muted/20 transition-colors"
                                                 >
-                                                    <div className="flex items-center gap-2.5">
+                                                    <div className="flex items-center gap-2">
                                                         <BookOpen className="h-3.5 w-3.5 text-primary" />
-                                                        <span className="text-xs font-bold uppercase tracking-wider text-foreground">{sub.subject_name}</span>
+                                                        <span className="text-xs font-bold text-foreground">{sub.subject_name}</span>
                                                     </div>
                                                     <div className="flex items-center gap-2">
                                                         <span className="text-[10px] font-bold text-muted-foreground">{totalSubAsgn} Asesmen</span>
-                                                        {isSubExpanded ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
+                                                        {isSubExpanded ? <ChevronDown className="h-3 w-3 text-muted-foreground" /> : <ChevronRight className="h-3 w-3 text-muted-foreground" />}
                                                     </div>
                                                 </div>
 
@@ -337,15 +380,15 @@ function TeacherGroupedView({ groups, search, filterType }: { groups: TeacherCla
                                                                 <div key={obj.objective_id} className="divide-y divide-border/20">
                                                                     <div
                                                                         onClick={() => toggleObjective(cls.class_id, sub.subject_id, obj.objective_id || 0)}
-                                                                        className="px-4 sm:px-6 py-2 bg-muted/10 flex items-center justify-between cursor-pointer hover:bg-muted/20 transition-colors"
+                                                                        className="px-3.5 sm:px-4 py-1.5 bg-muted/10 flex items-center justify-between cursor-pointer hover:bg-muted/20 transition-colors"
                                                                     >
-                                                                        <div className="flex items-center gap-2 min-w-0">
-                                                                            <span className="text-[10px] font-black text-primary bg-primary/10 px-1.5 py-0.5 rounded-md shrink-0">
+                                                                        <div className="flex items-center gap-1.5 min-w-0">
+                                                                            <span className="text-[10px] font-black text-primary bg-primary/10 px-1.5 py-0.5 rounded shrink-0">
                                                                                 [{obj.objective_code}]
                                                                             </span>
                                                                             <span className="text-[11px] font-medium text-muted-foreground truncate">{obj.objective_description}</span>
                                                                         </div>
-                                                                        <div className="flex items-center gap-1.5 shrink-0">
+                                                                        <div className="flex items-center gap-1 shrink-0">
                                                                             {isObjExpanded ? <ChevronDown className="h-3 w-3 text-muted-foreground" /> : <ChevronRight className="h-3 w-3 text-muted-foreground" />}
                                                                         </div>
                                                                     </div>
@@ -410,8 +453,9 @@ export default function Assignments({
     teacher_grouped,
     active_year,
     active_semester,
-    user_role
-}: AssignmentsProps) {
+    user_role,
+    stats,
+}: AssignmentsProps & { stats?: { total_pending_grading: number; total_active: number } }) {
     const [search, setSearch] = useState('');
     const [filterType, setFilterType] = useState<string>('all');
     const [studentStatusFilter, setStudentStatusFilter] = useState<'all' | 'pending' | 'submitted' | 'graded'>('all');
@@ -435,18 +479,51 @@ export default function Assignments({
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Asesmen & Tugas – LMS Mokopani" />
+            <Head title="Asesmen & Penilaian – LMS Mokopani" />
 
-            <div className="space-y-5 sm:space-y-6 max-w-7xl mx-auto px-4 sm:px-6 pb-20 md:pb-8 fade-in">
+            <div className="space-y-4 sm:space-y-5 max-w-7xl mx-auto w-full min-w-0 pb-20 md:pb-8 fade-in">
                 {/* Header Section */}
-                <SectionHeader
-                    title={user_role === 'student' ? 'Asesmen & Tugas' : 'Asesmen'}
-                    subtitle={user_role === 'student'
-                        ? 'Pantau dan kerjakan tugas serta asesmen belajarmu tepat waktu.'
-                        : 'Kelola asesmen awal, formatif, dan sumatif pembelajaran.'}
-                    actionLabel={isTeacher ? '+ Tambah Asesmen' : undefined}
-                    onAction={isTeacher ? () => router.visit(route('assignments.create')) : undefined}
-                />
+                <div className="flex items-center justify-between gap-3 pt-1">
+                    <div className="min-w-0">
+                        <h1 className="text-xl sm:text-2xl font-black text-foreground tracking-tight">
+                            {user_role === 'student' ? 'Asesmen & Tugas' : 'Asesmen'}
+                        </h1>
+                        <p className="text-xs sm:text-sm text-muted-foreground font-medium mt-0.5">
+                            {user_role === 'student'
+                                ? 'Pantau dan kerjakan tugas serta asesmen belajarmu tepat waktu.'
+                                : `Kelola dan pantau penilaian siswa • Periode ${active_year || '2026/2027'} (${active_semester || 'Ganjil'})`}
+                        </p>
+                    </div>
+
+                    {isTeacher && (
+                        <button
+                            type="button"
+                            onClick={() => router.visit(route('assignments.create'))}
+                            className="inline-flex items-center justify-center gap-1.5 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-primary text-primary-foreground text-xs sm:text-sm font-extrabold shadow-sm hover:bg-primary/90 transition active:scale-97 min-h-[40px] sm:min-h-[44px] shrink-0"
+                        >
+                            <Plus className="h-4 w-4" />
+                            <span>Tambah Asesmen</span>
+                        </button>
+                    )}
+                </div>
+
+                {/* Teacher Action-First Summary Chips */}
+                {isTeacher && stats && (stats.total_pending_grading > 0 || stats.total_active > 0) && (
+                    <div className="flex flex-wrap items-center gap-2">
+                        {stats.total_pending_grading > 0 && (
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20 text-xs font-bold">
+                                <span>🟠</span>
+                                <span>{stats.total_pending_grading} hasil perlu dinilai</span>
+                            </span>
+                        )}
+                        {stats.total_active > 0 && (
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary/10 text-primary border border-primary/20 text-xs font-bold">
+                                <span>📝</span>
+                                <span>{stats.total_active} asesmen aktif</span>
+                            </span>
+                        )}
+                    </div>
+                )}
 
                 {/* Filter & Search Toolbar */}
                 <AssessmentFilter
@@ -461,7 +538,12 @@ export default function Assignments({
 
                 {/* Role-based Content Views */}
                 {user_role === 'teacher' ? (
-                    <TeacherGroupedView groups={teacher_grouped ?? []} search={search} filterType={filterType} />
+                    <TeacherGroupedView
+                        groups={teacher_grouped ?? []}
+                        search={search}
+                        filterType={filterType}
+                        stats={stats}
+                    />
                 ) : user_role === 'student' ? (
                     <StudentAssignmentsView
                         groups={grouped_assignments ?? []}
@@ -472,11 +554,6 @@ export default function Assignments({
                     <FlatView assignments={assignments ?? []} search={search} filterType={filterType} />
                 )}
             </div>
-
-            {/* Mobile Floating Action Button (Teacher Only) */}
-            {isTeacher && (
-                <MobileFab href={route('assignments.create')} label="Asesmen Baru" />
-            )}
 
             {/* Floating Toast Notification */}
             {toast && (

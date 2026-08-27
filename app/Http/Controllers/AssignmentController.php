@@ -35,7 +35,15 @@ class AssignmentController extends Controller
             }
         }
 
-        $models = $query->withCount('submissions')->latest()->get();
+        $models = $query->withCount([
+            'submissions',
+            'submissions as pending_grading_count' => function ($q) {
+                $q->whereNull('score');
+            }
+        ])->latest()->get();
+
+        $totalPendingGrading = $models->sum('pending_grading_count');
+        $totalActiveAssessments = $models->count();
 
         $studentSubmissions = [];
         if ($user && $user->student) {
@@ -77,17 +85,18 @@ class AssignmentController extends Controller
                             'objective_code'        => $firstTp->learningObjective?->code ?: ('TP ' . ($firstTp->learningObjective?->order ?? '?')),
                             'objective_description' => $firstTp->learningObjective?->description ?? 'Tanpa TP',
                             'assignments'           => $tpItems->map(fn ($a) => [
-                                'id'                => $a->id,
-                                'title'             => $a->title,
-                                'description'       => $a->description,
-                                'subject_name'      => $a->subject?->name ?? '-',
-                                'subject_id'        => $a->subject_id,
-                                'due_date'          => $a->due_date?->format('d M Y'),
-                                'max_points'        => $a->max_points,
-                                'assessment_type'   => $a->assessment_type,
-                                'instrument_type'   => $a->instrument_type,
-                                'scoring_tool'      => $a->scoring_tool,
-                                'submissions_count' => $a->submissions_count,
+                                'id'                    => $a->id,
+                                'title'                 => $a->title,
+                                'description'           => $a->description,
+                                'subject_name'          => $a->subject?->name ?? '-',
+                                'subject_id'            => $a->subject_id,
+                                'due_date'              => $a->due_date?->format('d M Y'),
+                                'max_points'            => $a->max_points,
+                                'assessment_type'       => $a->assessment_type,
+                                'instrument_type'       => $a->instrument_type,
+                                'scoring_tool'          => $a->scoring_tool,
+                                'submissions_count'     => $a->submissions_count,
+                                'pending_grading_count' => $a->pending_grading_count ?? 0,
                             ])->values(),
                         ];
                     })->values();
@@ -111,6 +120,10 @@ class AssignmentController extends Controller
                 'active_year'      => $activeYear?->name,
                 'active_semester'  => $activeSemester?->name,
                 'user_role'        => 'teacher',
+                'stats'            => [
+                    'total_pending_grading' => $totalPendingGrading,
+                    'total_active'          => $totalActiveAssessments,
+                ],
             ]);
         }
 

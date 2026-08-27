@@ -18,6 +18,7 @@ export interface AssignmentItem {
     instrument_type: string | null;
     scoring_tool?: string | null;
     submissions_count: number;
+    pending_grading_count?: number;
     is_accessible?: boolean;
     student_submission?: { id: number; is_graded: boolean } | null;
     topic?: string;
@@ -158,20 +159,26 @@ export function AssessmentCard({
             <div className="flex items-center gap-2 sm:gap-3 shrink-0 pl-2">
                 {isTeacher ? (
                     <div className="flex items-center gap-2">
-                        <div className="flex items-center justify-end min-w-[60px]">
-                            {assignment.submissions_count > 0 ? (
-                                <span className="text-[10px] sm:text-[11px] text-primary font-black bg-primary/10 px-2.5 py-1 rounded-lg">
-                                    {assignment.submissions_count} kumpul
+                        <div className="flex items-center justify-end">
+                            {(assignment.pending_grading_count && assignment.pending_grading_count > 0) ? (
+                                <span className="text-[10px] sm:text-[11px] text-amber-700 dark:text-amber-300 font-extrabold bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 rounded-lg whitespace-nowrap">
+                                    🟠 {assignment.pending_grading_count} Perlu Nilai
+                                </span>
+                            ) : assignment.submissions_count > 0 ? (
+                                <span className="text-[10px] sm:text-[11px] text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-lg whitespace-nowrap">
+                                    🟢 {assignment.submissions_count} Selesai
                                 </span>
                             ) : (
-                                <span className="text-[10px] sm:text-[11px] text-muted-foreground font-medium">0 kumpul</span>
+                                <span className="text-[10px] sm:text-[11px] text-muted-foreground font-medium px-2 py-0.5 rounded-lg">
+                                    0 Pengumpulan
+                                </span>
                             )}
                         </div>
                         <div className="flex items-center gap-1">
                             <button
                                 type="button"
                                 onClick={handleEdit}
-                                className="rounded-xl p-2 text-muted-foreground hover:bg-primary/10 hover:text-primary transition cursor-pointer min-h-[36px] min-w-[36px] flex items-center justify-center"
+                                className="rounded-xl p-1.5 text-muted-foreground hover:bg-primary/10 hover:text-primary transition cursor-pointer min-h-[34px] min-w-[34px] flex items-center justify-center"
                                 title="Edit asesmen"
                             >
                                 <Pencil className="h-3.5 w-3.5" />
@@ -182,7 +189,7 @@ export function AssessmentCard({
                                     e.stopPropagation();
                                     setShowDeleteConfirm(true);
                                 }}
-                                className="rounded-xl p-2 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition cursor-pointer min-h-[36px] min-w-[36px] flex items-center justify-center"
+                                className="rounded-xl p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition cursor-pointer min-h-[34px] min-w-[34px] flex items-center justify-center"
                                 title="Hapus asesmen"
                             >
                                 <Trash2 className="h-3.5 w-3.5" />

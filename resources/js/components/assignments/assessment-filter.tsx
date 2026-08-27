@@ -75,13 +75,13 @@ export function AssessmentFilter({
 
             {/* Search Input */}
             <div className="relative max-w-full md:max-w-xs flex-1">
-                <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                 <input
                     type="text"
-                    placeholder="Cari tugas / mata pelajaran..."
+                    placeholder="Cari asesmen, kelas, atau mapel..."
                     value={search}
                     onChange={(e) => onSearchChange(e.target.value)}
-                    className="w-full rounded-2xl border border-border bg-background py-2.5 pl-11 pr-10 text-xs sm:text-sm text-foreground placeholder-muted-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition min-h-[44px]"
+                    className="w-full rounded-xl border border-border/70 bg-card py-2.5 pl-10 pr-9 text-xs sm:text-sm text-foreground placeholder:text-muted-foreground/60 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition min-h-[42px] shadow-2xs"
                 />
                 {search && (
                     <button
@@ -90,7 +90,7 @@ export function AssessmentFilter({
                         className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground transition rounded-lg"
                         title="Hapus pencarian"
                     >
-                        <X className="h-4 w-4" />
+                        <X className="h-3.5 w-3.5" />
                     </button>
                 )}
             </div>
