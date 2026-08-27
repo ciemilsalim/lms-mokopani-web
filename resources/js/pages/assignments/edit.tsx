@@ -33,30 +33,30 @@ export default function EditAssignment({
         <AppLayout breadcrumbs={breadcrumbs} hideBottomNav={true}>
             <Head title={`Edit ${assignment.title} – LMS Mokopani`} />
 
-            <div className="w-full max-w-3xl mx-auto px-3.5 sm:px-6 pt-2 pb-24 space-y-3 fade-in overflow-x-hidden">
-                {/* Header Bar with Unified Back Button */}
-                <div className="flex items-center justify-between border-b border-border/60 pb-2.5">
+            <div className="max-w-4xl mx-auto fade-in pb-28 md:pb-12 w-full min-w-0">
+                {/* Header Section (Consistent with Dashboard & Materials) */}
+                <div className="mb-3.5 sm:mb-5 pt-1 flex items-center justify-between gap-2 border-b border-border/60 pb-2.5">
                     <div className="flex items-center gap-2.5 min-w-0">
                         <button
                             type="button"
                             onClick={() => router.visit(route('assignments.show', assignment.id))}
-                            className="p-1.5 rounded-xl border border-border text-muted-foreground hover:text-foreground transition h-9 w-9 flex items-center justify-center cursor-pointer shrink-0"
+                            className="p-1.5 rounded-xl border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition h-9 w-9 flex items-center justify-center cursor-pointer shrink-0"
                             title="Batal & Kembali"
                         >
                             <ChevronLeft className="h-4 w-4" />
                         </button>
                         <div className="min-w-0">
-                            <h1 className="text-sm sm:text-base font-black text-foreground leading-tight truncate">
+                            <h1 className="text-lg sm:text-xl font-black text-foreground tracking-tight leading-tight truncate">
                                 Edit Asesmen
                             </h1>
-                            <p className="text-[11px] text-muted-foreground leading-tight truncate">
+                            <p className="text-xs text-muted-foreground font-medium truncate">
                                 {assignment.title}
                             </p>
                         </div>
                     </div>
                 </div>
 
-                {/* Unified 3-Step Assessment Form Wizard */}
+                {/* Modular Assessment Form Wizard */}
                 <AssessmentForm
                     mode="edit"
                     initialAssignment={assignment}
