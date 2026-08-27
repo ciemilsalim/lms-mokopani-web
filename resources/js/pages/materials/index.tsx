@@ -157,10 +157,10 @@ export default function MaterialsIndex({
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Bahan Materi - LMS Mokopani" />
 
-            <div className="space-y-4 sm:space-y-5 fade-in pb-20 md:pb-8 max-w-7xl mx-auto px-3 sm:px-6 w-full min-w-0">
+            <div className="space-y-4 sm:space-y-5 fade-in pb-16 md:pb-6 max-w-7xl mx-auto w-full min-w-0">
                 {/* Header & Primary CTA */}
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-1">
-                    <div>
+                <div className="flex items-center justify-between gap-3 pt-1">
+                    <div className="min-w-0">
                         <h1 className="text-xl sm:text-2xl font-black text-foreground tracking-tight">
                             Bahan Materi
                         </h1>
@@ -172,10 +172,10 @@ export default function MaterialsIndex({
                     {isTeacher && (
                         <Link
                             href={route('materials.create')}
-                            className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-xs sm:text-sm font-bold shadow-md hover:bg-primary/90 transition active:scale-97 min-h-[44px] self-stretch sm:self-auto"
+                            className="inline-flex items-center justify-center gap-1.5 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-primary text-primary-foreground text-xs sm:text-sm font-extrabold shadow-sm hover:bg-primary/90 transition active:scale-97 min-h-[40px] sm:min-h-[44px] shrink-0"
                         >
                             <Plus className="h-4 w-4" />
-                            <span>+ Tambah Materi</span>
+                            <span>Tambah Materi</span>
                         </Link>
                     )}
                 </div>

@@ -91,7 +91,7 @@ export default function MaterialShow({
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`${material.title} - LMS Mokopani`} />
 
-            <div className="space-y-4 sm:space-y-5 fade-in pb-16 md:pb-6 max-w-4xl mx-auto px-3 sm:px-6 w-full min-w-0">
+            <div className="space-y-4 sm:space-y-5 fade-in pb-16 md:pb-6 max-w-4xl mx-auto w-full min-w-0">
                 {/* 1. Contextual Header Banner */}
                 <MaterialDetailHeader
                     id={material.id}

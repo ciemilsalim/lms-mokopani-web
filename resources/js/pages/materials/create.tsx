@@ -43,7 +43,7 @@ export default function CreateMaterial({
         <AppLayout breadcrumbs={breadcrumbs} hideBottomNav={true}>
             <Head title="Tambah Materi – LMS Mokopani" />
 
-            <div className="max-w-3xl mx-auto px-3 sm:px-6 fade-in pb-28 md:pb-12 w-full min-w-0">
+            <div className="max-w-4xl mx-auto fade-in pb-28 md:pb-12 w-full min-w-0">
                 {/* Form Subtitle / Header */}
                 <div className="mb-4 sm:mb-6 pt-1">
                     <h1 className="text-xl sm:text-2xl font-black text-foreground tracking-tight">
