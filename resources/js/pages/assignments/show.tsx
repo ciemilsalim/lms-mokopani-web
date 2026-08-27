@@ -66,6 +66,7 @@ import {
     AssessmentDetailHeader,
     AssessmentInstructions,
     AssessmentDetailTeacherOverview,
+    TeacherGradingWorkspace,
 } from '@/components/assignments';
 
 
@@ -93,28 +94,7 @@ interface Student {
     photo_url?: string | null;
 }
 
-const StudentAvatar = ({ photoUrl, name, className = "h-10 w-10 rounded-xl" }: { photoUrl?: string | null; name: string; className?: string }) => {
-    const [imgError, setImgError] = useState(false);
-
-    if (photoUrl && !imgError) {
-        return (
-            <div className={`${className} overflow-hidden bg-slate-100 dark:bg-slate-800 shrink-0 border border-border/80 shadow-2xs`}>
-                <img
-                    src={photoUrl}
-                    alt={name}
-                    className="h-full w-full object-cover"
-                    onError={() => setImgError(true)}
-                />
-            </div>
-        );
-    }
-
-    return (
-        <div className={`${className} bg-primary/10 text-primary dark:bg-primary/20 flex items-center justify-center font-black text-xs shrink-0 border border-primary/20 shadow-2xs`}>
-            {name ? name.charAt(0).toUpperCase() : '?'}
-        </div>
-    );
-};
+import { StudentAvatar } from '@/components/student-avatar';
 
 import CommentSection from '@/components/CommentSection';
 import ReflectionForm from '@/components/ReflectionForm';
@@ -2147,979 +2127,218 @@ export default function ShowAssignment({ assignment, students, my_submission, my
                 {/* Content based on Role */}
                 {user_role === 'teacher' ? (
                     <div className="space-y-6">
-                        {['observation_checklist', 'anecdotal_notes', 'rubric', 'oral_test', 'performance_observation', 'performance', 'guided_discussion'].includes(assignment.instrument_type) ? (
-                            <div className="space-y-6 animate-in fade-in duration-500">
-                                <div className="flex flex-col sm:flex-row sm:items-center justify-between px-2 sm:px-4 gap-4">
+                        {/* Analytical Charts for Exit Ticket & Formative Quiz */}
+                        {assignment.instrument_type === 'exit_ticket' && (assignment.instrument_config?.assessment_mode || 'default') === 'default' && exitTicketStats && (
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in slide-in-from-top-4 duration-500">
+                                {/* SVG Donut Chart Card */}
+                                <div className="rounded-2xl border border-border bg-card p-6 shadow-xs flex flex-col justify-between">
                                     <div>
-                                        <h2 className="text-lg sm:text-xl font-black text-foreground tracking-tight">
-                                            {assignment.instrument_type === 'observation_checklist' ? 'Lembar Observasi & Ceklis' : 
-                                             assignment.instrument_type === 'anecdotal_notes' ? 'Daftar Catatan Anekdotal' :
-                                             assignment.instrument_type === 'performance_observation' ? 'Lembar Observasi Keterlibatan' :
-                                             assignment.instrument_type === 'performance' ? 'Lembar Penilaian Kinerja' :
-                                             assignment.instrument_type === 'guided_discussion' ? 'Lembar Observasi Diskusi' :
-                                             'Rubrik Capaian Kinerja'}
-                                        </h2>
-                                        <div className="flex flex-wrap items-center gap-2 mt-1">
-                                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-                                                Aspek: {assignment.instrument_config?.foundation_aspect || 'Umum'}
-                                            </p>
-                                            {assignment.instrument_config?.kktp?.approach && (
-                                                <p className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest border-l border-border pl-2">
-                                                    Pendekatan KKTP: {
-                                                        assignment.instrument_config.kktp.approach === 'criteria_description' ? 'Deskripsi Kriteria' :
-                                                        assignment.instrument_config.kktp.approach === 'rubric' ? 'Rubrik' :
-                                                        assignment.instrument_config.kktp.approach === 'score_interval' ? 'Interval Nilai' :
-                                                        assignment.instrument_config.kktp.approach === 'percentage' ? 'Persentase/Ceklis' : 
-                                                        assignment.instrument_config.kktp.approach
-                                                    }
-                                                </p>
-                                            )}
-                                        </div>
+                                        <h3 className="text-sm font-bold text-foreground">Distribusi Pemahaman</h3>
+                                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider mt-1">Rasio Evaluasi Cepat Refleksi</p>
                                     </div>
-                                    <div className="flex items-center justify-between sm:justify-start gap-4 bg-white dark:bg-slate-900 border border-border px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl shadow-sm w-full sm:w-auto">
-                                        <div className="text-left sm:text-right flex-1 sm:flex-initial">
-                                            <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Total Siswa</p>
-                                            <p className="text-base sm:text-lg font-black text-foreground">{students.length}</p>
+
+                                    <div className="flex items-center justify-center py-6 relative">
+                                        {exitTicketStats.total > 0 ? (
+                                            <>
+                                                <svg width="150" height="150" viewBox="0 0 100 100" className="transform -rotate-90">
+                                                    <circle cx="50" cy="50" r="40" fill="transparent" stroke="currentColor" strokeWidth="12" className="text-muted/40" />
+                                                    {(() => {
+                                                        const total = exitTicketStats.total;
+                                                        const circ = 251.2;
+                                                        const pahamDash = (exitTicketStats.paham / total) * circ;
+                                                        const raguDash = (exitTicketStats.ragu / total) * circ;
+                                                        const bingungDash = (exitTicketStats.bingung / total) * circ;
+                                                        return (
+                                                            <>
+                                                                {exitTicketStats.paham > 0 && (
+                                                                    <circle 
+                                                                        cx="50" cy="50" r="40" 
+                                                                        fill="transparent" 
+                                                                        stroke="#10B981" 
+                                                                        strokeWidth="12" 
+                                                                        strokeDasharray={`${pahamDash} ${circ - pahamDash}`} 
+                                                                        strokeDashoffset="0" 
+                                                                        className="transition-all duration-1000"
+                                                                    />
+                                                                )}
+                                                                {exitTicketStats.ragu > 0 && (
+                                                                    <circle 
+                                                                        cx="50" cy="50" r="40" 
+                                                                        fill="transparent" 
+                                                                        stroke="#F59E0B" 
+                                                                        strokeWidth="12" 
+                                                                        strokeDasharray={`${raguDash} ${circ - raguDash}`} 
+                                                                        strokeDashoffset={-pahamDash} 
+                                                                        className="transition-all duration-1000"
+                                                                    />
+                                                                )}
+                                                                {exitTicketStats.bingung > 0 && (
+                                                                    <circle 
+                                                                        cx="50" cy="50" r="40" 
+                                                                        fill="transparent" 
+                                                                        stroke="#EF4444" 
+                                                                        strokeWidth="12" 
+                                                                        strokeDasharray={`${bingungDash} ${circ - bingungDash}`} 
+                                                                        strokeDashoffset={-(pahamDash + raguDash)} 
+                                                                        className="transition-all duration-1000"
+                                                                    />
+                                                                )}
+                                                            </>
+                                                        );
+                                                    })()}
+                                                </svg>
+                                                <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+                                                    <span className="text-2xl font-black tracking-tight text-foreground">{exitTicketStats.total}</span>
+                                                    <span className="text-[8px] font-black text-muted-foreground uppercase tracking-widest">Respon</span>
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <div className="h-[120px] flex items-center justify-center text-muted-foreground">
+                                                <p className="text-[10px] font-semibold uppercase tracking-widest italic">Belum ada respon</p>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="space-y-2 border-t border-border pt-4 text-xs">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                                <span className="h-3 w-3 rounded-full bg-emerald-500" />
+                                                <span className="font-semibold text-muted-foreground">😊 Paham</span>
+                                            </div>
+                                            <span className="font-bold text-foreground">{exitTicketStats.paham} siswa ({exitTicketStats.total > 0 ? Math.round((exitTicketStats.paham / exitTicketStats.total) * 100) : 0}%)</span>
                                         </div>
-                                        <div className="h-8 w-px bg-slate-100 dark:bg-slate-800" />
-                                        <div className="text-right flex-1 sm:flex-initial">
-                                            <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">
-                                                {assignment.instrument_type === 'observation_checklist' ? 'Telah Diobservasi' : 
-                                                 assignment.instrument_type === 'rubric' ? 'Telah Dinilai' :
-                                                 assignment.instrument_type === 'oral_test' ? 'Selesai Diuji' :
-                                                 assignment.instrument_type === 'performance' ? 'Telah Dinilai' :
-                                                 'Ada Catatan'}
-                                            </p>
-                                            <p className="text-base sm:text-lg font-black text-emerald-600">{assignment.submissions.length}</p>
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                                <span className="h-3 w-3 rounded-full bg-amber-500" />
+                                                <span className="font-semibold text-muted-foreground">😐 Ragu-Ragu</span>
+                                            </div>
+                                            <span className="font-bold text-foreground">{exitTicketStats.ragu} siswa ({exitTicketStats.total > 0 ? Math.round((exitTicketStats.ragu / exitTicketStats.total) * 100) : 0}%)</span>
+                                        </div>
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                                <span className="h-3 w-3 rounded-full bg-rose-500" />
+                                                <span className="font-semibold text-muted-foreground">🙁 Bingung</span>
+                                            </div>
+                                            <span className="font-bold text-rose-500">{exitTicketStats.bingung} siswa ({exitTicketStats.total > 0 ? Math.round((exitTicketStats.bingung / exitTicketStats.total) * 100) : 0}%)</span>
                                         </div>
                                     </div>
                                 </div>
 
-                                {/* Responsive Card List for Mobile & Tablet */}
-                                <div className="space-y-3 lg:hidden">
-                                    {students.map((student) => {
-                                        const sub = submissionMap[student.id];
-                                        let indicatorCount = (assignment.instrument_config?.indicators || []).length;
-                                        if (!indicatorCount && assignment.instrument_config?.criteria) {
-                                            indicatorCount = assignment.instrument_config.criteria.length;
-                                        }
-                                        let munculCount = 0;
-                                        if (sub?.content) {
-                                            try {
-                                                const p = JSON.parse(sub.content);
-                                                if (assignment.instrument_type === 'rubric') {
-                                                    munculCount = Object.keys(p.scores || {}).length;
-                                                } else if (assignment.instrument_type === 'oral_test') {
-                                                    munculCount = sub.score || 0;
-                                                } else if (assignment.instrument_type === 'performance_observation') {
-                                                    munculCount = Object.values(p.observations || {}).filter(v => v === true || v === 'mulai' || v === 'konsisten').length;
-                                                } else if (assignment.instrument_type === 'performance') {
-                                                    const config = assignment.instrument_config;
-                                                    if (config?.indicators && config.indicators.length > 0) {
-                                                        munculCount = Object.values(p.scores || {}).filter(v => v === true).length;
-                                                    } else {
-                                                        munculCount = Object.keys(p.scores || {}).length;
-                                                    }
-                                                } else if (assignment.instrument_type === 'project') {
-                                                    const checklist = p.checklist || {};
-                                                    const checked = Object.values(checklist).filter(v => v === true).length;
-                                                    const total = Object.keys(checklist).length;
-                                                    munculCount = checked;
-                                                    indicatorCount = total > 0 ? total : 6;
-                                                } else {
-                                                    munculCount = Object.values(p.checklist || {}).filter(v => v === true).length;
-                                                }
-                                            } catch(e) {}
-                                        }
-
-                                        return (
-                                            <div key={student.id} className="p-4 rounded-xl border border-border bg-white dark:bg-slate-900 shadow-sm space-y-3 hover:border-primary/50 transition-all">
-                                                <div className="flex items-start justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-3">
-                                                    <div className="flex items-center gap-3 min-w-0 flex-1">
-                                                        <StudentAvatar photoUrl={student.photo_url} name={student.name} className="h-10 w-10 rounded-xl" />
-                                                        <div className="min-w-0 flex-1">
-                                                            <p className="font-bold text-slate-700 dark:text-slate-200 text-sm truncate">{student.name}</p>
-                                                            <p className="text-[10px] font-bold text-muted-foreground tracking-widest">{student.nis}</p>
-                                                        </div>
-                                                    </div>
-                                                    <div className="shrink-0">
-                                                        {sub ? (
-                                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/30 text-[10px] font-black text-success uppercase tracking-widest border border-emerald-100 dark:border-emerald-900/30">
-                                                                <CheckCircle2 className="h-3 w-3" />
-                                                                Selesai
-                                                            </span>
-                                                        ) : (
-                                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50 dark:bg-amber-950/30 text-[10px] font-black text-warning uppercase tracking-widest border border-amber-100 dark:border-amber-900/30">
-                                                                <Clock className="h-3 w-3" />
-                                                                Belum Ada
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                </div>
-
-                                                <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg border border-slate-100 dark:border-slate-800/80 space-y-2">
-                                                    <div className="flex items-center justify-between text-xs">
-                                                        <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
-                                                            {assignment.instrument_type === 'observation_checklist' ? 'Indikator Terpenuhi' : 
-                                                             assignment.instrument_type === 'rubric' ? 'Progres Penilaian' :
-                                                             assignment.instrument_type === 'oral_test' ? 'Hasil Tes' :
-                                                             assignment.instrument_type === 'performance' ? 'Progres Penilaian' :
-                                                             'Indikator Terpenuhi'}
-                                                        </span>
-                                                        <span className="text-xs font-black text-slate-700 dark:text-slate-200">{munculCount}{assignment.instrument_type === 'oral_test' ? '' : `/${indicatorCount}`}</span>
-                                                    </div>
-                                                    <div className="h-2 w-full rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
-                                                        <div 
-                                                            className={`h-full rounded-full transition-all duration-500 ${assignment.instrument_type === 'rubric' ? 'bg-amber-500' : assignment.instrument_type === 'oral_test' ? 'bg-indigo-500' : 'bg-emerald-500'}`}
-                                                            style={{ width: `${assignment.instrument_type === 'oral_test' ? (munculCount / assignment.max_points) * 100 : (indicatorCount > 0 ? (munculCount / indicatorCount) * 100 : 0)}%` }}
-                                                        />
-                                                    </div>
-                                                    {sub && (assignment.instrument_type === 'observation_checklist' || assignment.instrument_type === 'performance_observation' || assignment.instrument_type === 'performance' || assignment.instrument_type === 'rubric' || assignment.instrument_type === 'guided_discussion') && assignment.instrument_config?.kktp && (
-                                                        <div className="pt-1 flex justify-end">
-                                                            {(() => {
-                                                                const kktp = assignment.instrument_config.kktp;
-                                                                let isPassed = false;
-                                                                
-                                                                if (kktp.approach === 'percentage') {
-                                                                    const threshold = kktp.threshold || 75;
-                                                                    const percentage = indicatorCount > 0 ? (munculCount / indicatorCount) * 100 : 0;
-                                                                    isPassed = percentage >= threshold;
-                                                                } else if (kktp.approach === 'criteria_description') {
-                                                                    const minCriteria = kktp.min_criteria ?? Math.max(1, Math.round(indicatorCount / 2));
-                                                                    isPassed = munculCount >= minCriteria;
-                                                                } else if (kktp.approach === 'rubric') {
-                                                                    const minCriteria = kktp.min_criteria ?? Math.max(1, Math.round(indicatorCount / 2));
-                                                                    let metCount = 0;
-                                                                    const levels = assignment.instrument_config.levels || [];
-                                                                    const passingIdx = levels.findIndex((l: any) => l.name === kktp.passing_level);
-                                                                    try {
-                                                                        const p = JSON.parse(sub.content);
-                                                                        const scores = p.scores || {};
-                                                                        Object.values(scores).forEach((levelId: any) => {
-                                                                            const lvlIdx = levels.findIndex((l: any) => l.id === levelId);
-                                                                            if (passingIdx > -1 && lvlIdx >= passingIdx) {
-                                                                                metCount++;
-                                                                            } else if (passingIdx === -1 && lvlIdx >= Math.floor(levels.length / 2)) {
-                                                                                metCount++;
-                                                                            }
-                                                                        });
-                                                                    } catch(e) {}
-                                                                    isPassed = metCount >= minCriteria;
-                                                                } else {
-                                                                    isPassed = indicatorCount > 0 ? (munculCount / indicatorCount) >= 0.75 : false;
-                                                                }
-                                                                
-                                                                return isPassed ? (
-                                                                    <span className="inline-flex items-center gap-1 text-[9px] font-black text-emerald-600 bg-emerald-50 dark:bg-emerald-950/20 px-2 py-0.5 rounded uppercase tracking-wider border border-emerald-100 dark:border-emerald-900/30">
-                                                                        <CheckCircle2 className="h-3 w-3" /> Tuntas
-                                                                    </span>
-                                                                ) : (
-                                                                    <span className="inline-flex items-center gap-1 text-[9px] font-black text-rose-600 bg-rose-50 dark:bg-rose-950/20 px-2 py-0.5 rounded uppercase tracking-wider border border-rose-100 dark:border-rose-900/30">
-                                                                        <AlertCircle className="h-3 w-3" /> Belum Tuntas
-                                                                    </span>
-                                                                );
-                                                            })()}
-                                                        </div>
-                                                    )}
-                                                </div>
-
-                                                <div className="flex justify-end pt-1">
-                                                    <button 
-                                                        onClick={() => {
-                                                            if (assignment.instrument_type === 'anecdotal_notes') {
-                                                                openAnecdotalModal(student, sub);
-                                                            } else if (assignment.instrument_type === 'rubric') {
-                                                                openRubricModal(student, sub);
-                                                            } else if (assignment.instrument_type === 'performance') {
-                                                                openPerformanceGrading(student);
-                                                            } else if (assignment.instrument_type === 'performance_observation') {
-                                                                openObservationModal(student, sub);
-                                                            } else if (assignment.instrument_type === 'guided_discussion') {
-                                                                openObservationModal(student, sub);
-                                                            } else if (assignment.instrument_type === 'project') {
-                                                                openProjectGrading(student);
-                                                            } else if (assignment.instrument_type === 'portfolio') {
-                                                                openPortfolioGrading(student);
-                                                            } else if (assignment.instrument_type === 'oral_test') {
-                                                                openOralGrading(student);
-                                                            } else {
-                                                                openObservationModal(student, sub);
-                                                            }
-                                                        }}
-                                                        className={`w-full justify-center inline-flex items-center gap-2 rounded-xl text-white px-4 py-2.5 text-xs font-black shadow-md transition-all hover:scale-105 active:scale-95 uppercase tracking-widest ${assignment.instrument_type === 'rubric' ? 'bg-amber-500 shadow-amber-100' : assignment.instrument_type === 'oral_test' ? 'bg-indigo-600 shadow-indigo-100' : 'bg-sky-500 shadow-sky-100'}`}
+                                {/* Emotional-Qualitative Sorting Dashboard */}
+                                <div className="rounded-2xl border border-border bg-card p-6 shadow-xs flex flex-col h-full lg:col-span-2 justify-between">
+                                    <div>
+                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-border pb-4 gap-2">
+                                            <div>
+                                                <h3 className="text-sm font-bold text-foreground">Umpan Balik Kualitatif</h3>
+                                                <p className="text-[10px] text-muted-foreground uppercase tracking-wider mt-1">Pemetaan Emosional Siswa</p>
+                                            </div>
+                                            <div className="flex gap-1.5 bg-muted/40 p-1 rounded-xl">
+                                                {[
+                                                    { id: 'all', label: 'Semua', count: exitTicketStats.total },
+                                                    { id: 'paham', label: '😊 Paham', count: exitTicketStats.paham },
+                                                    { id: 'ragu', label: '😐 Ragu', count: exitTicketStats.ragu },
+                                                    { id: 'bingung', label: '🙁 Bingung', count: exitTicketStats.bingung }
+                                                ].map((tab) => (
+                                                    <button
+                                                        key={tab.id}
+                                                        type="button"
+                                                        onClick={() => setEmojiFilter(tab.id as any)}
+                                                        className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${
+                                                            emojiFilter === tab.id 
+                                                                ? tab.id === 'bingung'
+                                                                    ? 'bg-rose-500 text-white shadow-xs'
+                                                                    : 'bg-primary text-white shadow-xs'
+                                                                : 'text-muted-foreground hover:text-foreground'
+                                                        }`}
                                                     >
-                                                        {assignment.instrument_type === 'rubric' ? <ListChecks className="h-3.5 w-3.5 shrink-0" /> : assignment.instrument_type === 'oral_test' ? <Mic className="h-3.5 w-3.5 shrink-0" /> : <Activity className="h-3.5 w-3.5 shrink-0" />}
-                                                        {sub ? (
-                                                            assignment.instrument_type === 'anecdotal_notes' ? 'Edit Catatan' : 
-                                                            assignment.instrument_type === 'rubric' ? 'Edit Rubrik' :
-                                                            assignment.instrument_type === 'oral_test' ? 'Edit Tes' :
-                                                            assignment.instrument_type === 'performance' ? 'Edit Penilaian' :
-                                                            'Edit Observasi'
-                                                        ) : (
-                                                            assignment.instrument_type === 'anecdotal_notes' ? 'Catatan' : 
-                                                            assignment.instrument_type === 'rubric' ? 'Isi Rubrik' :
-                                                            assignment.instrument_type === 'oral_test' ? 'Mulai Tes' :
-                                                            assignment.instrument_type === 'performance' ? 'Isi Penilaian' :
-                                                            'Observasi'
-                                                        )}
+                                                        {tab.label} <span className="ml-1 opacity-70">({tab.count})</span>
                                                     </button>
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-
-                                {/* Desktop Table View */}
-                                <div className="hidden lg:block overflow-x-auto rounded-xl border border-border bg-white dark:bg-slate-900 shadow-2xl shadow-slate-100/50 dark:shadow-none">
-                                    <table className="w-full text-left text-sm border-collapse min-w-[650px] sm:min-w-0">
-                                        <thead className="bg-slate-50/50 dark:bg-slate-800/50 text-[10px] font-black text-muted-foreground uppercase tracking-widest border-b border-border">
-                                            <tr>
-                                                <th className="px-4 sm:px-6 md:px-8 py-4 sm:py-5">Siswa</th>
-                                                <th className="px-4 sm:px-6 md:px-8 py-4 sm:py-5">
-                                                    {assignment.instrument_type === 'observation_checklist' ? 'Indikator Terpenuhi' : 
-                                                     assignment.instrument_type === 'rubric' ? 'Progres Penilaian' :
-                                                     assignment.instrument_type === 'oral_test' ? 'Hasil Tes' :
-                                                     assignment.instrument_type === 'performance' ? 'Progres Penilaian' :
-                                                     'Indikator Terpenuhi'}
-                                                </th>
-                                                <th className="px-4 sm:px-6 md:px-8 py-4 sm:py-5">Status</th>
-                                                <th className="px-4 sm:px-6 md:px-8 py-4 sm:py-5 text-right">Aksi</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-border">
-                                            {students.map((student) => {
-                                                const sub = submissionMap[student.id];
-                                                let indicatorCount = (assignment.instrument_config?.indicators || []).length;
-                                                if (!indicatorCount && assignment.instrument_config?.criteria) {
-                                                    indicatorCount = assignment.instrument_config.criteria.length;
-                                                }
-                                                let munculCount = 0;
-                                                if (sub?.content) {
-                                                    try {
-                                                        const p = JSON.parse(sub.content);
-                                                        if (assignment.instrument_type === 'rubric') {
-                                                            munculCount = Object.keys(p.scores || {}).length;
-                                                        } else if (assignment.instrument_type === 'oral_test') {
-                                                            munculCount = sub.score || 0;
-                                                        } else if (assignment.instrument_type === 'performance_observation') {
-                                                            munculCount = Object.values(p.observations || {}).filter(v => v === true || v === 'mulai' || v === 'konsisten').length;
-                                                        } else if (assignment.instrument_type === 'performance') {
-                                                            const config = assignment.instrument_config;
-                                                            if (config?.indicators && config.indicators.length > 0) {
-                                                                munculCount = Object.values(p.scores || {}).filter(v => v === true).length;
-                                                            } else {
-                                                                munculCount = Object.keys(p.scores || {}).length;
-                                                            }
-                                                        } else if (assignment.instrument_type === 'project') {
-                                                            const checklist = p.checklist || {};
-                                                            const checked = Object.values(checklist).filter(v => v === true).length;
-                                                            const total = Object.keys(checklist).length;
-                                                            munculCount = checked;
-                                                            indicatorCount = total > 0 ? total : 6;
-                                                        } else {
-                                                            munculCount = Object.values(p.checklist || {}).filter(v => v === true).length;
-                                                        }
-                                                    } catch(e) {}
-                                                }
-
-                                                return (
-                                                    <tr key={student.id} className="group hover:bg-slate-50/30 dark:hover:bg-slate-800/20 transition-all">
-                                                        <td className="px-4 sm:px-6 md:px-8 py-4 sm:py-6">
-                                                            <div className="flex items-center gap-3 sm:gap-4">
-                                                                <StudentAvatar photoUrl={student.photo_url} name={student.name} className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl" />
-                                                                <div>
-                                                                    <p className="font-bold text-slate-700 dark:text-slate-200">{student.name}</p>
-                                                                    <p className="text-[10px] font-bold text-muted-foreground tracking-widest">{student.nis}</p>
-                                                                </div>
-                                                            </div>
-                                                        </td>
-                                                        <td className="px-4 sm:px-6 md:px-8 py-4 sm:py-6">
-                                                            <div className="flex flex-col gap-2">
-                                                                <div className="flex items-center gap-3">
-                                                                    <div className="flex-1 h-1.5 max-w-[100px] rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
-                                                                        <div 
-                                                                            className={`h-full rounded-full transition-all duration-500 ${assignment.instrument_type === 'rubric' ? 'bg-amber-500' : assignment.instrument_type === 'oral_test' ? 'bg-indigo-500' : 'bg-emerald-500'}`}
-                                                                            style={{ width: `${assignment.instrument_type === 'oral_test' ? (munculCount / assignment.max_points) * 100 : (indicatorCount > 0 ? (munculCount / indicatorCount) * 100 : 0)}%` }}
-                                                                        />
-                                                                    </div>
-                                                                    <span className="text-[10px] font-black text-muted-foreground">{munculCount}{assignment.instrument_type === 'oral_test' ? '' : `/${indicatorCount}`}</span>
-                                                                </div>
-                                                                {sub && (assignment.instrument_type === 'observation_checklist' || assignment.instrument_type === 'performance_observation' || assignment.instrument_type === 'performance' || assignment.instrument_type === 'rubric' || assignment.instrument_type === 'guided_discussion') && assignment.instrument_config?.kktp && (
-                                                                    <div>
-                                                                        {(() => {
-                                                                            const kktp = assignment.instrument_config.kktp;
-                                                                            let isPassed = false;
-                                                                            
-                                                                            if (kktp.approach === 'percentage') {
-                                                                                const threshold = kktp.threshold || 75;
-                                                                                const percentage = indicatorCount > 0 ? (munculCount / indicatorCount) * 100 : 0;
-                                                                                isPassed = percentage >= threshold;
-                                                                            } else if (kktp.approach === 'criteria_description') {
-                                                                                const minCriteria = kktp.min_criteria ?? Math.max(1, Math.round(indicatorCount / 2));
-                                                                                isPassed = munculCount >= minCriteria;
-                                                                            } else if (kktp.approach === 'rubric') {
-                                                                                const minCriteria = kktp.min_criteria ?? Math.max(1, Math.round(indicatorCount / 2));
-                                                                                let metCount = 0;
-                                                                                const levels = assignment.instrument_config.levels || [];
-                                                                                const passingIdx = levels.findIndex((l: any) => l.name === kktp.passing_level);
-                                                                                try {
-                                                                                    const p = JSON.parse(sub.content);
-                                                                                    const scores = p.scores || {};
-                                                                                    Object.values(scores).forEach((levelId: any) => {
-                                                                                        const lvlIdx = levels.findIndex((l: any) => l.id === levelId);
-                                                                                        if (passingIdx > -1 && lvlIdx >= passingIdx) {
-                                                                                            metCount++;
-                                                                                        } else if (passingIdx === -1 && lvlIdx >= Math.floor(levels.length / 2)) {
-                                                                                            metCount++;
-                                                                                        }
-                                                                                    });
-                                                                                } catch(e) {}
-                                                                                isPassed = metCount >= minCriteria;
-                                                                            } else {
-                                                                                isPassed = indicatorCount > 0 ? (munculCount / indicatorCount) >= 0.75 : false;
-                                                                            }
-                                                                            
-                                                                            return isPassed ? (
-                                                                                <span className="inline-flex items-center gap-1 text-[8px] font-black text-emerald-600 bg-emerald-50 dark:bg-emerald-950/20 px-1.5 py-0.5 rounded uppercase tracking-wider border border-emerald-100 dark:border-emerald-900/30">
-                                                                                    <CheckCircle2 className="h-2.5 w-2.5" /> Tuntas
-                                                                                </span>
-                                                                            ) : (
-                                                                                <span className="inline-flex items-center gap-1 text-[8px] font-black text-rose-600 bg-rose-50 dark:bg-rose-950/20 px-1.5 py-0.5 rounded uppercase tracking-wider border border-rose-100 dark:border-rose-900/30">
-                                                                                    <AlertCircle className="h-2.5 w-2.5" /> Belum Tuntas
-                                                                                </span>
-                                                                            );
-                                                                        })()}
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                        </td>
-                                                        <td className="px-4 sm:px-6 md:px-8 py-4 sm:py-6">
-                                                            {sub ? (
-                                                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/30 text-[10px] font-black text-success uppercase tracking-widest border border-emerald-100 dark:border-emerald-900/30 whitespace-nowrap">
-                                                                    <CheckCircle2 className="h-3 w-3" />
-                                                                    Selesai
-                                                                </span>
-                                                            ) : (
-                                                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 dark:bg-amber-950/30 text-[10px] font-black text-warning uppercase tracking-widest border border-amber-100 dark:border-amber-900/30 whitespace-nowrap">
-                                                                    <Clock className="h-3 w-3" />
-                                                                    Belum Ada
-                                                                </span>
-                                                            )}
-                                                        </td>
-                                                        <td className="px-4 sm:px-6 md:px-8 py-4 sm:py-6 text-right">
-                                                            <button 
-                                                                onClick={() => {
-                                                                    if (assignment.instrument_type === 'anecdotal_notes') {
-                                                                        openAnecdotalModal(student, sub);
-                                                                    } else if (assignment.instrument_type === 'rubric') {
-                                                                        openRubricModal(student, sub);
-                                                                    } else if (assignment.instrument_type === 'performance') {
-                                                                        openPerformanceGrading(student);
-                                                                    } else if (assignment.instrument_type === 'performance_observation') {
-                                                                        openObservationModal(student, sub);
-                                                                    } else if (assignment.instrument_type === 'guided_discussion') {
-                                                                        openObservationModal(student, sub);
-                                                                    } else if (assignment.instrument_type === 'project') {
-                                                                        openProjectGrading(student);
-                                                                    } else if (assignment.instrument_type === 'portfolio') {
-                                                                        openPortfolioGrading(student);
-                                                                    } else if (assignment.instrument_type === 'oral_test') {
-                                                                        openOralGrading(student);
-                                                                    } else {
-                                                                        openObservationModal(student, sub);
-                                                                    }
-                                                                }}
-                                                                className={`inline-flex items-center gap-1.5 sm:gap-2 rounded-xl text-white px-3 sm:px-5 py-2 sm:py-2.5 text-xs font-black shadow-lg transition-all hover:scale-105 active:scale-95 uppercase tracking-widest whitespace-nowrap ${assignment.instrument_type === 'rubric' ? 'bg-amber-500 shadow-amber-100' : assignment.instrument_type === 'oral_test' ? 'bg-indigo-600 shadow-indigo-100' : 'bg-sky-500 shadow-sky-100'}`}
-                                                            >
-                                                                {assignment.instrument_type === 'rubric' ? <ListChecks className="h-3.5 w-3.5 shrink-0" /> : assignment.instrument_type === 'oral_test' ? <Mic className="h-3.5 w-3.5 shrink-0" /> : <Activity className="h-3.5 w-3.5 shrink-0" />}
-                                                                {sub ? (
-                                                                    assignment.instrument_type === 'anecdotal_notes' ? 'Edit Catatan' : 
-                                                                    assignment.instrument_type === 'rubric' ? 'Edit Rubrik' :
-                                                                    assignment.instrument_type === 'oral_test' ? 'Edit Tes' :
-                                                                    assignment.instrument_type === 'performance' ? 'Edit Penilaian' :
-                                                                    'Edit Observasi'
-                                                                ) : (
-                                                                    assignment.instrument_type === 'anecdotal_notes' ? 'Catatan' : 
-                                                                    assignment.instrument_type === 'rubric' ? 'Isi Rubrik' :
-                                                                    assignment.instrument_type === 'oral_test' ? 'Mulai Tes' :
-                                                                    assignment.instrument_type === 'performance' ? 'Isi Penilaian' :
-                                                                    'Observasi'
-                                                                )}
-                                                            </button>
-                                                        </td>
-                                                    </tr>
-                                                );
-                                            })}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        ) : (
-                            <div className="space-y-4 animate-in fade-in duration-500">
-                                {assignment.instrument_type === 'exit_ticket' && (assignment.instrument_config?.assessment_mode || 'default') === 'default' && exitTicketStats && (
-                                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in slide-in-from-top-4 duration-500 mb-8">
-                                        {/* SVG Donut Chart Card */}
-                                        <div className="rounded-xl border border-slate-200 dark:border-slate-800 border-slate-100 bg-white dark:bg-[#0b0f19]/30 bg-white/70 backdrop-blur-md p-6 shadow-none flex flex-col justify-between">
-                                            <div>
-                                                <h3 className="text-sm font-semibold tracking-[-0.03em] text-slate-800 text-foreground">Distribusi Pemahaman</h3>
-                                                <p className="text-[10px] text-slate-500 text-muted-foreground uppercase tracking-wider mt-1">Rasio Evaluasi Cepat Refleksi</p>
-                                            </div>
-
-                                            <div className="flex items-center justify-center py-6 relative">
-                                                {exitTicketStats.total > 0 ? (
-                                                    <>
-                                                        <svg width="150" height="150" viewBox="0 0 100 100" className="transform -rotate-90">
-                                                            {/* Background Circle */}
-                                                            <circle cx="50" cy="50" r="40" fill="transparent" stroke="#E2E8F0" strokeWidth="12" className="dark:stroke-slate-800" />
-                                                            
-                                                            {(() => {
-                                                                const total = exitTicketStats.total;
-                                                                const circ = 251.2;
-                                                                
-                                                                const pahamDash = (exitTicketStats.paham / total) * circ;
-                                                                const raguDash = (exitTicketStats.ragu / total) * circ;
-                                                                const bingungDash = (exitTicketStats.bingung / total) * circ;
-                                                                
-                                                                return (
-                                                                    <>
-                                                                        {/* Paham Circle (😊 Emerald) */}
-                                                                        {exitTicketStats.paham > 0 && (
-                                                                            <circle 
-                                                                                cx="50" cy="50" r="40" 
-                                                                                fill="transparent" 
-                                                                                stroke="#10B981" 
-                                                                                strokeWidth="12" 
-                                                                                strokeDasharray={`${pahamDash} ${circ - pahamDash}`} 
-                                                                                strokeDashoffset="0" 
-                                                                                className="transition-all duration-1000"
-                                                                            />
-                                                                        )}
-                                                                        
-                                                                        {/* Ragu Circle (😐 Amber) */}
-                                                                        {exitTicketStats.ragu > 0 && (
-                                                                            <circle 
-                                                                                cx="50" cy="50" r="40" 
-                                                                                fill="transparent" 
-                                                                                stroke="#F59E0B" 
-                                                                                strokeWidth="12" 
-                                                                                strokeDasharray={`${raguDash} ${circ - raguDash}`} 
-                                                                                strokeDashoffset={-pahamDash} 
-                                                                                className="transition-all duration-1000"
-                                                                            />
-                                                                        )}
-                                                                        
-                                                                        {/* Bingung Circle (🙁 Rose) */}
-                                                                        {exitTicketStats.bingung > 0 && (
-                                                                            <circle 
-                                                                                cx="50" cy="50" r="40" 
-                                                                                fill="transparent" 
-                                                                                stroke="#EF4444" 
-                                                                                strokeWidth="12" 
-                                                                                strokeDasharray={`${bingungDash} ${circ - bingungDash}`} 
-                                                                                strokeDashoffset={-(pahamDash + raguDash)} 
-                                                                                className="transition-all duration-1000"
-                                                                            />
-                                                                        )}
-                                                                    </>
-                                                                );
-                                                            })()}
-                                                        </svg>
-                                                        <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                                                            <span className="text-2xl font-black tracking-tight">{exitTicketStats.total}</span>
-                                                            <span className="text-[8px] font-black text-muted-foreground uppercase tracking-widest">Respon</span>
-                                                        </div>
-                                                    </>
-                                                ) : (
-                                                    <div className="h-[120px] flex items-center justify-center text-slate-300">
-                                                        <p className="text-[10px] font-semibold uppercase tracking-widest italic">Belum ada respon</p>
-                                                    </div>
-                                                )}
-                                            </div>
-
-                                            <div className="space-y-2 border-t border-slate-100 dark:border-slate-800 border-slate-100 pt-4">
-                                                <div className="flex items-center justify-between text-xs">
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="h-3 w-3 rounded-full bg-emerald-500" />
-                                                        <span className="font-semibold text-slate-600 text-muted-foreground">😊 Paham</span>
-                                                    </div>
-                                                    <span className="font-bold">{exitTicketStats.paham} siswa ({exitTicketStats.total > 0 ? Math.round((exitTicketStats.paham / exitTicketStats.total) * 100) : 0}%)</span>
-                                                </div>
-                                                <div className="flex items-center justify-between text-xs">
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="h-3 w-3 rounded-full bg-amber-500" />
-                                                        <span className="font-semibold text-slate-600 text-muted-foreground">😐 Ragu-Ragu</span>
-                                                    </div>
-                                                    <span className="font-bold">{exitTicketStats.ragu} siswa ({exitTicketStats.total > 0 ? Math.round((exitTicketStats.ragu / exitTicketStats.total) * 100) : 0}%)</span>
-                                                </div>
-                                                <div className="flex items-center justify-between text-xs">
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="h-3 w-3 rounded-full bg-rose-500" />
-                                                        <span className="font-semibold text-slate-600 text-muted-foreground">🙁 Bingung</span>
-                                                    </div>
-                                                    <span className="font-bold text-rose-500">{exitTicketStats.bingung} siswa ({exitTicketStats.total > 0 ? Math.round((exitTicketStats.bingung / exitTicketStats.total) * 100) : 0}%)</span>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Emotional-Qualitative Sorting Dashboard */}
-                                        <div className="rounded-xl border border-slate-200 dark:border-slate-800 border-slate-100 bg-white dark:bg-[#0b0f19]/30 bg-white/70 backdrop-blur-md p-6 shadow-none flex flex-col h-full lg:col-span-2 justify-between">
-                                            <div>
-                                                <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 border-slate-100 pb-4">
-                                                    <div>
-                                                        <h3 className="text-sm font-semibold tracking-[-0.03em] text-slate-800 text-foreground">Umpan Balik Kualitatif</h3>
-                                                        <p className="text-[10px] text-slate-500 text-muted-foreground uppercase tracking-wider mt-1">Pemetaan Emosional Siswa</p>
-                                                    </div>
-                                                    <div className="flex gap-1.5 bg-slate-100 dark:bg-slate-950/40 bg-slate-50 p-1 rounded-lg">
-                                                        {[
-                                                            { id: 'all', label: 'Semua', count: exitTicketStats.total },
-                                                            { id: 'paham', label: '😊 Paham', count: exitTicketStats.paham },
-                                                            { id: 'ragu', label: '😐 Ragu', count: exitTicketStats.ragu },
-                                                            { id: 'bingung', label: '🙁 Bingung', count: exitTicketStats.bingung }
-                                                        ].map((tab) => (
-                                                            <button
-                                                                key={tab.id}
-                                                                type="button"
-                                                                onClick={() => setEmojiFilter(tab.id as any)}
-                                                                className={`px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-wider transition-all ${
-                                                                    emojiFilter === tab.id 
-                                                                        ? tab.id === 'bingung'
-                                                                            ? 'bg-rose-500 text-white shadow-sm'
-                                                                            : 'bg-primary text-white shadow-sm'
-                                                                        : 'text-slate-500 hover:text-slate-700 text-muted-foreground dark:hover:text-foreground'
-                                                                }`}
-                                                            >
-                                                                {tab.label} <span className="ml-1 opacity-70">({tab.count})</span>
-                                                            </button>
-                                                        ))}
-                                                    </div>
-                                                </div>
-
-                                                <div className="space-y-3 overflow-y-auto max-h-[220px] mt-4 pr-2 custom-scrollbar">
-                                                    {exitTicketStats.reflections
-                                                        .filter((r) => emojiFilter === 'all' || r.emoji === emojiFilter)
-                                                        .length > 0 ? (
-                                                            exitTicketStats.reflections
-                                                                .filter((r) => emojiFilter === 'all' || r.emoji === emojiFilter)
-                                                                .map((ref, idx) => (
-                                                                    <div 
-                                                                        key={idx} 
-                                                                        className={`p-4 rounded-lg border transition-all ${
-                                                                            ref.emoji === 'bingung'
-                                                                                ? 'border-rose-100 bg-rose-500/5 dark:border-rose-950/20 dark:bg-rose-950/10'
-                                                                                : ref.emoji === 'ragu'
-                                                                                    ? 'border-amber-100 bg-amber-500/5 dark:border-amber-950/20 dark:bg-amber-950/10'
-                                                                                    : 'border-emerald-100 bg-emerald-500/5 dark:border-emerald-950/20 dark:bg-emerald-950/10'
-                                                                        }`}
-                                                                    >
-                                                                        <div className="flex justify-between items-center mb-1.5">
-                                                                            <span className="text-[10px] font-black uppercase tracking-widest">{ref.student_name}</span>
-                                                                            <span className="text-xs">{ref.emoji === 'paham' ? '😊 Paham' : ref.emoji === 'ragu' ? '😐 Ragu' : '🙁 Bingung'}</span>
-                                                                        </div>
-                                                                        <p className="text-[11px] font-medium text-slate-600 text-muted-foreground leading-relaxed italic">
-                                                                            "{ref.text || 'Tidak menuliskan umpan balik teks'}"
-                                                                        </p>
-                                                                    </div>
-                                                                ))
-                                                        ) : (
-                                                            <div className="py-12 flex flex-col items-center justify-center text-center">
-                                                                <span className="text-2xl mb-2">🎈</span>
-                                                                <p className="text-[10px] font-semibold text-slate-350 text-muted-foreground uppercase tracking-widest italic">Tidak ada respon refleksi untuk kategori ini</p>
-                                                            </div>
-                                                        )}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-
-                                {assignment.instrument_type === 'exit_ticket' && (assignment.instrument_config?.assessment_mode) === 'checklist' && (
-                                    <div className="rounded-xl border border-slate-200 dark:border-slate-800 border-slate-100 bg-white dark:bg-[#0b0f19]/30 bg-white/70 backdrop-blur-md p-6 shadow-none animate-in slide-in-from-top-4 duration-500 mb-8">
-                                        <h3 className="text-sm font-semibold tracking-[-0.03em] text-slate-800 text-foreground mb-4">Hasil Exit Ticket - Ceklis</h3>
-                                        <div className="space-y-3">
-                                            {(assignment.submissions || []).map((sub: any) => {
-                                                try {
-                                                    const parsed = JSON.parse(sub.content || '{}');
-                                                    if (parsed.type !== 'exit_ticket' || parsed.assessment_mode !== 'checklist') return null;
-                                                    return (
-                                                        <div key={sub.id} className="p-3 rounded-xl bg-muted/30 border border-border">
-                                                            <p className="text-xs font-bold text-foreground mb-2">{sub.student?.name || 'Siswa'}</p>
-                                                            <div className="flex flex-wrap gap-2">
-                                                                {(parsed.indicators || []).map((ind: any, idx: number) => (
-                                                                    <span key={idx} className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold ${ind.checked ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-500'}`}>
-                                                                        {ind.checked ? <CheckSquare className="h-3 w-3" /> : <Square className="h-3 w-3" />}
-                                                                        {ind.name}
-                                                                    </span>
-                                                                ))}
-                                                            </div>
-                                                        </div>
-                                                    );
-                                                } catch { return null; }
-                                            })}
-                                        </div>
-                                    </div>
-                                )}
-
-                                {assignment.instrument_type === 'exit_ticket' && (assignment.instrument_config?.assessment_mode) === 'short_note' && (
-                                    <div className="rounded-xl border border-slate-200 dark:border-slate-800 border-slate-100 bg-white dark:bg-[#0b0f19]/30 bg-white/70 backdrop-blur-md p-6 shadow-none animate-in slide-in-from-top-4 duration-500 mb-8">
-                                        <h3 className="text-sm font-semibold tracking-[-0.03em] text-slate-800 text-foreground mb-4">Hasil Exit Ticket - Catatan Singkat</h3>
-                                        <div className="space-y-4">
-                                            {(assignment.submissions || []).map((sub: any) => {
-                                                try {
-                                                    const parsed = JSON.parse(sub.content || '{}');
-                                                    if (parsed.type !== 'exit_ticket' || parsed.assessment_mode !== 'short_note') return null;
-                                                    return (
-                                                        <div key={sub.id} className="p-4 rounded-xl bg-muted/30 border border-border space-y-2">
-                                                            <p className="text-xs font-bold text-foreground">{sub.student?.name || 'Siswa'}</p>
-                                                            {(parsed.answers || []).map((a: any, idx: number) => (
-                                                                <div key={idx} className="text-xs">
-                                                                    <span className="font-semibold text-muted-foreground">{a.text}: </span>
-                                                                    <span className="text-foreground">{a.answer || '-'}</span>
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    );
-                                                } catch { return null; }
-                                            })}
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* Concept Difficulty Alert for Formative Quiz */}
-                                {assignment.instrument_type === 'formative_quiz' && formativeDifficultyStats && formativeDifficultyStats.hardQuestions.length > 0 && (
-                                    <div className="rounded-xl border border-rose-500/30 bg-rose-500/5 dark:bg-rose-950/15 p-6 animate-in slide-in-from-top-4 duration-500 mb-6 flex items-start gap-4">
-                                        <div className="h-10 w-10 rounded-lg bg-rose-500 text-white flex items-center justify-center flex-shrink-0 shadow-lg shadow-rose-200/50 dark:shadow-none">
-                                            <AlertCircle className="h-5 w-5" />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <h3 className="text-sm font-black text-rose-600 dark:text-rose-450 uppercase tracking-wider">Deteksi Konsep Sulit (Auto-Analisis)</h3>
-                                            <p className="text-xs text-slate-600 text-muted-foreground leading-relaxed font-medium">
-                                                Terdapat <strong>{formativeDifficultyStats.hardQuestions.length} pertanyaan</strong> dengan persentase kegagalan <strong>di atas 50%</strong>. Siswa kelas Anda mengalami kesulitan serius di konsep-konsep ini:
-                                            </p>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
-                                                {formativeDifficultyStats.hardQuestions.map((q) => (
-                                                    <div key={q.id} className="p-3.5 rounded-lg bg-white dark:bg-slate-950/40 bg-slate-50 border border-rose-200 dark:border-rose-950 flex flex-col justify-between">
-                                                        <div>
-                                                            <div className="flex justify-between items-center mb-1.5">
-                                                                <span className="text-[9px] font-black uppercase tracking-wider text-rose-500">Soal Nomor {q.num}</span>
-                                                                <span className="text-[10px] font-mono font-bold text-rose-500">{q.wrongPct}% Siswa Salah</span>
-                                                            </div>
-                                                            <p className="text-[11px] font-semibold text-slate-700 text-foreground line-clamp-2 leading-relaxed">"{q.text}"</p>
-                                                        </div>
-                                                        <p className="text-[9px] text-slate-400 mt-2 font-bold uppercase tracking-widest italic">Rekomendasi: Review Pembahasan Besok Pagi</p>
-                                                    </div>
                                                 ))}
                                             </div>
                                         </div>
-                                    </div>
-                                )}
-                                <div className="flex flex-col sm:flex-row sm:items-center justify-between px-2 sm:px-4 gap-2">
-                                    <h2 className="text-lg sm:text-xl font-black text-foreground tracking-tight uppercase tracking-widest">Pengumpulan Siswa</h2>
-                                    <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
-                                        {assignment.submissions.length} dari {students.length} Siswa Telah Mengumpulkan
-                                    </span>
-                                </div>
 
-                                {/* Responsive Card List for Mobile & Tablet */}
-                                <div className="space-y-3 lg:hidden">
-                                    {students.length === 0 ? (
-                                        <div className="p-8 text-center text-muted-foreground italic font-medium bg-white dark:bg-slate-900 rounded-xl border border-border">
-                                            Belum ada siswa di kelas ini.
+                                        <div className="space-y-3 overflow-y-auto max-h-[220px] mt-4 pr-2 custom-scrollbar">
+                                            {exitTicketStats.reflections
+                                                .filter((r) => emojiFilter === 'all' || r.emoji === emojiFilter)
+                                                .length > 0 ? (
+                                                    exitTicketStats.reflections
+                                                        .filter((r) => emojiFilter === 'all' || r.emoji === emojiFilter)
+                                                        .map((ref, idx) => (
+                                                            <div 
+                                                                key={idx} 
+                                                                className={`p-3.5 rounded-xl border transition-all ${
+                                                                    ref.emoji === 'bingung'
+                                                                        ? 'border-rose-500/20 bg-rose-500/5'
+                                                                        : ref.emoji === 'ragu'
+                                                                            ? 'border-amber-500/20 bg-amber-500/5'
+                                                                            : 'border-emerald-500/20 bg-emerald-500/5'
+                                                                }`}
+                                                            >
+                                                                <div className="flex justify-between items-center mb-1">
+                                                                    <span className="text-[10px] font-black uppercase tracking-widest text-foreground">{ref.student_name}</span>
+                                                                    <span className="text-xs">{ref.emoji === 'paham' ? '😊 Paham' : ref.emoji === 'ragu' ? '😐 Ragu' : '🙁 Bingung'}</span>
+                                                                </div>
+                                                                <p className="text-xs font-medium text-muted-foreground leading-relaxed italic">
+                                                                    "{ref.text || 'Tidak menuliskan umpan balik teks'}"
+                                                                </p>
+                                                            </div>
+                                                        ))
+                                                ) : (
+                                                    <div className="py-12 flex flex-col items-center justify-center text-center">
+                                                        <span className="text-2xl mb-2">🎈</span>
+                                                        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest italic">Tidak ada respon refleksi untuk kategori ini</p>
+                                                    </div>
+                                                )}
                                         </div>
-                                    ) : (
-                                        students.map((student: Student) => {
-                                            const s = submissionMap[student.id];
-                                            const displayScore = s ? (s.score ?? calculateSystemScore(s.content ?? '')) : null;
-                                            const effectivePassed = checkIsKKTPPassed(s, assignment, displayScore);
-
-                                            return (
-                                                <div key={student.id} className="p-4 rounded-xl border border-border bg-white dark:bg-slate-900 shadow-sm space-y-3 hover:border-primary/50 transition-all">
-                                                    {/* Top row: Avatar + Name + Status */}
-                                                    <div className="flex items-start justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-3">
-                                                        <div className="flex items-center gap-3 min-w-0 flex-1">
-                                                            <StudentAvatar photoUrl={student.photo_url} name={student.name} className="h-10 w-10 rounded-xl" />
-                                                            <div className="min-w-0 flex-1">
-                                                                <p className="font-bold text-slate-700 dark:text-slate-200 text-sm truncate">{student.name}</p>
-                                                                <p className="text-[10px] font-bold text-muted-foreground tracking-widest">{student.nis}</p>
-                                                            </div>
-                                                        </div>
-                                                        <div className="shrink-0">
-                                                            {s ? (
-                                                                (s.score !== null) ? (
-                                                                    <div className="flex flex-col items-end gap-1">
-                                                                        <span className="inline-flex items-center gap-1.5 text-emerald-600 font-black text-[10px] uppercase tracking-widest">
-                                                                            <CheckCircle2 className="h-3.5 w-3.5" />
-                                                                            Dinilai
-                                                                        </span>
-                                                                        {effectivePassed ? (
-                                                                            <span className="text-[9px] font-black text-emerald-500 bg-emerald-50 dark:bg-emerald-950/20 px-2 py-0.5 rounded-md uppercase tracking-tighter">Tuntas</span>
-                                                                        ) : (
-                                                                            <div className="flex items-center gap-1.5">
-                                                                                <span className="text-[9px] font-black text-rose-500 bg-rose-50 dark:bg-rose-950/20 px-2 py-0.5 rounded-md uppercase tracking-tighter">Remedial</span>
-                                                                                {(s.attempts ?? 0) > 1 && (
-                                                                                    <span className="text-[9px] font-bold text-muted-foreground italic">({s.attempts ?? 0}x)</span>
-                                                                                )}
-                                                                            </div>
-                                                                        )}
-                                                                    </div>
-                                                                ) : (
-                                                                    <span className="inline-flex items-center gap-1.5 text-amber-500 font-black text-[10px] uppercase tracking-widest italic animate-pulse">
-                                                                        <Clock className="h-3.5 w-3.5" />
-                                                                        Menunggu
-                                                                    </span>
-                                                                )
-                                                            ) : (
-                                                                <span className="inline-flex items-center gap-1.5 text-rose-500 font-black text-[10px] uppercase tracking-widest">
-                                                                    <AlertCircle className="h-3.5 w-3.5" />
-                                                                    Belum Ada
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                    </div>
-
-                                                    {/* Middle row: Waktu Kumpul & Nilai */}
-                                                    <div className="grid grid-cols-2 gap-2 text-xs py-1">
-                                                        <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg border border-slate-100 dark:border-slate-800/80">
-                                                            <span className="text-[9px] font-black text-muted-foreground uppercase tracking-wider block mb-1">Waktu Kumpul</span>
-                                                            <span className="font-bold text-slate-700 dark:text-slate-300 text-xs">
-                                                                {s ? s.submitted_at : <span className="text-slate-400 font-normal italic">-</span>}
-                                                            </span>
-                                                        </div>
-                                                        <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg border border-slate-100 dark:border-slate-800/80">
-                                                            <span className="text-[9px] font-black text-muted-foreground uppercase tracking-wider block mb-1">Nilai</span>
-                                                            <div>
-                                                                {!s ? (
-                                                                    <span className="text-xs text-muted-foreground italic font-medium">-</span>
-                                                                ) : (
-                                                                    assignment.instrument_type === 'reflective_journal' || assignment.instrument_type === 'self_assessment' || assignment.instrument_type === 'peer_assessment' || assignment.instrument_type === 'exit_ticket' ? (
-                                                                        (() => {
-                                                                            if (s.score === null) return <span className="text-xs text-muted-foreground italic font-medium">-</span>;
-                                                                            let label = '-';
-                                                                            try {
-                                                                                const parsed = JSON.parse(s.content || '{}');
-                                                                                if (parsed.grading?.selected_level) {
-                                                                                    label = parsed.grading.selected_level;
-                                                                                } else {
-                                                                                    label = checkIsKKTPPassed(s, assignment, displayScore) ? 'Tuntas' : 'Belum Tuntas';
-                                                                                }
-                                                                            } catch(e) {
-                                                                                label = checkIsKKTPPassed(s, assignment, displayScore) ? 'Tuntas' : 'Belum Tuntas';
-                                                                            }
-                                                                            return <span className="text-xs font-bold text-foreground">{label}</span>;
-                                                                        })()
-                                                                    ) : (
-                                                                        <div>
-                                                                            <span className={`text-sm font-black ${(s.score !== null) ? (effectivePassed ? 'text-foreground' : 'text-destructive') : 'text-muted-foreground'}`}>
-                                                                                {displayScore}
-                                                                            </span>
-                                                                            <span className="text-[10px] font-black text-muted-foreground"> / {assignment.max_points}</span>
-                                                                            {s.remedial_history && s.remedial_history.length > 0 && (
-                                                                                <div className="text-[9px] text-muted-foreground mt-1 space-y-0.5">
-                                                                                    {s.remedial_history.map((hist: any, hIdx: number) => (
-                                                                                        <div key={hIdx}>
-                                                                                            Ke-{hist.attempt}: <span className="font-semibold text-foreground">{hist.score}</span>
-                                                                                        </div>
-                                                                                    ))}
-                                                                                </div>
-                                                                            )}
-                                                                        </div>
-                                                                    )
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-
-                                                    {/* Bottom row: Actions */}
-                                                    <div className="flex items-center justify-end gap-2 pt-1">
-                                                        {s ? (
-                                                            <div className="flex items-center gap-2 w-full justify-end flex-wrap sm:flex-nowrap">
-                                                                {assignment.instrument_type === 'formative_quiz' && (
-                                                                    s.is_remedial_open ? (
-                                                                        <span className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-amber-50 dark:bg-amber-950/20 text-[10px] font-black text-warning uppercase border border-amber-200 dark:border-amber-900/30">
-                                                                            Akses Remedial Aktif
-                                                                        </span>
-                                                                    ) : (
-                                                                        <button
-                                                                            onClick={() => handleOpenRemedial(s.student_id)}
-                                                                            className="flex-1 sm:flex-initial justify-center inline-flex items-center gap-1.5 rounded-xl bg-amber-500 text-white px-3 py-2 text-xs font-black shadow-md shadow-amber-100 transition-all hover:scale-105 active:scale-95 uppercase tracking-widest whitespace-nowrap"
-                                                                        >
-                                                                            <RotateCcw className="h-3.5 w-3.5 shrink-0" />
-                                                                            Buka Remedial
-                                                                        </button>
-                                                                    )
-                                                                )}
-                                                                <button 
-                                                                    onClick={() => openGradeModal(s)}
-                                                                    className="flex-1 sm:flex-initial justify-center inline-flex items-center gap-1.5 rounded-xl bg-sky-500 text-white px-4 py-2.5 text-xs font-black shadow-md shadow-sky-100 transition-all hover:scale-105 active:scale-95 uppercase tracking-widest whitespace-nowrap"
-                                                                >
-                                                                    <Activity className="h-3.5 w-3.5 shrink-0" />
-                                                                    {assignment.instrument_type === 'reflective_journal' || assignment.instrument_type === 'self_assessment' || assignment.instrument_type === 'peer_assessment' || assignment.instrument_type === 'exit_ticket'
-                                                                        ? (s.score !== null ? 'Edit Penilaian' : 'Beri Penilaian')
-                                                                        : (s.score !== null ? 'Edit Nilai' : 'Beri Nilai')}
-                                                                </button>
-                                                            </div>
-                                                        ) : (
-                                                            <span className="text-xs text-muted-foreground italic font-medium">Belum mengumpulkan</span>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            );
-                                        })
-                                    )}
-                                </div>
-
-                                {/* Desktop Table View */}
-                                <div className="hidden lg:block overflow-x-auto rounded-xl border border-border bg-white dark:bg-slate-900 shadow-2xl shadow-slate-100/50 dark:shadow-none">
-                                    <table className="w-full text-left text-sm min-w-[700px] sm:min-w-0">
-                                        <thead className="bg-slate-50/50 dark:bg-slate-800/50 text-[10px] font-black text-muted-foreground uppercase tracking-widest border-b border-border">
-                                            <tr>
-                                                <th className="px-4 sm:px-6 md:px-8 py-4 sm:py-5">Siswa</th>
-                                                <th className="px-4 sm:px-6 md:px-8 py-4 sm:py-5">Waktu Kumpul</th>
-                                                <th className="px-4 sm:px-6 md:px-8 py-4 sm:py-5">Status</th>
-                                                <th className="px-4 sm:px-6 md:px-8 py-4 sm:py-5 text-right">Nilai</th>
-                                                <th className="px-4 sm:px-6 md:px-8 py-4 sm:py-5 text-right">Aksi</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-border">
-                                            {students.length === 0 ? (
-                                                <tr>
-                                                    <td colSpan={5} className="px-8 py-16 text-center text-muted-foreground italic font-medium">
-                                                        Belum ada siswa di kelas ini.
-                                                    </td>
-                                                </tr>
-                                            ) : (
-                                                students.map((student: Student) => {
-                                                    const s = submissionMap[student.id];
-                                                    const displayScore = s ? (s.score ?? calculateSystemScore(s.content ?? '')) : null;
-                                                    const effectivePassed = checkIsKKTPPassed(s, assignment, displayScore);
-
-                                                    return (
-                                                        <tr key={student.id} className="group hover:bg-slate-50/30 dark:hover:bg-slate-800/20 transition-all">
-                                                            <td className="px-4 sm:px-6 md:px-8 py-4 sm:py-6">
-                                                                <div className="flex items-center gap-3 sm:gap-4">
-                                                                    <StudentAvatar photoUrl={student.photo_url} name={student.name} className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl" />
-                                                                    <div>
-                                                                        <span className="font-bold text-slate-700 dark:text-slate-200">{student.name}</span>
-                                                                        <p className="text-[10px] font-bold text-muted-foreground tracking-widest">{student.nis}</p>
-                                                                    </div>
-                                                                </div>
-                                                            </td>
-                                                            <td className="px-4 sm:px-6 md:px-8 py-4 sm:py-6 text-xs font-bold text-muted-foreground uppercase tracking-tighter whitespace-nowrap">
-                                                                {s ? s.submitted_at : <span className="text-slate-400 font-normal italic">-</span>}
-                                                            </td>
-                                                            <td className="px-4 sm:px-6 md:px-8 py-4 sm:py-6">
-                                                                {s ? (
-                                                                    (s.score !== null) ? (
-                                                                        <div className="flex flex-col gap-1">
-                                                                            <span className="inline-flex items-center gap-1.5 text-emerald-600 font-black text-[10px] uppercase tracking-widest">
-                                                                                <CheckCircle2 className="h-3.5 w-3.5" />
-                                                                                Dinilai
-                                                                            </span>
-                                                                            {effectivePassed ? (
-                                                                                <span className="text-[8px] font-black text-emerald-500 bg-emerald-50 dark:bg-emerald-950/20 px-2 py-0.5 rounded-md w-fit uppercase tracking-tighter">Tuntas</span>
-                                                                            ) : (
-                                                                                <div className="flex items-center gap-2">
-                                                                                    <span className="text-[8px] font-black text-rose-500 bg-rose-50 dark:bg-rose-950/20 px-2 py-0.5 rounded-md w-fit uppercase tracking-tighter">Remedial</span>
-                                                                                    {(s.attempts ?? 0) > 1 && (
-                                                                                        <span className="text-[8px] font-bold text-muted-foreground italic">({s.attempts ?? 0}x remedial)</span>
-                                                                                    )}
-                                                                                </div>
-                                                                            )}
-                                                                        </div>
-                                                                    ) : (
-                                                                        <span className="inline-flex items-center gap-1.5 text-amber-500 font-black text-[10px] uppercase tracking-widest italic animate-pulse">
-                                                                            <Clock className="h-3.5 w-3.5" />
-                                                                            Menunggu
-                                                                        </span>
-                                                                    )
-                                                                ) : (
-                                                                    <span className="inline-flex items-center gap-1.5 text-rose-500 font-black text-[10px] uppercase tracking-widest">
-                                                                        <AlertCircle className="h-3.5 w-3.5" />
-                                                                        Belum Mengumpulkan
-                                                                    </span>
-                                                                )}
-                                                            </td>
-                                                            <td className="px-4 sm:px-6 md:px-8 py-4 sm:py-6 text-right whitespace-nowrap">
-                                                                {!s ? (
-                                                                    <span className="text-xs text-muted-foreground italic font-medium">-</span>
-                                                                ) : (
-                                                                    assignment.instrument_type === 'reflective_journal' || assignment.instrument_type === 'self_assessment' || assignment.instrument_type === 'peer_assessment' || assignment.instrument_type === 'exit_ticket' ? (
-                                                                        (() => {
-                                                                            if (s.score === null) return <span className="text-xs text-muted-foreground italic font-medium">-</span>;
-                                                                            let label = '-';
-                                                                            try {
-                                                                                const parsed = JSON.parse(s.content || '{}');
-                                                                                if (parsed.grading?.selected_level) {
-                                                                                    label = parsed.grading.selected_level;
-                                                                                } else {
-                                                                                    label = checkIsKKTPPassed(s, assignment, displayScore) ? 'Tuntas' : 'Belum Tuntas';
-                                                                                }
-                                                                            } catch(e) {
-                                                                                label = checkIsKKTPPassed(s, assignment, displayScore) ? 'Tuntas' : 'Belum Tuntas';
-                                                                            }
-                                                                            return <span className="text-xs font-bold text-foreground">{label}</span>;
-                                                                        })()
-                                                                    ) : (
-                                                                        <>
-                                                                            <span className={`text-sm font-black ${(s.score !== null) ? (effectivePassed ? 'text-foreground' : 'text-destructive') : 'text-muted-foreground'}`}>
-                                                                                {displayScore}
-                                                                            </span>
-                                                                            <span className="text-[10px] font-black text-muted-foreground"> / {assignment.max_points}</span>
-                                                                            {s.remedial_history && s.remedial_history.length > 0 && (
-                                                                                <div className="text-[9px] text-muted-foreground mt-1 space-y-0.5">
-                                                                                    {s.remedial_history.map((hist: any, hIdx: number) => (
-                                                                                        <div key={hIdx}>
-                                                                                            Ke-{hist.attempt}: <span className="font-semibold text-foreground">{hist.score}</span>
-                                                                                        </div>
-                                                                                    ))}
-                                                                                </div>
-                                                                            )}
-                                                                        </>
-                                                                    )
-                                                                )}
-                                                            </td>
-                                                            <td className="px-4 sm:px-6 md:px-8 py-4 sm:py-6 text-right">
-                                                                <div className="flex justify-end gap-1.5 sm:gap-2 items-center flex-wrap sm:flex-nowrap">
-                                                                    {s ? (
-                                                                        <>
-                                                                            {assignment.instrument_type === 'formative_quiz' && (
-                                                                                s.is_remedial_open ? (
-                                                                                    <span className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/20 text-[10px] font-black text-warning uppercase border border-amber-200 dark:border-amber-900/30">
-                                                                                        Akses Remedial Aktif
-                                                                                    </span>
-                                                                                ) : (
-                                                                                    <button
-                                                                                        onClick={() => handleOpenRemedial(s.student_id)}
-                                                                                        className="inline-flex items-center gap-1.5 rounded-xl bg-amber-500 text-white px-3 sm:px-4 py-2 text-xs font-black shadow-lg shadow-amber-100 transition-all hover:scale-105 active:scale-95 uppercase tracking-widest whitespace-nowrap"
-                                                                                    >
-                                                                                        <RotateCcw className="h-3.5 w-3.5 shrink-0" />
-                                                                                        Buka Remedial
-                                                                                    </button>
-                                                                                )
-                                                                            )}
-                                                                            <button 
-                                                                                onClick={() => openGradeModal(s)}
-                                                                                className="inline-flex items-center gap-1.5 sm:gap-2 rounded-xl bg-sky-500 text-white px-3 sm:px-5 py-2 sm:py-2.5 text-xs font-black shadow-lg shadow-sky-100 transition-all hover:scale-105 active:scale-95 uppercase tracking-widest whitespace-nowrap"
-                                                                            >
-                                                                                <Activity className="h-3.5 w-3.5 shrink-0" />
-                                                                                {assignment.instrument_type === 'reflective_journal' || assignment.instrument_type === 'self_assessment' || assignment.instrument_type === 'peer_assessment' || assignment.instrument_type === 'exit_ticket'
-                                                                                    ? (s.score !== null ? 'Edit Penilaian' : 'Beri Penilaian')
-                                                                                    : (s.score !== null ? 'Edit Nilai' : 'Beri Nilai')}
-                                                                            </button>
-                                                                        </>
-                                                                    ) : (
-                                                                        <span className="text-xs text-muted-foreground italic font-medium">Belum mengumpulkan</span>
-                                                                    )}
-                                                                </div>
-                                                            </td>
-                                                        </tr>
-                                                    );
-                                                })
-                                            )}
-                                        </tbody>
-                                    </table>
+                                    </div>
                                 </div>
                             </div>
                         )}
+
+                        {/* Formative Quiz Difficulty Alert */}
+                        {assignment.instrument_type === 'formative_quiz' && formativeDifficultyStats && formativeDifficultyStats.hardQuestions.length > 0 && (
+                            <div className="rounded-2xl border border-rose-500/30 bg-rose-500/5 p-5 sm:p-6 animate-in slide-in-from-top-4 duration-500 flex items-start gap-4">
+                                <div className="h-10 w-10 rounded-xl bg-rose-500 text-white flex items-center justify-center flex-shrink-0 shadow-xs">
+                                    <AlertCircle className="h-5 w-5" />
+                                </div>
+                                <div className="space-y-2 flex-1">
+                                    <h3 className="text-sm font-black text-rose-600 dark:text-rose-400 uppercase tracking-wider">Deteksi Konsep Sulit (Auto-Analisis)</h3>
+                                    <p className="text-xs text-muted-foreground leading-relaxed font-medium">
+                                        Terdapat <strong>{formativeDifficultyStats.hardQuestions.length} pertanyaan</strong> dengan persentase kegagalan <strong>di atas 50%</strong>. Siswa kelas Anda mengalami kesulitan pada konsep-konsep ini:
+                                    </p>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
+                                        {formativeDifficultyStats.hardQuestions.map((q) => (
+                                            <div key={q.id} className="p-3.5 rounded-xl bg-card border border-rose-500/20 flex flex-col justify-between">
+                                                <div>
+                                                    <div className="flex justify-between items-center mb-1.5">
+                                                        <span className="text-[9px] font-black uppercase tracking-wider text-rose-500">Soal Nomor {q.num}</span>
+                                                        <span className="text-[10px] font-mono font-bold text-rose-500">{q.wrongPct}% Siswa Salah</span>
+                                                    </div>
+                                                    <p className="text-xs font-semibold text-foreground line-clamp-2 leading-relaxed">"{q.text}"</p>
+                                                </div>
+                                                <p className="text-[9px] text-muted-foreground mt-2 font-bold uppercase tracking-widest italic">Rekomendasi: Review Pembahasan di Kelas</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Modern High-Density Batch Workspace for Grading */}
+                        <TeacherGradingWorkspace
+                            assignment={assignment}
+                            students={students}
+                            onOpenObservationModal={openObservationModal}
+                            onOpenAnecdotalModal={openAnecdotalModal}
+                            onOpenRubricModal={openRubricModal}
+                            onOpenOralGrading={openOralGrading}
+                            onOpenPerformanceGrading={openPerformanceGrading}
+                            onOpenProjectGrading={openProjectGrading}
+                            onOpenPortfolioGrading={openPortfolioGrading}
+                            onOpenGradeModal={openGradeModal}
+                            onOpenRemedial={handleOpenRemedial}
+                        />
+
                         
                         <div className="rounded-xl border border-border bg-white dark:bg-slate-900 p-8 shadow-sm">
                             <CommentSection 
