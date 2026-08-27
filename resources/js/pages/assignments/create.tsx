@@ -28,23 +28,33 @@ export default function CreateAssignment({
     scoring_tools,
 }: CreateAssignmentProps) {
     return (
-        <AppLayout breadcrumbs={breadcrumbs}>
+        <AppLayout breadcrumbs={breadcrumbs} hideBottomNav={true}>
             <Head title="Buat Asesmen Baru – LMS Mokopani" />
 
-            <div className="space-y-4 max-w-4xl mx-auto px-4 sm:px-6 pt-2 pb-12 fade-in">
-                {/* Back Button Header */}
-                <div className="flex items-center justify-between">
-                    <button
-                        type="button"
-                        onClick={() => router.visit(route('assignments.index'))}
-                        className="inline-flex items-center gap-1.5 text-xs font-bold text-muted-foreground hover:text-foreground transition min-h-[44px]"
-                    >
-                        <ChevronLeft className="h-4 w-4" />
-                        <span>Kembali ke Daftar Asesmen</span>
-                    </button>
+            <div className="w-full max-w-3xl mx-auto px-3.5 sm:px-6 pt-2 pb-24 space-y-3 fade-in overflow-x-hidden">
+                {/* Header Bar with Unified Back Button */}
+                <div className="flex items-center justify-between border-b border-border/60 pb-2.5">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                        <button
+                            type="button"
+                            onClick={() => router.visit(route('assignments.index'))}
+                            className="p-1.5 rounded-xl border border-border text-muted-foreground hover:text-foreground transition h-9 w-9 flex items-center justify-center cursor-pointer shrink-0"
+                            title="Kembali ke Daftar Asesmen"
+                        >
+                            <ChevronLeft className="h-4 w-4" />
+                        </button>
+                        <div className="min-w-0">
+                            <h1 className="text-sm sm:text-base font-black text-foreground leading-tight truncate">
+                                Buat Asesmen Baru
+                            </h1>
+                            <p className="text-[11px] text-muted-foreground leading-tight">
+                                Formulir pembuatan tugas & asesmen pembelajaran
+                            </p>
+                        </div>
+                    </div>
                 </div>
 
-                {/* Modular Assessment Form Wizard */}
+                {/* Unified 3-Step Assessment Form Wizard */}
                 <AssessmentForm
                     mode="create"
                     teachings={teachings}

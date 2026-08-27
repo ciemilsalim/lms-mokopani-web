@@ -1,12 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useForm, router } from '@inertiajs/react';
 import {
-    ChevronLeft, ChevronRight, CheckCircle2, AlertCircle, Calendar as CalendarIcon,
-    BookOpen, Users, Target, GraduationCap, Info, Star, FileText, Plus, Trash2,
-    Sparkles, Settings, ListChecks, PenTool, Mic, Presentation, FolderKanban, Briefcase
+    ChevronLeft, ChevronRight, CheckCircle2, AlertCircle,
+    BookOpen, Users, Target, GraduationCap, Info, FileText, Plus, Trash2,
+    Check, Lock, Sparkles, Layers, ListChecks, Calendar, ArrowRight, Save
 } from 'lucide-react';
-import axios from 'axios';
-import PromptSettingsModal from '@/components/PromptSettingsModal';
 import { Badge } from '@/components/ui/badge';
 
 interface Objective {
@@ -64,8 +62,8 @@ export function AssessmentForm({
 
     // Initial Form State
     const { data, setData, post, processing, errors } = useForm({
-        assessment_type: initialAssignment?.assessment_type ?? '',
-        instrument_type: initialAssignment?.instrument_type ?? '',
+        assessment_type: initialAssignment?.assessment_type ?? 'formative',
+        instrument_type: initialAssignment?.instrument_type ?? 'written_test',
         scoring_tool: initialAssignment?.scoring_tool ?? '',
         scoring_tool_config: initialAssignment?.scoring_tool_config ?? {},
         subject_id: initialAssignment?.subject_id ? String(initialAssignment.subject_id) : '',
@@ -84,49 +82,37 @@ export function AssessmentForm({
             focus: '',
             context: '',
             teacher_notes: '',
-            central_topic: '',
             submission_mode: 'hybrid',
             instructions: '',
-            keywords: [] as string[],
             levels: [
                 { name: 'Perlu Bimbingan', desc: 'Siswa belum menunjukkan pemahaman konsep dasar.' },
-                { name: 'Cukup', desc: 'Siswa memahami sebagian besar konsep dasar namun belum konsisten.' },
-                { name: 'Baik', desc: 'Siswa menguasai seluruh indikator ketuntasan dengan baik.' },
-                { name: 'Sangat Baik', desc: 'Siswa menunjukkan penguasaan luar biasa dan pemahaman mendalam.' }
+                { name: 'Cukup', desc: 'Siswa memahami sebagian besar konsep dasar.' },
+                { name: 'Baik', desc: 'Siswa menguasai seluruh indikator dengan baik.' },
+                { name: 'Sangat Baik', desc: 'Siswa menunjukkan penguasaan luar biasa.' }
             ],
             kktp: {
                 approach: 'rubric',
                 passing_level: 'Baik',
-                min_criteria: 2,
                 threshold: 75,
-                intervals: [
-                    { min: 0, max: 40, label: 'Belum Mencapai', desc: 'Perlu remedial seluruhnya' },
-                    { min: 41, max: 60, label: 'Hampir Mencapai', desc: 'Perlu remedial di bagian tertentu' },
-                    { min: 61, max: 80, label: 'Sudah Mencapai', desc: 'Tuntas' },
-                    { min: 81, max: 100, label: 'Sudah Mencapai', desc: 'Perlu pengayaan' }
-                ]
             }
         },
     });
 
-    const [aiLoading, setAiLoading] = useState(false);
-    const [aiNotification, setAiNotification] = useState<{ message: string; type: 'info' | 'warning' | 'error' } | null>(null);
-
     // Filtered Subjects & Classes from teachings
-    const availableSubjects = React.useMemo(() => {
+    const availableSubjects = useMemo(() => {
         const map = new Map<number, string>();
         teachings.forEach(t => map.set(t.subject_id, t.subject_name));
         return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
     }, [teachings]);
 
-    const availableClasses = React.useMemo(() => {
+    const availableClasses = useMemo(() => {
         if (!data.subject_id) return [];
         return teachings
             .filter(t => t.subject_id === Number(data.subject_id))
             .map(t => ({ id: t.class_id, name: t.class_name }));
     }, [teachings, data.subject_id]);
 
-    const availableObjectives = React.useMemo(() => {
+    const availableObjectives = useMemo(() => {
         if (!data.subject_id) return [];
         return objectives.filter(o => o.subject_id === Number(data.subject_id));
     }, [objectives, data.subject_id]);
@@ -144,7 +130,7 @@ export function AssessmentForm({
             return selectedDate >= hStart! && selectedDate <= hEnd!;
         });
         if (match) {
-            setHolidayWarning(`Peringatan: Tenggat waktu berada pada hari libur (${match.title})`);
+            setHolidayWarning(`Peringatan: Tenggat waktu bertepatan dengan hari libur (${match.title})`);
         } else {
             setHolidayWarning(null);
         }
@@ -259,6 +245,14 @@ export function AssessmentForm({
         }
     };
 
+    const toggleSelectAllClasses = () => {
+        if (data.school_classes.length === availableClasses.length) {
+            setData('school_classes', []);
+        } else {
+            setData('school_classes', availableClasses.map(c => c.id));
+        }
+    };
+
     // Final Form Submission Handler
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -271,17 +265,15 @@ export function AssessmentForm({
 
     const steps = [
         { id: 1, label: 'Konteks' },
-        { id: 2, label: 'Tipe & Instrumen' },
-        { id: 3, label: 'Informasi Utama' },
-        { id: 4, label: 'Soal / Instrumen' },
-        { id: 5, label: 'Penilaian & Review' },
+        { id: 2, label: 'Instrumen' },
+        { id: 3, label: 'Detail' },
     ];
 
     return (
-        <div className="space-y-5 sm:space-y-6 max-w-4xl mx-auto pb-24">
-            {/* Header Stepper Navigation */}
-            <div className="rounded-2xl border border-border bg-card p-4 shadow-xs">
-                <div className="flex items-center justify-between gap-1 overflow-x-auto scrollbar-hide">
+        <div className="w-full space-y-3.5 pb-24">
+            {/* Header Stepper Navigation (33% Equal Width, Compact 52px Height) */}
+            <div className="w-full bg-card rounded-2xl border border-border p-1.5 shadow-xs">
+                <div className="grid grid-cols-3 gap-1 w-full">
                     {steps.map((step) => {
                         const isCurrent = currentStep === step.id;
                         const isCompleted = currentStep > step.id;
@@ -291,20 +283,24 @@ export function AssessmentForm({
                                 key={step.id}
                                 type="button"
                                 onClick={() => setCurrentStep(step.id)}
-                                className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold transition shrink-0 min-h-[40px] ${
+                                className={`flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl text-xs font-bold transition cursor-pointer min-h-[42px] truncate ${
                                     isCurrent
-                                        ? 'bg-primary text-primary-foreground shadow-xs'
+                                        ? 'bg-primary text-primary-foreground shadow-xs font-black'
                                         : isCompleted
-                                            ? 'bg-primary/10 text-primary'
+                                            ? 'bg-primary/10 text-primary hover:bg-primary/20'
                                             : 'text-muted-foreground hover:bg-muted'
                                 }`}
                             >
-                                <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-black ${
-                                    isCurrent ? 'bg-primary-foreground text-primary' : 'bg-muted text-muted-foreground'
+                                <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-black shrink-0 ${
+                                    isCurrent
+                                        ? 'bg-primary-foreground text-primary'
+                                        : isCompleted
+                                            ? 'bg-primary text-primary-foreground'
+                                            : 'bg-muted-foreground/20 text-muted-foreground'
                                 }`}>
-                                    {isCompleted ? <CheckCircle2 className="h-3.5 w-3.5 text-primary" /> : step.id}
+                                    {isCompleted ? <Check className="h-3 w-3 stroke-[3]" /> : step.id}
                                 </span>
-                                <span className="whitespace-nowrap">{step.label}</span>
+                                <span className="truncate">{step.label}</span>
                             </button>
                         );
                     })}
@@ -312,26 +308,40 @@ export function AssessmentForm({
             </div>
 
             {/* Form Content Steps */}
-            <form onSubmit={handleSubmit} className="space-y-6">
-                {/* ── STEP 1: KONTEKS ── */}
+            <form onSubmit={handleSubmit} className="w-full space-y-4">
+                {/* ── STEP 1: KONTEKS PEMBELAJARAN ── */}
                 {currentStep === 1 && (
-                    <div className="rounded-2xl border border-border bg-card p-5 sm:p-6 space-y-5 shadow-xs fade-in">
-                        <div className="flex items-center gap-2 border-b border-border/50 pb-3">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <div className="w-full rounded-2xl border border-border bg-card p-4 sm:p-5 space-y-4 shadow-xs fade-in">
+                        <div className="flex items-center gap-2 border-b border-border/50 pb-2.5">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary shrink-0">
                                 <BookOpen className="h-4 w-4" />
                             </div>
-                            <h2 className="text-base font-bold text-foreground">Langkah 1: Konteks Pembelajaran</h2>
+                            <div className="min-w-0">
+                                <h2 className="text-sm sm:text-base font-black text-foreground leading-tight">
+                                    Konteks Pembelajaran
+                                </h2>
+                                <p className="text-[11px] text-muted-foreground">Langkah 1 dari 3</p>
+                            </div>
                         </div>
 
                         {/* Subject Selector */}
                         <div className="space-y-1.5">
-                            <label className="text-xs font-bold text-foreground">Mata Pelajaran <span className="text-destructive">*</span></label>
+                            <label className="text-xs font-bold text-foreground">
+                                Mata Pelajaran <span className="text-destructive">*</span>
+                            </label>
                             <select
                                 value={data.subject_id}
-                                onChange={(e) => setData('subject_id', e.target.value)}
-                                className="w-full rounded-2xl border border-border bg-background px-4 py-3 text-xs sm:text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition min-h-[48px]"
+                                onChange={(e) => {
+                                    setData(prev => ({
+                                        ...prev,
+                                        subject_id: e.target.value,
+                                        school_classes: [],
+                                        learning_objective_id: '',
+                                    }));
+                                }}
+                                className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-xs sm:text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition min-h-[46px] cursor-pointer"
                             >
-                                <option value="">-- Pilih Mata Pelajaran --</option>
+                                <option value="">Pilih mata pelajaran</option>
                                 {availableSubjects.map(s => (
                                     <option key={s.id} value={s.id}>{s.name}</option>
                                 ))}
@@ -339,11 +349,30 @@ export function AssessmentForm({
                             {errors.subject_id && <p className="text-xs font-bold text-destructive mt-1">{errors.subject_id}</p>}
                         </div>
 
-                        {/* Class Multi-Selector */}
-                        <div className="space-y-2">
-                            <label className="text-xs font-bold text-foreground">Target Kelas <span className="text-destructive">*</span></label>
-                            {availableClasses.length === 0 ? (
-                                <p className="text-xs text-muted-foreground italic">Pilih mata pelajaran terlebih dahulu.</p>
+                        {/* Target Class Multi-Selector */}
+                        <div className="space-y-1.5">
+                            <div className="flex items-center justify-between">
+                                <label className="text-xs font-bold text-foreground">
+                                    Target Kelas <span className="text-destructive">*</span>
+                                </label>
+                                {availableClasses.length > 1 && (
+                                    <button
+                                        type="button"
+                                        onClick={toggleSelectAllClasses}
+                                        className="text-[11px] font-bold text-primary hover:underline cursor-pointer"
+                                    >
+                                        {data.school_classes.length === availableClasses.length ? 'Batal Pilih Semua' : 'Pilih Semua Kelas'}
+                                    </button>
+                                )}
+                            </div>
+
+                            {!data.subject_id ? (
+                                <div className="flex items-center gap-2 p-3 rounded-xl bg-muted/40 border border-border/80 text-muted-foreground text-xs">
+                                    <Lock className="h-4 w-4 shrink-0 text-muted-foreground/60" />
+                                    <span>Pilih mata pelajaran terlebih dahulu untuk memilih kelas</span>
+                                </div>
+                            ) : availableClasses.length === 0 ? (
+                                <p className="text-xs text-muted-foreground italic p-2">Tidak ada kelas yang terhubung dengan mata pelajaran ini.</p>
                             ) : (
                                 <div className="flex flex-wrap gap-2 pt-1">
                                     {availableClasses.map(c => {
@@ -353,9 +382,9 @@ export function AssessmentForm({
                                                 key={c.id}
                                                 type="button"
                                                 onClick={() => toggleClass(c.id)}
-                                                className={`px-4 py-2.5 rounded-xl text-xs font-bold transition active:scale-95 min-h-[44px] ${
+                                                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition active:scale-95 min-h-[40px] cursor-pointer ${
                                                     isSelected
-                                                        ? 'bg-primary text-primary-foreground shadow-xs'
+                                                        ? 'bg-primary text-primary-foreground shadow-xs font-black'
                                                         : 'bg-background border border-border text-muted-foreground hover:text-foreground'
                                                 }`}
                                             >
@@ -370,13 +399,16 @@ export function AssessmentForm({
 
                         {/* Objective / TP Selector */}
                         <div className="space-y-1.5">
-                            <label className="text-xs font-bold text-foreground">Tujuan Pembelajaran (TP)</label>
+                            <label className="text-xs font-bold text-foreground">
+                                Tujuan Pembelajaran (Opsional)
+                            </label>
                             <select
                                 value={data.learning_objective_id}
+                                disabled={!data.subject_id}
                                 onChange={(e) => setData('learning_objective_id', e.target.value)}
-                                className="w-full rounded-2xl border border-border bg-background px-4 py-3 text-xs sm:text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition min-h-[48px]"
+                                className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-xs sm:text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition min-h-[46px] cursor-pointer disabled:opacity-50"
                             >
-                                <option value="">-- Pilih Tujuan Pembelajaran (Opsional) --</option>
+                                <option value="">Pilih tujuan pembelajaran</option>
                                 {availableObjectives.map(o => (
                                     <option key={o.id} value={o.id}>[{o.code}] {o.description}</option>
                                 ))}
@@ -385,20 +417,27 @@ export function AssessmentForm({
                     </div>
                 )}
 
-                {/* ── STEP 2: TIPE & INSTRUMEN ── */}
+                {/* ── STEP 2: TIPE ASESMEN, INSTRUMEN & SOAL ── */}
                 {currentStep === 2 && (
-                    <div className="rounded-2xl border border-border bg-card p-5 sm:p-6 space-y-5 shadow-xs fade-in">
-                        <div className="flex items-center gap-2 border-b border-border/50 pb-3">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <div className="w-full rounded-2xl border border-border bg-card p-4 sm:p-5 space-y-4 shadow-xs fade-in">
+                        <div className="flex items-center gap-2 border-b border-border/50 pb-2.5">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary shrink-0">
                                 <Target className="h-4 w-4" />
                             </div>
-                            <h2 className="text-base font-bold text-foreground">Langkah 2: Tipe Asesmen & Instrumen</h2>
+                            <div className="min-w-0">
+                                <h2 className="text-sm sm:text-base font-black text-foreground leading-tight">
+                                    Tipe & Instrumen Penilaian
+                                </h2>
+                                <p className="text-[11px] text-muted-foreground">Langkah 2 dari 3</p>
+                            </div>
                         </div>
 
-                        {/* Assessment Type Segmented Selection */}
-                        <div className="space-y-2">
-                            <label className="text-xs font-bold text-foreground">Tipe Asesmen <span className="text-destructive">*</span></label>
-                            <div className="grid grid-cols-3 gap-2.5">
+                        {/* Assessment Type 3-Button Grid */}
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-bold text-foreground">
+                                Tipe Asesmen <span className="text-destructive">*</span>
+                            </label>
+                            <div className="grid grid-cols-3 gap-2">
                                 {[
                                     { id: 'initial', name: 'Asesmen Awal', icon: Info },
                                     { id: 'formative', name: 'Formatif', icon: Target },
@@ -411,16 +450,16 @@ export function AssessmentForm({
                                             key={t.id}
                                             type="button"
                                             onClick={() => {
-                                                setData(prev => ({ ...prev, assessment_type: t.id, instrument_type: '' }));
+                                                setData(prev => ({ ...prev, assessment_type: t.id }));
                                             }}
-                                            className={`flex flex-col items-center justify-center p-3 sm:p-4 rounded-2xl border text-center transition min-h-[70px] ${
+                                            className={`flex flex-col items-center justify-center p-2.5 sm:p-3 rounded-xl border text-center transition min-h-[60px] cursor-pointer ${
                                                 isSelected
-                                                    ? 'bg-primary text-primary-foreground border-primary shadow-xs'
+                                                    ? 'bg-primary text-primary-foreground border-primary shadow-xs font-black'
                                                     : 'bg-background hover:bg-muted/40 border-border text-foreground'
                                             }`}
                                         >
                                             <Icon className="h-4 w-4 mb-1" />
-                                            <span className="text-xs font-bold">{t.name}</span>
+                                            <span className="text-xs font-bold leading-tight">{t.name}</span>
                                         </button>
                                     );
                                 })}
@@ -428,222 +467,212 @@ export function AssessmentForm({
                         </div>
 
                         {/* Instrument Selection Grid */}
-                        {data.assessment_type && (
-                            <div className="space-y-2 pt-2">
-                                <label className="text-xs font-bold text-foreground">Pilih Instrumen Penilaian</label>
-                                <div className="grid gap-2.5 sm:grid-cols-2">
-                                    {(instruments[data.assessment_type] || []).map(inst => {
-                                        const isSelected = data.instrument_type === inst.id;
-                                        return (
-                                            <button
-                                                key={inst.id}
-                                                type="button"
-                                                onClick={() => setData('instrument_type', inst.id)}
-                                                className={`flex items-start gap-3 p-3.5 rounded-2xl border text-left transition min-h-[60px] ${
-                                                    isSelected
-                                                        ? 'bg-primary/10 border-primary shadow-xs'
-                                                        : 'bg-background hover:bg-muted/40 border-border'
-                                                }`}
-                                            >
-                                                <div className={`p-2 rounded-xl shrink-0 ${isSelected ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
-                                                    <FileText className="h-4 w-4" />
-                                                </div>
-                                                <div>
-                                                    <p className="text-xs font-bold text-foreground">{inst.name}</p>
-                                                    <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-1">{inst.desc}</p>
-                                                </div>
-                                            </button>
-                                        );
-                                    })}
+                        <div className="space-y-1.5 pt-1">
+                            <label className="text-xs font-bold text-foreground">
+                                Instrumen Penilaian
+                            </label>
+                            <div className="grid gap-2 sm:grid-cols-2">
+                                {(instruments[data.assessment_type] || [
+                                    { id: 'written_test', name: 'Tes Tertulis / Kuis', desc: 'Soal pilihan ganda atau esai otomatis' },
+                                    { id: 'assignment', name: 'Penugasan / LKPD', desc: 'Pengumpulan berkas / foto fisik' },
+                                    { id: 'rubric', name: 'Rubrik Kriteria', desc: 'Penilaian dengan level kualitatif' },
+                                    { id: 'observation_checklist', name: 'Observasi Kinerja', desc: 'Checklist pengamatan langsung' },
+                                ]).map(inst => {
+                                    const isSelected = data.instrument_type === inst.id;
+                                    return (
+                                        <button
+                                            key={inst.id}
+                                            type="button"
+                                            onClick={() => setData('instrument_type', inst.id)}
+                                            className={`flex items-start gap-2.5 p-3 rounded-xl border text-left transition min-h-[54px] cursor-pointer ${
+                                                isSelected
+                                                    ? 'bg-primary/10 border-primary text-foreground shadow-2xs'
+                                                    : 'bg-background hover:bg-muted/40 border-border text-foreground'
+                                            }`}
+                                        >
+                                            <div className={`p-1.5 rounded-lg shrink-0 ${isSelected ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
+                                                <FileText className="h-3.5 w-3.5" />
+                                            </div>
+                                            <div className="min-w-0">
+                                                <p className="text-xs font-bold truncate leading-tight">{inst.name}</p>
+                                                <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-1">{inst.desc}</p>
+                                            </div>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        {/* Embedded Question Builder for Quiz / Test */}
+                        {['written_test', 'formative_quiz', 'quiz_survey'].includes(data.instrument_type) && (
+                            <div className="space-y-3 pt-2 border-t border-border/50">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                                        <ListChecks className="h-3.5 w-3.5 text-primary" />
+                                        <span>Daftar Soal ({data.instrument_config.questions?.length || 0})</span>
+                                    </span>
+                                    <button
+                                        type="button"
+                                        onClick={handleAddQuestion}
+                                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-primary text-primary-foreground text-xs font-bold shadow-xs hover:bg-primary/90 transition cursor-pointer"
+                                    >
+                                        <Plus className="h-3 w-3" />
+                                        <span>Tambah Soal</span>
+                                    </button>
                                 </div>
+
+                                {(!data.instrument_config.questions || data.instrument_config.questions.length === 0) ? (
+                                    <div className="text-center py-6 border border-dashed border-border rounded-xl p-4 bg-muted/20">
+                                        <p className="text-xs font-medium text-muted-foreground">Belum ada butir soal. Anda juga dapat membuat soal nanti.</p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-2.5">
+                                        {data.instrument_config.questions.map((q: any, qIdx: number) => (
+                                            <div key={q.id || qIdx} className="rounded-xl border border-border bg-background p-3 space-y-2 shadow-2xs">
+                                                <div className="flex items-center justify-between gap-2 border-b border-border/40 pb-1.5">
+                                                    <span className="text-[11px] font-black text-primary bg-primary/10 px-2 py-0.5 rounded">
+                                                        Soal #{qIdx + 1}
+                                                    </span>
+                                                    <div className="flex items-center gap-1.5">
+                                                        <select
+                                                            value={q.type}
+                                                            onChange={(e) => handleQuestionTypeChange(qIdx, e.target.value)}
+                                                            className="rounded-lg border border-border bg-card px-2 py-0.5 text-xs font-bold text-foreground outline-none"
+                                                        >
+                                                            <option value="multiple_choice">Pilihan Ganda</option>
+                                                            <option value="short_answer">Isian Singkat</option>
+                                                            <option value="essay">Uraian / Esai</option>
+                                                        </select>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleRemoveQuestion(qIdx)}
+                                                            className="p-1 text-destructive hover:bg-destructive/10 rounded-lg transition"
+                                                            title="Hapus Soal"
+                                                        >
+                                                            <Trash2 className="h-3.5 w-3.5" />
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                <textarea
+                                                    rows={2}
+                                                    placeholder={`Tuliskan teks soal #${qIdx + 1}...`}
+                                                    value={q.question}
+                                                    onChange={(e) => handleQuestionTextChange(qIdx, e.target.value)}
+                                                    className="w-full rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs text-foreground outline-none focus:border-primary"
+                                                />
+
+                                                {q.type === 'multiple_choice' && (
+                                                    <div className="space-y-1.5 pt-1">
+                                                        <p className="text-[10px] font-bold text-muted-foreground">Pilihan Jawaban (Klik radio untuk kunci):</p>
+                                                        {(q.options || []).map((opt: any, optIdx: number) => (
+                                                            <div key={opt.id || optIdx} className="flex items-center gap-1.5">
+                                                                <input
+                                                                    type="radio"
+                                                                    name={`correct_${qIdx}`}
+                                                                    checked={Boolean(opt.is_correct)}
+                                                                    onChange={() => handleOptionCorrectChange(qIdx, optIdx)}
+                                                                    className="h-3.5 w-3.5 text-primary focus:ring-primary cursor-pointer"
+                                                                />
+                                                                <input
+                                                                    type="text"
+                                                                    placeholder={`Opsi ${String.fromCharCode(65 + optIdx)}`}
+                                                                    value={opt.text}
+                                                                    onChange={(e) => handleOptionTextChange(qIdx, optIdx, e.target.value)}
+                                                                    className="flex-1 rounded-lg border border-border bg-card px-2 py-1 text-xs text-foreground outline-none"
+                                                                />
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleRemoveOption(qIdx, optIdx)}
+                                                                    className="p-1 text-muted-foreground hover:text-destructive transition rounded"
+                                                                >
+                                                                    <Trash2 className="h-3 w-3" />
+                                                                </button>
+                                                            </div>
+                                                        ))}
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleAddOption(qIdx)}
+                                                            className="inline-flex items-center gap-1 text-[11px] font-bold text-primary hover:underline"
+                                                        >
+                                                            <Plus className="h-3 w-3" /> Tambah Opsi
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
                 )}
 
-                {/* ── STEP 3: INFORMASI UTAMA ── */}
+                {/* ── STEP 3: INFORMASI UTAMA & PENILAIAN ── */}
                 {currentStep === 3 && (
-                    <div className="rounded-2xl border border-border bg-card p-5 sm:p-6 space-y-5 shadow-xs fade-in">
-                        <div className="flex items-center gap-2 border-b border-border/50 pb-3">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <div className="w-full rounded-2xl border border-border bg-card p-4 sm:p-5 space-y-4 shadow-xs fade-in">
+                        <div className="flex items-center gap-2 border-b border-border/50 pb-2.5">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary shrink-0">
                                 <FileText className="h-4 w-4" />
                             </div>
-                            <h2 className="text-base font-bold text-foreground">Langkah 3: Informasi Utama Asesmen</h2>
+                            <div className="min-w-0">
+                                <h2 className="text-sm sm:text-base font-black text-foreground leading-tight">
+                                    Informasi & Tenggat Waktu
+                                </h2>
+                                <p className="text-[11px] text-muted-foreground">Langkah 3 dari 3</p>
+                            </div>
                         </div>
 
                         {/* Title Input */}
                         <div className="space-y-1.5">
-                            <label className="text-xs font-bold text-foreground">Judul Asesmen <span className="text-destructive">*</span></label>
+                            <label className="text-xs font-bold text-foreground">
+                                Judul Asesmen <span className="text-destructive">*</span>
+                            </label>
                             <input
                                 type="text"
-                                placeholder="Misal: Ulangan Harian Bab 2 Logika Algoritma"
+                                placeholder="Misal: LKPD Menjelajahi Dapur Komputer"
                                 value={data.title}
                                 onChange={(e) => setData('title', e.target.value)}
-                                className="w-full rounded-2xl border border-border bg-background px-4 py-3 text-xs sm:text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition min-h-[48px]"
+                                className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-xs sm:text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition min-h-[46px]"
                             />
                             {errors.title && <p className="text-xs font-bold text-destructive mt-1">{errors.title}</p>}
                         </div>
 
                         {/* Description / Instructions */}
                         <div className="space-y-1.5">
-                            <label className="text-xs font-bold text-foreground">Petunjuk & Deskripsi Pengerjaan <span className="text-destructive">*</span></label>
+                            <label className="text-xs font-bold text-foreground">
+                                Petunjuk & Deskripsi Pengerjaan <span className="text-destructive">*</span>
+                            </label>
                             <textarea
-                                rows={5}
+                                rows={4}
                                 placeholder="Tuliskan petunjuk pengerjaan bagi siswa..."
                                 value={data.description}
                                 onChange={(e) => setData('description', e.target.value)}
-                                className="w-full rounded-2xl border border-border bg-background px-4 py-3 text-xs sm:text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition min-h-[120px]"
+                                className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-xs sm:text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition min-h-[90px]"
                             />
                             {errors.description && <p className="text-xs font-bold text-destructive mt-1">{errors.description}</p>}
-                        </div>
-                    </div>
-                )}
-
-                {/* ── STEP 4: SOAL / QUESTION BUILDER ── */}
-                {currentStep === 4 && (
-                    <div className="rounded-2xl border border-border bg-card p-5 sm:p-6 space-y-5 shadow-xs fade-in">
-                        <div className="flex items-center justify-between border-b border-border/50 pb-3">
-                            <div className="flex items-center gap-2">
-                                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                                    <ListChecks className="h-4 w-4" />
-                                </div>
-                                <h2 className="text-base font-bold text-foreground">Langkah 4: Penyusun Soal & Instrumen</h2>
-                            </div>
-
-                            <button
-                                type="button"
-                                onClick={handleAddQuestion}
-                                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-bold shadow-xs hover:bg-primary/90 transition min-h-[40px]"
-                            >
-                                <Plus className="h-3.5 w-3.5" />
-                                <span>Tambah Soal</span>
-                            </button>
-                        </div>
-
-                        {/* Question List */}
-                        {(!data.instrument_config.questions || data.instrument_config.questions.length === 0) ? (
-                            <div className="text-center py-10 border-2 border-dashed border-border rounded-2xl p-6">
-                                <p className="text-xs font-bold text-muted-foreground">Belum ada soal ditambahkan.</p>
-                                <button
-                                    type="button"
-                                    onClick={handleAddQuestion}
-                                    className="mt-3 inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-primary/10 text-primary text-xs font-bold hover:bg-primary/20 transition min-h-[44px]"
-                                >
-                                    <Plus className="h-4 w-4" />
-                                    <span>Tambah Soal Pertama</span>
-                                </button>
-                            </div>
-                        ) : (
-                            <div className="space-y-4">
-                                {data.instrument_config.questions.map((q: any, qIdx: number) => (
-                                    <div key={q.id || qIdx} className="rounded-2xl border border-border bg-background p-4 space-y-3.5 shadow-2xs">
-                                        <div className="flex items-center justify-between gap-2 border-b border-border/50 pb-2.5">
-                                            <span className="text-xs font-black text-primary bg-primary/10 px-2.5 py-1 rounded-lg">
-                                                Soal #{qIdx + 1}
-                                            </span>
-                                            <div className="flex items-center gap-2">
-                                                <select
-                                                    value={q.type}
-                                                    onChange={(e) => handleQuestionTypeChange(qIdx, e.target.value)}
-                                                    className="rounded-xl border border-border bg-card px-2.5 py-1 text-xs font-bold text-foreground outline-none"
-                                                >
-                                                    <option value="multiple_choice">Pilihan Ganda</option>
-                                                    <option value="short_answer">Isian Singkat</option>
-                                                    <option value="essay">Esai / Uraian</option>
-                                                </select>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleRemoveQuestion(qIdx)}
-                                                    className="p-2 text-destructive hover:bg-destructive/10 rounded-xl transition min-h-[36px] min-w-[36px] flex items-center justify-center"
-                                                    title="Hapus Soal"
-                                                >
-                                                    <Trash2 className="h-4 w-4" />
-                                                </button>
-                                            </div>
-                                        </div>
-
-                                        {/* Question Textarea */}
-                                        <textarea
-                                            rows={3}
-                                            placeholder={`Tuliskan isi pertanyaan soal #${qIdx + 1}...`}
-                                            value={q.question}
-                                            onChange={(e) => handleQuestionTextChange(qIdx, e.target.value)}
-                                            className="w-full rounded-xl border border-border bg-card px-3.5 py-2.5 text-xs sm:text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
-                                        />
-
-                                        {/* Multiple Choice Options Builder */}
-                                        {q.type === 'multiple_choice' && (
-                                            <div className="space-y-2 pt-1">
-                                                <p className="text-[11px] font-bold text-muted-foreground">Opsi Jawaban (Tandai yang Benar):</p>
-                                                {(q.options || []).map((opt: any, optIdx: number) => (
-                                                    <div key={opt.id || optIdx} className="flex items-center gap-2">
-                                                        <input
-                                                            type="radio"
-                                                            name={`correct_${qIdx}`}
-                                                            checked={Boolean(opt.is_correct)}
-                                                            onChange={() => handleOptionCorrectChange(qIdx, optIdx)}
-                                                            className="h-4 w-4 text-primary focus:ring-primary cursor-pointer"
-                                                        />
-                                                        <input
-                                                            type="text"
-                                                            placeholder={`Opsi ${String.fromCharCode(65 + optIdx)}`}
-                                                            value={opt.text}
-                                                            onChange={(e) => handleOptionTextChange(qIdx, optIdx, e.target.value)}
-                                                            className="flex-1 rounded-xl border border-border bg-card px-3 py-2 text-xs text-foreground outline-none focus:border-primary min-h-[40px]"
-                                                        />
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => handleRemoveOption(qIdx, optIdx)}
-                                                            className="p-1.5 text-muted-foreground hover:text-destructive transition rounded-lg"
-                                                        >
-                                                            <Trash2 className="h-3.5 w-3.5" />
-                                                        </button>
-                                                    </div>
-                                                ))}
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleAddOption(qIdx)}
-                                                    className="inline-flex items-center gap-1 text-xs font-bold text-primary hover:underline pt-1"
-                                                >
-                                                    <Plus className="h-3 w-3" /> Tambah Opsi
-                                                </button>
-                                            </div>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                )}
-
-                {/* ── STEP 5: PENILAIAN & TINJAUAN ── */}
-                {currentStep === 5 && (
-                    <div className="rounded-2xl border border-border bg-card p-5 sm:p-6 space-y-5 shadow-xs fade-in">
-                        <div className="flex items-center gap-2 border-b border-border/50 pb-3">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                                <GraduationCap className="h-4 w-4" />
-                            </div>
-                            <h2 className="text-base font-bold text-foreground">Langkah 5: Penilaian & Tenggat Waktu</h2>
                         </div>
 
                         {/* Due Date Input */}
                         <div className="space-y-1.5">
-                            <label className="text-xs font-bold text-foreground">Tenggat Waktu <span className="text-destructive">*</span></label>
+                            <label className="text-xs font-bold text-foreground">
+                                Tenggat Waktu (Opsional)
+                            </label>
                             <input
                                 type="datetime-local"
                                 value={data.due_date}
                                 onChange={(e) => setData('due_date', e.target.value)}
-                                className="w-full rounded-2xl border border-border bg-background px-4 py-3 text-xs sm:text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition min-h-[48px]"
+                                className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-xs sm:text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition min-h-[46px] cursor-pointer"
                             />
                             {holidayWarning && (
-                                <p className="text-xs font-bold text-amber-600 dark:text-amber-400 mt-1 flex items-center gap-1">
+                                <p className="text-[11px] font-bold text-amber-600 dark:text-amber-400 mt-1 flex items-center gap-1">
                                     <AlertCircle className="h-3.5 w-3.5 shrink-0" /> {holidayWarning}
                                 </p>
                             )}
                             {errors.due_date && <p className="text-xs font-bold text-destructive mt-1">{errors.due_date}</p>}
                         </div>
 
-                        {/* Points Grid */}
+                        {/* Points & KKTP Grid */}
                         <div className="grid grid-cols-2 gap-3">
                             <div className="space-y-1.5">
                                 <label className="text-xs font-bold text-foreground">Poin Maksimal</label>
@@ -652,7 +681,7 @@ export function AssessmentForm({
                                     min={0}
                                     value={data.max_points}
                                     onChange={(e) => setData('max_points', Number(e.target.value))}
-                                    className="w-full rounded-2xl border border-border bg-background px-4 py-3 text-xs sm:text-sm text-foreground outline-none focus:border-primary min-h-[48px]"
+                                    className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-xs sm:text-sm text-foreground outline-none focus:border-primary min-h-[44px]"
                                 />
                             </div>
                             <div className="space-y-1.5">
@@ -662,48 +691,61 @@ export function AssessmentForm({
                                     min={0}
                                     value={data.passing_grade}
                                     onChange={(e) => setData('passing_grade', Number(e.target.value))}
-                                    className="w-full rounded-2xl border border-border bg-background px-4 py-3 text-xs sm:text-sm text-foreground outline-none focus:border-primary min-h-[48px]"
+                                    className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-xs sm:text-sm text-foreground outline-none focus:border-primary min-h-[44px]"
                                 />
                             </div>
                         </div>
                     </div>
                 )}
 
-                {/* Sticky Bottom Stepper Action Bar */}
-                <div className="fixed bottom-0 left-0 right-0 z-40 bg-card/95 backdrop-blur-md border-t border-border/80 p-3 sm:p-4 shadow-lg">
-                    <div className="max-w-4xl mx-auto flex items-center justify-between gap-3">
-                        <button
-                            type="button"
-                            disabled={currentStep === 1}
-                            onClick={() => setCurrentStep(prev => Math.max(1, prev - 1))}
-                            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-border bg-background text-xs font-bold text-foreground hover:bg-muted transition min-h-[48px] disabled:opacity-40 cursor-pointer"
-                        >
-                            <ChevronLeft className="h-4 w-4" />
-                            <span>Sebelumnya</span>
-                        </button>
-
-                        {currentStep < 5 ? (
+                {/* ── STICKY BOTTOM ACTION BAR (Clean & Protected) ── */}
+                <div className="fixed bottom-0 left-0 right-0 z-40 bg-card/95 backdrop-blur-md border-t border-border shadow-lg py-2.5 px-4 sm:px-8">
+                    <div className="max-w-3xl mx-auto flex items-center justify-between gap-3">
+                        {currentStep > 1 ? (
                             <button
                                 type="button"
-                                onClick={() => setCurrentStep(prev => Math.min(5, prev + 1))}
-                                className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-primary text-primary-foreground text-xs font-bold shadow-xs hover:bg-primary/90 transition min-h-[48px] cursor-pointer"
+                                onClick={() => setCurrentStep(prev => Math.max(1, prev - 1))}
+                                className="inline-flex items-center gap-1 px-3.5 py-2 rounded-xl border border-border bg-background text-xs font-bold text-foreground hover:bg-muted transition min-h-[42px] cursor-pointer"
                             >
-                                <span>Berikutnya</span>
-                                <ChevronRight className="h-4 w-4" />
+                                <ChevronLeft className="h-4 w-4" />
+                                <span>Sebelumnya</span>
                             </button>
                         ) : (
                             <button
-                                type="submit"
-                                disabled={processing}
-                                className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-primary text-primary-foreground text-xs font-bold shadow-md hover:bg-primary/90 transition min-h-[48px] active:scale-95 cursor-pointer"
+                                type="button"
+                                onClick={() => router.visit(route('assignments.index'))}
+                                className="inline-flex items-center gap-1 px-3.5 py-2 rounded-xl border border-border bg-background text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-muted transition min-h-[42px] cursor-pointer"
                             >
-                                <CheckCircle2 className="h-4 w-4" />
-                                <span>{processing ? 'Menyimpan...' : mode === 'create' ? 'Publikasikan Asesmen' : 'Simpan Perubahan'}</span>
+                                <span>Batal</span>
                             </button>
                         )}
+
+                        <div className="flex items-center gap-2">
+                            {currentStep < 3 ? (
+                                <button
+                                    type="button"
+                                    onClick={() => setCurrentStep(prev => Math.min(3, prev + 1))}
+                                    className="inline-flex items-center gap-1.5 px-4 sm:px-5 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-black shadow-xs hover:bg-primary/90 active:scale-98 transition min-h-[42px] cursor-pointer"
+                                >
+                                    <span>{currentStep === 1 ? 'Lanjut ke Instrumen' : 'Lanjut ke Detail'}</span>
+                                    <ArrowRight className="h-4 w-4" />
+                                </button>
+                            ) : (
+                                <button
+                                    type="submit"
+                                    disabled={processing}
+                                    className="inline-flex items-center gap-1.5 px-5 sm:px-6 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-black shadow-md hover:bg-primary/90 active:scale-98 transition min-h-[42px] cursor-pointer disabled:opacity-50"
+                                >
+                                    <CheckCircle2 className="h-4 w-4" />
+                                    <span>{processing ? 'Menyimpan...' : mode === 'create' ? 'Publikasikan Asesmen' : 'Simpan Perubahan'}</span>
+                                </button>
+                            )}
+                        </div>
                     </div>
                 </div>
             </form>
         </div>
     );
 }
+
+export default AssessmentForm;
