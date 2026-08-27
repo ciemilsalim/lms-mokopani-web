@@ -2107,35 +2107,29 @@ export default function ShowAssignment({
 
             <>
                 <div className="flex h-full flex-1 flex-col gap-6 min-w-0 fade-in max-w-7xl mx-auto w-full">
-                <AssessmentDetailHeader
-                    id={assignment.id}
-                    title={assignment.title}
-                    subjectName={assignment.subject}
-                    schoolClasses={assignment.school_classes}
-                    dueDate={assignment.due_date}
-                    maxPoints={assignment.max_points}
-                    passingGrade={assignment.passing_grade}
-                    assessmentType={assignment.assessment_type}
-                    isTeacher={user_role === 'teacher' || user_role === 'admin'}
-                    onDelete={handleDelete}
-                />
+                {user_role !== 'teacher' && (
+                    <>
+                        <AssessmentDetailHeader
+                            id={assignment.id}
+                            title={assignment.title}
+                            subjectName={assignment.subject}
+                            schoolClasses={assignment.school_classes}
+                            dueDate={assignment.due_date}
+                            maxPoints={assignment.max_points}
+                            passingGrade={assignment.passing_grade}
+                            assessmentType={assignment.assessment_type}
+                            isTeacher={false}
+                            onDelete={handleDelete}
+                        />
 
-                <AssessmentInstructions
-                    description={assignment.description}
-                    instrumentType={assignment.instrument_type}
-                    scoringTool={assignment.scoring_tool}
-                    onOpenKktpModal={() => setIsKktpModalOpen(true)}
-                />
-
-                {user_role === 'teacher' && (
-                    <AssessmentDetailTeacherOverview
-                        assignmentId={assignment.id}
-                        submissions={assignment.submissions || []}
-                        studentsCount={students.length}
-                        maxPoints={assignment.max_points}
-                    />
+                        <AssessmentInstructions
+                            description={assignment.description}
+                            instrumentType={assignment.instrument_type}
+                            scoringTool={assignment.scoring_tool}
+                            onOpenKktpModal={() => setIsKktpModalOpen(true)}
+                        />
+                    </>
                 )}
-
 
                 {/* Content based on Role */}
                 {user_role === 'teacher' ? (
@@ -2355,7 +2349,11 @@ export default function ShowAssignment({
                         />
 
                         
-                        <div className="rounded-xl border border-border bg-white dark:bg-slate-900 p-8 shadow-sm">
+                        {/* Diskusi & Catatan Asesmen Kelas */}
+                        <div className="rounded-2xl border border-border bg-card p-4 sm:p-6 shadow-xs">
+                            <h3 className="text-xs sm:text-sm font-black text-foreground uppercase tracking-wider mb-4">
+                                Diskusi & Catatan Kelas
+                            </h3>
                             <CommentSection 
                                 assignmentId={assignment.id} 
                                 comments={comments} 
