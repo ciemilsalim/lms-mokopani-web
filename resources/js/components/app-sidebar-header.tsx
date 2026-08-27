@@ -90,14 +90,9 @@ export function AppSidebarHeader({ breadcrumbs = [] }: { breadcrumbs?: Breadcrum
                                 </button>
                             )}
                             <div className="flex flex-col min-w-0">
-                                <span className="text-xs sm:text-sm font-bold text-foreground truncate max-w-[110px] xs:max-w-[160px]">
+                                <span className="text-sm sm:text-base font-black text-foreground truncate max-w-[150px] xs:max-w-[200px]">
                                     {breadcrumbs[breadcrumbs.length - 1]?.title}
                                 </span>
-                                {prevBreadcrumb && (
-                                    <span className="text-[10px] text-muted-foreground truncate leading-tight">
-                                        {prevBreadcrumb.title}
-                                    </span>
-                                )}
                             </div>
                         </div>
                     ) : (

@@ -17,7 +17,7 @@ export default function AppSidebarLayout({ children, breadcrumbs = [] }: { child
                 <AppContent variant="sidebar">
                     {children}
                 </AppContent>
-                <footer className="border-t border-border px-4 sm:px-6 py-4 text-center text-[11px] text-muted-foreground/70">
+                <footer className="hidden md:block border-t border-border px-4 sm:px-6 py-4 text-center text-[11px] text-muted-foreground/70">
                     Created By Zahradev &middot; LMS Mokopani Versi 1.0
                 </footer>
                 
