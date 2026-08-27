@@ -79,7 +79,8 @@ export function MobileBottomNav() {
             .filter(sec => sec.items.length > 0);
     }, [sections, searchQuery]);
 
-    const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
+    const { url } = usePage();
+    const currentPath = url || (typeof window !== 'undefined' ? window.location.pathname : '');
 
     return (
         <div className="md:hidden print:hidden fixed bottom-0 left-0 right-0 z-40 bg-card/95 backdrop-blur-lg border-t border-border/70 shadow-[0_-8px_24px_rgba(0,0,0,0.06)] dark:shadow-[0_-8px_24px_rgba(0,0,0,0.3)] pb-safe transition-all">
@@ -93,12 +94,18 @@ export function MobileBottomNav() {
                             <a
                                 key={item.title}
                                 href={item.url}
-                                className="group relative flex flex-col items-center justify-center flex-1 h-full py-1 text-sky-600 dark:text-sky-400 hover:text-sky-700 transition-transform active:scale-90"
+                                className={`group relative flex flex-col items-center justify-center flex-1 h-full py-1 transition-all active:scale-90 ${
+                                    isActive ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
+                                }`}
                             >
-                                <div className="flex items-center justify-center h-7 w-7 rounded-xl bg-sky-500/10 group-hover:bg-sky-500/20 transition-colors">
-                                    <item.icon className="h-4 w-4" />
+                                <div className={`flex items-center justify-center h-7 w-12 rounded-full transition-all duration-200 ${
+                                    isActive ? 'bg-primary/15 text-primary shadow-xs' : 'bg-transparent'
+                                }`}>
+                                    <item.icon className={`h-4 w-4 transition-transform ${isActive ? 'stroke-[2.5]' : 'stroke-2'}`} />
                                 </div>
-                                <span className="text-[10px] font-bold tracking-tight truncate max-w-[64px] text-center mt-0.5">
+                                <span className={`text-[10px] tracking-tight truncate max-w-[64px] text-center mt-0.5 ${
+                                    isActive ? 'font-black text-primary' : 'font-semibold text-muted-foreground'
+                                }`}>
                                     {item.title}
                                 </span>
                             </a>
