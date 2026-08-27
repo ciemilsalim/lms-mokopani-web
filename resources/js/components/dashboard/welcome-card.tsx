@@ -43,40 +43,54 @@ export function WelcomeCard({
 
     return (
         <div className={`relative overflow-hidden rounded-2xl md:rounded-3xl bg-gradient-to-br from-primary via-primary/95 to-indigo-700 p-5 sm:p-6 text-primary-foreground shadow-md ${className}`}>
-            <div className="relative z-10 flex items-center justify-between">
-                <div className="min-w-0 flex-1 pr-2 sm:pr-40">
-                    <p className="text-xs sm:text-sm font-medium text-white/80">
+            <div className="relative z-10 flex items-start justify-between">
+                <div className="min-w-0 flex-1 pr-0 sm:pr-40">
+                    <p className="text-xs font-medium text-white/80">
                         Selamat datang kembali,
                     </p>
 
-                    <h1 className="mt-1 text-xl sm:text-2xl font-black flex flex-wrap items-center gap-2 tracking-tight">
-                        <span className="truncate">{identity?.name ?? 'Pengguna'}</span>
-                        <span className="inline-flex items-center rounded-full bg-white/20 px-2.5 py-0.5 text-[11px] font-bold tracking-wide backdrop-blur-xs">
+                    <div className="mt-1 flex flex-wrap items-center gap-2">
+                        <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white leading-tight">
+                            {identity?.name ?? 'Pengguna'}
+                        </h1>
+                        <span className="inline-flex items-center rounded-full bg-white/20 px-2.5 py-0.5 text-[11px] font-bold tracking-wide backdrop-blur-xs text-white">
                             {roleLabelMap[userRole] ?? userRole}
                         </span>
-                    </h1>
+                    </div>
 
                     {identity ? (
-                        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-white/90">
+                        <div className="mt-3 flex flex-col gap-1.5 text-xs text-white/90">
+                            {/* NIP / ID Row */}
                             {identity.idLabel && identity.idValue && (
-                                <span className="bg-black/20 px-2 py-0.5 rounded-md font-mono font-semibold text-[11px]">
-                                    {identity.idLabel}: {identity.idValue}
-                                </span>
-                            )}
-                            {identity.extra && (
-                                <span className="bg-white/15 px-2 py-0.5 rounded-md font-medium text-[11px]">
-                                    {identity.extra}
-                                </span>
-                            )}
-                            <span className="text-white/85 text-[11px]">{identity.sekolah}</span>
-                            {identity.tahunAjaran && (
-                                <>
-                                    <span className="hidden sm:inline text-white/40">•</span>
-                                    <span className="text-white/85 text-[11px]">
-                                        {identity.tahunAjaran} {identity.semester ? `(${identity.semester})` : ''}
+                                <div className="flex items-center gap-2">
+                                    <span className="inline-block bg-black/25 px-2 py-0.5 rounded-md font-mono font-bold text-[11px] text-white tracking-wide">
+                                        {identity.idLabel}: {identity.idValue}
                                     </span>
-                                </>
+                                </div>
                             )}
+
+                            {/* Extra / Teaching Subject */}
+                            {identity.extra && (
+                                <div className="flex items-center gap-1.5 text-white/90 text-xs font-medium">
+                                    <span className="opacity-80">Mengajar:</span>
+                                    <span className="font-bold text-white bg-white/15 px-2 py-0.5 rounded-md text-[11px]">
+                                        {identity.extra}
+                                    </span>
+                                </div>
+                            )}
+
+                            {/* School & Period Context */}
+                            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-white/80 pt-0.5">
+                                <span className="font-semibold text-white/90">{identity.sekolah}</span>
+                                {identity.tahunAjaran && (
+                                    <>
+                                        <span className="text-white/40">•</span>
+                                        <span>
+                                            {identity.tahunAjaran} {identity.semester ? `(${identity.semester})` : ''}
+                                        </span>
+                                    </>
+                                )}
+                            </div>
                         </div>
                     ) : (
                         <p className="mt-1 text-xs text-white/80">
@@ -93,7 +107,6 @@ export function WelcomeCard({
                     alt="Ilustrasi Profile"
                     className="h-40 sm:h-44 w-auto object-contain object-bottom drop-shadow-xl translate-y-1 -scale-x-100"
                     onError={(e) => {
-                        // Fallback gracefully if image asset does not exist
                         e.currentTarget.style.display = 'none';
                     }}
                 />

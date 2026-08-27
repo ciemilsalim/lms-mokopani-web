@@ -153,7 +153,7 @@ export function TeacherDashboardView({
                     illustrationSrc="/teacher-illustration.png"
                 />
 
-                {/* 2. RINGKASAN HARI INI (Summary Cards Grid) */}
+                {/* 2. RINGKASAN HARI INI (Summary Cards 2x2 Grid) */}
                 <div>
                     <SectionHeader
                         title="Ringkasan Pembelajaran"
@@ -193,7 +193,7 @@ export function TeacherDashboardView({
                     </div>
                 </div>
 
-                {/* 3. AKSI CEPAT (Quick Action 2x2 Grid) */}
+                {/* 3. AKSI CEPAT GURU (Quick Action 2x2 Grid) */}
                 <div>
                     <SectionHeader
                         title="Aksi Cepat Guru"
@@ -207,7 +207,7 @@ export function TeacherDashboardView({
                 <div className="grid gap-5 sm:gap-6 lg:grid-cols-2">
                     {/* LEFT COLUMN: Pending Grading & Schedule */}
                     <div className="space-y-5 sm:space-y-6">
-                        {/* TUGAS PERLU DINILAI */}
+                        {/* TUGAS PERLU DINILAI (Prominent Focal Point) */}
                         <PendingTaskList
                             items={pendingGradingItems}
                             actionHref="/assignments"
@@ -247,11 +247,11 @@ export function TeacherDashboardView({
 
                             <CardContent className="p-3.5 sm:p-4 space-y-2.5">
                                 {recentAnnouncements.length === 0 ? (
-                                    <div className="py-6 text-center text-muted-foreground text-xs font-medium">
+                                    <div className="py-4 text-center text-muted-foreground text-xs font-medium">
                                         Belum ada pengumuman baru
                                     </div>
                                 ) : (
-                                    recentAnnouncements.slice(0, 3).map((ann) => (
+                                    recentAnnouncements.slice(0, 2).map((ann) => (
                                         <Link
                                             key={ann.id}
                                             href="/announcements"
@@ -278,16 +278,57 @@ export function TeacherDashboardView({
                     </div>
                 </div>
 
-                {/* 5. SECONDARY DATA SECTION: PROGRESS SISWA (Flexible Table / List) */}
+                {/* 5. SECONDARY DATA SECTION: PROGRESS PEMBELAJARAN (Summary-First on Mobile, Table on Desktop) */}
                 {courseData.length > 0 && (
                     <Card className="rounded-2xl border border-border/70 shadow-xs bg-card overflow-hidden">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/60 p-4 sm:p-5 bg-muted/20">
                             <div>
                                 <h2 className="font-bold text-foreground text-base sm:text-lg">Progress Pembelajaran Siswa</h2>
-                                <p className="text-xs text-muted-foreground mt-0.5">Status penyelesaian asesmen per siswa</p>
+                                <p className="text-xs text-muted-foreground mt-0.5">Ringkasan & status penyelesaian asesmen ({totalFiltered} siswa)</p>
                             </div>
 
-                            <div className="flex flex-wrap items-center gap-2">
+                            <div className="flex items-center justify-between sm:justify-end gap-2">
+                                <Link
+                                    href="/students"
+                                    className="text-xs font-bold text-primary hover:underline inline-flex items-center gap-1 min-h-[44px] px-3 py-1.5 rounded-xl border border-primary/20 bg-primary/5 hover:bg-primary/10 transition-colors"
+                                >
+                                    Lihat Semua Siswa <ChevronRight className="h-3.5 w-3.5" />
+                                </Link>
+                            </div>
+                        </div>
+
+                        {/* Mobile Summary Cards Preview (3-5 Items max on Mobile) */}
+                        <div className="block sm:hidden divide-y divide-border/50">
+                            {paginatedData.slice(0, 5).map((row, i) => (
+                                <div key={i} className="p-3.5 space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-xs font-bold text-foreground truncate">{row.student}</span>
+                                        <Badge
+                                            variant={row.progress >= 75 ? 'success' : row.progress >= 50 ? 'warning' : 'secondary'}
+                                            className="text-[10px] font-bold px-2 py-0.5 rounded-md"
+                                        >
+                                            {row.status || `${row.progress}%`}
+                                        </Badge>
+                                    </div>
+                                    <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                                        <span>{row.course}</span>
+                                        {row.class_name && <span className="font-medium text-foreground">{row.class_name}</span>}
+                                    </div>
+                                    <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
+                                        <div
+                                            className={`h-full rounded-full transition-all duration-300 ${
+                                                row.progress >= 75 ? 'bg-emerald-500' : row.progress >= 50 ? 'bg-amber-500' : 'bg-primary'
+                                            }`}
+                                            style={{ width: `${Math.min(100, Math.max(0, row.progress))}%` }}
+                                        />
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Desktop Full Table View */}
+                        <div className="hidden sm:block">
+                            <div className="p-4 border-b border-border/40 bg-muted/10 flex flex-wrap items-center gap-3">
                                 {classes.length > 0 && (
                                     <select
                                         value={classFilter}
@@ -295,7 +336,7 @@ export function TeacherDashboardView({
                                             setClassFilter(e.target.value === 'all' ? 'all' : Number(e.target.value));
                                             setPage(1);
                                         }}
-                                        className="rounded-xl border border-border bg-background px-3 py-2 text-xs font-semibold text-foreground outline-none focus:ring-2 focus:ring-primary/20 min-h-[44px]"
+                                        className="rounded-xl border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground outline-none focus:ring-2 focus:ring-primary/20 min-h-[44px]"
                                     >
                                         <option value="all">Semua Kelas</option>
                                         {classes.map((c) => (
@@ -311,7 +352,7 @@ export function TeacherDashboardView({
                                             setSubjectFilter(e.target.value === 'all' ? 'all' : Number(e.target.value));
                                             setPage(1);
                                         }}
-                                        className="rounded-xl border border-border bg-background px-3 py-2 text-xs font-semibold text-foreground outline-none focus:ring-2 focus:ring-primary/20 min-h-[44px]"
+                                        className="rounded-xl border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground outline-none focus:ring-2 focus:ring-primary/20 min-h-[44px]"
                                     >
                                         <option value="all">Semua Mapel</option>
                                         {subjects.map((s) => (
@@ -320,58 +361,38 @@ export function TeacherDashboardView({
                                     </select>
                                 )}
                             </div>
-                        </div>
 
-                        <div className="w-full">
-                            <div className="divide-y divide-border/50">
-                                {paginatedData.map((row) => (
-                                    <div
-                                        key={`${row.student_id}-${row.subject_id}`}
-                                        className="flex flex-col sm:flex-row sm:items-center justify-between p-4 gap-3 hover:bg-muted/30 transition-colors"
-                                    >
-                                        <div className="flex items-center gap-3 min-w-0">
-                                            <Avatar className="h-9 w-9 shrink-0">
-                                                <AvatarFallback className="text-xs font-bold bg-primary/10 text-primary">
-                                                    {row.student.split(' ').map((n) => n[0]).slice(0, 2).join('')}
-                                                </AvatarFallback>
-                                            </Avatar>
-                                            <div className="min-w-0">
-                                                <h4 className="text-xs sm:text-sm font-bold text-foreground truncate">{row.student}</h4>
-                                                <p className="text-[11px] text-muted-foreground truncate">
-                                                    {row.class_name ? `${row.class_name} • ` : ''}{row.course}
-                                                </p>
-                                            </div>
-                                        </div>
-
-                                        <div className="flex items-center gap-3 justify-between sm:justify-end w-full sm:w-auto">
-                                            <div className="flex items-center gap-2 w-32 sm:w-40">
-                                                <div className="h-2 flex-1 rounded-full bg-muted overflow-hidden">
-                                                    <div
-                                                        className="h-full rounded-full transition-all"
-                                                        style={{
-                                                            width: `${row.progress}%`,
-                                                            backgroundColor: row.progress >= 80 ? '#10B981' : row.progress >= 50 ? '#F59E0B' : '#EB5757',
-                                                        }}
-                                                    />
-                                                </div>
-                                                <span className="text-xs font-bold text-muted-foreground w-8 text-right">
-                                                    {row.progress}%
-                                                </span>
-                                            </div>
-
-                                            <Badge
-                                                variant={row.status === 'completed' ? 'default' : 'secondary'}
-                                                className={`text-[10px] font-bold px-2 py-0.5 rounded-lg border-0 ${
-                                                    row.status === 'completed'
-                                                        ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
-                                                        : 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
-                                                }`}
-                                            >
-                                                {row.status === 'completed' ? 'Selesai' : 'Aktif'}
-                                            </Badge>
-                                        </div>
-                                    </div>
-                                ))}
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left text-xs">
+                                    <thead className="bg-muted/40 border-b border-border/60 text-muted-foreground font-semibold">
+                                        <tr>
+                                            <th className="p-3 sm:p-4">Nama Siswa</th>
+                                            <th className="p-3 sm:p-4">Kelas</th>
+                                            <th className="p-3 sm:p-4">Mata Pelajaran</th>
+                                            <th className="p-3 sm:p-4 text-center">Progress</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-border/40">
+                                        {paginatedData.map((row, i) => (
+                                            <tr key={i} className="hover:bg-muted/30 transition-colors">
+                                                <td className="p-3 sm:p-4 font-bold text-foreground">{row.student}</td>
+                                                <td className="p-3 sm:p-4 text-muted-foreground">{row.class_name || '-'}</td>
+                                                <td className="p-3 sm:p-4 text-muted-foreground">{row.course}</td>
+                                                <td className="p-3 sm:p-4 text-center">
+                                                    <div className="flex items-center justify-center gap-2">
+                                                        <div className="w-20 bg-muted rounded-full h-1.5 overflow-hidden">
+                                                            <div
+                                                                className="bg-primary h-full rounded-full"
+                                                                style={{ width: `${Math.min(100, Math.max(0, row.progress))}%` }}
+                                                            />
+                                                        </div>
+                                                        <span className="font-bold text-foreground text-[11px]">{row.progress}%</span>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
                             </div>
 
                             {/* Pagination Footer */}
