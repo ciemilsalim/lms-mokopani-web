@@ -52,12 +52,12 @@ export function PendingTaskList({
                         className="py-8"
                     />
                 ) : (
-                    <div className="divide-y divide-border/50">
+                    <div className="divide-y divide-border/50 w-full min-w-0">
                         {items.map((task) => (
                             <Link
                                 key={task.id}
                                 href={`/assignments/${task.id}/grade-view`}
-                                className="group flex items-center gap-3 p-3.5 sm:p-4 hover:bg-muted/40 active:bg-muted/60 transition-all min-h-[52px]"
+                                className="group flex items-center justify-between gap-2.5 p-3 sm:p-4 hover:bg-muted/40 active:bg-muted/60 transition-all min-h-[52px] w-full min-w-0"
                             >
                                 <div className="flex-1 min-w-0">
                                     <h3 className="text-xs sm:text-sm font-bold text-foreground truncate group-hover:text-primary transition-colors">
@@ -68,14 +68,14 @@ export function PendingTaskList({
                                     </p>
                                 </div>
 
-                                <div className="flex items-center gap-2 shrink-0">
+                                <div className="flex items-center gap-1.5 shrink-0">
                                     <Badge
                                         variant="destructive"
-                                        className="text-[10px] font-bold px-2 py-0.5 rounded-lg shadow-2xs"
+                                        className="text-[10px] font-bold px-2 py-0.5 rounded-lg shadow-2xs shrink-0 max-w-[120px] truncate"
                                     >
-                                        {task.pending_count} Perlu Dinilai
+                                        {task.pending_count} Nilai
                                     </Badge>
-                                    <ChevronRight className="h-4 w-4 text-muted-foreground/60 group-hover:text-foreground transition-colors" />
+                                    <ChevronRight className="h-4 w-4 text-muted-foreground/60 group-hover:text-foreground transition-colors shrink-0" />
                                 </div>
                             </Link>
                         ))}

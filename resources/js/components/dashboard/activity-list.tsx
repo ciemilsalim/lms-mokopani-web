@@ -51,25 +51,27 @@ export function ActivityList({
                         className="py-6"
                     />
                 ) : (
-                    <div className="divide-y divide-border/50">
+                    <div className="divide-y divide-border/50 w-full min-w-0">
                         {activities.slice(0, 5).map((act) => {
                             const info = typeMap[act.type] || typeMap.material;
                             return (
                                 <div
                                     key={act.id}
-                                    className="flex items-center gap-3 p-3.5 sm:p-4 hover:bg-muted/30 transition-colors min-h-[48px]"
+                                    className="flex items-center justify-between gap-2.5 p-3 sm:p-4 hover:bg-muted/30 transition-colors min-h-[48px] w-full min-w-0"
                                 >
-                                    <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${info.color}`}>
-                                        <info.icon className="h-4 w-4" />
-                                    </div>
+                                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                        <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${info.color}`}>
+                                            <info.icon className="h-4 w-4" />
+                                        </div>
 
-                                    <div className="flex-1 min-w-0">
-                                        <h3 className="text-xs sm:text-sm font-bold text-foreground truncate">
-                                            {act.title}
-                                        </h3>
-                                        <p className="text-[11px] text-muted-foreground truncate mt-0.5">
-                                            {act.subject}
-                                        </p>
+                                        <div className="flex-1 min-w-0">
+                                            <h3 className="text-xs sm:text-sm font-bold text-foreground truncate">
+                                                {act.title}
+                                            </h3>
+                                            <p className="text-[11px] text-muted-foreground truncate mt-0.5">
+                                                {act.subject}
+                                            </p>
+                                        </div>
                                     </div>
 
                                     <div className="text-right shrink-0">

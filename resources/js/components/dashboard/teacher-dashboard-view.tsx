@@ -204,9 +204,9 @@ export function TeacherDashboardView({
                 </div>
 
                 {/* 4. MAIN CONTENT TWO-COLUMN LAYOUT ON TABLET/DESKTOP */}
-                <div className="grid gap-5 sm:gap-6 lg:grid-cols-2">
+                <div className="grid gap-5 sm:gap-6 lg:grid-cols-2 w-full min-w-0">
                     {/* LEFT COLUMN: Pending Grading & Schedule */}
-                    <div className="space-y-5 sm:space-y-6">
+                    <div className="space-y-5 sm:space-y-6 w-full min-w-0">
                         {/* TUGAS PERLU DINILAI (Prominent Focal Point) */}
                         <PendingTaskList
                             items={pendingGradingItems}
@@ -222,7 +222,7 @@ export function TeacherDashboardView({
                     </div>
 
                     {/* RIGHT COLUMN: Recent Activity & Announcements */}
-                    <div className="space-y-5 sm:space-y-6">
+                    <div className="space-y-5 sm:space-y-6 w-full min-w-0">
                         {/* AKTIVITAS TERBARU */}
                         <ActivityList
                             activities={recentActivities}
@@ -230,22 +230,22 @@ export function TeacherDashboardView({
 
                         {/* PENGUMUMAN SEKOLAH */}
                         <Card className="rounded-2xl border border-border/70 shadow-xs bg-card overflow-hidden w-full min-w-0">
-                            <div className="flex items-center justify-between border-b border-border/60 p-4 sm:p-5 bg-muted/20">
-                                <div className="flex items-center gap-2.5">
-                                    <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-rose-500/15 text-rose-600 dark:text-rose-400">
+                            <div className="flex items-center justify-between border-b border-border/60 p-3.5 sm:p-5 bg-muted/20 w-full min-w-0">
+                                <div className="flex items-center gap-2 min-w-0 flex-1">
+                                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-rose-500/15 text-rose-600 dark:text-rose-400">
                                         <Bell className="h-4 w-4" />
                                     </div>
-                                    <h2 className="font-bold text-foreground text-base sm:text-lg">Pengumuman Sekolah</h2>
+                                    <h2 className="font-bold text-foreground text-sm sm:text-base truncate">Pengumuman Sekolah</h2>
                                 </div>
                                 <Link
                                     href="/announcements"
-                                    className="text-xs font-bold text-primary hover:underline flex items-center gap-1 min-h-[44px] px-2 py-1 rounded-lg"
+                                    className="text-xs font-bold text-primary hover:underline flex items-center gap-1 min-h-[44px] px-2 py-1 rounded-lg shrink-0"
                                 >
-                                    Semua <ChevronRight className="h-3.5 w-3.5" />
+                                    <span>Semua</span> <ChevronRight className="h-3.5 w-3.5" />
                                 </Link>
                             </div>
 
-                            <CardContent className="p-3.5 sm:p-4 space-y-2.5">
+                            <CardContent className="p-3.5 sm:p-4 space-y-2.5 w-full min-w-0">
                                 {recentAnnouncements.length === 0 ? (
                                     <div className="py-4 text-center text-muted-foreground text-xs font-medium">
                                         Belum ada pengumuman baru
@@ -255,17 +255,17 @@ export function TeacherDashboardView({
                                         <Link
                                             key={ann.id}
                                             href="/announcements"
-                                            className="block p-3 rounded-xl border border-border/50 bg-card hover:bg-muted/40 transition active:scale-98 min-h-[48px]"
+                                            className="block p-3 rounded-xl border border-border/50 bg-card hover:bg-muted/40 transition active:scale-98 min-h-[48px] w-full min-w-0"
                                         >
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <span className={`h-2 w-2 rounded-full ${
+                                            <div className="flex items-center gap-2 mb-1 w-full min-w-0">
+                                                <span className={`h-2 w-2 rounded-full shrink-0 ${
                                                     ann.priority === 'important' ? 'bg-rose-500' :
                                                     ann.priority === 'warning' ? 'bg-amber-500' : 'bg-primary'
                                                 }`} />
-                                                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                                                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground truncate">
                                                     {ann.teacher_name || 'Sekolah'}
                                                 </span>
-                                                <span className="text-[10px] text-muted-foreground ml-auto">{ann.created_at}</span>
+                                                <span className="text-[10px] text-muted-foreground ml-auto shrink-0">{ann.created_at}</span>
                                             </div>
                                             <h3 className="text-xs font-bold text-foreground line-clamp-2 leading-snug">
                                                 {ann.title}

@@ -55,45 +55,47 @@ export function ScheduleList({
                         className="py-6"
                     />
                 ) : (
-                    schedules.map((item, index) => (
-                        <div
-                            key={index}
-                            className={`group relative flex items-center gap-3.5 p-3 rounded-xl transition-all min-h-[52px] ${
-                                item.is_current
-                                    ? 'bg-primary/10 ring-1 ring-primary/30'
-                                    : 'bg-card hover:bg-muted/40 border border-border/40'
-                            }`}
-                        >
+                    <div className="space-y-2 w-full min-w-0">
+                        {schedules.map((item, index) => (
                             <div
-                                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-xs font-black ${
+                                key={index}
+                                className={`group relative flex items-center gap-3 p-3 rounded-xl transition-all min-h-[52px] w-full min-w-0 ${
                                     item.is_current
-                                        ? 'bg-primary text-primary-foreground shadow-xs'
-                                        : 'bg-muted text-muted-foreground'
+                                        ? 'bg-primary/10 ring-1 ring-primary/30'
+                                        : 'bg-card hover:bg-muted/40 border border-border/40'
                                 }`}
                             >
-                                {index + 1}
-                            </div>
-
-                            <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2">
-                                    <h3 className="text-xs sm:text-sm font-bold text-foreground truncate">
-                                        {item.subject}
-                                    </h3>
-                                    {item.is_current && (
-                                        <span className="inline-flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[10px] font-black text-primary-foreground animate-pulse">
-                                            Sedang Berlangsung
-                                        </span>
-                                    )}
+                                <div
+                                    className={`flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl text-xs font-black ${
+                                        item.is_current
+                                            ? 'bg-primary text-primary-foreground shadow-xs'
+                                            : 'bg-muted text-muted-foreground'
+                                    }`}
+                                >
+                                    {index + 1}
                                 </div>
-                                <p className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-1.5 truncate">
-                                    {item.class && <span className="font-semibold text-foreground/80">Kelas {item.class}</span>}
-                                    {item.class && item.time && <span>•</span>}
-                                    <Clock className="h-3 w-3 inline text-muted-foreground" />
-                                    <span>{item.time}</span>
-                                </p>
+
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                        <h3 className="text-xs sm:text-sm font-bold text-foreground truncate max-w-[140px] xs:max-w-[200px]">
+                                            {item.subject}
+                                        </h3>
+                                        {item.is_current && (
+                                            <span className="inline-flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[9px] font-black text-primary-foreground animate-pulse shrink-0">
+                                                Live
+                                            </span>
+                                        )}
+                                    </div>
+                                    <p className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-1.5 truncate">
+                                        {item.class && <span className="font-semibold text-foreground/80">Kelas {item.class}</span>}
+                                        {item.class && item.time && <span>•</span>}
+                                        <Clock className="h-3 w-3 inline text-muted-foreground shrink-0" />
+                                        <span className="truncate">{item.time}</span>
+                                    </p>
+                                </div>
                             </div>
-                        </div>
-                    ))
+                        ))}
+                    </div>
                 )}
             </CardContent>
         </Card>
