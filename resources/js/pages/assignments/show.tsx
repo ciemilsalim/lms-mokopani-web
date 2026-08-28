@@ -631,6 +631,7 @@ export default function ShowAssignment({
     assigned_classes = [],
 }: ShowAssignmentProps) {
     const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
+    const [isRetryActive, setIsRetryActive] = useState(false);
     const isSummativeLocked = assignment.assessment_type === 'summative' && my_submission && !my_submission.is_remedial_open;
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
     const [emojiFilter, setEmojiFilter] = useState<'all' | 'paham' | 'ragu' | 'bingung'>('all');
@@ -2796,10 +2797,12 @@ export default function ShowAssignment({
 
                                             <div className="space-y-8">
                                                 {(assignment.instrument_config?.questions || []).map((q: any, idx: number) => {
-                                                    const isAnswered = studentForm.data.answers[q.id] !== undefined && studentForm.data.answers[q.id] !== '' && !my_submission?.is_remedial_open;
+                                                    const isSubmitted = Boolean(my_submission);
+                                                    const showCorrection = isSubmitted && !isRetryActive && !my_submission?.is_remedial_open;
                                                     const studentAns = studentForm.data.answers[q.id];
+                                                    const isAnswered = studentAns !== undefined && studentAns !== '';
                                                     
-                                                    // Determine correct option for formative instant check
+                                                    // Determine correct option for post-submission check
                                                     const rawCorrectId = q.answer || q.options?.find((o: any) => o.is_correct)?.id || '';
                                                     const correctOptId = String(rawCorrectId).trim().toLowerCase();
                                                     const normalizedStudentAns = String(studentAns ?? '').trim().toLowerCase();
@@ -2807,30 +2810,30 @@ export default function ShowAssignment({
                                                         if (!a || !b) return false;
                                                         return a === b || (b.startsWith(a) && a.length === 1) || (a.startsWith(b) && b.length === 1);
                                                     };
-                                                    const isCorrect = isAnswered && isAnswerMatch(normalizedStudentAns, correctOptId);
+                                                    const isCorrect = showCorrection && isAnswerMatch(normalizedStudentAns, correctOptId);
 
                                                     return (
                                                         <div 
-                                                            key={q.id} 
+                                                            key={q.id || idx} 
                                                             className={`group relative transition-all duration-150 rounded-xl border border-slate-200 bg-white dark:border-slate-800 border-slate-100 dark:bg-[#0b0f19]/30 bg-white/70 backdrop-blur-md p-6 shadow-none ${
-                                                                isAnswered 
-                                                                    ? assignment.instrument_type === 'formative_quiz'
-                                                                        ? isCorrect
-                                                                            ? 'border-emerald-500/50 bg-emerald-500/5 dark:bg-emerald-950/10'
-                                                                            : 'border-rose-500/50 bg-rose-500/5 dark:bg-rose-950/10'
-                                                                        : 'border-primary/50 bg-primary/5 dark:bg-[#1E1E2A]' 
-                                                                    : 'hover:border-[#6E79D6]/50 hover:bg-slate-50/50 dark:hover:bg-[#1E1E2A]/20'
+                                                                showCorrection
+                                                                    ? isCorrect
+                                                                        ? 'border-emerald-500/50 bg-emerald-500/5 dark:bg-emerald-950/10'
+                                                                        : 'border-rose-500/50 bg-rose-500/5 dark:bg-rose-950/10'
+                                                                    : isAnswered
+                                                                        ? 'border-primary/50 bg-primary/5 dark:bg-[#1E1E2A]' 
+                                                                        : 'hover:border-[#6E79D6]/50 hover:bg-slate-50/50 dark:hover:bg-[#1E1E2A]/20'
                                                             }`}
                                                         >
                                                             <div className="flex items-center gap-3 mb-6">
-                                                                <span className="font-mono text-xs font-semibold text-slate-500 text-muted-foreground bg-slate-50 dark:bg-slate-950/40 bg-slate-50 px-2.5 py-1 rounded-[4px] border border-slate-200 dark:border-slate-800 border-slate-100">Q{idx + 1}</span>
-                                                                {assignment.instrument_type === 'formative_quiz' && isAnswered && (
+                                                                <span className="font-mono text-xs font-semibold text-slate-500 text-muted-foreground bg-slate-50 dark:bg-slate-950/40 bg-slate-50 px-2.5 py-1 rounded-[4px] border border-slate-200 dark:border-slate-800 border-slate-100">Soal #{idx + 1}</span>
+                                                                {showCorrection && (
                                                                     <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded ${
                                                                         isCorrect 
-                                                                            ? 'bg-emerald-500 text-white animate-bounce' 
+                                                                            ? 'bg-emerald-500 text-white' 
                                                                             : 'bg-rose-500 text-white'
                                                                     }`}>
-                                                                        {isCorrect ? '✨ Benar!' : '❌ Kurang Tepat'}
+                                                                        {isCorrect ? '✨ Benar' : '❌ Kurang Tepat'}
                                                                     </span>
                                                                 )}
                                                                 <div className="h-px flex-1 bg-slate-200 dark:bg-[#2C2C3A]"></div>
@@ -2839,8 +2842,10 @@ export default function ShowAssignment({
                                                             <div className="space-y-6">
                                                                 <div className="space-y-4">
                                                                     <div className="flex items-start justify-between gap-4">
-                                                                        <h4 className="leading-relaxed text-sm font-semibold tracking-[-0.01em] text-slate-850 text-foreground">{q.text}</h4>
-                                                                        <span className="px-2 py-0.5 rounded-[4px] text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap border bg-primary/10 text-primary dark:text-[#6E79D6] border-primary/20">{q.points} Pts</span>
+                                                                        <h4 className="leading-relaxed text-sm font-bold tracking-[-0.01em] text-slate-850 text-foreground">
+                                                                            {q.question || q.text || q.prompt || `Pertanyaan #${idx + 1}`}
+                                                                        </h4>
+                                                                        <span className="px-2 py-0.5 rounded-[4px] text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap border bg-primary/10 text-primary dark:text-[#6E79D6] border-primary/20">{q.points || 20} Pts</span>
                                                                     </div>
                                                                     {q.image_url && (
                                                                         <div className="rounded-xl overflow-hidden border border-border shadow-md max-w-xl">
@@ -2857,11 +2862,10 @@ export default function ShowAssignment({
                                                                                 const isSelected = isAnswerMatch(normalizedStudentAns, optId);
                                                                                 const isOptCorrect = isAnswerMatch(optId, correctOptId);
 
-                                                                                // For Formative Quiz: Show green if this option is correct (and question is answered), or red if selected but incorrect.
                                                                                 let btnStyle = 'border-slate-200 dark:border-slate-800 border-slate-100 bg-white dark:bg-slate-950/40 bg-slate-50 hover:bg-slate-50 dark:hover:bg-[#1F1F2E] hover:border-[#6E79D6]/50';
                                                                                 let badgeStyle = 'border-slate-200 dark:border-slate-800 border-slate-100 bg-slate-50 dark:bg-[#0b0f19]/30 bg-white/70 backdrop-blur-md text-slate-500 text-muted-foreground group-hover/opt:border-[#6E79D6] group-hover/opt:text-[#6E79D6]';
                                                                                 
-                                                                                if (assignment.instrument_type === 'formative_quiz' && isAnswered) {
+                                                                                if (showCorrection) {
                                                                                     if (isOptCorrect) {
                                                                                         btnStyle = 'border-emerald-500 bg-emerald-500/10 dark:bg-emerald-950/20';
                                                                                         badgeStyle = 'bg-emerald-500 border-emerald-500 text-white';
@@ -2869,10 +2873,10 @@ export default function ShowAssignment({
                                                                                         btnStyle = 'border-rose-500 bg-rose-500/10 dark:bg-rose-950/20';
                                                                                         badgeStyle = 'bg-rose-500 border-rose-500 text-white';
                                                                                     } else {
-                                                                                        btnStyle = 'border-slate-200 dark:border-slate-800 border-slate-100 bg-white dark:bg-slate-950/40 bg-slate-50 opacity-50 cursor-not-allowed';
+                                                                                        btnStyle = 'border-slate-200 dark:border-slate-800 border-slate-100 bg-white dark:bg-slate-950/40 bg-slate-50 opacity-60';
                                                                                     }
                                                                                 } else {
-                                                                                    // Default written test style
+                                                                                    // Test taking mode
                                                                                     if (isSelected) {
                                                                                         btnStyle = 'border-primary bg-primary/10 dark:bg-[#1E1E2A]';
                                                                                         badgeStyle = 'bg-primary border-primary text-white';
@@ -2883,18 +2887,17 @@ export default function ShowAssignment({
                                                                                     <button 
                                                                                         key={optId}
                                                                                         type="button"
-                                                                                        disabled={isSummativeLocked}
+                                                                                        disabled={isSummativeLocked || (showCorrection && assignment.assessment_type === 'summative')}
                                                                                         onClick={() => {
-                                                                                            // Prevent changing formative quiz answers to support active instant study
-                                                                                            if (assignment.instrument_type === 'formative_quiz' && isAnswered) return;
+                                                                                            if (showCorrection && assignment.assessment_type === 'summative') return;
                                                                                             studentForm.setData('answers', { ...studentForm.data.answers, [q.id]: optId });
                                                                                         }}
-                                                                                        className={`flex items-center gap-3 p-3.5 rounded-xl border transition-all text-left group/opt ${btnStyle} ${isSummativeLocked ? 'opacity-55 cursor-not-allowed' : ''}`}
+                                                                                        className={`flex items-center gap-3 p-3.5 rounded-xl border transition-all text-left group/opt cursor-pointer ${btnStyle} ${isSummativeLocked ? 'opacity-55 cursor-not-allowed' : ''}`}
                                                                                     >
                                                                                         <div className={`h-6 w-6 rounded-full border flex items-center justify-center flex-shrink-0 font-semibold text-[11px] font-mono transition-all ${badgeStyle}`}>
                                                                                             {String.fromCharCode(65 + optIdx)}
                                                                                         </div>
-                                                                                        <span className={`text-xs font-semibold ${isSelected ? 'text-primary text-foreground' : 'text-slate-700 text-muted-foreground'}`}>{opt.text}</span>
+                                                                                        <span className={`text-xs font-semibold ${isSelected ? 'text-primary font-bold' : 'text-slate-700 text-muted-foreground'}`}>{opt.text}</span>
                                                                                     </button>
                                                                                 );
                                                                             })}
@@ -2907,11 +2910,11 @@ export default function ShowAssignment({
                                                                                 <input 
                                                                                     type="text"
                                                                                     value={studentForm.data.answers[q.id] || ''}
-                                                                                    disabled={(assignment.instrument_type === 'formative_quiz' && isAnswered) || isSummativeLocked}
+                                                                                    disabled={isSummativeLocked || (showCorrection && assignment.assessment_type === 'summative')}
                                                                                     onChange={(e) => studentForm.setData('answers', { ...studentForm.data.answers, [q.id]: e.target.value })}
                                                                                     placeholder="Ketik jawaban singkat Anda..."
                                                                                     className={`w-full rounded-lg border bg-white dark:bg-slate-950/40 bg-slate-50 px-4 py-3 text-xs font-medium focus:ring-1 focus:ring-primary/15 transition-all text-slate-800 text-foreground placeholder-slate-450 dark:placeholder-[#8A8F98] ${
-                                                                                        assignment.instrument_type === 'formative_quiz' && isAnswered
+                                                                                        showCorrection
                                                                                             ? isCorrect
                                                                                                 ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400 bg-emerald-500/5'
                                                                                                 : 'border-rose-500 text-rose-600 dark:text-rose-450 bg-rose-500/5'
@@ -2920,20 +2923,6 @@ export default function ShowAssignment({
                                                                                 />
                                                                                 <PenTool className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                                                                             </div>
-                                                                            {assignment.instrument_type === 'formative_quiz' && !isAnswered && (
-                                                                                <button
-                                                                                    type="button"
-                                                                                    onClick={() => {
-                                                                                        if (studentForm.data.answers[q.id]?.trim()) {
-                                                                                            // Toggle answer lock
-                                                                                            studentForm.setData('answers', { ...studentForm.data.answers, [q.id]: studentForm.data.answers[q.id] });
-                                                                                        }
-                                                                                    }}
-                                                                                    className="text-[10px] text-primary hover:underline font-bold uppercase tracking-wider block mt-1"
-                                                                                >
-                                                                                    Konfirmasi Jawaban
-                                                                                </button>
-                                                                            )}
                                                                         </div>
                                                                     )}
 
@@ -2942,7 +2931,7 @@ export default function ShowAssignment({
                                                                             <textarea 
                                                                                 rows={4}
                                                                                 value={studentForm.data.answers[q.id] || ''}
-                                                                                disabled={isSummativeLocked}
+                                                                                disabled={isSummativeLocked || (showCorrection && assignment.assessment_type === 'summative')}
                                                                                 onChange={(e) => studentForm.setData('answers', { ...studentForm.data.answers, [q.id]: e.target.value })}
                                                                                 placeholder="Tuliskan uraian atau penjelasan lengkap Anda..."
                                                                                 className="w-full rounded-lg border border-slate-200 dark:border-slate-800 border-slate-100 bg-white dark:bg-slate-950/40 bg-slate-50 px-4 py-3 text-xs font-medium focus:border-primary focus:ring-1 focus:ring-primary/15 transition-all text-slate-800 text-foreground placeholder-slate-450 dark:placeholder-[#8A8F98] resize-none leading-relaxed disabled:opacity-75 disabled:bg-slate-100 dark:disabled:bg-slate-900/50"
@@ -2951,15 +2940,15 @@ export default function ShowAssignment({
                                                                         </div>
                                                                     )}
 
-                                                                    {/* Formative Instant Feedback Discussion Block */}
-                                                                    {assignment.instrument_type === 'formative_quiz' && isAnswered && (
-                                                                        <div className="mt-4 p-4 rounded-lg bg-slate-50 dark:bg-slate-950/40 bg-slate-50 border border-slate-200 dark:border-slate-800 border-slate-100 animate-in slide-in-from-top-2 duration-300">
+                                                                    {/* Post-Submission Feedback & Answer Guide */}
+                                                                    {showCorrection && (
+                                                                        <div className="mt-4 p-4 rounded-lg bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 animate-in slide-in-from-top-2 duration-300">
                                                                             <div className="flex items-center gap-2 mb-2 text-primary">
                                                                                 <Info className="h-3.5 w-3.5" />
-                                                                                <span className="text-[10px] font-bold uppercase tracking-wider">Pembahasan Kunci Jawaban</span>
+                                                                                <span className="text-[10px] font-bold uppercase tracking-wider">Kunci Jawaban & Pembahasan</span>
                                                                             </div>
                                                                             <p className="text-xs text-slate-600 text-muted-foreground leading-relaxed">
-                                                                                {q.explanation || `Kunci jawaban yang benar adalah ${q.type === 'multiple_choice' ? String.fromCharCode(65 + q.options?.findIndex((o: any) => o.id == correctOptId)) : q.correct_answer || q.answer || '-'}. Silakan ulas kembali materi terkait untuk penguasaan konsep yang lebih mendalam.`}
+                                                                                {q.explanation || q.answer_guide || `Kunci jawaban yang benar adalah ${q.type === 'multiple_choice' ? String.fromCharCode(65 + Math.max(0, q.options?.findIndex((o: any) => o.id == correctOptId || o.is_correct))) : q.correct_answer || q.answer || '-'}.`}
                                                                             </p>
                                                                         </div>
                                                                     )}
@@ -2978,7 +2967,7 @@ export default function ShowAssignment({
                                                         <div className="h-8 w-8 rounded-xl bg-sky-50 dark:bg-sky-950/30 text-primary text-xs font-black flex items-center justify-center flex-shrink-0 shadow-sm border border-sky-100 dark:border-sky-900/30">
                                                             {idx + 1}
                                                         </div>
-                                                        <p className="text-sm font-black text-slate-700 dark:text-slate-200 leading-relaxed pt-1">{q.text}</p>
+                                                        <p className="text-sm font-bold text-slate-700 dark:text-slate-200 leading-relaxed pt-1">{q.question || q.text || q.prompt || `Pertanyaan #${idx + 1}`}</p>
                                                     </div>
                                                     <div className="pl-12">
                                                         {q.type === 'essay' ? (
@@ -4003,9 +3992,30 @@ export default function ShowAssignment({
                                                              </div>
                                                          </div>
                                                      )}
-                                                    {displayScore === null && (
-                                                        <p className="text-[9px] font-black text-amber-500 uppercase tracking-widest animate-pulse">Menunggu Penilaian Guru</p>
-                                                    )}
+                                                     {displayScore === null && (
+                                                         <p className="text-[9px] font-black text-amber-500 uppercase tracking-widest animate-pulse">Menunggu Penilaian Guru</p>
+                                                     )}
+
+                                                     {/* Formative Self-Remedial Button */}
+                                                     {assignment.assessment_type === 'formative' && (
+                                                         <div className="pt-4 border-t border-slate-100 dark:border-slate-800 space-y-2">
+                                                             <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Remedial Mandiri (Formatif):</p>
+                                                             <button
+                                                                 type="button"
+                                                                 onClick={() => {
+                                                                     setIsRetryActive(true);
+                                                                     studentForm.setData('answers', {});
+                                                                 }}
+                                                                 className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold transition shadow-sm cursor-pointer"
+                                                             >
+                                                                 <RotateCcw className="h-3.5 w-3.5" />
+                                                                 <span>Kerjakan Ulang Soal</span>
+                                                             </button>
+                                                             <p className="text-[10px] text-muted-foreground text-center">
+                                                                 Setelah melihat pembahasan, Anda dapat langsung mengulang latihan mandiri untuk memperdalam pemahaman.
+                                                             </p>
+                                                         </div>
+                                                     )}
                                                 </div>
                                             )}
 

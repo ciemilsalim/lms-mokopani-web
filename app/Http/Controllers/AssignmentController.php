@@ -508,6 +508,46 @@ class AssignmentController extends Controller
         };
 
 
+        $instrumentConfig = $assignment->instrument_config;
+        if (is_string($instrumentConfig)) {
+            $instrumentConfig = json_decode($instrumentConfig, true) ?: [];
+        }
+
+        // If a student is accessing, apply shuffle settings if enabled
+        if ($user->student && !empty($instrumentConfig['questions']) && is_array($instrumentConfig['questions'])) {
+            $questions = $instrumentConfig['questions'];
+            $seed = (int) $user->student->id + (int) $assignment->id + (int) ($mySubmission?->attempts ?? 0);
+
+            if (!empty($instrumentConfig['shuffle_questions'])) {
+                mt_srand($seed);
+                for ($i = count($questions) - 1; $i > 0; $i--) {
+                    $j = mt_rand(0, $i);
+                    $tmp = $questions[$i];
+                    $questions[$i] = $questions[$j];
+                    $questions[$j] = $tmp;
+                }
+            }
+
+            if (!empty($instrumentConfig['shuffle_options'])) {
+                foreach ($questions as $qIdx => &$q) {
+                    if (!empty($q['options']) && is_array($q['options'])) {
+                        $opts = $q['options'];
+                        mt_srand($seed + ($qIdx + 1) * 31);
+                        for ($i = count($opts) - 1; $i > 0; $i--) {
+                            $j = mt_rand(0, $i);
+                            $tmp = $opts[$i];
+                            $opts[$i] = $opts[$j];
+                            $opts[$j] = $tmp;
+                        }
+                        $q['options'] = $opts;
+                    }
+                }
+                unset($q);
+            }
+
+            $instrumentConfig['questions'] = $questions;
+        }
+
         return Inertia::render('assignments/show', [
             'assignment' => [
                 'id'                => $assignment->id,
@@ -520,7 +560,7 @@ class AssignmentController extends Controller
                 'passing_grade'     => $assignment->passing_grade,
                 'assessment_type'   => $assignment->assessment_type,
                 'instrument_type'   => $assignment->instrument_type,
-                'instrument_config' => $assignment->instrument_config,
+                'instrument_config' => $instrumentConfig,
                 'scoring_tool'      => $assignment->scoring_tool,
                 'scoring_tool_config' => $assignment->scoring_tool_config,
                 'submissions'       => $assignment->submissions->map(fn ($s) => [

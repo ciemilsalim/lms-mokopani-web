@@ -183,6 +183,8 @@ export function AssessmentForm({
                     { name: 'Baik', desc: 'Siswa menguasai seluruh indikator ketuntasan dengan baik (KKTP).' },
                     { name: 'Sangat Baik', desc: 'Siswa menunjukkan penguasaan luar biasa dan siap pengayaan.' }
                 ],
+            shuffle_questions: initialAssignment?.instrument_config?.shuffle_questions ?? false,
+            shuffle_options: initialAssignment?.instrument_config?.shuffle_options ?? false,
             kktp: initialAssignment?.instrument_config?.kktp ?? {
                 approach: 'score_interval',
                 passing_level: 'Baik',
@@ -1009,6 +1011,49 @@ export function AssessmentForm({
                                         className="w-full rounded-xl border border-border bg-background px-3.5 py-2 text-xs sm:text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition min-h-[75px]"
                                     />
                                     {errors.description && <p className="text-xs font-bold text-destructive mt-1">{errors.description}</p>}
+                                </div>
+
+                                {/* 🔀 Pengacakan Soal & Kunci Jawaban */}
+                                <div className="grid sm:grid-cols-2 gap-2.5 pt-2 border-t border-border/60">
+                                    <label className="flex items-start gap-2.5 cursor-pointer p-2.5 rounded-lg bg-background/60 border border-border/80 hover:bg-background transition">
+                                        <input
+                                            type="checkbox"
+                                            checked={Boolean(data.instrument_config.shuffle_questions)}
+                                            onChange={(e) => setData('instrument_config', {
+                                                ...data.instrument_config,
+                                                shuffle_questions: e.target.checked
+                                            })}
+                                            className="mt-0.5 h-4 w-4 rounded border-border text-primary focus:ring-primary cursor-pointer"
+                                        />
+                                        <div className="min-w-0">
+                                            <span className="text-xs font-bold text-foreground flex items-center gap-1">
+                                                🔀 Acak Posisi Soal
+                                            </span>
+                                            <p className="text-[10px] text-muted-foreground leading-tight mt-0.5">
+                                                Nomor urut butir soal akan diacak otomatis saat siswa mengerjakan.
+                                            </p>
+                                        </div>
+                                    </label>
+
+                                    <label className="flex items-start gap-2.5 cursor-pointer p-2.5 rounded-lg bg-background/60 border border-border/80 hover:bg-background transition">
+                                        <input
+                                            type="checkbox"
+                                            checked={Boolean(data.instrument_config.shuffle_options)}
+                                            onChange={(e) => setData('instrument_config', {
+                                                ...data.instrument_config,
+                                                shuffle_options: e.target.checked
+                                            })}
+                                            className="mt-0.5 h-4 w-4 rounded border-border text-primary focus:ring-primary cursor-pointer"
+                                        />
+                                        <div className="min-w-0">
+                                            <span className="text-xs font-bold text-foreground flex items-center gap-1">
+                                                🔀 Acak Posisi Pilihan Jawaban (A-D)
+                                            </span>
+                                            <p className="text-[10px] text-muted-foreground leading-tight mt-0.5">
+                                                Posisi opsi pilihan ganda dan kunci jawaban akan diacak untuk setiap siswa.
+                                            </p>
+                                        </div>
+                                    </label>
                                 </div>
                             </div>
 
