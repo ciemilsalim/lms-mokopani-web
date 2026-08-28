@@ -111,11 +111,11 @@ ATURAN WAJIB PENYUSUNAN:
    - Format: [Jenis]: [Topik Inti Materi] (Maksimal 3 sampai 5 kata setelah tanda titik dua).
    - JANGAN menyalin kalimat deskripsi TP yang panjang. Ekstrak hanya topik materi intinya saja!
    - Contoh format yang BENAR:
-     * Tes: "Tes Formatif: Perangkat Input Komputer"
-     * Observasi: "Observasi: Praktik Rangkaian Listrik"
-     * LKPD: "LKPD: Analisis Ekosistem Kolam"
-     * Lisan: "Tes Lisan: Sistem Pencernaan Manusia"
-   - DILARANG menggunakan teks template umum seperti "Judul Singkat Relevan", "Asesmen Pembelajaran", atau kalimat panjang.
+     * Tes: 'Tes Formatif: Perangkat Input Komputer'
+     * Observasi: 'Observasi: Praktik Rangkaian Listrik'
+     * LKPD: 'LKPD: Analisis Ekosistem Kolam'
+     * Lisan: 'Tes Lisan: Sistem Pencernaan Manusia'
+   - DILARANG menggunakan teks template umum seperti 'Judul Singkat Relevan', 'Asesmen Pembelajaran', atau kalimat panjang.
 
 2. SPESIFIKASI PER JENIS INSTRUMEN:
 

@@ -102,15 +102,12 @@ const formatConciseAssessmentTitle = (
         // Strip operational verbs and pedagogical preambles
         cleanTp = cleanTp.replace(/^(Peserta\s+didik|Siswa|Murid)\s+(dapat|mampu|diharapkan)\s+(untuk\s+)?([a-z]+kan|[a-z]+i|[a-z]+)\s+/i, '').trim();
         cleanTp = cleanTp.replace(/^(Mengidentifikasi|Menganalisis|Memahami|Menjelaskan|Mendeskripsikan|Menyajikan|Mempraktikkan|Menyimpulkan|Mengevaluasi|Menerapkan)\s+/i, '').trim();
-        cleanTp = cleanTp.split('.')[0].trim();
+        cleanTp = cleanTp.replace(/\s+(untuk|pada|dalam|guna|sebagai|terkait|mengenai)\s+.*/i, '').trim();
         
-        // Take at most 5-6 words or 45 chars
+        // Take at most 5 words
         const words = cleanTp.split(/\s+/);
-        if (words.length > 6) {
-            cleanTp = words.slice(0, 6).join(' ');
-        }
-        if (cleanTp.length > 45) {
-            cleanTp = cleanTp.substring(0, 45).trim();
+        if (words.length > 5) {
+            cleanTp = words.slice(0, 5).join(' ');
         }
         topic = cleanTp;
     }

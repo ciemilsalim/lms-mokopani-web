@@ -265,9 +265,15 @@ class InstructionalSmartService
         $firstLine = trim($lines[0] ?? $clean);
         $firstLine = trim(explode('.', $firstLine)[0]);
         
-        if (mb_strlen($firstLine) > 50) {
-            $firstLine = mb_substr($firstLine, 0, 50);
+        // Strip trailing preposition phrases (e.g. "untuk memecahkan masalah" -> clean topic)
+        $firstLine = preg_replace('/\s+(untuk|pada|dalam|guna|sebagai|terkait|mengenai)\s+.*/i', '', $firstLine);
+        
+        $words = preg_split('/\s+/', $firstLine);
+        if (count($words) > 5) {
+            $firstLine = implode(' ', array_slice($words, 0, 5));
         }
+        
+        $firstLine = ucwords(mb_strtolower(trim($firstLine)));
         
         return $firstLine ?: 'Materi Pembelajaran';
     }
