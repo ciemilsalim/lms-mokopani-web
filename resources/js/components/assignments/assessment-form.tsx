@@ -4,8 +4,9 @@ import {
     ChevronLeft, CheckCircle2, AlertCircle,
     BookOpen, Users, Target, GraduationCap, Info, FileText, Plus, Trash2,
     Check, Lock, Sparkles, Layers, ListChecks, Calendar, ArrowRight,
-    Loader2, Sliders, Edit3, HelpCircle, Eye
+    Loader2, Sliders, Edit3, HelpCircle, Eye, Calculator, CheckSquare, Zap
 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import axios from 'axios';
 
 interface Objective {
@@ -121,8 +122,16 @@ const defaultFormativeQuestions = [
         type: 'essay',
         question: 'Jelaskan dengan bahasamu sendiri bagaimana penerapan materi ini dapat membantumu menyelesaikan tugas proyek atau tantangan nyata!',
         points: 20,
-        options: []
+        options: [],
+        answer_guide: 'Jawaban harus mencakup: 1. Penjelasan konsep dasar materi, 2. Contoh kasus penerapan nyata, dan 3. Refleksi manfaat solusi bagi diri atau kelompok.'
     }
+];
+
+const defaultPpaIntervals = [
+    { min: 0, max: 40, label: '0 – 40%', status: 'Belum Tuntas', desc: 'Perlu bimbingan dan remedial di seluruh bagian.' },
+    { min: 41, max: 65, label: '41 – 65%', status: 'Belum Tuntas', desc: 'Remedial di bagian yang belum dikuasai.' },
+    { min: 66, max: 85, label: '66 – 85%', status: 'Tuntas (KKTP)', desc: 'Sudah mencapai ketuntasan, tidak perlu remedial.' },
+    { min: 86, max: 100, label: '86 – 100%', status: 'Tuntas (Pengayaan)', desc: 'Sudah mencapai ketuntasan, perlu pengayaan atau tantangan lebih.' }
 ];
 
 export function AssessmentForm({
@@ -175,12 +184,26 @@ export function AssessmentForm({
                     { name: 'Sangat Baik', desc: 'Siswa menunjukkan penguasaan luar biasa dan siap pengayaan.' }
                 ],
             kktp: initialAssignment?.instrument_config?.kktp ?? {
-                approach: 'rubric',
+                approach: 'score_interval',
                 passing_level: 'Baik',
                 threshold: 75,
+                intervals: defaultPpaIntervals
             }
         },
     });
+
+    // Calculate Accumulated Total Points Live from Questions
+    const totalAccumulatedScore = useMemo(() => {
+        const questions = data.instrument_config.questions || [];
+        return questions.reduce((sum: number, q: any) => sum + (Number(q.points) || 0), 0);
+    }, [data.instrument_config.questions]);
+
+    // Automatically sync max_points with accumulated question score
+    useEffect(() => {
+        if (totalAccumulatedScore > 0 && data.max_points !== totalAccumulatedScore) {
+            setData('max_points', totalAccumulatedScore);
+        }
+    }, [totalAccumulatedScore]);
 
     // Filtered Subjects & Classes from teachings (Sorted naturally)
     const availableSubjects = useMemo(() => {
@@ -238,11 +261,11 @@ export function AssessmentForm({
             case 'quiz_survey':
                 return {
                     name: 'Tes Tertulis / Kuis',
-                    desc: 'Buat butir soal pilihan ganda, isian, atau esai beserta kunci jawaban dan rubrik ketuntasan KKTP.',
-                    capabilities: ['Pilihan Ganda & Esai', 'Kunci Jawaban Otomatis', 'Rubrik Kriteria KKTP'],
-                    ctaLabel: 'Buat Soal & Rubrik dengan AI',
+                    desc: 'Buat 5 butir soal pilihan ganda & esai lengkap dengan kunci jawaban, bobot skor, dan konversi KKTP PPA 2025.',
+                    capabilities: ['Pilihan Ganda & Esai', 'Kunci Jawaban Otomatis', 'Akumulasi Skor 100 Poin', 'Konversi Interval KKTP'],
+                    ctaLabel: 'Buat Soal & Kunci Jawaban dengan AI',
                     manualLabel: 'Tambah Butir Soal',
-                    loadingLabel: 'Menyusun Soal & Rubrik...',
+                    loadingLabel: 'Menyusun Soal, Kunci & Rubrik...',
                     icon: ListChecks,
                 };
             case 'observation_checklist':
@@ -342,7 +365,7 @@ export function AssessmentForm({
             if (res.data) {
                 const d = res.data;
 
-                // 1. Process Questions (Clean Plain Text for Question & Options)
+                // 1. Process Questions with Points & Answer Keys (Clean Plain Text)
                 let formattedQuestions: any[] = [];
                 if (d.questions && Array.isArray(d.questions) && d.questions.length > 0) {
                     formattedQuestions = d.questions.map((q: any, idx: number) => {
@@ -352,6 +375,7 @@ export function AssessmentForm({
                             type: isMcq ? 'multiple_choice' : (q.type || 'short_answer'),
                             question: cleanPlainText(q.question || q.text || ''),
                             points: q.points || 20,
+                            answer_guide: cleanPlainText(q.answer_guide || q.answer || ''),
                             options: isMcq && q.options ? q.options.map((opt: any, optIdx: number) => ({
                                 id: opt.id || `opt_${optIdx}_${Date.now()}`,
                                 text: cleanPlainText(opt.text || opt.label || ''),
@@ -394,7 +418,7 @@ export function AssessmentForm({
                     const finalTitle = d.title ? cleanPlainText(d.title) : (prev.title || defaultGeneratedTitle);
                     const finalDesc = (d.description || d.instructions || d.stimulus) 
                         ? cleanPlainText(d.description || d.instructions || d.stimulus) 
-                        : (prev.description || 'Kerjakan tugas/soal asesmen berikut dengan teliti sesuai petunjuk guru.');
+                        : (prev.description || 'Kerjakan 5 butir soal di bawah ini dengan teliti sesuai petunjuk.');
 
                     return {
                         ...prev,
@@ -407,11 +431,17 @@ export function AssessmentForm({
                             indicators: formattedIndicators,
                             criteria: cleanPlainText(d.criteria || ''),
                             stimulus: cleanPlainText(d.stimulus || ''),
+                            kktp: {
+                                approach: prev.instrument_config?.kktp?.approach || 'score_interval',
+                                passing_level: 'Baik',
+                                threshold: 75,
+                                intervals: prev.instrument_config?.kktp?.intervals || defaultPpaIntervals
+                            }
                         }
                     };
                 });
 
-                setAiSuccessMessage(`✨ Seluruh draf asesmen berhasil dibuat! (${formattedQuestions.length} butir soal + Rubrik KKTP)`);
+                setAiSuccessMessage(`✨ 5 Soal, Kunci Jawaban & Rubrik KKTP PPA 2025 berhasil disusun!`);
                 setTimeout(() => setAiSuccessMessage(null), 5000);
             }
         } catch (err) {
@@ -433,7 +463,8 @@ export function AssessmentForm({
                 { id: `opt_2_${Date.now()}`, text: '', is_correct: false },
                 { id: `opt_3_${Date.now()}`, text: '', is_correct: false },
                 { id: `opt_4_${Date.now()}`, text: '', is_correct: false },
-            ]
+            ],
+            answer_guide: ''
         };
         const currentQuestions = data.instrument_config.questions || [];
         setData('instrument_config', {
@@ -454,6 +485,24 @@ export function AssessmentForm({
     const handleQuestionTextChange = (qIndex: number, text: string) => {
         const currentQuestions = [...(data.instrument_config.questions || [])];
         currentQuestions[qIndex].question = text;
+        setData('instrument_config', {
+            ...data.instrument_config,
+            questions: currentQuestions
+        });
+    };
+
+    const handleQuestionPointsChange = (qIndex: number, points: number) => {
+        const currentQuestions = [...(data.instrument_config.questions || [])];
+        currentQuestions[qIndex].points = Math.max(0, points);
+        setData('instrument_config', {
+            ...data.instrument_config,
+            questions: currentQuestions
+        });
+    };
+
+    const handleQuestionGuideChange = (qIndex: number, guide: string) => {
+        const currentQuestions = [...(data.instrument_config.questions || [])];
+        currentQuestions[qIndex].answer_guide = guide;
         setData('instrument_config', {
             ...data.instrument_config,
             questions: currentQuestions
@@ -520,7 +569,46 @@ export function AssessmentForm({
         });
     };
 
-    // Rubric Level Handler
+    // Distribute equal points (e.g. 100 / count)
+    const handleEvenlyDistributePoints = () => {
+        const questions = data.instrument_config.questions || [];
+        if (questions.length === 0) return;
+        const avg = Math.floor(100 / questions.length);
+        const remainder = 100 - (avg * questions.length);
+        const updated = questions.map((q: any, idx: number) => ({
+            ...q,
+            points: idx === 0 ? avg + remainder : avg
+        }));
+        setData('instrument_config', {
+            ...data.instrument_config,
+            questions: updated
+        });
+    };
+
+    // KKTP Handlers
+    const handleKktpApproachChange = (approach: string) => {
+        setData('instrument_config', {
+            ...data.instrument_config,
+            kktp: {
+                ...data.instrument_config.kktp,
+                approach,
+                intervals: data.instrument_config.kktp?.intervals || defaultPpaIntervals
+            }
+        });
+    };
+
+    const handleIntervalChange = (idx: number, field: string, val: any) => {
+        const currentIntervals = [...(data.instrument_config.kktp?.intervals || defaultPpaIntervals)];
+        currentIntervals[idx] = { ...currentIntervals[idx], [field]: val };
+        setData('instrument_config', {
+            ...data.instrument_config,
+            kktp: {
+                ...data.instrument_config.kktp,
+                intervals: currentIntervals
+            }
+        });
+    };
+
     const handleRubricDescChange = (lvlIdx: number, desc: string) => {
         const currentLevels = [...(data.instrument_config.levels || [])];
         if (currentLevels[lvlIdx]) {
@@ -562,11 +650,12 @@ export function AssessmentForm({
 
     const steps = [
         { id: 1, label: 'Konteks' },
-        { id: 2, label: 'Instrumen' },
+        { id: 2, label: 'Instrumen & Soal' },
         { id: 3, label: 'Detail' },
     ];
 
     const questionsCount = data.instrument_config.questions?.length || 0;
+    const currentKktpApproach = data.instrument_config.kktp?.approach || 'score_interval';
 
     return (
         <div className="w-full space-y-3.5 pb-24">
@@ -716,7 +805,7 @@ export function AssessmentForm({
                     </div>
                 )}
 
-                {/* ── STEP 2: INSTRUMEN & HASIL GENERATE LENGKAP (LANGSUNG TAMPIL & BISA DISUNTING) ── */}
+                {/* ── STEP 2: INSTRUMEN, BUTIR SOAL & KONVERSI KKTP PPA 2025 ── */}
                 {currentStep === 2 && (
                     <div className="w-full space-y-4 fade-in">
                         {/* 1. Instrument Type Selector */}
@@ -870,7 +959,7 @@ export function AssessmentForm({
                             )}
                         </div>
 
-                        {/* ── BAGIAN DRAF LENGKAP HASIL AI / INPUT MANUAL (LANGSUNG DITAMPILKAN & BISA DISUNTING) ── */}
+                        {/* ── BAGIAN DRAF SOAL, KUNCI JAWABAN & SKOR ── */}
                         <div className="rounded-2xl border border-border bg-card p-4 sm:p-5 space-y-5 shadow-xs">
                             <div className="flex items-center justify-between border-b border-border/50 pb-2.5">
                                 <div className="flex items-center gap-2">
@@ -879,10 +968,10 @@ export function AssessmentForm({
                                     </div>
                                     <div>
                                         <h3 className="text-xs sm:text-sm font-black text-foreground">
-                                            Draf Hasil Asesmen & Penyuntingan
+                                            Daftar Butir Soal, Kunci Jawaban & Skor
                                         </h3>
                                         <p className="text-[10px] text-muted-foreground">
-                                            Periksa dan sesuaikan seluruh rancangan judul, petunjuk, butir soal, dan rubrik KKTP di bawah ini.
+                                            Setiap soal memiliki skor mandiri dan kunci jawaban yang diakumulasi secara otomatis.
                                         </p>
                                     </div>
                                 </div>
@@ -919,23 +1008,39 @@ export function AssessmentForm({
                                 </div>
                             </div>
 
-                            {/* 2. Daftar Butir Soal / Pertanyaan */}
+                            {/* 2. Daftar Butir Soal & Skor Header Bar */}
                             <div className="space-y-3">
-                                <div className="flex items-center justify-between border-b border-border/40 pb-2">
-                                    <div className="flex items-center gap-1.5">
-                                        <ListChecks className="h-4 w-4 text-primary" />
-                                        <span className="text-xs font-black text-foreground">
-                                            Daftar Butir Soal ({questionsCount})
-                                        </span>
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3 rounded-xl bg-primary/5 border border-primary/20">
+                                    <div className="flex items-center gap-2">
+                                        <Calculator className="h-4 w-4 text-primary shrink-0" />
+                                        <div>
+                                            <span className="text-xs font-black text-foreground">
+                                                Total Skor Akumulasi: <span className="text-primary font-black">{totalAccumulatedScore} Poin</span>
+                                            </span>
+                                            <p className="text-[10px] text-muted-foreground">
+                                                Tersusun dari {questionsCount} butir soal (PG & Esai)
+                                            </p>
+                                        </div>
                                     </div>
-                                    <button
-                                        type="button"
-                                        onClick={handleAddQuestion}
-                                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-background border border-border text-foreground hover:bg-muted text-xs font-bold transition cursor-pointer"
-                                    >
-                                        <Plus className="h-3 w-3 text-primary" />
-                                        <span>{aiContext.manualLabel}</span>
-                                    </button>
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={handleEvenlyDistributePoints}
+                                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-background border border-border text-foreground hover:bg-muted text-[11px] font-bold transition cursor-pointer"
+                                            title="Bagi rata total 100 poin ke seluruh butir soal"
+                                        >
+                                            <Zap className="h-3 w-3 text-amber-500" />
+                                            <span>Bagi Rata (100 Poin)</span>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={handleAddQuestion}
+                                            className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-primary text-primary-foreground text-[11px] font-black transition cursor-pointer hover:bg-primary/90"
+                                        >
+                                            <Plus className="h-3 w-3" />
+                                            <span>{aiContext.manualLabel}</span>
+                                        </button>
+                                    </div>
                                 </div>
 
                                 {questionsCount === 0 ? (
@@ -949,6 +1054,7 @@ export function AssessmentForm({
                                     <div className="space-y-3">
                                         {data.instrument_config.questions.map((q: any, qIdx: number) => (
                                             <div key={q.id || qIdx} className="rounded-xl border border-border bg-background p-3.5 space-y-2.5 shadow-2xs">
+                                                {/* Card Header: Number, Type, Points & Delete */}
                                                 <div className="flex items-center justify-between gap-2 border-b border-border/40 pb-2">
                                                     <div className="flex items-center gap-2">
                                                         <span className="text-[11px] font-black text-primary bg-primary/10 px-2 py-0.5 rounded">
@@ -964,16 +1070,34 @@ export function AssessmentForm({
                                                             <option value="essay">Uraian / Esai</option>
                                                         </select>
                                                     </div>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => handleRemoveQuestion(qIdx)}
-                                                        className="p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition"
-                                                        title="Hapus Soal"
-                                                    >
-                                                        <Trash2 className="h-3.5 w-3.5" />
-                                                    </button>
+
+                                                    <div className="flex items-center gap-2">
+                                                        {/* Score / Points input */}
+                                                        <div className="flex items-center gap-1 bg-muted/50 px-2 py-0.5 rounded-lg border border-border/70">
+                                                            <span className="text-[10px] font-bold text-muted-foreground">Skor:</span>
+                                                            <input
+                                                                type="number"
+                                                                min={0}
+                                                                max={100}
+                                                                value={q.points || 0}
+                                                                onChange={(e) => handleQuestionPointsChange(qIdx, Number(e.target.value))}
+                                                                className="w-12 text-center text-xs font-black text-primary bg-transparent outline-none"
+                                                            />
+                                                            <span className="text-[10px] text-muted-foreground font-bold">Poin</span>
+                                                        </div>
+
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleRemoveQuestion(qIdx)}
+                                                            className="p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition"
+                                                            title="Hapus Soal"
+                                                        >
+                                                            <Trash2 className="h-3.5 w-3.5" />
+                                                        </button>
+                                                    </div>
                                                 </div>
 
+                                                {/* Question Text */}
                                                 <textarea
                                                     rows={2}
                                                     placeholder={`Tuliskan pertanyaan/teks soal #${qIdx + 1}...`}
@@ -982,43 +1106,90 @@ export function AssessmentForm({
                                                     className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground outline-none focus:border-primary"
                                                 />
 
+                                                {/* Multiple Choice Options & Answer Key Selection */}
                                                 {q.type === 'multiple_choice' && (
                                                     <div className="space-y-1.5 pt-1">
-                                                        <p className="text-[10px] font-bold text-muted-foreground">
-                                                            Pilihan Opsi Jawaban (Pilih radio untuk menandai kunci jawaban yang benar):
-                                                        </p>
-                                                        {(q.options || []).map((opt: any, optIdx: number) => (
-                                                            <div key={opt.id || optIdx} className="flex items-center gap-2">
-                                                                <input
-                                                                    type="radio"
-                                                                    name={`correct_${qIdx}`}
-                                                                    checked={Boolean(opt.is_correct)}
-                                                                    onChange={() => handleOptionCorrectChange(qIdx, optIdx)}
-                                                                    className="h-4 w-4 text-primary focus:ring-primary cursor-pointer shrink-0"
-                                                                />
-                                                                <input
-                                                                    type="text"
-                                                                    placeholder={`Opsi ${String.fromCharCode(65 + optIdx)}`}
-                                                                    value={opt.text}
-                                                                    onChange={(e) => handleOptionTextChange(qIdx, optIdx, e.target.value)}
-                                                                    className="flex-1 rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs text-foreground outline-none"
-                                                                />
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => handleRemoveOption(qIdx, optIdx)}
-                                                                    className="p-1 text-muted-foreground hover:text-destructive transition rounded"
+                                                        <div className="flex items-center justify-between">
+                                                            <p className="text-[10px] font-bold text-muted-foreground">
+                                                                Pilihan Opsi & Kunci Jawaban Benar:
+                                                            </p>
+                                                            <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">
+                                                                ● Klik radio untuk menentukan kunci
+                                                            </span>
+                                                        </div>
+
+                                                        {(q.options || []).map((opt: any, optIdx: number) => {
+                                                            const isCorrect = Boolean(opt.is_correct);
+                                                            return (
+                                                                <div 
+                                                                    key={opt.id || optIdx} 
+                                                                    className={`flex items-center gap-2 p-1.5 rounded-xl border transition ${
+                                                                        isCorrect 
+                                                                            ? 'bg-emerald-500/10 border-emerald-500/40 text-foreground' 
+                                                                            : 'bg-card border-border text-foreground'
+                                                                    }`}
                                                                 >
-                                                                    <Trash2 className="h-3 w-3" />
-                                                                </button>
-                                                            </div>
-                                                        ))}
+                                                                    <div className="flex items-center gap-1.5 pl-1 shrink-0">
+                                                                        <input
+                                                                            type="radio"
+                                                                            name={`correct_${qIdx}`}
+                                                                            checked={isCorrect}
+                                                                            onChange={() => handleOptionCorrectChange(qIdx, optIdx)}
+                                                                            className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                                                                        />
+                                                                        <span className={`text-[11px] font-black w-4 text-center ${isCorrect ? 'text-emerald-700 dark:text-emerald-300' : 'text-muted-foreground'}`}>
+                                                                            {String.fromCharCode(65 + optIdx)}
+                                                                        </span>
+                                                                    </div>
+
+                                                                    <input
+                                                                        type="text"
+                                                                        placeholder={`Teks pilihan ${String.fromCharCode(65 + optIdx)}`}
+                                                                        value={opt.text}
+                                                                        onChange={(e) => handleOptionTextChange(qIdx, optIdx, e.target.value)}
+                                                                        className="flex-1 bg-transparent px-2 py-1 text-xs text-foreground outline-none border-none"
+                                                                    />
+
+                                                                    {isCorrect && (
+                                                                        <span className="text-[9px] font-black uppercase bg-emerald-600 text-white px-2 py-0.5 rounded-md shrink-0">
+                                                                            Kunci Benar
+                                                                        </span>
+                                                                    )}
+
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => handleRemoveOption(qIdx, optIdx)}
+                                                                        className="p-1 text-muted-foreground hover:text-destructive transition rounded shrink-0"
+                                                                    >
+                                                                        <Trash2 className="h-3 w-3" />
+                                                                    </button>
+                                                                </div>
+                                                            );
+                                                        })}
                                                         <button
                                                             type="button"
                                                             onClick={() => handleAddOption(qIdx)}
-                                                            className="inline-flex items-center gap-1 text-[11px] font-bold text-primary hover:underline pt-1"
+                                                            className="inline-flex items-center gap-1 text-[11px] font-bold text-primary hover:underline pt-1 cursor-pointer"
                                                         >
                                                             <Plus className="h-3 w-3" /> Tambah Pilihan Opsi
                                                         </button>
+                                                    </div>
+                                                )}
+
+                                                {/* Essay / Short Answer: Rubric & Answer Key Guide */}
+                                                {q.type !== 'multiple_choice' && (
+                                                    <div className="space-y-1 pt-1 p-2.5 rounded-xl bg-muted/30 border border-border/70">
+                                                        <label className="text-[10px] font-bold text-foreground flex items-center gap-1">
+                                                            <CheckSquare className="h-3 w-3 text-primary" />
+                                                            <span>Pedoman Kunci Jawaban & Rubrik Penilaian Guru</span>
+                                                        </label>
+                                                        <textarea
+                                                            rows={2}
+                                                            placeholder="Tuliskan kata kunci, indikator jawaban ideal, atau kriteria penilaian untuk memudahkan koreksi..."
+                                                            value={q.answer_guide || ''}
+                                                            onChange={(e) => handleQuestionGuideChange(qIdx, e.target.value)}
+                                                            className="w-full rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs text-foreground outline-none focus:border-primary"
+                                                        />
                                                     </div>
                                                 )}
                                             </div>
@@ -1027,54 +1198,120 @@ export function AssessmentForm({
                                 )}
                             </div>
 
-                            {/* 3. Rubrik Deskriptor 4 Level Ketercapaian (KKTP) */}
+                            {/* 3. KONVERSI KE PENDEKATAN KKTP SESUAI PPA 2025 */}
                             <div className="space-y-3 pt-3 border-t border-border/50">
-                                <div className="p-3 rounded-xl bg-muted/40 border border-border/70 space-y-1">
-                                    <div className="flex items-center gap-1.5">
-                                        <Sliders className="h-3.5 w-3.5 text-primary" />
-                                        <span className="text-xs font-black text-foreground">
-                                            Rubrik Deskriptor 4 Tingkat Ketercapaian (KKTP)
-                                        </span>
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                    <div>
+                                        <h4 className="text-xs font-black text-foreground flex items-center gap-1.5">
+                                            <Sliders className="h-4 w-4 text-primary" />
+                                            <span>Konversi Nilai ke KKTP (Panduan Pembelajaran & Asesmen 2025)</span>
+                                        </h4>
+                                        <p className="text-[10px] text-muted-foreground">
+                                            Pilih pendekatan KKTP untuk mengonversi akumulasi skor pilihan ganda & esai ke tindak lanjut pembelajaran.
+                                        </p>
                                     </div>
-                                    <p className="text-[10px] text-muted-foreground">
-                                        Deskriptor kualitatif yang mengukur tingkat penguasaan kompetensi siswa (Perlu Bimbingan, Cukup, Baik/Tuntas, dan Sangat Baik).
-                                    </p>
+
+                                    {/* KKTP Approach Tabs */}
+                                    <div className="flex items-center gap-1 p-1 bg-muted/60 rounded-xl shrink-0">
+                                        <button
+                                            type="button"
+                                            onClick={() => handleKktpApproachChange('score_interval')}
+                                            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                                                currentKktpApproach === 'score_interval'
+                                                    ? 'bg-card text-foreground shadow-2xs font-black'
+                                                    : 'text-muted-foreground hover:text-foreground'
+                                            }`}
+                                        >
+                                            Interval Nilai (PPA 2025)
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleKktpApproachChange('rubric')}
+                                            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                                                currentKktpApproach === 'rubric'
+                                                    ? 'bg-card text-foreground shadow-2xs font-black'
+                                                    : 'text-muted-foreground hover:text-foreground'
+                                            }`}
+                                        >
+                                            Rubrik Kualitatif
+                                        </button>
+                                    </div>
                                 </div>
 
-                                <div className="grid gap-2.5 sm:grid-cols-2">
-                                    {(data.instrument_config.levels || [
-                                        { name: 'Perlu Bimbingan', desc: 'Siswa belum menunjukkan pemahaman konsep dasar.' },
-                                        { name: 'Cukup', desc: 'Siswa memahami sebagian besar konsep dasar.' },
-                                        { name: 'Baik', desc: 'Siswa menguasai seluruh indikator dengan baik.' },
-                                        { name: 'Sangat Baik', desc: 'Siswa menunjukkan penguasaan luar biasa.' }
-                                    ]).map((lvl: any, lIdx: number) => {
-                                        const badgeColors = [
-                                            'bg-rose-500/10 text-rose-600 border-rose-200 dark:border-rose-900',
-                                            'bg-amber-500/10 text-amber-600 border-amber-200 dark:border-amber-900',
-                                            'bg-emerald-500/10 text-emerald-600 border-emerald-200 dark:border-emerald-900',
-                                            'bg-blue-500/10 text-blue-600 border-blue-200 dark:border-blue-900'
-                                        ];
-                                        return (
-                                            <div key={lIdx} className="p-3 rounded-xl border border-border bg-background space-y-2">
-                                                <div className="flex items-center justify-between">
-                                                    <span className={`text-[11px] font-black px-2 py-0.5 rounded-md border ${badgeColors[lIdx % 4]}`}>
-                                                        {lvl.name}
-                                                    </span>
-                                                    <span className="text-[10px] text-muted-foreground font-bold">
-                                                        {lIdx === 0 ? 'Belum Tuntas' : lIdx === 1 ? 'Hampir Tuntas' : lIdx === 2 ? 'Tuntas (KKTP)' : 'Pengayaan'}
-                                                    </span>
+                                {/* PENDEKATAN 1: INTERVAL NILAI & TINDAK LANJUT PPA 2025 */}
+                                {currentKktpApproach === 'score_interval' && (
+                                    <div className="space-y-2.5">
+                                        <div className="grid gap-2 sm:grid-cols-2">
+                                            {(data.instrument_config.kktp?.intervals || defaultPpaIntervals).map((iv: any, ivIdx: number) => {
+                                                const isPassed = iv.status.toLowerCase().includes('tuntas') || iv.status.toLowerCase().includes('pengayaan');
+                                                return (
+                                                    <div 
+                                                        key={ivIdx} 
+                                                        className={`p-3 rounded-xl border space-y-1.5 ${
+                                                            isPassed 
+                                                                ? 'bg-emerald-500/5 border-emerald-500/30' 
+                                                                : 'bg-amber-500/5 border-amber-500/30'
+                                                        }`}
+                                                    >
+                                                        <div className="flex items-center justify-between">
+                                                            <div className="flex items-center gap-1.5">
+                                                                <span className="text-xs font-black text-foreground">{iv.label}</span>
+                                                                <span className="text-[10px] text-muted-foreground">({iv.min}–{iv.max} Poin)</span>
+                                                            </div>
+                                                            <Badge variant={isPassed ? 'default' : 'secondary'} className="text-[9px] font-black">
+                                                                {iv.status}
+                                                            </Badge>
+                                                        </div>
+                                                        <textarea
+                                                            rows={2}
+                                                            value={iv.desc}
+                                                            onChange={(e) => handleIntervalChange(ivIdx, 'desc', e.target.value)}
+                                                            className="w-full rounded-lg border border-border/80 bg-background px-2 py-1 text-xs text-foreground outline-none focus:border-primary"
+                                                        />
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* PENDEKATAN 2: RUBRIK KUALITATIF 4 LEVEL */}
+                                {currentKktpApproach === 'rubric' && (
+                                    <div className="grid gap-2.5 sm:grid-cols-2">
+                                        {(data.instrument_config.levels || [
+                                            { name: 'Perlu Bimbingan', desc: 'Siswa belum menunjukkan pemahaman konsep dasar.' },
+                                            { name: 'Cukup', desc: 'Siswa memahami sebagian besar konsep dasar.' },
+                                            { name: 'Baik', desc: 'Siswa menguasai seluruh indikator dengan baik.' },
+                                            { name: 'Sangat Baik', desc: 'Siswa menunjukkan penguasaan luar biasa.' }
+                                        ]).map((lvl: any, lIdx: number) => {
+                                            const badgeColors = [
+                                                'bg-rose-500/10 text-rose-600 border-rose-200 dark:border-rose-900',
+                                                'bg-amber-500/10 text-amber-600 border-amber-200 dark:border-amber-900',
+                                                'bg-emerald-500/10 text-emerald-600 border-emerald-200 dark:border-emerald-900',
+                                                'bg-blue-500/10 text-blue-600 border-blue-200 dark:border-blue-900'
+                                            ];
+                                            return (
+                                                <div key={lIdx} className="p-3 rounded-xl border border-border bg-background space-y-2">
+                                                    <div className="flex items-center justify-between">
+                                                        <span className={`text-[11px] font-black px-2 py-0.5 rounded-md border ${badgeColors[lIdx % 4]}`}>
+                                                            {lvl.name}
+                                                        </span>
+                                                        <span className="text-[10px] text-muted-foreground font-bold">
+                                                            {lIdx === 0 ? 'Belum Tuntas' : lIdx === 1 ? 'Hampir Tuntas' : lIdx === 2 ? 'Tuntas (KKTP)' : 'Pengayaan'}
+                                                        </span>
+                                                    </div>
+                                                    <textarea
+                                                        rows={3}
+                                                        placeholder={`Tuliskan kriteria deskriptor untuk level ${lvl.name}...`}
+                                                        value={lvl.desc || ''}
+                                                        onChange={(e) => handleRubricDescChange(lIdx, e.target.value)}
+                                                        className="w-full rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs text-foreground outline-none focus:border-primary"
+                                                    />
                                                 </div>
-                                                <textarea
-                                                    rows={3}
-                                                    placeholder={`Tuliskan kriteria deskriptor untuk level ${lvl.name}...`}
-                                                    value={lvl.desc || ''}
-                                                    onChange={(e) => handleRubricDescChange(lIdx, e.target.value)}
-                                                    className="w-full rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs text-foreground outline-none focus:border-primary"
-                                                />
-                                            </div>
-                                        );
-                                    })}
-                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -1103,11 +1340,14 @@ export function AssessmentForm({
                                 <Badge variant="outline" className="text-[10px] font-bold">
                                     {data.assessment_type === 'initial' ? 'Asesmen Awal' : data.assessment_type === 'summative' ? 'Asesmen Sumatif' : 'Asesmen Formatif'}
                                 </Badge>
-                                <Badge variant="outline" className="text-[10px] font-bold">
-                                    {questionsCount} Butir Soal
+                                <Badge variant="outline" className="text-[10px] font-bold text-primary">
+                                    {questionsCount} Soal ({totalAccumulatedScore} Poin)
                                 </Badge>
                                 <Badge variant="outline" className="text-[10px] font-bold">
                                     {data.school_classes.length} Kelas Target
+                                </Badge>
+                                <Badge variant="outline" className="text-[10px] font-bold">
+                                    KKTP: {currentKktpApproach === 'score_interval' ? 'Interval Nilai (PPA 2025)' : 'Rubrik Kualitatif'}
                                 </Badge>
                             </div>
                         </div>
@@ -1134,7 +1374,7 @@ export function AssessmentForm({
                         {/* Points & KKTP Grid */}
                         <div className="grid grid-cols-2 gap-3">
                             <div className="space-y-1.5">
-                                <label className="text-xs font-bold text-foreground">Poin Maksimal</label>
+                                <label className="text-xs font-bold text-foreground">Poin Maksimal (Akumulasi Soal)</label>
                                 <input
                                     type="number"
                                     min={0}
@@ -1186,7 +1426,7 @@ export function AssessmentForm({
                                     onClick={() => setCurrentStep(prev => Math.min(3, prev + 1))}
                                     className="inline-flex items-center gap-1.5 px-4 sm:px-5 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-black shadow-xs hover:bg-primary/90 active:scale-98 transition min-h-[42px] cursor-pointer"
                                 >
-                                    <span>{currentStep === 1 ? 'Lanjut ke Instrumen' : 'Lanjut ke Pengaturan Nilai'}</span>
+                                    <span>{currentStep === 1 ? 'Lanjut ke Instrumen & Soal' : 'Lanjut ke Pengaturan Nilai'}</span>
                                     <ArrowRight className="h-4 w-4" />
                                 </button>
                             ) : (
