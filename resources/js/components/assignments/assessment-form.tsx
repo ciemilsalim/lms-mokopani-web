@@ -4,7 +4,8 @@ import {
     ChevronLeft, CheckCircle2, AlertCircle,
     BookOpen, Users, Target, GraduationCap, Info, FileText, Plus, Trash2,
     Check, Lock, Sparkles, Layers, ListChecks, Calendar, ArrowRight,
-    Loader2, Sliders, Edit3, HelpCircle, Eye, Calculator, CheckSquare, Zap
+    Loader2, Sliders, Edit3, HelpCircle, Eye, Calculator, CheckSquare, Zap,
+    X, Mic
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import axios from 'axios';
