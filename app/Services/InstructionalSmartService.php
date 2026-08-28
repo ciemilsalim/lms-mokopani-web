@@ -340,17 +340,28 @@ class InstructionalSmartService
 
         $description = $tp->description ?? '';
 
+        $isInitial = str_contains($materialContent ?? '', 'JENIS ASESMEN TARGET: ASESMEN AWAL') || str_contains(strtolower($materialContent ?? ''), 'initial');
+        $isSummative = str_contains($materialContent ?? '', 'JENIS ASESMEN TARGET: ASESMEN SUMATIF') || str_contains(strtolower($materialContent ?? ''), 'summative');
+        $targetAssessmentType = $isInitial ? 'initial' : ($isSummative ? 'summative' : 'formative');
+        $targetQuestionCount = $isInitial ? 3 : ($isSummative ? 10 : 5);
+
         // Ekstrak nama topik ringkas yang bersih untuk fallback template
         $cleanShortTopic = self::extractConciseTopic($materialTitle, $tp->content, $description);
 
-        // Siapkan teks konteks ringkas & padat untuk dikirim ke AI Provider (maksimal 500 kata agar AI fokus pada indikator)
+        // Siapkan teks konteks ringkas & padat untuk dikirim ke AI Provider dengan instruksi jumlah soal yang tegas
+        $typeHeader = $isInitial 
+            ? "ASESMEN AWAL (WAJIB TEPAT 3 BUTIR SOAL/PERTANYAAN, TOTAL 100 POIN)" 
+            : ($isSummative 
+                ? "ASESMEN SUMATIF (WAJIB TEPAT 10 BUTIR SOAL/PERTANYAAN, TOTAL 100 POIN)" 
+                : "ASESMEN FORMATIF (WAJIB TEPAT 5 BUTIR SOAL/PERTANYAAN, TOTAL 100 POIN)");
+
         if (!empty($materialContent)) {
             $cleanMat = self::sanitizeOutput(strip_tags($materialContent));
             $words = preg_split('/\s+/', $cleanMat);
-            $excerpt = implode(' ', array_slice($words, 0, 250));
-            $aiContextContent = "Topik: " . $cleanShortTopic . "\nRangkuman Esensial: " . $excerpt . "\n\nCatatan Penting: Hasilkan butir indikator, soal materi murni (BUKAN refleksi), dan rubrik yang RINGKAS, PADAT, dan KONTEKSTUAL. Jangan mengutip ulang teks materi ke dalam nama indikator.";
+            $excerpt = implode(' ', array_slice($words, 0, 200));
+            $aiContextContent = "Target Jenis Asesmen: " . $typeHeader . "\nTopik Inti: " . $cleanShortTopic . "\nKonteks Pembelajaran: " . $excerpt;
         } else {
-            $aiContextContent = $cleanShortTopic;
+            $aiContextContent = "Target Jenis Asesmen: " . $typeHeader . "\nTopik Inti: " . $cleanShortTopic;
         }
 
         // Variabel untuk template offline (selalu gunakan topik ringkas)
@@ -365,6 +376,16 @@ class InstructionalSmartService
                 $suggested = $ai->suggestAssessment($description, $aiContextContent, $type, $regenerate, $observationMode, $quizMode);
                 if (!empty($suggested)) {
                     $this->isLastRequestOnline = true;
+                    // Enforce strict question count & points distribution for test instruments
+                    if (in_array($type, ['written_test', 'formative_quiz', 'quiz_survey', 'quiz', 'oral_test']) && !empty($suggested['questions'])) {
+                        $suggested['questions'] = self::enforceQuestionCount(
+                            $suggested['questions'],
+                            $targetQuestionCount,
+                            $targetAssessmentType,
+                            $type,
+                            $cleanShortTopic
+                        );
+                    }
                     return self::sanitizeOutput($suggested);
                 }
             } catch (\Exception $e) {
@@ -1254,5 +1275,103 @@ class InstructionalSmartService
         ];
 
         return $result;
+    }
+
+    /**
+     * Pastikan jumlah butir soal dan bobot skor selalu tepat sesuai target asesmen.
+     */
+    protected static function enforceQuestionCount(
+        array $questions,
+        int $targetCount,
+        string $assessmentType,
+        string $instrumentType,
+        string $topic
+    ): array {
+        $cleanQuestions = [];
+        $isOral = $instrumentType === 'oral_test';
+
+        // 1. Ambil butir soal yang valid dari AI
+        foreach ($questions as $idx => $q) {
+            $type = $q['type'] ?? ($isOral ? 'short_answer' : (isset($q['options']) ? 'multiple_choice' : 'essay'));
+            $cleanQuestions[] = [
+                'id' => $q['id'] ?? ('q' . ($idx + 1)),
+                'type' => $type,
+                'question' => $q['question'] ?? $q['text'] ?? '',
+                'text' => $q['question'] ?? $q['text'] ?? '',
+                'options' => $q['options'] ?? [],
+                'answer' => $q['answer'] ?? $q['correct_answer'] ?? '',
+                'difficulty' => $q['difficulty'] ?? ($idx < 2 ? 'Mudah' : ($idx < 6 ? 'Sedang' : 'Sulit')),
+                'answer_guide' => $q['answer_guide'] ?? $q['answer'] ?? '',
+                'points' => 0
+            ];
+        }
+
+        // 2. Jika kurang dari target, lengkapi dari template
+        if (count($cleanQuestions) < $targetCount) {
+            $needed = $targetCount - count($cleanQuestions);
+            $existingCount = count($cleanQuestions);
+
+            for ($i = 0; $i < $needed; $i++) {
+                $num = $existingCount + $i + 1;
+                if ($isOral) {
+                    $cleanQuestions[] = [
+                        'id' => 'q' . $num,
+                        'type' => 'short_answer',
+                        'question' => "Pertanyaan lisan evaluasi butir ke-{$num} mengenai pemahaman konsep {$topic}:",
+                        'text' => "Pertanyaan lisan evaluasi butir ke-{$num} mengenai pemahaman konsep {$topic}:",
+                        'difficulty' => $num <= 3 ? 'Mudah' : ($num <= 7 ? 'Sedang' : 'Sulit'),
+                        'answer_guide' => "Kriteria jawaban ideal penguasaan capaian materi {$topic}.",
+                        'points' => 0
+                    ];
+                } else {
+                    // Tertulis
+                    if ($num <= ($targetCount === 10 ? 8 : ($targetCount === 5 ? 4 : 2))) {
+                        $cleanQuestions[] = [
+                            'id' => 'q' . $num,
+                            'type' => 'multiple_choice',
+                            'question' => "Pertanyaan butir ke-{$num} terkait karakteristik atau penerapan materi {$topic}:",
+                            'text' => "Pertanyaan butir ke-{$num} terkait karakteristik atau penerapan materi {$topic}:",
+                            'options' => [
+                                ['id' => 'a', 'text' => "Pernyataan yang tepat dan sesuai prinsip {$topic}.", 'is_correct' => true],
+                                ['id' => 'b', 'text' => "Pernyataan yang keliru atau tidak berhubungan.", 'is_correct' => false],
+                                ['id' => 'c', 'text' => "Pilihan pengecoh materi.", 'is_correct' => false],
+                                ['id' => 'd', 'text' => "Konsep yang berlawanan dengan materi.", 'is_correct' => false],
+                            ],
+                            'answer' => 'a',
+                            'points' => 0
+                        ];
+                    } else {
+                        $cleanQuestions[] = [
+                            'id' => 'q' . $num,
+                            'type' => 'essay',
+                            'question' => "Jelaskan analisis penerapan dan peran utama dari {$topic} dalam pemecahan masalah!",
+                            'text' => "Jelaskan analisis penerapan dan peran utama dari {$topic} dalam pemecahan masalah!",
+                            'options' => [],
+                            'answer' => "Uraian logis komprehensif mengenai konsep {$topic}.",
+                            'answer_guide' => "Uraian logis komprehensif mengenai konsep {$topic}.",
+                            'points' => 0
+                        ];
+                    }
+                }
+            }
+        }
+
+        // 3. Jika lebih dari target, potong tepat sejumlah target
+        if (count($cleanQuestions) > $targetCount) {
+            $cleanQuestions = array_slice($cleanQuestions, 0, $targetCount);
+        }
+
+        // 4. Standarisasi bobot poin agar selalu tepat 100 poin
+        foreach ($cleanQuestions as $idx => &$q) {
+            if ($targetCount === 3) {
+                $q['points'] = $idx < 2 ? 35 : 30;
+            } elseif ($targetCount === 10) {
+                $q['points'] = 10;
+            } else {
+                $q['points'] = 20;
+            }
+        }
+
+        return $cleanQuestions;
     }
 }

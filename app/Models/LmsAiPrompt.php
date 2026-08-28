@@ -106,37 +106,38 @@ Tujuan Pembelajaran (TP): {tp}
 Materi Pembelajaran: {content}
 Jenis Instrumen: {instrument_label}
 
-ATURAN WAJIB PENYUSUNAN:
+ATURAN WAJIB & MUTLAK JUMLAH BUTIR SOAL:
+- Jika Asesmen Awal: WAJIB hasilkan TEPAT 3 BUTIR SOAL (2 PG @35 poin + 1 Esai @30 poin = 100 poin, atau 3 Pertanyaan Lisan @35/35/30 poin = 100 poin).
+- Jika Asesmen Formatif: WAJIB hasilkan TEPAT 5 BUTIR SOAL (4 PG @20 poin + 1 Esai @20 poin = 100 poin, atau 5 Pertanyaan Lisan @20 poin = 100 poin).
+- Jika Asesmen Sumatif: WAJIB hasilkan TEPAT 10 BUTIR SOAL (8 PG @10 poin + 2 Esai @10 poin = 100 poin, atau 10 Pertanyaan Lisan @10 poin = 100 poin).
+DILARANG menghasilkan jumlah soal di luar ketentuan di atas!
+
+ATURAN PENYUSUNAN LAINNYA:
 1. JUDUL ASESMEN (WAJIB SINGKAT, JELAS, DAN SPESIFIK MATERI):
    - Format: [Jenis]: [Topik Inti Materi] (Maksimal 3 sampai 4 kata setelah tanda titik dua).
    - JANGAN menyalin judul kiasan/buku (misal: 'Membongkar Rahasia...: Bagaimana...'), ekstrak hanya nama materi murni!
-   - Contoh format yang BENAR:
-     * Tes: 'Tes Formatif: Perangkat Input Komputer'
-     * Observasi: 'Observasi: Rangkaian Listrik'
-     * LKPD: 'LKPD: Analisis Ekosistem Kolam'
-     * Lisan: 'Tes Lisan: Sistem Pencernaan Manusia'
+   - Contoh: 'Tes Formatif: Perangkat Input Komputer', 'Tes Sumatif: Sistem Komputer', 'Tes Awal: Komponen PC', 'Observasi: Rangkaian Listrik', 'LKPD: Ekosistem Kolam', 'Tes Lisan: Sistem Pencernaan'.
    - DILARANG menggunakan tanda titik dua ganda atau kalimat terpotong seperti ': Bagaimana'.
 
 2. ATURAN MUTLAK SOAL TES TULIS & LISAN (MATERI MURNI, BUKAN REFLEKSI):
    - Seluruh butir pertanyaan WAJIB menguji materi pelajaran secara substantif (Faktual, Konseptual, Prosedural).
-   - DILARANG KERAS membuat pertanyaan refleksi diri/proses belajar seperti: 'bagaimana perasaanmu saat belajar', 'apa manfaat mempelajari materi ini', 'apa kendalamu', 'sikap apa yang terbaik saat tugas sulit'.
-   - Buatlah pertanyaan yang menguji konsep ilmiah/materi langsung:
-     * Contoh: 'Apa fungsi utama komponen RAM pada komputer?', 'Sebutkan 3 perbedaan sel hewan dan sel tumbuhan!', 'Mengapa fotosintesis membutuhkan klorofil dan cahaya matahari?'.
+   - DILARANG KERAS membuat pertanyaan refleksi perasaan/kendala belajar.
+   - Buatlah pertanyaan sains/konsep ilmiah langsung.
 
-3. SPESIFIKASI JUMLAH BUTIR SOAL & BOBOT SKOR (TERTULIS & LISAN SAMA):
+3. SPESIFIKASI INSTRUMEN:
 
 A. Jika Instrumen 'Tertulis' (written_test, formative_quiz, quiz_survey):
-   - Asesmen Awal: 3 butir soal materi prasyarat (2 PG @35 poin + 1 Esai @30 poin = total 100 poin).
-   - Asesmen Formatif: 5 butir soal materi KBM (4 PG @20 poin + 1 Esai @20 poin = total 100 poin).
-   - Asesmen Sumatif: 10 butir soal capaian TP (8 PG @10 poin + 2 Esai @10 poin = total 100 poin).
+   - Asesmen Awal: 3 butir (2 PG + 1 Esai).
+   - Asesmen Formatif: 5 butir (4 PG + 1 Esai).
+   - Asesmen Sumatif: 10 butir (8 PG + 2 Esai).
    - Setiap butir PG memiliki 4 opsi (A, B, C, D) dengan 1 kunci 'is_correct': true.
-   - Soal Esai memiliki 'answer_guide' kunci kata kunci kriteria jawaban benar.
+   - Soal Esai memiliki 'answer_guide' kata kunci kriteria jawaban benar.
 
 B. Jika Instrumen 'Tes Lisan' (oral_test):
-   - Asesmen Awal: 3 butir pertanyaan lisan prasyarat (Pertanyaan 1-2 @35 poin, Pertanyaan 3 @30 poin = total 100 poin).
-   - Asesmen Formatif: 5 butir pertanyaan lisan bertingkat (@20 poin = total 100 poin).
-   - Asesmen Sumatif: 10 butir pertanyaan lisan komprehensif (@10 poin = total 100 poin).
-   - Setiap butir pertanyaan wajib memiliki 'points', 'difficulty', dan 'answer_guide' kata kunci respon jawaban siswa.
+   - Asesmen Awal: 3 butir pertanyaan lisan.
+   - Asesmen Formatif: 5 butir pertanyaan lisan bertingkat.
+   - Asesmen Sumatif: 10 butir pertanyaan lisan komprehensif.
+   - Setiap butir pertanyaan wajib memiliki 'points', 'difficulty', dan 'answer_guide'.
 
 C. Jika Instrumen 'Observasi' (performance_observation, observation_checklist):
    - 'indicators': Array 4-5 butir indikator pengamatan keaktifan/proses belajar yang terukur.
