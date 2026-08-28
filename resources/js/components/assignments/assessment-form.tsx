@@ -72,14 +72,26 @@ const cleanPlainText = (text: string | null | undefined): string => {
 // Helper to generate and format concise, clear, and relevant assessment titles
 const formatConciseAssessmentTitle = (
     rawTitle: string | null | undefined,
+    assessmentType: string,
     instrumentType: string,
     tpDescription: string | null | undefined
 ): string => {
-    let prefix = 'Formatif';
-    if (instrumentType === 'formative_quiz' || instrumentType === 'written_test') prefix = 'Tes Formatif';
-    else if (instrumentType === 'performance_observation' || instrumentType === 'observation_checklist' || instrumentType === 'observation') prefix = 'Observasi';
-    else if (instrumentType === 'structured_assignment' || instrumentType === 'performance' || instrumentType === 'assignment') prefix = 'LKPD';
-    else if (instrumentType === 'oral_test') prefix = 'Tes Lisan';
+    let prefix = 'Tes Formatif';
+    if (assessmentType === 'initial') {
+        if (instrumentType === 'performance_observation' || instrumentType === 'observation') prefix = 'Observasi Awal';
+        else if (instrumentType === 'oral_test') prefix = 'Tes Lisan Awal';
+        else prefix = 'Tes Awal';
+    } else if (assessmentType === 'summative') {
+        if (instrumentType === 'performance') prefix = 'Uji Kinerja';
+        else if (instrumentType === 'project') prefix = 'Penilaian Projek';
+        else if (instrumentType === 'oral_test') prefix = 'Tes Lisan Sumatif';
+        else prefix = 'Tes Sumatif';
+    } else {
+        if (instrumentType === 'performance_observation' || instrumentType === 'observation_checklist' || instrumentType === 'observation') prefix = 'Observasi';
+        else if (instrumentType === 'structured_assignment' || instrumentType === 'performance' || instrumentType === 'assignment') prefix = 'LKPD';
+        else if (instrumentType === 'oral_test') prefix = 'Tes Lisan';
+        else prefix = 'Tes Formatif';
+    }
 
     let topic = '';
 
@@ -88,33 +100,29 @@ const formatConciseAssessmentTitle = (
         let t = cleanPlainText(rawTitle);
         t = t.replace(/^["'`]|["'`]$/g, '').trim();
         
-        // Handle double colons or colon subtitles (e.g. "Membongkar Rahasia Dapur Komputer: Bagaimana Komputer Bekerja")
         if (t.includes(':')) {
             const parts = t.split(':').map(p => p.trim());
-            // Filter out generic prefixes from part 0
-            const part0 = parts[0].replace(/^(Judul\s+Asesmen|Judul\s+Singkat|Judul|Asesmen\s+Formatif|Asesmen\s+Sumatif|Asesmen\s+Awal|Tes\s+Formatif|Observasi|LKPD|Tes\s+Lisan)\s*/i, '').trim();
+            const part0 = parts[0].replace(/^(Judul\s+Asesmen|Judul\s+Singkat|Judul|Asesmen\s+Formatif|Asesmen\s+Sumatif|Asesmen\s+Awal|Tes\s+Formatif|Observasi|LKPD|Tes\s+Lisan|Tes\s+Awal|Tes\s+Sumatif|Uji\s+Kinerja|Penilaian\s+Projek)\s*/i, '').trim();
             const part1 = parts[1] || '';
             
-            const part1Clean = part1.replace(/^(Bagaimana|Mengapa|Apa\s+Itu|Mengenal|Memahami)\s+/i, '').trim();
-            const part0Clean = part0.replace(/^(Membongkar\s+Rahasia|Petualangan\s+Menjelajah|Detektif\s+Masalah|Mengenal\s+Lebih\s+Dekat|Menjelajahi|Misteri)\s+/i, '').trim();
+            const part1Clean = part1.replace(/^(Menguasai|Mempelajari|Mengenal|Memahami|Mengetahui|Bagaimana|Mengapa|Apa\s+Itu)\s+/i, '').trim();
+            const part0Clean = part0.replace(/^(Membongkar\s+Rahasia|Petualangan\s+Menjelajah|Detektif\s+Masalah|Mengenal\s+Lebih\s+Dekat|Menjelajahi|Misteri|Kisah|Rahasia)\s+/i, '').trim();
             
             if (part1Clean.length >= 4 && part1Clean.length <= 35) {
                 t = part1Clean;
             } else if (part0Clean.length >= 4 && part0Clean.length <= 35) {
                 t = part0Clean;
             } else {
-                t = part0Clean || part1Clean || t;
+                t = part1Clean || part0Clean || t;
             }
         } else {
-            t = t.replace(/^(Judul\s+Asesmen|Judul\s+Singkat|Judul|Asesmen\s+Formatif|Asesmen\s+Sumatif|Asesmen\s+Awal|Tes\s+Formatif|Observasi|LKPD|Tes\s+Lisan)\s*[:\-]\s*/i, '').trim();
-            t = t.replace(/^(Membongkar\s+Rahasia|Petualangan\s+Menjelajah|Detektif\s+Masalah|Mengenal\s+Lebih\s+Dekat|Menjelajahi|Misteri)\s+/i, '').trim();
+            t = t.replace(/^(Judul\s+Asesmen|Judul\s+Singkat|Judul|Asesmen\s+Formatif|Asesmen\s+Sumatif|Asesmen\s+Awal|Tes\s+Formatif|Observasi|LKPD|Tes\s+Lisan|Tes\s+Awal|Tes\s+Sumatif|Uji\s+Kinerja|Penilaian\s+Projek)\s*[:\-]\s*/i, '').trim();
+            t = t.replace(/^(Membongkar\s+Rahasia|Petualangan\s+Menjelajah|Detektif\s+Masalah|Mengenal\s+Lebih\s+Dekat|Menjelajahi|Misteri|Kisah|Rahasia)\s+/i, '').trim();
         }
         
-        // Strip trailing punctuation / prepositions
         t = t.replace(/\s*[:\-,\?]\s*.*$/i, '').trim();
         t = t.replace(/\s+(untuk|pada|dalam|guna|sebagai|terkait|mengenai|tentang|secara|dengan|dan|atau|bagaimana|mengapa)$/i, '').trim();
 
-        // Ensure it's not a generic placeholder
         if (t && !/^(judul|asesmen|pembelajaran|relevan|singkat)/i.test(t)) {
             topic = t;
         }
@@ -124,8 +132,8 @@ const formatConciseAssessmentTitle = (
     if (!topic && tpDescription) {
         let cleanTp = cleanPlainText(tpDescription);
         cleanTp = cleanTp.replace(/^(Peserta\s+didik|Siswa|Murid)\s+(dapat|mampu|diharapkan)\s+(untuk\s+)?([a-z]+kan|[a-z]+i|[a-z]+)\s+/i, '').trim();
-        cleanTp = cleanTp.replace(/^(Mengidentifikasi|Menganalisis|Memahami|Menjelaskan|Mendeskripsikan|Menyajikan|Mempraktikkan|Menyimpulkan|Mengevaluasi|Menerapkan)\s+/i, '').trim();
-        cleanTp = cleanTp.replace(/^(Membongkar\s+Rahasia|Petualangan\s+Menjelajah|Detektif\s+Masalah|Mengenal\s+Lebih\s+Dekat|Menjelajahi|Misteri)\s+/i, '').trim();
+        cleanTp = cleanTp.replace(/^(Mengidentifikasi|Menganalisis|Memahami|Menjelaskan|Mendeskripsikan|Menyajikan|Mempraktikkan|Menyimpulkan|Mengevaluasi|Menerapkan|Menguasai|Mempelajari)\s+/i, '').trim();
+        cleanTp = cleanTp.replace(/^(Membongkar\s+Rahasia|Petualangan\s+Menjelajah|Detektif\s+Masalah|Mengenal\s+Lebih\s+Dekat|Menjelajahi|Misteri|Kisah|Rahasia)\s+/i, '').trim();
         cleanTp = cleanTp.replace(/\s*[:\-,\?]\s*.*$/i, '').trim();
         cleanTp = cleanTp.replace(/\s+(untuk|pada|dalam|guna|sebagai|terkait|mengenai|tentang|secara|dengan|dan|atau|bagaimana|mengapa)$/i, '').trim();
         
@@ -138,7 +146,6 @@ const formatConciseAssessmentTitle = (
 
     if (!topic) topic = 'Materi Pembelajaran';
 
-    // Capitalize each word nicely
     topic = topic
         .toLowerCase()
         .split(' ')
@@ -148,6 +155,25 @@ const formatConciseAssessmentTitle = (
     topic = topic.replace(/[:\-?,]+$/g, '').trim();
 
     return `${prefix}: ${topic}`;
+};
+
+const standardInstrumentsByAssessmentType: Record<string, { id: string; name: string; desc: string; icon: any }[]> = {
+    initial: [
+        { id: 'written_test', name: 'Tertulis', desc: 'Uji diagnostik tertulis materi prasyarat (3 butir soal - KKTP Interval)', icon: FileText },
+        { id: 'performance_observation', name: 'Observasi', desc: 'Pengamatan kesiapan & keterlibatan murid (KKTP Deskriptif)', icon: Eye },
+    ],
+    formative: [
+        { id: 'written_test', name: 'Tertulis', desc: 'Tes formatif PG & esai penguasaan materi (5 butir soal - KKTP Interval)', icon: FileText },
+        { id: 'oral_test', name: 'Lisan', desc: 'Tanya jawab lisan langsung penalaran konsep (5 butir soal - KKTP Interval)', icon: Mic },
+        { id: 'performance_observation', name: 'Observasi', desc: 'Pengamatan proses & keaktifan belajar murid di kelas (KKTP Deskriptif)', icon: Eye },
+        { id: 'structured_assignment', name: 'Kinerja / LKPD', desc: 'Lembar kerja/tugas praktik menilai proses & produk (KKTP Deskriptif)', icon: FileText },
+    ],
+    summative: [
+        { id: 'written_test', name: 'Tertulis', desc: 'Ujian penguasaan capaian pembelajaran menyeluruh (10 butir soal - KKTP Interval)', icon: FileText },
+        { id: 'oral_test', name: 'Lisan', desc: 'Ujian lisan komprehensif penalaran materi (10 butir soal - KKTP Interval)', icon: Mic },
+        { id: 'performance', name: 'Kinerja', desc: 'Uji kinerja/praktik unjuk kebolehan keterampilan murid (KKTP Deskriptif)', icon: FileText },
+        { id: 'project', name: 'Projek', desc: 'Penilaian penugasan projek terstruktur (KKTP Deskriptif)', icon: CheckSquare },
+    ]
 };
 
 const defaultFormativeQuestions = [
@@ -347,98 +373,55 @@ export function AssessmentForm({
     // Dynamic Context-Aware AI Metadata
     const aiContext = useMemo(() => {
         const inst = data.instrument_type;
-        switch (inst) {
-            case 'written_test':
-            case 'formative_quiz':
-            case 'quiz_survey':
-                return {
-                    name: 'Tes Tertulis / Kuis',
-                    desc: 'Buat 5 butir soal pilihan ganda & esai lengkap dengan kunci jawaban, bobot skor, dan konversi KKTP PPA 2025.',
-                    capabilities: ['Pilihan Ganda & Esai', 'Kunci Jawaban Otomatis', 'Akumulasi Skor 100 Poin', 'Konversi Interval KKTP'],
-                    ctaLabel: 'Buat Soal & Kunci Jawaban dengan AI',
-                    manualLabel: 'Tambah Butir Soal',
-                    loadingLabel: 'Menyusun Soal, Kunci & Rubrik...',
-                    icon: ListChecks,
-                };
-            case 'observation_checklist':
-            case 'observation':
-                return {
-                    name: 'Lembar Observasi',
-                    desc: 'Buat indikator observasi terstruktur, skala pengamatan guru, dan panduan rubrik penilaian.',
-                    capabilities: ['Indikator Pengamatan', 'Skala Ketercapaian', 'Rubrik KKTP'],
-                    ctaLabel: 'Buat Instrumen Observasi & Rubrik',
-                    manualLabel: 'Tambah Indikator',
-                    loadingLabel: 'Menyusun Indikator & Rubrik...',
-                    icon: Eye,
-                };
-            case 'performance':
-            case 'project':
-            case 'performance_task':
-            case 'assignment':
-                return {
-                    name: 'Tugas Kinerja / LKPD',
-                    desc: 'Buat instruksi penugasan praktik, kriteria keberhasilan karya, dan rubrik penilaian kinerja.',
-                    capabilities: ['Instruksi Langkah Kerja', 'Kriteria Penilaian Karya', 'Rubrik 4 Level KKTP'],
-                    ctaLabel: 'Buat Panduan Tugas & Rubrik',
-                    manualLabel: 'Tambah Kriteria',
-                    loadingLabel: 'Menyusun Tugas & Rubrik...',
-                    icon: FileText,
-                };
-            case 'reflective_journal':
-            case 'reflection':
-                return {
-                    name: 'Jurnal Reflektif',
-                    desc: 'Buat pertanyaan pemantik refleksi mendalam dan rubrik evaluasi kesadaran belajar siswa.',
-                    capabilities: ['Pertanyaan Refleksi', 'Panduan Jawaban Siswa', 'Rubrik Evaluasi Diri'],
-                    ctaLabel: 'Buat Pertanyaan & Rubrik Refleksi',
-                    manualLabel: 'Tambah Pertanyaan',
-                    loadingLabel: 'Menyusun Pertanyaan & Rubrik...',
-                    icon: HelpCircle,
-                };
-            case 'self_assessment':
-                return {
-                    name: 'Penilaian Diri',
-                    desc: 'Buat lembar pernyataan checklist penilaian diri dan rubrik refleksi ketuntasan belajar.',
-                    capabilities: ['Checklist Kemampuan Diri', 'Bahasa Ramah Siswa', 'Rubrik KKTP'],
-                    ctaLabel: 'Buat Lembar Penilaian Diri & Rubrik',
-                    manualLabel: 'Tambah Pernyataan',
-                    loadingLabel: 'Menyusun Penilaian Diri...',
-                    icon: CheckCircle2,
-                };
-            case 'peer_assessment':
-                return {
-                    name: 'Penilaian Antarteman',
-                    desc: 'Buat kriteria pengamatan antarteman, umpan balik positif, dan rubrik kolaborasi kelompok.',
-                    capabilities: ['Kriteria Kolaborasi Tim', 'Panduan Umpan Balik', 'Rubrik Antarteman'],
-                    ctaLabel: 'Buat Instrumen Antarteman & Rubrik',
-                    manualLabel: 'Tambah Kriteria',
-                    loadingLabel: 'Menyusun Antarteman & Rubrik...',
-                    icon: Users,
-                };
-            case 'exit_ticket':
-            case 'cats':
-                return {
-                    name: 'Exit Ticket / CATs',
-                    desc: 'Buat pertanyaan cepat 1–2 menit di akhir sesi dan rubrik identifikasi miskonsepsi.',
-                    capabilities: ['Pertanyaan Cepat Ringkas', 'Identifikasi Miskonsepsi', 'Rubrik Respon Cepat'],
-                    ctaLabel: 'Buat Exit Ticket & Rubrik',
-                    manualLabel: 'Tambah Pertanyaan',
-                    loadingLabel: 'Menyusun Exit Ticket...',
-                    icon: Sparkles,
-                };
-            case 'rubric':
-            default:
-                return {
-                    name: 'Rubrik Kriteria KKTP',
-                    desc: 'Buat deskriptor rubrik kualitatif 4 level (Perlu Bimbingan, Cukup, Baik, Sangat Baik) sesuai TP.',
-                    capabilities: ['4 Level Kualitatif KKTP', 'Deskriptor Ketercapaian Jelas', 'Panduan Nilai'],
-                    ctaLabel: 'Buat Rubrik KKTP dengan AI',
-                    manualLabel: 'Tambah Level Kriteria',
-                    loadingLabel: 'Menyusun Rubrik KKTP...',
-                    icon: Layers,
-                };
+        const type = data.assessment_type || 'formative';
+        const qCount = type === 'initial' ? 3 : (type === 'summative' ? 10 : 5);
+
+        if (['written_test', 'formative_quiz', 'quiz_survey', 'quiz'].includes(inst)) {
+            return {
+                name: type === 'initial' ? 'Tes Tertulis Awal' : (type === 'summative' ? 'Tes Tertulis Sumatif' : 'Tes Tertulis Formatif'),
+                desc: `Buat ${qCount} butir soal pilihan ganda & esai materi terstruktur lengkap dengan kunci jawaban dan akumulasi skor 100 poin.`,
+                capabilities: [`${qCount} Butir Soal (PG & Esai)`, 'Kunci Jawaban Otomatis', 'Akumulasi Skor 100 Poin', 'Konversi Interval KKTP'],
+                ctaLabel: `Buat ${qCount} Butir Soal Tertulis dengan AI`,
+                manualLabel: 'Tambah Butir Soal',
+                loadingLabel: 'Menyusun Soal & Kunci Jawaban...',
+                icon: ListChecks,
+            };
         }
-    }, [data.instrument_type]);
+
+        if (inst === 'oral_test') {
+            return {
+                name: type === 'initial' ? 'Tes Lisan Awal' : (type === 'summative' ? 'Tes Lisan Sumatif' : 'Tes Lisan Formatif'),
+                desc: `Buat ${qCount} butir pertanyaan lisan substantif materi dengan panduan respon jawaban guru dan akumulasi skor 100 poin.`,
+                capabilities: [`${qCount} Butir Pertanyaan Lisan`, 'Pedoman Respon Guru', 'Bobot Terukur (100 Poin)', 'KKTP Interval'],
+                ctaLabel: `Buat ${qCount} Pertanyaan Lisan dengan AI`,
+                manualLabel: 'Tambah Pertanyaan Lisan',
+                loadingLabel: 'Menyusun Pertanyaan Lisan...',
+                icon: Mic,
+            };
+        }
+
+        if (['performance_observation', 'observation_checklist', 'observation'].includes(inst)) {
+            return {
+                name: 'Lembar Observasi',
+                desc: 'Buat indikator observasi terstruktur, skala pengamatan guru, dan panduan rubrik penilaian KKTP deskriptif.',
+                capabilities: ['Indikator Pengamatan Terukur', 'Skala Ketercapaian', 'Rubrik 4 Tingkat KKTP'],
+                ctaLabel: 'Buat Instrumen Observasi & Rubrik',
+                manualLabel: 'Tambah Indikator',
+                loadingLabel: 'Menyusun Indikator & Rubrik...',
+                icon: Eye,
+            };
+        }
+
+        return {
+            name: inst === 'project' ? 'Penilaian Projek' : inst === 'performance' ? 'Uji Kinerja' : 'Tugas Kinerja / LKPD',
+            desc: 'Buat instruksi penugasan praktik/projek terstruktur, kriteria keberhasilan karya, dan rubrik penilaian 4 level KKTP.',
+            capabilities: ['Instruksi Langkah Kerja', 'Kriteria Penilaian Karya', 'Rubrik 4 Level KKTP'],
+            ctaLabel: 'Buat Panduan Tugas & Rubrik',
+            manualLabel: 'Tambah Kriteria',
+            loadingLabel: 'Menyusun Tugas & Rubrik...',
+            icon: FileText,
+        };
+    }, [data.instrument_type, data.assessment_type]);
 
     // AI Generation Handler
     const handleAiGenerate = async () => {
@@ -464,13 +447,14 @@ export function AssessmentForm({
                 if (d.questions && Array.isArray(d.questions) && d.questions.length > 0) {
                     formattedQuestions = d.questions.map((q: any, idx: number) => {
                         const isMcq = q.type === 'multiple_choice' || (q.options && q.options.length > 0);
-                        const defaultOralPoints = idx === 0 ? 20 : idx === 1 ? 35 : 45;
-                        const defaultOralDifficulty = idx === 0 ? 'Mudah' : idx === 1 ? 'Sedang' : 'Sulit';
+                        const aType = data.assessment_type || 'formative';
+                        const defaultPoints = aType === 'initial' ? (idx < 2 ? 35 : 30) : (aType === 'summative' ? 10 : 20);
+                        const defaultOralDifficulty = idx < 2 ? 'Mudah' : (idx < 4 ? 'Sedang' : 'Sulit');
                         return {
                             id: q.id || `q_${Date.now()}_${idx}`,
                             type: isMcq ? 'multiple_choice' : (q.type || 'short_answer'),
                             question: cleanPlainText(q.question || q.text || ''),
-                            points: q.points || (data.instrument_type === 'oral_test' ? defaultOralPoints : 20),
+                            points: Number(q.points) || defaultPoints,
                             difficulty: q.difficulty || (data.instrument_type === 'oral_test' ? defaultOralDifficulty : undefined),
                             answer_guide: cleanPlainText(q.answer_guide || q.answer || ''),
                             options: isMcq && q.options ? q.options.map((opt: any, optIdx: number) => ({
@@ -484,15 +468,94 @@ export function AssessmentForm({
                         };
                     });
                 } else if (['written_test', 'formative_quiz', 'quiz_survey', 'quiz'].includes(data.instrument_type || 'written_test')) {
-                    // Fallback to rich 5 default formative questions if API response was missing questions array
-                    formattedQuestions = defaultFormativeQuestions;
+                    const aType = data.assessment_type || 'formative';
+                    if (aType === 'initial') {
+                        formattedQuestions = [
+                            {
+                                id: 'q1',
+                                type: 'multiple_choice',
+                                question: 'Manakah konsep prasyarat dasar yang paling berkaitan dengan materi ini?',
+                                points: 35,
+                                options: [
+                                    { id: 'opt_1', text: 'Konsep dasar yang menjadi prasyarat materi', is_correct: true },
+                                    { id: 'opt_2', text: 'Konsep yang tidak memiliki hubungan materi', is_correct: false },
+                                    { id: 'opt_3', text: 'Tugas tambahan di luar topik', is_correct: false },
+                                    { id: 'opt_4', text: 'Aktivitas yang tidak terstruktur', is_correct: false },
+                                ]
+                            },
+                            {
+                                id: 'q2',
+                                type: 'multiple_choice',
+                                question: 'Pengalaman awal apa yang mencerminkan pemahaman dasar topik ini?',
+                                points: 35,
+                                options: [
+                                    { id: 'opt_1', text: 'Mengenali karakteristik dasar materi dalam kehidupan sehari-hari', is_correct: true },
+                                    { id: 'opt_2', text: 'Mengabaikan tahapan dasar kegiatan', is_correct: false },
+                                    { id: 'opt_3', text: 'Menghindari diskusi materi awal', is_correct: false },
+                                    { id: 'opt_4', text: 'Menghafal tanpa memahami konteks', is_correct: false },
+                                ]
+                            },
+                            {
+                                id: 'q3',
+                                type: 'essay',
+                                question: 'Tuliskan apa yang sudah kamu ketahui secara ringkas mengenai konsep dasar topik ini!',
+                                points: 30,
+                                answer_guide: 'Menyampaikan pemahaman awal atau ide kunci terkait topik secara jelas.'
+                            }
+                        ];
+                    } else if (aType === 'summative') {
+                        formattedQuestions = Array.from({ length: 10 }).map((_, idx) => {
+                            if (idx < 8) {
+                                return {
+                                    id: `q${idx + 1}`,
+                                    type: 'multiple_choice',
+                                    question: `Pertanyaan evaluasi sumatif butir ke-${idx + 1} terkait penguasaan capaian pembelajaran:`,
+                                    points: 10,
+                                    options: [
+                                        { id: 'opt_1', text: 'Jawaban tepat sesuai capaian materi pokok', is_correct: true },
+                                        { id: 'opt_2', text: 'Pilihan pengecoh pertama', is_correct: false },
+                                        { id: 'opt_3', text: 'Pilihan pengecoh kedua', is_correct: false },
+                                        { id: 'opt_4', text: 'Pilihan pengecoh ketiga', is_correct: false },
+                                    ]
+                                };
+                            }
+                            return {
+                                id: `q${idx + 1}`,
+                                type: 'essay',
+                                question: `Jelaskan secara mendalam analisis dan penerapan konsep materi pada butir ke-${idx + 1}!`,
+                                points: 10,
+                                answer_guide: 'Menganalisis prinsip utama dan memberikan penjelasan logis terstruktur.'
+                            };
+                        });
+                    } else {
+                        formattedQuestions = defaultFormativeQuestions;
+                    }
                 } else if (data.instrument_type === 'oral_test') {
-                    // Fallback to 3 weighted oral questions
-                    formattedQuestions = [
-                        { id: `oral_1`, type: 'short_answer', question: `Jelaskan pengertian dan fungsi utama dari konsep materi ini!`, points: 20, difficulty: 'Mudah', answer_guide: 'Siswa mampu mendefinisikan konsep dasar dengan tepat.' },
-                        { id: `oral_2`, type: 'short_answer', question: `Bagaimana cara kerja atau mekanisme penerapan konsep ini? Bandingkan dengan konsep terkait!`, points: 35, difficulty: 'Sedang', answer_guide: 'Siswa menjelaskan mekanisme secara terstruktur dan menyebutkan perbedaannya.' },
-                        { id: `oral_3`, type: 'short_answer', question: `Jika terjadi permasalahan nyata pada kasus ini, langkah analisis dan solusi apa yang kamu usulkan?`, points: 45, difficulty: 'Sulit', answer_guide: 'Siswa memberikan analisis logis dan solusi berbasis konsep yang dipelajari.' },
-                    ];
+                    const aType = data.assessment_type || 'formative';
+                    if (aType === 'initial') {
+                        formattedQuestions = [
+                            { id: `oral_1`, type: 'short_answer', question: `Sebutkan konsep awal atau istilah dasar yang sudah kamu ketahui terkait materi ini!`, points: 35, difficulty: 'Mudah', answer_guide: 'Mampu menyebutkan minimal 2 konsep dasar materi.' },
+                            { id: `oral_2`, type: 'short_answer', question: `Pernahkah kamu menemukan penerapan materi ini di kehidupan sehari-hari? Jelaskan contohnya!`, points: 35, difficulty: 'Sedang', answer_guide: 'Memberikan contoh konkret dan relevan.' },
+                            { id: `oral_3`, type: 'short_answer', question: `Mengapa kita perlu memahami konsep dasar ini sebelum mempelajari materi lebih lanjut?`, points: 30, difficulty: 'Sedang', answer_guide: 'Penjelasan logis tentang pentingnya konsep dasar.' },
+                        ];
+                    } else if (aType === 'summative') {
+                        formattedQuestions = Array.from({ length: 10 }).map((_, idx) => ({
+                            id: `oral_${idx + 1}`,
+                            type: 'short_answer',
+                            question: `Pertanyaan lisan sumatif capaian TP butir ke-${idx + 1}:`,
+                            points: 10,
+                            difficulty: idx < 3 ? 'Mudah' : (idx < 7 ? 'Sedang' : 'Sulit'),
+                            answer_guide: `Kriteria jawaban ideal penguasaan capaian butir ke-${idx + 1}.`
+                        }));
+                    } else {
+                        formattedQuestions = [
+                            { id: `oral_1`, type: 'short_answer', question: `Sebutkan dan jelaskan pengertian serta fungsi utama konsep materi ini!`, points: 20, difficulty: 'Mudah', answer_guide: 'Siswa mampu mendefinisikan konsep dasar dengan tepat.' },
+                            { id: `oral_2`, type: 'short_answer', question: `Sebutkan komponen atau karakteristik penting yang menyusun materi ini!`, points: 20, difficulty: 'Mudah', answer_guide: 'Menyebutkan minimal 2-3 komponen/ciri khas materi.' },
+                            { id: `oral_3`, type: 'short_answer', question: `Bagaimana alur kerja atau mekanisme penerapan konsep ini?`, points: 20, difficulty: 'Sedang', answer_guide: 'Siswa menjelaskan mekanisme secara terstruktur.' },
+                            { id: `oral_4`, type: 'short_answer', question: `Berikan contoh penerapan konkret materi ini dalam menyelesaikan masalah nyata!`, points: 20, difficulty: 'Sedang', answer_guide: 'Memberikan contoh aplikatif dengan fungsi yang jelas.' },
+                            { id: `oral_5`, type: 'short_answer', question: `Jika terjadi kesalahan pada sistem atau proses ini, apa dampak dan langkah solusinya?`, points: 20, difficulty: 'Sulit', answer_guide: 'Analisis sebab-akibat dan solusi teknis yang tepat.' },
+                        ];
+                    }
                 }
 
                 // 2. Process Rubric Levels (Clean Plain Text)
@@ -531,7 +594,7 @@ export function AssessmentForm({
 
                 // 4. Clean, Concise, and Relevant Title
                 const activeTp = objectives.find(o => o.id === Number(data.learning_objective_id));
-                const finalTitle = formatConciseAssessmentTitle(d.title, data.instrument_type, activeTp?.description);
+                const finalTitle = formatConciseAssessmentTitle(d.title, data.assessment_type || 'formative', data.instrument_type, activeTp?.description);
 
                 // Atomic state update for Inertia useForm
                 setData(prev => {
@@ -827,7 +890,57 @@ export function AssessmentForm({
                                 <h2 className="text-sm sm:text-base font-black text-foreground leading-tight">
                                     Konteks Pembelajaran
                                 </h2>
-                                <p className="text-[11px] text-muted-foreground">Langkah 1 dari 3: Pilih Mata Pelajaran & Tujuan Pembelajaran (TP)</p>
+                                <p className="text-[11px] text-muted-foreground">Langkah 1 dari 3: Pilih Jenis Asesmen, Mata Pelajaran & Tujuan Pembelajaran (TP)</p>
+                            </div>
+                        </div>
+
+                        {/* Jenis Asesmen Selector */}
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-bold text-foreground">
+                                Jenis Asesmen <span className="text-destructive">*</span>
+                            </label>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                {[
+                                    { id: 'initial', name: 'Asesmen Awal', desc: 'Diagnostik kesiapan belajar (3 butir soal)', icon: Sparkles },
+                                    { id: 'formative', name: 'Asesmen Formatif', desc: 'Pemantauan proses KBM (5 butir soal)', icon: BookOpen },
+                                    { id: 'summative', name: 'Asesmen Sumatif', desc: 'Evaluasi ketercapaian TP (10 butir soal)', icon: CheckCircle2 }
+                                ].map(type => {
+                                    const isSelected = data.assessment_type === type.id;
+                                    const Icon = type.icon;
+                                    return (
+                                        <button
+                                            key={type.id}
+                                            type="button"
+                                            onClick={() => {
+                                                setData(prev => ({
+                                                    ...prev,
+                                                    assessment_type: type.id,
+                                                    instrument_type: 'written_test',
+                                                    title: '',
+                                                    instrument_config: {
+                                                        ...prev.instrument_config,
+                                                        questions: [],
+                                                        indicators: [],
+                                                    }
+                                                }));
+                                                setIsDraftVisible(false);
+                                            }}
+                                            className={`flex items-start gap-2.5 p-3 rounded-xl border text-left transition cursor-pointer ${
+                                                isSelected
+                                                    ? 'bg-primary/10 border-primary text-foreground shadow-2xs font-bold ring-1 ring-primary/40'
+                                                    : 'bg-background hover:bg-muted/40 border-border text-foreground'
+                                            }`}
+                                        >
+                                            <div className={`p-1.5 rounded-lg shrink-0 ${isSelected ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
+                                                <Icon className="h-4 w-4" />
+                                            </div>
+                                            <div className="min-w-0">
+                                                <p className="text-xs font-bold truncate leading-tight">{type.name}</p>
+                                                <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2">{type.desc}</p>
+                                            </div>
+                                        </button>
+                                    );
+                                })}
                             </div>
                         </div>
 
@@ -981,20 +1094,16 @@ export function AssessmentForm({
                                     Instrumen Penilaian <span className="text-destructive">*</span>
                                 </label>
                                 <div className="grid gap-2 sm:grid-cols-2">
-                                    {(instruments[data.assessment_type] || [
-                                        { id: 'formative_quiz', name: 'Tes/Penugasan Singkat', desc: 'Ujian singkat atau kuis untuk memantau penguasaan materi (KKTP Interval)' },
-                                        { id: 'performance_observation', name: 'Observasi', desc: 'Pengamatan keterlibatan & perilaku murid (KKTP Deskriptif)' },
-                                        { id: 'structured_assignment', name: 'Kinerja / LKPD', desc: 'Lembar kerja/tugas praktik menilai proses & produk (KKTP Deskriptif)' },
-                                        { id: 'oral_test', name: 'Lisan', desc: 'Tanya jawab lisan langsung untuk mengukur penalaran konsep (KKTP Interval)' },
-                                    ]).map(inst => {
+                                    {(standardInstrumentsByAssessmentType[data.assessment_type || 'formative'] || standardInstrumentsByAssessmentType.formative).map(inst => {
                                         const isSelected = data.instrument_type === inst.id;
+                                        const Icon = inst.icon || FileText;
                                         return (
                                             <button
                                                 key={inst.id}
                                                 type="button"
                                                 onClick={() => {
                                                     let newKktpApproach = 'score_interval';
-                                                    if (['performance_observation', 'observation', 'observation_checklist', 'structured_assignment', 'performance', 'assignment', 'rubric'].includes(inst.id)) {
+                                                    if (['performance_observation', 'observation', 'observation_checklist', 'structured_assignment', 'performance', 'project', 'assignment', 'rubric'].includes(inst.id)) {
                                                         newKktpApproach = 'rubric';
                                                     }
                                                     setData(prev => ({
@@ -1015,12 +1124,12 @@ export function AssessmentForm({
                                                 }}
                                                 className={`flex items-start gap-2.5 p-3 rounded-xl border text-left transition min-h-[54px] cursor-pointer ${
                                                     isSelected
-                                                        ? 'bg-primary/10 border-primary text-foreground shadow-2xs font-bold'
+                                                        ? 'bg-primary/10 border-primary text-foreground shadow-2xs font-bold ring-1 ring-primary/40'
                                                         : 'bg-background hover:bg-muted/40 border-border text-foreground'
                                                 }`}
                                             >
                                                 <div className={`p-1.5 rounded-lg shrink-0 ${isSelected ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
-                                                    <FileText className="h-3.5 w-3.5" />
+                                                    <Icon className="h-3.5 w-3.5" />
                                                 </div>
                                                 <div className="min-w-0">
                                                     <p className="text-xs font-bold truncate leading-tight">{inst.name}</p>

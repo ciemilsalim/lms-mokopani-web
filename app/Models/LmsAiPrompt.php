@@ -123,30 +123,29 @@ ATURAN WAJIB PENYUSUNAN:
    - Buatlah pertanyaan yang menguji konsep ilmiah/materi langsung:
      * Contoh: 'Apa fungsi utama komponen RAM pada komputer?', 'Sebutkan 3 perbedaan sel hewan dan sel tumbuhan!', 'Mengapa fotosintesis membutuhkan klorofil dan cahaya matahari?'.
 
-3. SPESIFIKASI PER JENIS INSTRUMEN:
+3. SPESIFIKASI JUMLAH BUTIR SOAL & BOBOT SKOR (TERTULIS & LISAN SAMA):
 
-A. Jika Instrumen 'Tes/Penugasan Singkat' (formative_quiz, written_test, quiz_survey):
-   - 5 butir soal materi murni:
-     * Soal 1-4: Pilihan Ganda (4 opsi A, B, C, D dengan 1 kunci benar, masing-masing 20 poin).
-     * Soal 5: Uraian/Esai (20 poin) dengan 'answer_guide' kunci kata kunci dan kriteria jawaban benar.
-   - Akumulasi total skor = 100 poin.
+A. Jika Instrumen 'Tertulis' (written_test, formative_quiz, quiz_survey):
+   - Asesmen Awal: 3 butir soal materi prasyarat (2 PG @35 poin + 1 Esai @30 poin = total 100 poin).
+   - Asesmen Formatif: 5 butir soal materi KBM (4 PG @20 poin + 1 Esai @20 poin = total 100 poin).
+   - Asesmen Sumatif: 10 butir soal capaian TP (8 PG @10 poin + 2 Esai @10 poin = total 100 poin).
+   - Setiap butir PG memiliki 4 opsi (A, B, C, D) dengan 1 kunci 'is_correct': true.
+   - Soal Esai memiliki 'answer_guide' kunci kata kunci kriteria jawaban benar.
 
-B. Jika Instrumen 'Observasi' (performance_observation, observation_checklist):
-   - 'indicators': Array 4-5 butir indikator pengamatan proses/keaktifan belajar yang terukur dan spesifik.
+B. Jika Instrumen 'Tes Lisan' (oral_test):
+   - Asesmen Awal: 3 butir pertanyaan lisan prasyarat (Pertanyaan 1-2 @35 poin, Pertanyaan 3 @30 poin = total 100 poin).
+   - Asesmen Formatif: 5 butir pertanyaan lisan bertingkat (@20 poin = total 100 poin).
+   - Asesmen Sumatif: 10 butir pertanyaan lisan komprehensif (@10 poin = total 100 poin).
+   - Setiap butir pertanyaan wajib memiliki 'points', 'difficulty', dan 'answer_guide' kata kunci respon jawaban siswa.
+
+C. Jika Instrumen 'Observasi' (performance_observation, observation_checklist):
+   - 'indicators': Array 4-5 butir indikator pengamatan keaktifan/proses belajar yang terukur.
    - 'levels': 4 tingkat rubrik deskriptif KKTP ('Perlu Bimbingan', 'Cukup', 'Baik', 'Sangat Baik').
 
-C. Jika Instrumen 'Kinerja / LKPD' (structured_assignment, performance, assignment):
-   - 'indicators': Array 4-5 butir indikator langkah kerja / kriteria kualitas karya yang spesifik dan bertahap.
-   - 'criteria': Rangkuman kriteria keberhasilan pengerjaan tugas LKPD.
+D. Jika Instrumen 'Kinerja / LKPD' / 'Projek' (structured_assignment, performance, project):
+   - 'indicators': Array 4-5 butir indikator langkah kerja/kriteria kualitas karya bertahap.
+   - 'criteria': Rangkuman kriteria keberhasilan penugasan.
    - 'levels': 4 tingkat rubrik deskriptif KKTP ('Perlu Bimbingan', 'Cukup', 'Baik', 'Sangat Baik').
-
-D. Jika Instrumen 'Tes Lisan' (oral_test):
-   - 3 butir pertanyaan lisan substantif materi dengan bobot bertingkat:
-     * Pertanyaan 1 (Mudah / C1-C2): 20 Poin (Menyebutkan/mendefinisikan konsep dasar materi).
-     * Pertanyaan 2 (Sedang / C3-C4): 35 Poin (Menjelaskan cara kerja/membandingkan konsep materi).
-     * Pertanyaan 3 (Sulit/HOTS / C5-C6): 45 Poin (Menganalisis studi kasus nyata atau pemecahan masalah materi).
-   - Setiap butir pertanyaan wajib memiliki 'points' (20, 35, 45) dan 'answer_guide' (kata kunci jawaban yang diharapkan guru).
-   - Total skor akumulasi = 100 poin.
 
 Kembalikan HANYA JSON valid tanpa code fence:
 {

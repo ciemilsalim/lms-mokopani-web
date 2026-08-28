@@ -372,12 +372,58 @@ class InstructionalSmartService
             }
         }
         
+        $isInitial = str_contains($materialContent ?? '', 'JENIS ASESMEN TARGET: ASESMEN AWAL') || str_contains(strtolower($materialContent ?? ''), 'initial');
+        $isSummative = str_contains($materialContent ?? '', 'JENIS ASESMEN TARGET: ASESMEN SUMATIF') || str_contains(strtolower($materialContent ?? ''), 'summative');
+
+        $prefixTitle = $isInitial ? "Tes Awal: " : ($isSummative ? "Tes Sumatif: " : "Tes Formatif: ");
+        $prefixOral = $isInitial ? "Tes Lisan Awal: " : ($isSummative ? "Tes Lisan Sumatif: " : "Tes Lisan: ");
+
         if ($type === 'oral_test') {
-            return [
-                'title' => "Tes Lisan: " . $content,
-                'description' => "Guru akan mengajukan pertanyaan secara lisan terkait materi {$content}. Jawablah secara lugas dengan penjelasan konsep yang tepat!",
-                'stimulus' => "Tes lisan penguasaan konsep materi {$content}.",
-                'questions' => [
+            $oralQuestions = [];
+            if ($isInitial) {
+                $oralQuestions = [
+                    [
+                        'text' => "Sebutkan pengetahuan dasar atau konsep awal yang kamu ketahui mengenai {$content}!",
+                        'points' => 35,
+                        'difficulty' => 'Mudah',
+                        'answer_guide' => "Mampu menyebutkan minimal 2 konsep dasar atau istilah terkait {$content}."
+                    ],
+                    [
+                        'text' => "Pernahkah kamu menemukan penerapan {$content} dalam kehidupan sehari-hari? Berikan contohnya!",
+                        'points' => 35,
+                        'difficulty' => 'Sedang',
+                        'answer_guide' => "Mampu memberikan contoh konkret dan relevan mengenai {$content}."
+                    ],
+                    [
+                        'text' => "Menurutmu, mengapa kita perlu mempelajari hal-hal dasar tentang {$content} sebelum masuk ke materi inti?",
+                        'points' => 30,
+                        'difficulty' => 'Sedang',
+                        'answer_guide' => "Penjelasan logis tentang pentingnya konsep dasar {$content}."
+                    ],
+                ];
+            } elseif ($isSummative) {
+                $difficulties = ['Mudah', 'Mudah', 'Sedang', 'Sedang', 'Sedang', 'Sedang', 'Sulit', 'Sulit', 'Sulit', 'Sulit'];
+                $prompts = [
+                    "Jelaskan definisi komprehensif dari {$content} beserta ruang lingkupnya!",
+                    "Sebutkan 3 komponen atau karakteristik utama yang membangun {$content}!",
+                    "Uraikan prinsip kerja utama dari {$content} secara runtut!",
+                    "Bagaimanakah keterkaitan antara {$content} dengan sub-materi terkait lainnya?",
+                    "Berikan contoh analisis studi kasus nyata penerapan {$content} di lingkungan sekitar!",
+                    "Apa perbedaan mendasar antara {$content} dengan konsep serupa yang telah dipelajari?",
+                    "Jika terjadi kesalahan prosedur pada {$content}, apa dampak yang ditimbulkan?",
+                    "Bagaimanakah langkah pemecahan masalah (troubleshooting) terbaik terkait {$content}?",
+                    "Evaluasi kelebihan dan keterbatasan dari penerapan model {$content}!",
+                    "Simpulkan gagasan inovasi atau solusi kreatif yang dapat dikembangkan dari konsep {$content}!"
+                ];
+                $oralQuestions = array_map(fn($idx) => [
+                    'text' => $prompts[$idx],
+                    'points' => 10,
+                    'difficulty' => $difficulties[$idx],
+                    'answer_guide' => "Kriteria jawaban ideal penguasaan capaian materi butir ke-" . ($idx + 1) . " {$content}."
+                ], range(0, 9));
+            } else {
+                // Formative 5 Questions (100 Points)
+                $oralQuestions = [
                     [
                         'text' => "Sebutkan dan jelaskan konsep dasar atau pengertian utama dari {$content}!",
                         'points' => 20,
@@ -385,18 +431,37 @@ class InstructionalSmartService
                         'answer_guide' => "Konsep kunci {$content}, fungsi dasar, dan peran utamanya."
                     ],
                     [
-                        'text' => "Bagaimana mekanisme atau cara kerja utama dari {$content} saat diterapkan?",
-                        'points' => 35,
-                        'difficulty' => 'Sedang',
-                        'answer_guide' => "Tahapan cara kerja runtut, komponen yang terlibat dalam {$content}."
+                        'text' => "Sebutkan karakteristik atau komponen penting yang menyusun {$content}!",
+                        'points' => 20,
+                        'difficulty' => 'Mudah',
+                        'answer_guide' => "Menyebutkan minimal 2-3 komponen/ciri khas {$content}."
                     ],
                     [
-                        'text' => "Mengapa {$content} sangat penting dan apa dampak atau konsekuensinya jika terjadi kesalahan penerapannya?",
-                        'points' => 45,
+                        'text' => "Bagaimana mekanisme atau cara kerja utama dari {$content} saat diterapkan?",
+                        'points' => 20,
+                        'difficulty' => 'Sedang',
+                        'answer_guide' => "Tahapan cara kerja runtut dan komponen yang terlibat dalam {$content}."
+                    ],
+                    [
+                        'text' => "Berikan contoh konkret penerapan {$content} dalam menyelesaikan masalah nyata!",
+                        'points' => 20,
+                        'difficulty' => 'Sedang',
+                        'answer_guide' => "Contoh aplikatif dan penjelasan fungsi nyata {$content}."
+                    ],
+                    [
+                        'text' => "Mengapa {$content} sangat penting dan apa dampak jika terjadi kesalahan penerapannya?",
+                        'points' => 20,
                         'difficulty' => 'Sulit',
                         'answer_guide' => "Analisis hubungan sebab-akibat, dampak kesalahan, dan solusi teknis {$content}."
                     ],
-                ],
+                ];
+            }
+
+            return [
+                'title' => $prefixOral . $content,
+                'description' => "Guru akan mengajukan pertanyaan secara lisan terkait materi {$content}. Jawablah secara lugas dengan penjelasan konsep yang tepat!",
+                'stimulus' => "Tes lisan penguasaan konsep materi {$content}.",
+                'questions' => $oralQuestions,
                 'levels' => [
                     ['name' => 'Perlu Bimbingan', 'desc' => "Jawaban belum tepat atau tidak mampu menjelaskan konsep dasar {$content}."],
                     ['name' => 'Cukup', 'desc' => "Jawaban cukup tepat namun belum lengkap pada penjelasan cara kerja {$content}."],
@@ -411,47 +476,94 @@ class InstructionalSmartService
         }
 
         if (in_array($type, ['formative_quiz', 'written_test', 'test', 'quiz'])) {
-            $mode = $quizMode ?? 'mcq';
             $questions = [];
-            if ($mode === 'essay') {
+
+            if ($isInitial) {
+                // Initial: 3 Questions (2 PG @35 pt + 1 Essay @30 pt = 100 pt)
                 $questions = [
                     [
                         'id' => 'q1',
-                        'type' => 'essay',
-                        'text' => "Jelaskan pengertian dan fungsi utama dari {$content} secara lengkap!",
-                        'answer' => "Menyebutkan definisi akurat dan minimal 2 fungsi utama {$content}.",
-                        'points' => 20
+                        'type' => 'multiple_choice',
+                        'text' => "Manakah konsep prasyarat dasar berikut yang paling berkaitan dengan materi {$content}?",
+                        'options' => [
+                            ['id' => 'a', 'text' => "Pengetahuan dasar yang menjadi fondasi awal materi {$content}.", 'is_correct' => true],
+                            ['id' => 'b', 'text' => "Materi yang sama sekali tidak berhubungan dengan pembelajaran.", 'is_correct' => false],
+                            ['id' => 'c', 'text' => "Keterampilan lanjutan yang belum pernah dipelajari.", 'is_correct' => false],
+                            ['id' => 'd', 'text' => "Tugas luar sekolah tanpa relevansi materi.", 'is_correct' => false]
+                        ],
+                        'answer' => 'a',
+                        'points' => 35
                     ],
                     [
                         'id' => 'q2',
-                        'type' => 'essay',
-                        'text' => "Sebutkan dan uraikan karakteristik atau komponen penting yang menyusun {$content}!",
-                        'answer' => "Menyebutkan minimal 3 komponen/karakteristik penting {$content}.",
-                        'points' => 20
+                        'type' => 'multiple_choice',
+                        'text' => "Dalam kehidupan sehari-hari, pengalaman awal apa yang paling mencerminkan prinsip {$content}?",
+                        'options' => [
+                            ['id' => 'a', 'text' => "Aktivitas mengenali pola atau langkah teratur dalam kegiatan rutin.", 'is_correct' => true],
+                            ['id' => 'b', 'text' => "Melakukan kegiatan tanpa tujuan atau aturan.", 'is_correct' => false],
+                            ['id' => 'c', 'text' => "Mengabaikan petunjuk dan contoh dari guru.", 'is_correct' => false],
+                            ['id' => 'd', 'text' => "Menghindari keterlibatan dalam proses diskusi.", 'is_correct' => false]
+                        ],
+                        'answer' => 'a',
+                        'points' => 35
                     ],
                     [
                         'id' => 'q3',
                         'type' => 'essay',
-                        'text' => "Bagaimanakah tahapan atau cara kerja utama dari {$content}?",
-                        'answer' => "Menjelaskan urutan langkah kerja {$content} secara sistematis.",
-                        'points' => 20
-                    ],
-                    [
-                        'id' => 'q4',
-                        'type' => 'essay',
-                        'text' => "Berikan contoh penerapan konkret {$content} dan jelaskan alasannya!",
-                        'answer' => "Memberikan contoh faktual penerapan {$content} dengan penjelasan logis.",
-                        'points' => 20
-                    ],
-                    [
-                        'id' => 'q5',
-                        'type' => 'essay',
-                        'text' => "Analisis apa yang terjadi jika salah satu prinsip atau bagian dari {$content} tidak berjalan sebagaimana mestinya!",
-                        'answer' => "Menganalisis dampak kesalahan/gangguan sistem {$content} dan memberikan solusi.",
-                        'points' => 20
+                        'text' => "Tuliskan apa yang sudah kamu ketahui secara singkat tentang konsep {$content} sebelum memulai pembelajaran!",
+                        'options' => [],
+                        'answer' => "Kriteria Jawaban: Siswa menyampaikan ide awal atau pengalaman dasar terkait {$content} dengan kalimat yang jelas.",
+                        'points' => 30
                     ]
                 ];
+            } elseif ($isSummative) {
+                // Summative: 10 Questions (8 PG @10 pt + 2 Essay @10 pt = 100 pt)
+                $mcqTexts = [
+                    "Pengertian atau definisi komprehensif dari {$content} yang paling tepat adalah...",
+                    "Karakteristik atau ciri utama yang membedakan {$content} dengan konsep lainnya adalah...",
+                    "Tahapan atau alur kerja sistematis pada prinsip {$content} adalah...",
+                    "Komponen pendukung yang memiliki peran krusial dalam keberhasilan {$content} adalah...",
+                    "Bentuk penerapan kontekstual dari konsep {$content} dalam dunia nyata adalah...",
+                    "Jika salah satu bagian dari sistem {$content} tidak berfungsi, maka dampaknya adalah...",
+                    "Langkah pencegahan atau optimasi yang paling tepat dalam penerapan {$content} adalah...",
+                    "Pernyataan yang paling akurat mengenai kelebihan dan manfaat dari {$content} adalah..."
+                ];
+
+                $questions = array_map(function($idx) use ($mcqTexts, $content) {
+                    return [
+                        'id' => 'q' . ($idx + 1),
+                        'type' => 'multiple_choice',
+                        'text' => $mcqTexts[$idx],
+                        'options' => [
+                            ['id' => 'a', 'text' => "Pernyataan yang tepat, faktual, dan sesuai dengan prinsip dasar {$content}.", 'is_correct' => true],
+                            ['id' => 'b', 'text' => "Pernyataan yang keliru dan bertentangan dengan prinsip {$content}.", 'is_correct' => false],
+                            ['id' => 'c', 'text' => "Pernyataan yang tidak relevan dengan pokok materi pembelajaran.", 'is_correct' => false],
+                            ['id' => 'd', 'text' => "Pilihan yang tidak menyertakan konsep esensial materi.", 'is_correct' => false]
+                        ],
+                        'answer' => 'a',
+                        'points' => 10
+                    ];
+                }, range(0, 7));
+
+                $questions[] = [
+                    'id' => 'q9',
+                    'type' => 'essay',
+                    'text' => "Jelaskan secara mendalam bagaimana peran dan mekanisme kerja {$content} dalam pemecahan masalah!",
+                    'options' => [],
+                    'answer' => "Kriteria Jawaban: Siswa menguraikan definisi, mekanisme kerja, dan minimal 2 argumen logis relevan.",
+                    'points' => 10
+                ];
+
+                $questions[] = [
+                    'id' => 'q10',
+                    'type' => 'essay',
+                    'text' => "Berikan analisis studi kasus nyata terkait {$content} dan berikan rekomendasi solutif jika terjadi kendala!",
+                    'options' => [],
+                    'answer' => "Kriteria Jawaban: Siswa memaparkan analisis kasus nyata {$content} dan memberikan solusi teknis yang tepat.",
+                    'points' => 10
+                ];
             } else {
+                // Formative: 5 Questions (4 PG @20 pt + 1 Essay @20 pt = 100 pt)
                 $questions = [
                     [
                         'id' => 'q1',
@@ -517,7 +629,7 @@ class InstructionalSmartService
             }
 
             return [
-                'title' => "Tes Formatif: " . $content,
+                'title' => $prefixTitle . $content,
                 'description' => "Kerjakan soal-soal berikut dengan teliti untuk mengukur penguasaan materi {$content}.",
                 'quiz_mode' => $mode,
                 'questions' => $questions,
