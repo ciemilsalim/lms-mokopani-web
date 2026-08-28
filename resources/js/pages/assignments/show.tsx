@@ -799,13 +799,23 @@ export default function ShowAssignment({
                 try {
                     const p = JSON.parse(s.content || '');
                     const ans = p.answers?.[q.id];
-                    if (ans !== undefined && ans !== '') {
+                    if (ans !== undefined && ans !== null && String(ans).trim() !== '') {
                         totalCount++;
                         const isMcq = q.type === 'multiple_choice';
                         const normAns = String(ans).trim().toLowerCase();
-                        const isCorrect = isMcq 
-                            ? (normAns === correctOptId || (correctOptId.startsWith(normAns) && normAns.length === 1))
-                            : (q.type === 'short_answer' && (q.correct_answer || q.answer) && normAns === String(q.correct_answer || q.answer).trim().toLowerCase());
+                        let isCorrect = false;
+
+                        if (isMcq) {
+                            isCorrect = normAns === correctOptId || (correctOptId.length === 1 && normAns.startsWith(correctOptId)) || (normAns.length === 1 && correctOptId.startsWith(normAns));
+                        } else if (q.type === 'short_answer') {
+                            const correctVal = String(q.correct_answer || q.answer || '').trim().toLowerCase();
+                            isCorrect = correctVal ? (normAns === correctVal || normAns.includes(correctVal) || correctVal.includes(normAns)) : normAns.length >= 3;
+                        } else if (q.type === 'essay') {
+                            // Non-empty student essay responses are not marked wrong automatically
+                            isCorrect = normAns.length >= 5;
+                        } else {
+                            isCorrect = normAns.length > 0;
+                        }
                         
                         if (!isCorrect) wrongCount++;
                     }
@@ -816,7 +826,7 @@ export default function ShowAssignment({
                 stats.push({
                     id: q.id,
                     num: idx + 1,
-                    text: q.text,
+                    text: q.question || q.text || `Soal butir ke-${idx + 1}`,
                     wrongCount,
                     totalCount,
                     wrongPct: Math.round((wrongCount / totalCount) * 100)
@@ -2312,31 +2322,39 @@ export default function ShowAssignment({
                             </div>
                         )}
 
-                        {/* Formative Quiz Difficulty Alert */}
+                        {/* Formative Quiz Difficulty Alert (Clean, Mobile-Optimized) */}
                         {assignment.instrument_type === 'formative_quiz' && formativeDifficultyStats && formativeDifficultyStats.hardQuestions.length > 0 && (
-                            <div className="rounded-2xl border border-rose-500/30 bg-rose-500/5 p-5 sm:p-6 animate-in slide-in-from-top-4 duration-500 flex items-start gap-4">
-                                <div className="h-10 w-10 rounded-xl bg-rose-500 text-white flex items-center justify-center flex-shrink-0 shadow-xs">
-                                    <AlertCircle className="h-5 w-5" />
-                                </div>
-                                <div className="space-y-2 flex-1">
-                                    <h3 className="text-sm font-black text-rose-600 dark:text-rose-400 uppercase tracking-wider">Deteksi Konsep Sulit (Auto-Analisis)</h3>
-                                    <p className="text-xs text-muted-foreground leading-relaxed font-medium">
-                                        Terdapat <strong>{formativeDifficultyStats.hardQuestions.length} pertanyaan</strong> dengan persentase kegagalan <strong>di atas 50%</strong>. Siswa kelas Anda mengalami kesulitan pada konsep-konsep ini:
-                                    </p>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
-                                        {formativeDifficultyStats.hardQuestions.map((q) => (
-                                            <div key={q.id} className="p-3.5 rounded-xl bg-card border border-rose-500/20 flex flex-col justify-between">
-                                                <div>
-                                                    <div className="flex justify-between items-center mb-1.5">
-                                                        <span className="text-[9px] font-black uppercase tracking-wider text-rose-500">Soal Nomor {q.num}</span>
-                                                        <span className="text-[10px] font-mono font-bold text-rose-500">{q.wrongPct}% Siswa Salah</span>
-                                                    </div>
-                                                    <p className="text-xs font-semibold text-foreground line-clamp-2 leading-relaxed">"{q.text}"</p>
-                                                </div>
-                                                <p className="text-[9px] text-muted-foreground mt-2 font-bold uppercase tracking-widest italic">Rekomendasi: Review Pembahasan di Kelas</p>
-                                            </div>
-                                        ))}
+                            <div className="rounded-xl border border-rose-500/25 bg-rose-500/5 dark:bg-rose-950/20 p-3.5 sm:p-4 animate-in fade-in duration-300 space-y-3">
+                                <div className="flex items-center justify-between gap-2">
+                                    <div className="flex items-center gap-2 min-w-0">
+                                        <div className="h-6 w-6 rounded-lg bg-rose-500/15 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
+                                            <AlertCircle className="h-3.5 w-3.5" />
+                                        </div>
+                                        <h4 className="text-xs font-black text-rose-600 dark:text-rose-400 tracking-wide truncate">
+                                            Konsep Perlu Penguatan
+                                        </h4>
                                     </div>
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-500/15 text-rose-600 dark:text-rose-300 shrink-0">
+                                        {formativeDifficultyStats.hardQuestions.length} Soal &gt; 50% Salah
+                                    </span>
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                    {formativeDifficultyStats.hardQuestions.map((q) => (
+                                        <div key={q.id} className="p-3 rounded-lg bg-card/80 border border-border/80 text-left space-y-1.5 shadow-2xs">
+                                            <div className="flex items-center justify-between gap-2">
+                                                <span className="text-[10px] font-black text-rose-600 dark:text-rose-400">
+                                                    No. {q.num}
+                                                </span>
+                                                <span className="text-[10px] font-bold text-rose-600 dark:text-rose-400 bg-rose-500/10 px-1.5 py-0.5 rounded">
+                                                    {q.wrongPct}% salah
+                                                </span>
+                                            </div>
+                                            <p className="text-xs text-foreground font-medium line-clamp-2 leading-relaxed">
+                                                {q.text}
+                                            </p>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
                         )}
