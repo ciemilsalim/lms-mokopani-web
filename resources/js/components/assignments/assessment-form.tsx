@@ -890,57 +890,7 @@ export function AssessmentForm({
                                 <h2 className="text-sm sm:text-base font-black text-foreground leading-tight">
                                     Konteks Pembelajaran
                                 </h2>
-                                <p className="text-[11px] text-muted-foreground">Langkah 1 dari 3: Pilih Jenis Asesmen, Mata Pelajaran & Tujuan Pembelajaran (TP)</p>
-                            </div>
-                        </div>
-
-                        {/* Jenis Asesmen Selector */}
-                        <div className="space-y-1.5">
-                            <label className="text-xs font-bold text-foreground">
-                                Jenis Asesmen <span className="text-destructive">*</span>
-                            </label>
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                                {[
-                                    { id: 'initial', name: 'Asesmen Awal', desc: 'Diagnostik kesiapan belajar (3 butir soal)', icon: Sparkles },
-                                    { id: 'formative', name: 'Asesmen Formatif', desc: 'Pemantauan proses KBM (5 butir soal)', icon: BookOpen },
-                                    { id: 'summative', name: 'Asesmen Sumatif', desc: 'Evaluasi ketercapaian TP (10 butir soal)', icon: CheckCircle2 }
-                                ].map(type => {
-                                    const isSelected = data.assessment_type === type.id;
-                                    const Icon = type.icon;
-                                    return (
-                                        <button
-                                            key={type.id}
-                                            type="button"
-                                            onClick={() => {
-                                                setData(prev => ({
-                                                    ...prev,
-                                                    assessment_type: type.id,
-                                                    instrument_type: 'written_test',
-                                                    title: '',
-                                                    instrument_config: {
-                                                        ...prev.instrument_config,
-                                                        questions: [],
-                                                        indicators: [],
-                                                    }
-                                                }));
-                                                setIsDraftVisible(false);
-                                            }}
-                                            className={`flex items-start gap-2.5 p-3 rounded-xl border text-left transition cursor-pointer ${
-                                                isSelected
-                                                    ? 'bg-primary/10 border-primary text-foreground shadow-2xs font-bold ring-1 ring-primary/40'
-                                                    : 'bg-background hover:bg-muted/40 border-border text-foreground'
-                                            }`}
-                                        >
-                                            <div className={`p-1.5 rounded-lg shrink-0 ${isSelected ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
-                                                <Icon className="h-4 w-4" />
-                                            </div>
-                                            <div className="min-w-0">
-                                                <p className="text-xs font-bold truncate leading-tight">{type.name}</p>
-                                                <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2">{type.desc}</p>
-                                            </div>
-                                        </button>
-                                    );
-                                })}
+                                <p className="text-[11px] text-muted-foreground">Langkah 1 dari 3: Pilih Mata Pelajaran & Tujuan Pembelajaran (TP)</p>
                             </div>
                         </div>
 
@@ -1072,11 +1022,35 @@ export function AssessmentForm({
                                                 key={t.id}
                                                 type="button"
                                                 onClick={() => {
-                                                    setData(prev => ({ ...prev, assessment_type: t.id }));
+                                                    const validInstruments = standardInstrumentsByAssessmentType[t.id] || [];
+                                                    const isCurrentValid = validInstruments.some(i => i.id === data.instrument_type);
+                                                    const nextInstrument = isCurrentValid ? data.instrument_type : (validInstruments[0]?.id || 'written_test');
+                                                    
+                                                    let newKktpApproach = 'score_interval';
+                                                    if (['performance_observation', 'observation', 'observation_checklist', 'structured_assignment', 'performance', 'project', 'assignment', 'rubric'].includes(nextInstrument)) {
+                                                        newKktpApproach = 'rubric';
+                                                    }
+
+                                                    setData(prev => ({
+                                                        ...prev,
+                                                        assessment_type: t.id,
+                                                        instrument_type: nextInstrument,
+                                                        instrument_config: {
+                                                            ...prev.instrument_config,
+                                                            kktp: {
+                                                                ...prev.instrument_config?.kktp,
+                                                                approach: newKktpApproach,
+                                                            }
+                                                        },
+                                                        scoring_tool_config: {
+                                                            ...prev.scoring_tool_config,
+                                                            kktp_approach: newKktpApproach,
+                                                        }
+                                                    }));
                                                 }}
                                                 className={`flex flex-col items-center justify-center p-2.5 sm:p-3 rounded-xl border text-center transition min-h-[60px] cursor-pointer ${
                                                     isSelected
-                                                        ? 'bg-primary text-primary-foreground border-primary shadow-xs font-black'
+                                                        ? 'bg-primary text-primary-foreground border-primary shadow-xs font-black ring-1 ring-primary/40'
                                                         : 'bg-background hover:bg-muted/40 border-border text-foreground'
                                                 }`}
                                             >
