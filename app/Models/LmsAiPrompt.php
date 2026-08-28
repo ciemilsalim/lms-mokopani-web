@@ -101,45 +101,53 @@ PENTING:
 <h2>Merefleksi</h2>
 [isi kegiatan merefleksi dengan HTML formatting]",
 
-            'assessment' => "Kamu adalah pakar penyusun instrumen tes & asesmen Kurikulum Merdeka tingkat SMP di Indonesia (usia 12-15 tahun).
+            'assessment' => "Kamu adalah pakar penyusun instrumen asesmen Kurikulum Merdeka tingkat SMP di Indonesia (usia 12-15 tahun).
 Tujuan Pembelajaran (TP): {tp}
 Materi Pembelajaran: {content}
 Jenis Instrumen: {instrument_label}
 
-ATURAN WAJIB PENULISAN SOAL:
-1. SOAL HARUS MENGUJI MATERI / KONTEN SECARA LANGSUNG (Faktual, Konseptual, dan Prosedural).
-   - JANGAN membuat pertanyaan umum/reflektif tentang proses belajar (seperti: 'bagaimana perasaanmu', 'apa manfaat belajar', 'sikap apa yang terbaik saat kendala').
-   - BUATLAH pertanyaan yang benar-benar menguji materi/topik pelajaran secara konkret!
-   - CONTOH INFORMATIKA (Input Device):
-     * 'Manakah di bawah ini yang termasuk Input Device pada komputer?'
-     * 'Perangkat input yang berfungsi untuk memasukkan rekaman suara ke komputer adalah...'
-     * 'Saat di kasir minimarket, alat pemindai barcode barang termasuk kelompok perangkat...'
-   - CONTOH IPA (Fotosintesis):
-     * 'Zat hijau daun yang berfungsi menyerap cahaya matahari pada proses fotosintesis adalah...'
-   - CONTOH MATEMATIKA (Aljabar):
-     * 'Bentuk sederhana dari 3x + 5 - x + 2 adalah...'
-2. Gunakan bahasa Indonesia yang lugas, jelas, dan mudah dipahami siswa SMP.
-3. Setiap soal Pilihan Ganda memiliki 4 pilihan (A, B, C, D) yang jelas dan realistis, dengan 1 kunci jawaban yang pasti benar.
+ATURAN WAJIB PENYUSUNAN:
+1. JUDUL ASESMEN:
+   - Buat judul yang SINGKAT, JELAS, dan RELEVAN langsung dengan materi pokok (maksimal 4-6 kata).
+   - Contoh: 'Tes Formatif: Perangkat Input Komputer' atau 'Observasi: Diskusi Algoritma' atau 'LKPD: Praktik Rangkaian Listrik' atau 'Tes Lisan: Sistem Pencernaan'.
 
-Jika Jenis Asesmen adalah Tes / Penugasan / Formatif / Sumatif (written_test, formative_quiz, test, quiz):
-- Buatkan 5 butir soal:
-  * Soal 1: Pilihan Ganda (Identifikasi/Klasifikasi konsep atau objek materi).
-  * Soal 2: Pilihan Ganda (Fungsi, ciri-ciri, atau karakteristik spesifik materi).
-  * Soal 3: Pilihan Ganda (Studi kasus atau contoh konkret materi dalam kehidupan sehari-hari).
-  * Soal 4: Pilihan Ganda (Analisis sebab-akibat atau pemecahan masalah teknis materi).
-  * Soal 5: Uraian/Esai (Sebutkan contoh dan jelaskan cara kerja/fungsi materi secara spesifik) disertai 'answer_guide' kunci penilaian guru.
-- Hasilkan juga 4 tingkat deskriptor KKTP ('Perlu Bimbingan', 'Cukup', 'Baik', 'Sangat Baik').
+2. SPESIFIKASI PER JENIS INSTRUMEN:
+
+A. Jika Instrumen 'Tes/Penugasan Singkat' (formative_quiz, written_test, quiz_survey):
+   - 5 butir soal materi murni (BUKAN pertanyaan refleksi):
+     * Soal 1-4: Pilihan Ganda (4 opsi A, B, C, D dengan 1 kunci benar, masing-masing 20 poin).
+     * Soal 5: Uraian/Esai (20 poin) dengan 'answer_guide' kunci kriteria jawaban benar.
+   - Akumulasi total skor = 100 poin.
+
+B. Jika Instrumen 'Observasi' (performance_observation, observation_checklist):
+   - 'indicators': Array 4-5 butir indikator pengamatan proses/keaktifan belajar yang terukur dan spesifik.
+   - 'levels': 4 tingkat rubrik deskriptif KKTP ('Perlu Bimbingan', 'Cukup', 'Baik', 'Sangat Baik').
+
+C. Jika Instrumen 'Kinerja / LKPD' (structured_assignment, performance, assignment):
+   - 'indicators': Array 4-5 butir indikator langkah kerja / kriteria kualitas karya yang spesifik dan bertahap.
+   - 'criteria': Rangkuman kriteria keberhasilan pengerjaan tugas LKPD.
+   - 'levels': 4 tingkat rubrik deskriptif KKTP ('Perlu Bimbingan', 'Cukup', 'Baik', 'Sangat Baik').
+
+D. Jika Instrumen 'Tes Lisan' (oral_test):
+   - 3 butir pertanyaan lisan yang FOKUS PADA SUBSTANSI MATERI (BUKAN pertanyaan refleksi perasaan):
+     * Pertanyaan 1 (Mudah / C1-C2): 20 Poin (Menyebutkan/mendefinisikan konsep dasar).
+     * Pertanyaan 2 (Sedang / C3-C4): 35 Poin (Menjelaskan cara kerja/membandingkan konsep materi).
+     * Pertanyaan 3 (Sulit/HOTS / C5-C6): 45 Poin (Menganalisis studi kasus nyata atau pemecahan masalah materi).
+   - Setiap butir pertanyaan wajib memiliki 'points' (20, 35, 45) dan 'answer_guide' (kata kunci jawaban yang diharapkan guru).
+   - Total skor akumulasi = 100 poin.
 
 Kembalikan HANYA JSON valid tanpa code fence:
 {
-  \"title\": \"Judul asesmen (misal: Tes Formatif - Perangkat Input Komputer)\",
-  \"description\": \"Petunjuk pengerjaan soal\",
+  \"title\": \"Judul Singkat Relevan\",
+  \"description\": \"Petunjuk instruksi pengerjaan\",
   \"questions\": [
     {
       \"id\": \"q1\",
-      \"type\": \"multiple_choice\",
-      \"question\": \"Pertanyaan langsung menguji materi...\",
+      \"type\": \"multiple_choice / short_answer / essay\",
+      \"question\": \"Pertanyaan substantif materi...\",
       \"points\": 20,
+      \"difficulty\": \"Mudah\",
+      \"answer_guide\": \"Kata kunci jawaban ideal...\",
       \"options\": [
         {\"id\": \"opt_a\", \"text\": \"Pilihan A...\", \"is_correct\": true},
         {\"id\": \"opt_b\", \"text\": \"Pilihan B...\", \"is_correct\": false},
@@ -148,11 +156,18 @@ Kembalikan HANYA JSON valid tanpa code fence:
       ]
     }
   ],
+  \"indicators\": [
+    \"Indikator 1 yang spesifik...\",
+    \"Indikator 2 yang spesifik...\",
+    \"Indikator 3 yang spesifik...\",
+    \"Indikator 4 yang spesifik...\"
+  ],
+  \"criteria\": \"Kriteria keberhasilan pengerjaan LKPD/Kinerja...\",
   \"levels\": [
-    {\"name\": \"Perlu Bimbingan\", \"desc\": \"Belum mampu mengidentifikasi komponen dasar materi.\"},
-    {\"name\": \"Cukup\", \"desc\": \"Mampu mengidentifikasi sebagian komponen namun belum memahami fungsinya secara lengkap.\"},
-    {\"name\": \"Baik\", \"desc\": \"Mampu mengidentifikasi dan menjelaskan fungsi materi dengan tepat sesuai KKTP.\"},
-    {\"name\": \"Sangat Baik\", \"desc\": \"Menguasai materi secara menyeluruh dan mampu menganalisis penerapannya dalam berbagai kasus.\"}
+    {\"name\": \"Perlu Bimbingan\", \"desc\": \"Belum mampu memenuhi kriteria dasar materi.\"},
+    {\"name\": \"Cukup\", \"desc\": \"Mampu memenuhi sebagian kriteria dasar namun belum konsisten.\"},
+    {\"name\": \"Baik\", \"desc\": \"Memenuhi seluruh indikator ketuntasan dengan baik sesuai target TP (KKTP).\"},
+    {\"name\": \"Sangat Baik\", \"desc\": \"Menguasai seluruh indikator secara mendalam dan menunjukkan analisis kritis.\" }
   ]
 }",
 

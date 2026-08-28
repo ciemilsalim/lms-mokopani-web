@@ -150,17 +150,17 @@ export function AssessmentForm({
     const [aiLoading, setAiLoading] = useState(false);
     const [aiSuccessMessage, setAiSuccessMessage] = useState<string | null>(null);
 
-    // Initial Form State
+    // Initial Form State (Starts clean and empty for new assessments)
     const { data, setData, post, processing, errors } = useForm({
         assessment_type: initialAssignment?.assessment_type ?? 'formative',
-        instrument_type: initialAssignment?.instrument_type ?? 'written_test',
+        instrument_type: initialAssignment?.instrument_type ?? 'formative_quiz',
         scoring_tool: initialAssignment?.scoring_tool ?? '',
         scoring_tool_config: initialAssignment?.scoring_tool_config ?? {},
         subject_id: initialAssignment?.subject_id ? String(initialAssignment.subject_id) : '',
         learning_objective_id: initialAssignment?.learning_objective_id ? String(initialAssignment.learning_objective_id) : '',
         school_classes: initialAssignment?.school_classes ?? ([] as number[]),
-        title: initialAssignment?.title ?? 'LKPD Formatif: Pemahaman Konsep & Penerapan Materi',
-        description: initialAssignment?.description ?? 'Kerjakan 5 butir soal di bawah ini dengan teliti. Pilih opsi jawaban yang paling tepat untuk soal pilihan ganda, dan uraikan penjelasanmu pada soal esai.',
+        title: initialAssignment?.title ?? '',
+        description: initialAssignment?.description ?? '',
         due_date: initialAssignment?.due_date ?? '',
         max_points: initialAssignment?.max_points ?? 100,
         passing_grade: initialAssignment?.passing_grade ?? 75,
@@ -169,7 +169,7 @@ export function AssessmentForm({
             criteria: initialAssignment?.instrument_config?.criteria ?? '',
             questions: (initialAssignment?.instrument_config?.questions && initialAssignment.instrument_config.questions.length > 0)
                 ? initialAssignment.instrument_config.questions
-                : defaultFormativeQuestions,
+                : ([] as any[]),
             indicators: initialAssignment?.instrument_config?.indicators ?? ([] as string[]),
             focus: initialAssignment?.instrument_config?.focus ?? '',
             context: initialAssignment?.instrument_config?.context ?? '',
@@ -379,11 +379,14 @@ export function AssessmentForm({
                 if (d.questions && Array.isArray(d.questions) && d.questions.length > 0) {
                     formattedQuestions = d.questions.map((q: any, idx: number) => {
                         const isMcq = q.type === 'multiple_choice' || (q.options && q.options.length > 0);
+                        const defaultOralPoints = idx === 0 ? 20 : idx === 1 ? 35 : 45;
+                        const defaultOralDifficulty = idx === 0 ? 'Mudah' : idx === 1 ? 'Sedang' : 'Sulit';
                         return {
                             id: q.id || `q_${Date.now()}_${idx}`,
                             type: isMcq ? 'multiple_choice' : (q.type || 'short_answer'),
                             question: cleanPlainText(q.question || q.text || ''),
-                            points: q.points || 20,
+                            points: q.points || (data.instrument_type === 'oral_test' ? defaultOralPoints : 20),
+                            difficulty: q.difficulty || (data.instrument_type === 'oral_test' ? defaultOralDifficulty : undefined),
                             answer_guide: cleanPlainText(q.answer_guide || q.answer || ''),
                             options: isMcq && q.options ? q.options.map((opt: any, optIdx: number) => ({
                                 id: opt.id || `opt_${optIdx}_${Date.now()}`,
@@ -398,6 +401,13 @@ export function AssessmentForm({
                 } else if (['written_test', 'formative_quiz', 'quiz_survey', 'quiz'].includes(data.instrument_type || 'written_test')) {
                     // Fallback to rich 5 default formative questions if API response was missing questions array
                     formattedQuestions = defaultFormativeQuestions;
+                } else if (data.instrument_type === 'oral_test') {
+                    // Fallback to 3 weighted oral questions
+                    formattedQuestions = [
+                        { id: `oral_1`, type: 'short_answer', question: `Jelaskan pengertian dan fungsi utama dari konsep materi ini!`, points: 20, difficulty: 'Mudah', answer_guide: 'Siswa mampu mendefinisikan konsep dasar dengan tepat.' },
+                        { id: `oral_2`, type: 'short_answer', question: `Bagaimana cara kerja atau mekanisme penerapan konsep ini? Bandingkan dengan konsep terkait!`, points: 35, difficulty: 'Sedang', answer_guide: 'Siswa menjelaskan mekanisme secara terstruktur dan menyebutkan perbedaannya.' },
+                        { id: `oral_3`, type: 'short_answer', question: `Jika terjadi permasalahan nyata pada kasus ini, langkah analisis dan solusi apa yang kamu usulkan?`, points: 45, difficulty: 'Sulit', answer_guide: 'Siswa memberikan analisis logis dan solusi berbasis konsep yang dipelajari.' },
+                    ];
                 }
 
                 // 2. Process Rubric Levels (Clean Plain Text)
@@ -414,23 +424,45 @@ export function AssessmentForm({
                     }));
                 }
 
-                // 3. Process Indicators (Clean Plain Text)
+                // 3. Process Indicators for Observasi and Kinerja / LKPD (Clean Plain Text)
                 let formattedIndicators: string[] = [];
                 if (d.indicators && Array.isArray(d.indicators) && d.indicators.length > 0) {
                     formattedIndicators = d.indicators.map((ind: any) => cleanPlainText(typeof ind === 'string' ? ind : ind.name || ind.text || ''));
+                } else if (data.instrument_type === 'performance_observation' || data.instrument_type === 'observation_checklist') {
+                    formattedIndicators = [
+                        'Aktif berpartisipasi dan menyampaikan gagasan dalam diskusi kelompok',
+                        'Bekerja sama secara efektif dalam menyelesaikan tugas bersama',
+                        'Menunjukkan ketelitian dan tanggung jawab selama proses pengamatan',
+                        'Mengemukakan kesimpulan hasil kegiatan dengan bahasa yang jelas'
+                    ];
+                } else if (data.instrument_type === 'structured_assignment' || data.instrument_type === 'performance') {
+                    formattedIndicators = [
+                        'Mengidentifikasi kebutuhan alat, bahan, dan konsep dasar secara lengkap',
+                        'Melaksanakan langkah kerja/prosedur tugas secara runtut dan tepat',
+                        'Mengolah dan menyajikan data temuan ke dalam tabel/format LKPD',
+                        'Menyusun analisis dan kesimpulan solusi pemecahan masalah secara logis'
+                    ];
                 }
 
-                // 4. Default Title if empty
+                // 4. Clean and Concise Title
                 const activeTp = objectives.find(o => o.id === Number(data.learning_objective_id));
-                const typeName = data.assessment_type === 'initial' ? 'Asesmen Awal' : data.assessment_type === 'summative' ? 'Asesmen Sumatif' : 'LKPD Formatif';
-                const defaultGeneratedTitle = `${typeName}: ${cleanPlainText(activeTp?.description || 'Pembelajaran')}`;
+                const shortTpDesc = (activeTp?.description || 'Materi').split('.')[0].slice(0, 45);
+                const defaultGeneratedTitle = data.instrument_type === 'formative_quiz'
+                    ? `Tes Formatif: ${shortTpDesc}`
+                    : data.instrument_type === 'performance_observation'
+                        ? `Observasi: ${shortTpDesc}`
+                        : data.instrument_type === 'structured_assignment'
+                            ? `LKPD: ${shortTpDesc}`
+                            : data.instrument_type === 'oral_test'
+                                ? `Tes Lisan: ${shortTpDesc}`
+                                : `Formatif: ${shortTpDesc}`;
 
                 // Atomic state update for Inertia useForm
                 setData(prev => {
-                    const finalTitle = d.title ? cleanPlainText(d.title) : (prev.title || defaultGeneratedTitle);
+                    const finalTitle = d.title ? cleanPlainText(d.title) : defaultGeneratedTitle;
                     const finalDesc = (d.description || d.instructions || d.stimulus) 
                         ? cleanPlainText(d.description || d.instructions || d.stimulus) 
-                        : (prev.description || 'Kerjakan 5 butir soal di bawah ini dengan teliti sesuai petunjuk.');
+                        : (prev.description || 'Pahami instruksi dan laksanakan asesmen ini dengan teliti.');
 
                     return {
                         ...prev,
@@ -444,7 +476,7 @@ export function AssessmentForm({
                             criteria: cleanPlainText(d.criteria || ''),
                             stimulus: cleanPlainText(d.stimulus || ''),
                             kktp: {
-                                approach: prev.instrument_config?.kktp?.approach || 'score_interval',
+                                approach: prev.instrument_config?.kktp?.approach || (['performance_observation', 'structured_assignment'].includes(prev.instrument_type) ? 'rubric' : 'score_interval'),
                                 passing_level: 'Baik',
                                 threshold: 75,
                                 intervals: prev.instrument_config?.kktp?.intervals || defaultPpaIntervals
@@ -453,7 +485,7 @@ export function AssessmentForm({
                     };
                 });
 
-                setAiSuccessMessage(`✨ 5 Soal, Kunci Jawaban & Rubrik KKTP PPA 2025 berhasil disusun!`);
+                setAiSuccessMessage(`✨ Asesmen (${aiContext.name}) berhasil disusun oleh AI!`);
                 setTimeout(() => setAiSuccessMessage(null), 5000);
             }
         } catch (err) {
@@ -1356,7 +1388,7 @@ export function AssessmentForm({
                                 </div>
                             )}
 
-                            {/* 2C. Panduan Kriteria Tugas LKPD / Kinerja (HANYA MUNCUL DI KINERJA / LKPD) */}
+                            {/* 2C. Panduan Kriteria & Indikator Tugas LKPD / Kinerja (HANYA MUNCUL DI KINERJA / LKPD) */}
                             {(data.instrument_type === 'structured_assignment' || data.instrument_type === 'performance' || data.instrument_type === 'assignment') && (
                                 <div className="space-y-3">
                                     <div className="flex items-center justify-between p-3 rounded-xl bg-primary/5 border border-primary/20">
@@ -1364,22 +1396,83 @@ export function AssessmentForm({
                                             <FileText className="h-4 w-4 text-primary shrink-0" />
                                             <div>
                                                 <span className="text-xs font-black text-foreground">
-                                                    Kriteria Keberhasilan & Instruksi LKPD
+                                                    Indikator Penilaian Kinerja & Langkah Kerja LKPD
                                                 </span>
                                                 <p className="text-[10px] text-muted-foreground">
-                                                    Instruksi pengerjaan tugas dan kriteria kualitas karya / hasil kerja siswa.
+                                                    Daftar indikator tahapan tugas dan kriteria kualitas karya / hasil kerja siswa.
                                                 </p>
                                             </div>
                                         </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                const current = data.instrument_config.indicators || [];
+                                                setData('instrument_config', {
+                                                    ...data.instrument_config,
+                                                    indicators: [...current, '']
+                                                });
+                                            }}
+                                            className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-primary text-primary-foreground text-[11px] font-black transition cursor-pointer hover:bg-primary/90"
+                                        >
+                                            <Plus className="h-3 w-3" />
+                                            <span>Tambah Indikator</span>
+                                        </button>
                                     </div>
 
-                                    <div className="space-y-1.5">
+                                    {/* Specific LKPD Indicators */}
+                                    <div className="space-y-2">
+                                        {(data.instrument_config.indicators && data.instrument_config.indicators.length > 0) ? (
+                                            data.instrument_config.indicators.map((ind: string, indIdx: number) => (
+                                                <div key={indIdx} className="flex items-center gap-2">
+                                                    <span className="text-xs font-mono font-bold text-primary w-5 shrink-0 text-center">
+                                                        {indIdx + 1}.
+                                                    </span>
+                                                    <input
+                                                        type="text"
+                                                        placeholder={`Contoh: Mengidentifikasi alat dan bahan secara tepat, atau mengikuti langkah kerja secara runtut...`}
+                                                        value={ind}
+                                                        onChange={(e) => {
+                                                            const updated = [...(data.instrument_config.indicators || [])];
+                                                            updated[indIdx] = e.target.value;
+                                                            setData('instrument_config', {
+                                                                ...data.instrument_config,
+                                                                indicators: updated
+                                                            });
+                                                        }}
+                                                        className="flex-1 rounded-xl border border-border bg-card px-3 py-2 text-xs text-foreground outline-none focus:border-primary"
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            const updated = (data.instrument_config.indicators || []).filter((_: any, i: number) => i !== indIdx);
+                                                            setData('instrument_config', {
+                                                                ...data.instrument_config,
+                                                                indicators: updated
+                                                            });
+                                                        }}
+                                                        className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition"
+                                                        title="Hapus Indikator"
+                                                    >
+                                                        <Trash2 className="h-3.5 w-3.5" />
+                                                    </button>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <div className="text-center py-4 border border-dashed border-border rounded-xl p-4 bg-muted/10">
+                                                <p className="text-xs text-muted-foreground">Belum ada indikator langkah LKPD.</p>
+                                                <p className="text-[10px] text-primary font-bold mt-0.5">Gunakan Asisten AI di atas atau klik "Tambah Indikator" untuk menambahkan butir indikator pengerjaan LKPD.</p>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Criteria Summary Note */}
+                                    <div className="space-y-1.5 pt-1">
                                         <label className="text-xs font-bold text-foreground">
-                                            Kriteria / Aspek Kualitas Tugas
+                                            Ringkasan Kriteria / Catatan Pengerjaan Tugas
                                         </label>
                                         <textarea
-                                            rows={3}
-                                            placeholder="Tuliskan aspek penilaian LKPD (contoh: 1. Ketepatan analisis, 2. Kerapian penyajian data, 3. Kreativitas solusi)..."
+                                            rows={2}
+                                            placeholder="Tuliskan catatan umum kriteria pengerjaan tugas LKPD..."
                                             value={data.instrument_config.criteria || ''}
                                             onChange={(e) => setData('instrument_config', {
                                                 ...data.instrument_config,
@@ -1391,70 +1484,129 @@ export function AssessmentForm({
                                 </div>
                             )}
 
-                            {/* 2D. Panduan Pertanyaan Tanya Jawab Lisan (HANYA MUNCUL DI LISAN) */}
+                            {/* 2D. Panduan Pertanyaan Tanya Jawab Lisan Berbobot (HANYA MUNCUL DI LISAN) */}
                             {data.instrument_type === 'oral_test' && (
                                 <div className="space-y-3">
-                                    <div className="flex items-center justify-between p-3 rounded-xl bg-primary/5 border border-primary/20">
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3 rounded-xl bg-primary/5 border border-primary/20">
                                         <div className="flex items-center gap-2">
                                             <Mic className="h-4 w-4 text-primary shrink-0" />
                                             <div>
                                                 <span className="text-xs font-black text-foreground">
-                                                    Panduan Pertanyaan Tanya Jawab Lisan
+                                                    Daftar Pertanyaan Lisan Substantif (Total Skor: <span className="text-primary font-black">{totalAccumulatedScore || 100} Poin</span>)
                                                 </span>
                                                 <p className="text-[10px] text-muted-foreground">
-                                                    Daftar pertanyaan lisan konseptual dan pedoman respon siswa.
+                                                    Pertanyaan langsung menguji substansi konsep materi dengan bobot bertingkat (Mudah, Sedang, Sulit).
                                                 </p>
                                             </div>
                                         </div>
-                                        <button
-                                            type="button"
-                                            onClick={handleAddQuestion}
-                                            className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-primary text-primary-foreground text-[11px] font-black transition cursor-pointer hover:bg-primary/90"
-                                        >
-                                            <Plus className="h-3 w-3" />
-                                            <span>Tambah Pertanyaan</span>
-                                        </button>
+                                        <div className="flex items-center gap-2">
+                                            <button
+                                                type="button"
+                                                onClick={handleEvenlyDistributePoints}
+                                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-background border border-border text-foreground hover:bg-muted text-[11px] font-bold transition cursor-pointer"
+                                                title="Bagi rata total 100 poin"
+                                            >
+                                                <Zap className="h-3 w-3 text-amber-500" />
+                                                <span>Bagi Rata</span>
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    const current = data.instrument_config.questions || [];
+                                                    const idx = current.length;
+                                                    const defaultPts = idx === 0 ? 20 : idx === 1 ? 35 : 45;
+                                                    const defaultDiff = idx === 0 ? 'Mudah' : idx === 1 ? 'Sedang' : 'Sulit';
+                                                    setData('instrument_config', {
+                                                        ...data.instrument_config,
+                                                        questions: [
+                                                            ...current,
+                                                            {
+                                                                id: `oral_${Date.now()}`,
+                                                                type: 'short_answer',
+                                                                question: '',
+                                                                points: defaultPts,
+                                                                difficulty: defaultDiff,
+                                                                answer_guide: ''
+                                                            }
+                                                        ]
+                                                    });
+                                                }}
+                                                className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-primary text-primary-foreground text-[11px] font-black transition cursor-pointer hover:bg-primary/90"
+                                            >
+                                                <Plus className="h-3 w-3" />
+                                                <span>Tambah Pertanyaan</span>
+                                            </button>
+                                        </div>
                                     </div>
 
                                     <div className="space-y-3">
-                                        {(data.instrument_config.questions || []).map((q: any, qIdx: number) => (
-                                            <div key={q.id || qIdx} className="rounded-xl border border-border bg-background p-3.5 space-y-2 shadow-2xs">
-                                                <div className="flex items-center justify-between border-b border-border/40 pb-2">
-                                                    <span className="text-[11px] font-black text-primary bg-primary/10 px-2 py-0.5 rounded">
-                                                        Pertanyaan Lisan #{qIdx + 1}
-                                                    </span>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => handleRemoveQuestion(qIdx)}
-                                                        className="p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition"
-                                                        title="Hapus Pertanyaan"
-                                                    >
-                                                        <Trash2 className="h-3.5 w-3.5" />
-                                                    </button>
-                                                </div>
+                                        {(data.instrument_config.questions || []).map((q: any, qIdx: number) => {
+                                            const diffColor = q.difficulty === 'Mudah'
+                                                ? 'bg-emerald-500/10 text-emerald-600 border-emerald-300'
+                                                : q.difficulty === 'Sedang'
+                                                    ? 'bg-amber-500/10 text-amber-600 border-amber-300'
+                                                    : 'bg-rose-500/10 text-rose-600 border-rose-300';
+                                            return (
+                                                <div key={q.id || qIdx} className="rounded-xl border border-border bg-background p-3.5 space-y-2.5 shadow-2xs">
+                                                    <div className="flex items-center justify-between border-b border-border/40 pb-2">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-[11px] font-black text-primary bg-primary/10 px-2 py-0.5 rounded">
+                                                                Pertanyaan Lisan #{qIdx + 1}
+                                                            </span>
+                                                            <span className={`text-[10px] font-black px-2 py-0.5 rounded-md border ${diffColor}`}>
+                                                                {q.difficulty || (qIdx === 0 ? 'Mudah' : qIdx === 1 ? 'Sedang' : 'Sulit')}
+                                                            </span>
+                                                        </div>
 
-                                                <textarea
-                                                    rows={2}
-                                                    placeholder="Tuliskan pertanyaan lisan guru..."
-                                                    value={q.question || q.text || ''}
-                                                    onChange={(e) => handleQuestionTextChange(qIdx, e.target.value)}
-                                                    className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground outline-none focus:border-primary"
-                                                />
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="flex items-center gap-1 bg-muted/50 px-2 py-0.5 rounded-lg border border-border/70">
+                                                                <span className="text-[10px] font-bold text-muted-foreground">Bobot:</span>
+                                                                <input
+                                                                    type="number"
+                                                                    min={0}
+                                                                    max={100}
+                                                                    value={q.points || 0}
+                                                                    onChange={(e) => handleQuestionPointsChange(qIdx, Number(e.target.value))}
+                                                                    className="w-12 text-center text-xs font-black text-primary bg-transparent outline-none"
+                                                                />
+                                                                <span className="text-[10px] text-muted-foreground font-bold">Poin</span>
+                                                            </div>
 
-                                                <div className="space-y-1">
-                                                    <label className="text-[10px] font-bold text-foreground">
-                                                        Pedoman Jawaban Kunci / Respon yang Diharapkan:
-                                                    </label>
-                                                    <input
-                                                        type="text"
-                                                        placeholder="Kata kunci konsep yang harus dijelaskan siswa..."
-                                                        value={q.answer_guide || ''}
-                                                        onChange={(e) => handleQuestionGuideChange(qIdx, e.target.value)}
-                                                        className="w-full rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs text-foreground outline-none focus:border-primary"
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleRemoveQuestion(qIdx)}
+                                                                className="p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition"
+                                                                title="Hapus Pertanyaan"
+                                                            >
+                                                                <Trash2 className="h-3.5 w-3.5" />
+                                                            </button>
+                                                        </div>
+                                                    </div>
+
+                                                    <textarea
+                                                        rows={2}
+                                                        placeholder="Tuliskan pertanyaan lisan yang menguji substansi materi secara langsung..."
+                                                        value={q.question || q.text || ''}
+                                                        onChange={(e) => handleQuestionTextChange(qIdx, e.target.value)}
+                                                        className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground outline-none focus:border-primary"
                                                     />
+
+                                                    <div className="space-y-1 p-2.5 rounded-xl bg-muted/30 border border-border/70">
+                                                        <label className="text-[10px] font-bold text-foreground flex items-center gap-1">
+                                                            <CheckSquare className="h-3 w-3 text-primary" />
+                                                            <span>Pedoman Kata Kunci / Respon Konseptual yang Diharapkan Guru:</span>
+                                                        </label>
+                                                        <textarea
+                                                            rows={2}
+                                                            placeholder="Kata kunci konsep yang harus dijelaskan dan dipahami siswa saat menjawab secara lisan..."
+                                                            value={q.answer_guide || ''}
+                                                            onChange={(e) => handleQuestionGuideChange(qIdx, e.target.value)}
+                                                            className="w-full rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs text-foreground outline-none focus:border-primary"
+                                                        />
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 </div>
                             )}
