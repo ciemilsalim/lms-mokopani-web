@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useForm, router } from '@inertiajs/react';
 import {
-    ChevronLeft, ChevronRight, CheckCircle2, AlertCircle,
+    ChevronLeft, CheckCircle2, AlertCircle,
     BookOpen, Users, Target, GraduationCap, Info, FileText, Plus, Trash2,
-    Check, Lock, Sparkles, Layers, ListChecks, Calendar, ArrowRight, Save,
-    Loader2, RefreshCw, Eye, HelpCircle, Sliders, CheckSquare
+    Check, Lock, Sparkles, Layers, ListChecks, Calendar, ArrowRight,
+    Loader2, Sliders, Edit3, HelpCircle, Eye
 } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 import axios from 'axios';
 
 interface Objective {
@@ -82,7 +81,6 @@ export function AssessmentForm({
     const [holidayWarning, setHolidayWarning] = useState<string | null>(null);
     const [aiLoading, setAiLoading] = useState(false);
     const [aiSuccessMessage, setAiSuccessMessage] = useState<string | null>(null);
-    const [activeSubTab, setActiveSubTab] = useState<'questions' | 'rubric'>('questions');
 
     // Initial Form State
     const { data, setData, post, processing, errors } = useForm({
@@ -111,8 +109,8 @@ export function AssessmentForm({
             levels: [
                 { name: 'Perlu Bimbingan', desc: 'Siswa belum menunjukkan pemahaman konsep dasar.' },
                 { name: 'Cukup', desc: 'Siswa memahami sebagian besar konsep dasar namun belum konsisten.' },
-                { name: 'Baik', desc: 'Siswa menguasai seluruh indikator ketuntasan dengan baik.' },
-                { name: 'Sangat Baik', desc: 'Siswa menunjukkan penguasaan luar biasa dan pemahaman mendalam.' }
+                { name: 'Baik', desc: 'Siswa menguasai seluruh indikator ketuntasan dengan baik (KKTP).' },
+                { name: 'Sangat Baik', desc: 'Siswa menunjukkan penguasaan luar biasa dan siap pengayaan.' }
             ],
             kktp: {
                 approach: 'rubric',
@@ -181,10 +179,9 @@ export function AssessmentForm({
                     desc: 'Buat butir soal pilihan ganda, isian, atau esai beserta kunci jawaban dan rubrik ketuntasan KKTP.',
                     capabilities: ['Pilihan Ganda & Esai', 'Kunci Jawaban Otomatis', 'Rubrik Kriteria KKTP'],
                     ctaLabel: 'Buat Soal & Rubrik dengan AI',
-                    manualLabel: 'Tambah Soal Manual',
+                    manualLabel: 'Tambah Butir Soal',
                     loadingLabel: 'Menyusun Soal & Rubrik...',
                     icon: ListChecks,
-                    defaultSubTab: 'questions'
                 };
             case 'observation_checklist':
             case 'observation':
@@ -193,10 +190,9 @@ export function AssessmentForm({
                     desc: 'Buat indikator observasi terstruktur, skala pengamatan guru, dan panduan rubrik penilaian.',
                     capabilities: ['Indikator Pengamatan', 'Skala Ketercapaian', 'Rubrik KKTP'],
                     ctaLabel: 'Buat Instrumen Observasi & Rubrik',
-                    manualLabel: 'Tambah Indikator Manual',
+                    manualLabel: 'Tambah Indikator',
                     loadingLabel: 'Menyusun Indikator & Rubrik...',
                     icon: Eye,
-                    defaultSubTab: 'rubric'
                 };
             case 'performance':
             case 'project':
@@ -207,10 +203,9 @@ export function AssessmentForm({
                     desc: 'Buat instruksi penugasan praktik, kriteria keberhasilan karya, dan rubrik penilaian kinerja.',
                     capabilities: ['Instruksi Langkah Kerja', 'Kriteria Penilaian Karya', 'Rubrik 4 Level KKTP'],
                     ctaLabel: 'Buat Panduan Tugas & Rubrik',
-                    manualLabel: 'Tambah Kriteria Manual',
+                    manualLabel: 'Tambah Kriteria',
                     loadingLabel: 'Menyusun Tugas & Rubrik...',
                     icon: FileText,
-                    defaultSubTab: 'rubric'
                 };
             case 'reflective_journal':
             case 'reflection':
@@ -219,10 +214,9 @@ export function AssessmentForm({
                     desc: 'Buat pertanyaan pemantik refleksi mendalam dan rubrik evaluasi kesadaran belajar siswa.',
                     capabilities: ['Pertanyaan Refleksi', 'Panduan Jawaban Siswa', 'Rubrik Evaluasi Diri'],
                     ctaLabel: 'Buat Pertanyaan & Rubrik Refleksi',
-                    manualLabel: 'Tambah Pertanyaan Manual',
+                    manualLabel: 'Tambah Pertanyaan',
                     loadingLabel: 'Menyusun Pertanyaan & Rubrik...',
                     icon: HelpCircle,
-                    defaultSubTab: 'questions'
                 };
             case 'self_assessment':
                 return {
@@ -230,10 +224,9 @@ export function AssessmentForm({
                     desc: 'Buat lembar pernyataan checklist penilaian diri dan rubrik refleksi ketuntasan belajar.',
                     capabilities: ['Checklist Kemampuan Diri', 'Bahasa Ramah Siswa', 'Rubrik KKTP'],
                     ctaLabel: 'Buat Lembar Penilaian Diri & Rubrik',
-                    manualLabel: 'Tambah Pernyataan Manual',
+                    manualLabel: 'Tambah Pernyataan',
                     loadingLabel: 'Menyusun Penilaian Diri...',
                     icon: CheckCircle2,
-                    defaultSubTab: 'rubric'
                 };
             case 'peer_assessment':
                 return {
@@ -241,10 +234,9 @@ export function AssessmentForm({
                     desc: 'Buat kriteria pengamatan antarteman, umpan balik positif, dan rubrik kolaborasi kelompok.',
                     capabilities: ['Kriteria Kolaborasi Tim', 'Panduan Umpan Balik', 'Rubrik Antarteman'],
                     ctaLabel: 'Buat Instrumen Antarteman & Rubrik',
-                    manualLabel: 'Tambah Kriteria Manual',
+                    manualLabel: 'Tambah Kriteria',
                     loadingLabel: 'Menyusun Antarteman & Rubrik...',
                     icon: Users,
-                    defaultSubTab: 'rubric'
                 };
             case 'exit_ticket':
             case 'cats':
@@ -253,10 +245,9 @@ export function AssessmentForm({
                     desc: 'Buat pertanyaan cepat 1–2 menit di akhir sesi dan rubrik identifikasi miskonsepsi.',
                     capabilities: ['Pertanyaan Cepat Ringkas', 'Identifikasi Miskonsepsi', 'Rubrik Respon Cepat'],
                     ctaLabel: 'Buat Exit Ticket & Rubrik',
-                    manualLabel: 'Tambah Pertanyaan Manual',
+                    manualLabel: 'Tambah Pertanyaan',
                     loadingLabel: 'Menyusun Exit Ticket...',
                     icon: Sparkles,
-                    defaultSubTab: 'questions'
                 };
             case 'rubric':
             default:
@@ -268,7 +259,6 @@ export function AssessmentForm({
                     manualLabel: 'Tambah Level Kriteria',
                     loadingLabel: 'Menyusun Rubrik KKTP...',
                     icon: Layers,
-                    defaultSubTab: 'rubric'
                 };
         }
     }, [data.instrument_type]);
@@ -289,6 +279,7 @@ export function AssessmentForm({
 
             if (res.data) {
                 const d = res.data;
+
                 // 1. Process Questions (Clean Plain Text for Question & Options)
                 let formattedQuestions: any[] = [];
                 if (d.questions && Array.isArray(d.questions) && d.questions.length > 0) {
@@ -298,7 +289,7 @@ export function AssessmentForm({
                             id: q.id || `q_${Date.now()}_${idx}`,
                             type: isMcq ? 'multiple_choice' : (q.type || 'short_answer'),
                             question: cleanPlainText(q.question || q.text || ''),
-                            points: q.points || 10,
+                            points: q.points || 20,
                             options: isMcq && q.options ? q.options.map((opt: any, optIdx: number) => ({
                                 id: opt.id || `opt_${optIdx}_${Date.now()}`,
                                 text: cleanPlainText(opt.text || opt.label || ''),
@@ -312,11 +303,11 @@ export function AssessmentForm({
                 }
 
                 // 2. Process Rubric Levels (Clean Plain Text)
-                let formattedLevels = data.instrument_config.levels || [
+                let formattedLevels = [
                     { name: 'Perlu Bimbingan', desc: 'Siswa belum menunjukkan pemahaman konsep dasar.' },
-                    { name: 'Cukup', desc: 'Siswa memahami sebagian besar konsep dasar.' },
-                    { name: 'Baik', desc: 'Siswa menguasai seluruh indikator dengan baik.' },
-                    { name: 'Sangat Baik', desc: 'Siswa menunjukkan penguasaan luar biasa.' }
+                    { name: 'Cukup', desc: 'Siswa memahami sebagian besar konsep dasar namun belum konsisten.' },
+                    { name: 'Baik', desc: 'Siswa menguasai seluruh indikator ketuntasan dengan baik (KKTP).' },
+                    { name: 'Sangat Baik', desc: 'Siswa menunjukkan penguasaan luar biasa dan siap pengayaan.' }
                 ];
                 if (d.levels && Array.isArray(d.levels) && d.levels.length > 0) {
                     formattedLevels = d.levels.map((lvl: any) => ({
@@ -326,17 +317,22 @@ export function AssessmentForm({
                 }
 
                 // 3. Process Indicators (Clean Plain Text)
-                let formattedIndicators = data.instrument_config.indicators || [];
+                let formattedIndicators: string[] = [];
                 if (d.indicators && Array.isArray(d.indicators) && d.indicators.length > 0) {
-                    formattedIndicators = d.indicators.map((ind: any) => cleanPlainText(typeof ind === 'string' ? ind : ind.text || ''));
+                    formattedIndicators = d.indicators.map((ind: any) => cleanPlainText(typeof ind === 'string' ? ind : ind.name || ind.text || ''));
                 }
+
+                // 4. Default Title if empty
+                const activeTp = objectives.find(o => o.id === Number(data.learning_objective_id));
+                const typeName = data.assessment_type === 'initial' ? 'Asesmen Awal' : data.assessment_type === 'summative' ? 'Asesmen Sumatif' : 'LKPD Formatif';
+                const defaultGeneratedTitle = `${typeName}: ${cleanPlainText(activeTp?.description || 'Pembelajaran')}`;
 
                 // Atomic state update for Inertia useForm
                 setData(prev => {
-                    const finalTitle = d.title ? cleanPlainText(d.title) : prev.title;
+                    const finalTitle = d.title ? cleanPlainText(d.title) : (prev.title || defaultGeneratedTitle);
                     const finalDesc = (d.description || d.instructions || d.stimulus) 
                         ? cleanPlainText(d.description || d.instructions || d.stimulus) 
-                        : prev.description;
+                        : (prev.description || 'Kerjakan tugas/soal asesmen berikut dengan teliti sesuai petunjuk guru.');
 
                     return {
                         ...prev,
@@ -353,15 +349,8 @@ export function AssessmentForm({
                     };
                 });
 
-                // Auto select questions sub-tab if questions are present
-                if (formattedQuestions.length > 0) {
-                    setActiveSubTab('questions');
-                } else {
-                    setActiveSubTab('rubric');
-                }
-
-                setAiSuccessMessage(`✨ Soal & Rubrik ${aiContext.name} berhasil dibuat! (${formattedQuestions.length} butir soal)`);
-                setTimeout(() => setAiSuccessMessage(null), 4500);
+                setAiSuccessMessage(`✨ Seluruh draf asesmen berhasil dibuat! (${formattedQuestions.length} butir soal + Rubrik KKTP)`);
+                setTimeout(() => setAiSuccessMessage(null), 5000);
             }
         } catch (err) {
             console.error('AI Generate Error:', err);
@@ -376,7 +365,7 @@ export function AssessmentForm({
             id: `q_${Date.now()}`,
             type: 'multiple_choice',
             question: '',
-            points: 10,
+            points: 20,
             options: [
                 { id: `opt_1_${Date.now()}`, text: '', is_correct: true },
                 { id: `opt_2_${Date.now()}`, text: '', is_correct: false },
@@ -515,6 +504,8 @@ export function AssessmentForm({
         { id: 3, label: 'Detail' },
     ];
 
+    const questionsCount = data.instrument_config.questions?.length || 0;
+
     return (
         <div className="w-full space-y-3.5 pb-24">
             {/* Header Stepper Navigation (33% Equal Width, Compact 46px Height) */}
@@ -566,7 +557,7 @@ export function AssessmentForm({
                                 <h2 className="text-sm sm:text-base font-black text-foreground leading-tight">
                                     Konteks Pembelajaran
                                 </h2>
-                                <p className="text-[11px] text-muted-foreground">Langkah 1 dari 3</p>
+                                <p className="text-[11px] text-muted-foreground">Langkah 1 dari 3: Pilih Mata Pelajaran & Tujuan Pembelajaran (TP)</p>
                             </div>
                         </div>
 
@@ -646,7 +637,7 @@ export function AssessmentForm({
                         {/* Objective / TP Selector */}
                         <div className="space-y-1.5">
                             <label className="text-xs font-bold text-foreground">
-                                Tujuan Pembelajaran (Opsional)
+                                Tujuan Pembelajaran (TP) <span className="text-destructive">*</span>
                             </label>
                             <select
                                 value={data.learning_objective_id}
@@ -663,346 +654,371 @@ export function AssessmentForm({
                     </div>
                 )}
 
-                {/* ── STEP 2: TIPE ASESMEN, INSTRUMEN & ASISTEN AI KONTEKSTUAL ── */}
+                {/* ── STEP 2: INSTRUMEN & HASIL GENERATE LENGKAP (LANGSUNG TAMPIL & BISA DISUNTING) ── */}
                 {currentStep === 2 && (
-                    <div className="w-full rounded-2xl border border-border bg-card p-4 sm:p-5 space-y-4 shadow-xs fade-in">
-                        <div className="flex items-center gap-2 border-b border-border/50 pb-2.5">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary shrink-0">
-                                <Target className="h-4 w-4" />
-                            </div>
-                            <div className="min-w-0">
-                                <h2 className="text-sm sm:text-base font-black text-foreground leading-tight">
-                                    Tipe & Instrumen Penilaian
-                                </h2>
-                                <p className="text-[11px] text-muted-foreground">Langkah 2 dari 3</p>
-                            </div>
-                        </div>
-
-                        {/* 1. Assessment Type 3-Button Grid */}
-                        <div className="space-y-1.5">
-                            <label className="text-xs font-bold text-foreground">
-                                1. Tipe Asesmen <span className="text-destructive">*</span>
-                            </label>
-                            <div className="grid grid-cols-3 gap-2">
-                                {[
-                                    { id: 'initial', name: 'Asesmen Awal', icon: Info },
-                                    { id: 'formative', name: 'Formatif', icon: Target },
-                                    { id: 'summative', name: 'Sumatif', icon: GraduationCap },
-                                ].map(t => {
-                                    const isSelected = data.assessment_type === t.id;
-                                    const Icon = t.icon;
-                                    return (
-                                        <button
-                                            key={t.id}
-                                            type="button"
-                                            onClick={() => {
-                                                setData(prev => ({ ...prev, assessment_type: t.id }));
-                                            }}
-                                            className={`flex flex-col items-center justify-center p-2.5 sm:p-3 rounded-xl border text-center transition min-h-[60px] cursor-pointer ${
-                                                isSelected
-                                                    ? 'bg-primary text-primary-foreground border-primary shadow-xs font-black'
-                                                    : 'bg-background hover:bg-muted/40 border-border text-foreground'
-                                            }`}
-                                        >
-                                            <Icon className="h-4 w-4 mb-1" />
-                                            <span className="text-xs font-bold leading-tight">{t.name}</span>
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        </div>
-
-                        {/* 2. Instrument Selection Grid */}
-                        <div className="space-y-1.5 pt-1">
-                            <label className="text-xs font-bold text-foreground">
-                                2. Pilih Instrumen Penilaian <span className="text-destructive">*</span>
-                            </label>
-                            <div className="grid gap-2 sm:grid-cols-2">
-                                {(instruments[data.assessment_type] || [
-                                    { id: 'written_test', name: 'Tes Tertulis / Kuis', desc: 'Soal pilihan ganda atau esai otomatis' },
-                                    { id: 'assignment', name: 'Penugasan / LKPD', desc: 'Pengumpulan berkas / foto fisik' },
-                                    { id: 'rubric', name: 'Rubrik Kriteria', desc: 'Penilaian dengan level kualitatif' },
-                                    { id: 'observation_checklist', name: 'Observasi Kinerja', desc: 'Checklist pengamatan langsung' },
-                                ]).map(inst => {
-                                    const isSelected = data.instrument_type === inst.id;
-                                    return (
-                                        <button
-                                            key={inst.id}
-                                            type="button"
-                                            onClick={() => setData('instrument_type', inst.id)}
-                                            className={`flex items-start gap-2.5 p-3 rounded-xl border text-left transition min-h-[54px] cursor-pointer ${
-                                                isSelected
-                                                    ? 'bg-primary/10 border-primary text-foreground shadow-2xs font-bold'
-                                                    : 'bg-background hover:bg-muted/40 border-border text-foreground'
-                                            }`}
-                                        >
-                                            <div className={`p-1.5 rounded-lg shrink-0 ${isSelected ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
-                                                <FileText className="h-3.5 w-3.5" />
-                                            </div>
-                                            <div className="min-w-0">
-                                                <p className="text-xs font-bold truncate leading-tight">{inst.name}</p>
-                                                <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-1">{inst.desc}</p>
-                                            </div>
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        </div>
-
-                        {/* 3. Context-Aware AI Assistant Card */}
-                        {data.instrument_type && (
-                            <div className="p-3.5 rounded-2xl bg-gradient-to-r from-primary/10 via-primary/5 to-purple-500/10 border border-primary/25 space-y-2.5 transition-all">
-                                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-                                    <div className="space-y-1 min-w-0">
-                                        <div className="flex items-center gap-2">
-                                            <Sparkles className="h-4 w-4 text-primary shrink-0 animate-pulse" />
-                                            <h4 className="text-xs font-bold text-foreground">
-                                                ✨ Asisten AI Asesmen ({aiContext.name})
-                                            </h4>
-                                        </div>
-                                        <p className="text-[11px] text-muted-foreground leading-relaxed">
-                                            {aiContext.desc}
-                                        </p>
-
-                                        {/* Dynamic Capabilities Checklist */}
-                                        <div className="flex flex-wrap gap-1.5 pt-1">
-                                            {aiContext.capabilities.map((cap, idx) => (
-                                                <span
-                                                    key={idx}
-                                                    className="inline-flex items-center gap-1 text-[10px] font-bold bg-background/80 border border-border/80 px-2 py-0.5 rounded-md text-foreground"
-                                                >
-                                                    <Check className="h-2.5 w-2.5 text-primary stroke-[3]" />
-                                                    <span>{cap}</span>
-                                                </span>
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                    {/* Action Button: Dynamic AI Button */}
-                                    <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
-                                        <button
-                                            type="button"
-                                            disabled={aiLoading || !data.learning_objective_id}
-                                            onClick={handleAiGenerate}
-                                            className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-black shadow-xs hover:bg-primary/90 transition active:scale-95 cursor-pointer disabled:opacity-50"
-                                        >
-                                            {aiLoading ? (
-                                                <>
-                                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                                    <span>{aiContext.loadingLabel}</span>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <Sparkles className="h-3.5 w-3.5" />
-                                                    <span>{aiContext.ctaLabel}</span>
-                                                </>
-                                            )}
-                                        </button>
-                                    </div>
+                    <div className="w-full space-y-4 fade-in">
+                        {/* 1. Instrument Type Selector */}
+                        <div className="rounded-2xl border border-border bg-card p-4 sm:p-5 space-y-4 shadow-xs">
+                            <div className="flex items-center gap-2 border-b border-border/50 pb-2.5">
+                                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary shrink-0">
+                                    <Target className="h-4 w-4" />
                                 </div>
-
-                                {!data.learning_objective_id && (
-                                    <p className="text-[10px] text-amber-700 dark:text-amber-300 font-medium">
-                                        💡 Tips: Pilih Tujuan Pembelajaran (TP) pada Langkah 1 untuk mengaktifkan perumusan otomatis dari AI.
-                                    </p>
-                                )}
-
-                                {aiSuccessMessage && (
-                                    <div className="p-2 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 text-xs font-bold flex items-center gap-1.5 animate-in fade-in">
-                                        <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
-                                        <span>{aiSuccessMessage}</span>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-
-                        {/* 4. Dual Tab Editor: [ Butir Soal / Pertanyaan ] & [ Rubrik Kriteria & KKTP ] */}
-                        <div className="space-y-3 pt-2 border-t border-border/50">
-                            <div className="flex items-center justify-between gap-2 border-b border-border/60 pb-2">
-                                <div className="flex items-center gap-1.5 p-1 rounded-xl bg-muted/60">
-                                    <button
-                                        type="button"
-                                        onClick={() => setActiveSubTab('questions')}
-                                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
-                                            activeSubTab === 'questions'
-                                                ? 'bg-card text-foreground shadow-2xs font-black'
-                                                : 'text-muted-foreground hover:text-foreground'
-                                        }`}
-                                    >
-                                        <ListChecks className="h-3.5 w-3.5 text-primary" />
-                                        <span>Butir Soal ({data.instrument_config.questions?.length || 0})</span>
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setActiveSubTab('rubric')}
-                                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
-                                            activeSubTab === 'rubric'
-                                                ? 'bg-card text-foreground shadow-2xs font-black'
-                                                : 'text-muted-foreground hover:text-foreground'
-                                        }`}
-                                    >
-                                        <Layers className="h-3.5 w-3.5 text-primary" />
-                                        <span>Rubrik Kriteria KKTP</span>
-                                    </button>
+                                <div className="min-w-0">
+                                    <h2 className="text-sm sm:text-base font-black text-foreground leading-tight">
+                                        Pilih Tipe & Instrumen Asesmen
+                                    </h2>
+                                    <p className="text-[11px] text-muted-foreground">Langkah 2 dari 3</p>
                                 </div>
-
-                                {activeSubTab === 'questions' && (
-                                    <button
-                                        type="button"
-                                        onClick={handleAddQuestion}
-                                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-background border border-border text-foreground hover:bg-muted text-xs font-bold transition cursor-pointer shrink-0"
-                                    >
-                                        <Plus className="h-3 w-3 text-primary" />
-                                        <span>{aiContext.manualLabel}</span>
-                                    </button>
-                                )}
                             </div>
 
-                            {/* SUB-TAB A: QUESTIONS / PERTANYAAN */}
-                            {activeSubTab === 'questions' && (
-                                <div className="space-y-3">
-                                    {(!data.instrument_config.questions || data.instrument_config.questions.length === 0) ? (
-                                        <div className="text-center py-6 border border-dashed border-border rounded-xl p-4 bg-muted/20 space-y-1.5">
-                                            <p className="text-xs font-medium text-muted-foreground">Belum ada butir soal.</p>
-                                            <p className="text-[11px] text-primary font-bold">
-                                                Gunakan tombol "{aiContext.ctaLabel}" di atas atau tekan "{aiContext.manualLabel}".
-                                            </p>
-                                        </div>
-                                    ) : (
-                                        <div className="space-y-2.5">
-                                            {data.instrument_config.questions.map((q: any, qIdx: number) => (
-                                                <div key={q.id || qIdx} className="rounded-xl border border-border bg-background p-3 space-y-2 shadow-2xs">
-                                                    <div className="flex items-center justify-between gap-2 border-b border-border/40 pb-1.5">
-                                                        <span className="text-[11px] font-black text-primary bg-primary/10 px-2 py-0.5 rounded">
-                                                            Soal #{qIdx + 1}
-                                                        </span>
-                                                        <div className="flex items-center gap-1.5">
-                                                            <select
-                                                                value={q.type}
-                                                                onChange={(e) => handleQuestionTypeChange(qIdx, e.target.value)}
-                                                                className="rounded-lg border border-border bg-card px-2 py-0.5 text-xs font-bold text-foreground outline-none"
-                                                            >
-                                                                <option value="multiple_choice">Pilihan Ganda</option>
-                                                                <option value="short_answer">Isian Singkat</option>
-                                                                <option value="essay">Uraian / Esai</option>
-                                                            </select>
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => handleRemoveQuestion(qIdx)}
-                                                                className="p-1 text-destructive hover:bg-destructive/10 rounded-lg transition"
-                                                                title="Hapus Soal"
-                                                            >
-                                                                <Trash2 className="h-3.5 w-3.5" />
-                                                            </button>
-                                                        </div>
-                                                    </div>
+                            {/* Assessment Type 3-Button Grid */}
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-bold text-foreground">
+                                    Tipe Asesmen <span className="text-destructive">*</span>
+                                </label>
+                                <div className="grid grid-cols-3 gap-2">
+                                    {[
+                                        { id: 'initial', name: 'Asesmen Awal', icon: Info },
+                                        { id: 'formative', name: 'Formatif', icon: Target },
+                                        { id: 'summative', name: 'Sumatif', icon: GraduationCap },
+                                    ].map(t => {
+                                        const isSelected = data.assessment_type === t.id;
+                                        const Icon = t.icon;
+                                        return (
+                                            <button
+                                                key={t.id}
+                                                type="button"
+                                                onClick={() => {
+                                                    setData(prev => ({ ...prev, assessment_type: t.id }));
+                                                }}
+                                                className={`flex flex-col items-center justify-center p-2.5 sm:p-3 rounded-xl border text-center transition min-h-[60px] cursor-pointer ${
+                                                    isSelected
+                                                        ? 'bg-primary text-primary-foreground border-primary shadow-xs font-black'
+                                                        : 'bg-background hover:bg-muted/40 border-border text-foreground'
+                                                }`}
+                                            >
+                                                <Icon className="h-4 w-4 mb-1" />
+                                                <span className="text-xs font-bold leading-tight">{t.name}</span>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
 
-                                                    <textarea
-                                                        rows={2}
-                                                        placeholder={`Tuliskan teks soal #${qIdx + 1}...`}
-                                                        value={q.question}
-                                                        onChange={(e) => handleQuestionTextChange(qIdx, e.target.value)}
-                                                        className="w-full rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs text-foreground outline-none focus:border-primary"
-                                                    />
-
-                                                    {q.type === 'multiple_choice' && (
-                                                        <div className="space-y-1.5 pt-1">
-                                                            <p className="text-[10px] font-bold text-muted-foreground">Pilihan Jawaban (Klik radio untuk kunci):</p>
-                                                            {(q.options || []).map((opt: any, optIdx: number) => (
-                                                                <div key={opt.id || optIdx} className="flex items-center gap-1.5">
-                                                                    <input
-                                                                        type="radio"
-                                                                        name={`correct_${qIdx}`}
-                                                                        checked={Boolean(opt.is_correct)}
-                                                                        onChange={() => handleOptionCorrectChange(qIdx, optIdx)}
-                                                                        className="h-3.5 w-3.5 text-primary focus:ring-primary cursor-pointer"
-                                                                    />
-                                                                    <input
-                                                                        type="text"
-                                                                        placeholder={`Opsi ${String.fromCharCode(65 + optIdx)}`}
-                                                                        value={opt.text}
-                                                                        onChange={(e) => handleOptionTextChange(qIdx, optIdx, e.target.value)}
-                                                                        className="flex-1 rounded-lg border border-border bg-card px-2 py-1 text-xs text-foreground outline-none"
-                                                                    />
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={() => handleRemoveOption(qIdx, optIdx)}
-                                                                        className="p-1 text-muted-foreground hover:text-destructive transition rounded"
-                                                                    >
-                                                                        <Trash2 className="h-3 w-3" />
-                                                                    </button>
-                                                                </div>
-                                                            ))}
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => handleAddOption(qIdx)}
-                                                                className="inline-flex items-center gap-1 text-[11px] font-bold text-primary hover:underline"
-                                                            >
-                                                                <Plus className="h-3 w-3" /> Tambah Opsi
-                                                            </button>
-                                                        </div>
-                                                    )}
+                            {/* Instrument Selection Grid */}
+                            <div className="space-y-1.5 pt-1">
+                                <label className="text-xs font-bold text-foreground">
+                                    Instrumen Penilaian <span className="text-destructive">*</span>
+                                </label>
+                                <div className="grid gap-2 sm:grid-cols-2">
+                                    {(instruments[data.assessment_type] || [
+                                        { id: 'written_test', name: 'Tes Tertulis / Kuis', desc: 'Soal pilihan ganda atau esai otomatis' },
+                                        { id: 'assignment', name: 'Penugasan / LKPD', desc: 'Pengumpulan berkas / tugas terstruktur' },
+                                        { id: 'rubric', name: 'Rubrik Kriteria', desc: 'Penilaian dengan level kualitatif' },
+                                        { id: 'observation_checklist', name: 'Observasi Kinerja', desc: 'Checklist pengamatan langsung' },
+                                    ]).map(inst => {
+                                        const isSelected = data.instrument_type === inst.id;
+                                        return (
+                                            <button
+                                                key={inst.id}
+                                                type="button"
+                                                onClick={() => setData('instrument_type', inst.id)}
+                                                className={`flex items-start gap-2.5 p-3 rounded-xl border text-left transition min-h-[54px] cursor-pointer ${
+                                                    isSelected
+                                                        ? 'bg-primary/10 border-primary text-foreground shadow-2xs font-bold'
+                                                        : 'bg-background hover:bg-muted/40 border-border text-foreground'
+                                                }`}
+                                            >
+                                                <div className={`p-1.5 rounded-lg shrink-0 ${isSelected ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
+                                                    <FileText className="h-3.5 w-3.5" />
                                                 </div>
-                                            ))}
+                                                <div className="min-w-0">
+                                                    <p className="text-xs font-bold truncate leading-tight">{inst.name}</p>
+                                                    <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-1">{inst.desc}</p>
+                                                </div>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            {/* Context-Aware AI Assistant Generator Card */}
+                            {data.instrument_type && (
+                                <div className="p-3.5 rounded-2xl bg-gradient-to-r from-primary/10 via-primary/5 to-purple-500/10 border border-primary/25 space-y-2.5 transition-all">
+                                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                                        <div className="space-y-1 min-w-0">
+                                            <div className="flex items-center gap-2">
+                                                <Sparkles className="h-4 w-4 text-primary shrink-0 animate-pulse" />
+                                                <h4 className="text-xs font-bold text-foreground">
+                                                    ✨ Asisten AI Asesmen ({aiContext.name})
+                                                </h4>
+                                            </div>
+                                            <p className="text-[11px] text-muted-foreground leading-relaxed">
+                                                {aiContext.desc}
+                                            </p>
+
+                                            <div className="flex flex-wrap gap-1.5 pt-1">
+                                                {aiContext.capabilities.map((cap, idx) => (
+                                                    <span
+                                                        key={idx}
+                                                        className="inline-flex items-center gap-1 text-[10px] font-bold bg-background/80 border border-border/80 px-2 py-0.5 rounded-md text-foreground"
+                                                    >
+                                                        <Check className="h-2.5 w-2.5 text-primary stroke-[3]" />
+                                                        <span>{cap}</span>
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                                            <button
+                                                type="button"
+                                                disabled={aiLoading || !data.learning_objective_id}
+                                                onClick={handleAiGenerate}
+                                                className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-black shadow-xs hover:bg-primary/90 transition active:scale-95 cursor-pointer disabled:opacity-50"
+                                            >
+                                                {aiLoading ? (
+                                                    <>
+                                                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                                        <span>{aiContext.loadingLabel}</span>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Sparkles className="h-3.5 w-3.5" />
+                                                        <span>{aiContext.ctaLabel}</span>
+                                                    </>
+                                                )}
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {!data.learning_objective_id && (
+                                        <p className="text-[10px] text-amber-700 dark:text-amber-300 font-medium">
+                                            💡 Tips: Pilih Tujuan Pembelajaran (TP) pada Langkah 1 untuk mengaktifkan perumusan otomatis dari AI.
+                                        </p>
+                                    )}
+
+                                    {aiSuccessMessage && (
+                                        <div className="p-2.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 text-xs font-bold flex items-center gap-2 animate-in fade-in">
+                                            <CheckCircle2 className="h-4 w-4 shrink-0" />
+                                            <span>{aiSuccessMessage}</span>
                                         </div>
                                     )}
                                 </div>
                             )}
+                        </div>
 
-                            {/* SUB-TAB B: RUBRIK KRITERIA & 4 LEVEL KKTP */}
-                            {activeSubTab === 'rubric' && (
-                                <div className="space-y-3">
-                                    <div className="p-3 rounded-xl bg-muted/40 border border-border/70 space-y-1">
-                                        <p className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                                            <Sliders className="h-3.5 w-3.5 text-primary" />
-                                            <span>Rubrik Deskriptor 4 Tingkat Ketercapaian (KKTP)</span>
-                                        </p>
-                                        <p className="text-[11px] text-muted-foreground">
-                                            Deskriptor kualitatif yang membantu guru mengevaluasi level pemahaman siswa secara objektif.
-                                        </p>
+                        {/* ── BAGIAN DRAF LENGKAP HASIL AI / INPUT MANUAL (LANGSUNG DITAMPILKAN & BISA DISUNTING) ── */}
+                        <div className="rounded-2xl border border-border bg-card p-4 sm:p-5 space-y-5 shadow-xs">
+                            <div className="flex items-center justify-between border-b border-border/50 pb-2.5">
+                                <div className="flex items-center gap-2">
+                                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-primary shrink-0">
+                                        <Edit3 className="h-3.5 w-3.5" />
                                     </div>
-
-                                    <div className="grid gap-2.5 sm:grid-cols-2">
-                                        {(data.instrument_config.levels || [
-                                            { name: 'Perlu Bimbingan', desc: 'Siswa belum menunjukkan pemahaman konsep dasar.' },
-                                            { name: 'Cukup', desc: 'Siswa memahami sebagian besar konsep dasar.' },
-                                            { name: 'Baik', desc: 'Siswa menguasai seluruh indikator dengan baik.' },
-                                            { name: 'Sangat Baik', desc: 'Siswa menunjukkan penguasaan luar biasa.' }
-                                        ]).map((lvl: any, lIdx: number) => {
-                                            const badgeColors = [
-                                                'bg-rose-500/10 text-rose-600 border-rose-200 dark:border-rose-900',
-                                                'bg-amber-500/10 text-amber-600 border-amber-200 dark:border-amber-900',
-                                                'bg-emerald-500/10 text-emerald-600 border-emerald-200 dark:border-emerald-900',
-                                                'bg-blue-500/10 text-blue-600 border-blue-200 dark:border-blue-900'
-                                            ];
-                                            return (
-                                                <div key={lIdx} className="p-3 rounded-xl border border-border bg-background space-y-2">
-                                                    <div className="flex items-center justify-between">
-                                                        <span className={`text-[11px] font-black px-2 py-0.5 rounded-md border ${badgeColors[lIdx % 4]}`}>
-                                                            {lvl.name}
-                                                        </span>
-                                                        <span className="text-[10px] text-muted-foreground font-bold">
-                                                            {lIdx === 0 ? 'Belum Tuntas' : lIdx === 1 ? 'Hampir Tuntas' : lIdx === 2 ? 'Tuntas (KKTP)' : 'Pengayaan'}
-                                                        </span>
-                                                    </div>
-                                                    <textarea
-                                                        rows={3}
-                                                        placeholder={`Tuliskan kriteria deskriptor untuk level ${lvl.name}...`}
-                                                        value={lvl.desc || ''}
-                                                        onChange={(e) => handleRubricDescChange(lIdx, e.target.value)}
-                                                        className="w-full rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs text-foreground outline-none focus:border-primary"
-                                                    />
-                                                </div>
-                                            );
-                                        })}
+                                    <div>
+                                        <h3 className="text-xs sm:text-sm font-black text-foreground">
+                                            Draf Hasil Asesmen & Penyuntingan
+                                        </h3>
+                                        <p className="text-[10px] text-muted-foreground">
+                                            Periksa dan sesuaikan seluruh rancangan judul, petunjuk, butir soal, dan rubrik KKTP di bawah ini.
+                                        </p>
                                     </div>
                                 </div>
-                            )}
+                            </div>
+
+                            {/* 1. Judul & Petunjuk Asesmen */}
+                            <div className="space-y-3 p-3.5 rounded-xl bg-muted/20 border border-border/70">
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-bold text-foreground flex items-center gap-1">
+                                        <span>Judul Asesmen</span> <span className="text-destructive">*</span>
+                                    </label>
+                                    <input
+                                        type="text"
+                                        placeholder="Contoh: LKPD Formatif - Pemahaman Konsep Komputer"
+                                        value={data.title}
+                                        onChange={(e) => setData('title', e.target.value)}
+                                        className="w-full rounded-xl border border-border bg-background px-3.5 py-2 text-xs sm:text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition min-h-[42px]"
+                                    />
+                                    {errors.title && <p className="text-xs font-bold text-destructive mt-1">{errors.title}</p>}
+                                </div>
+
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-bold text-foreground flex items-center gap-1">
+                                        <span>Petunjuk & Deskripsi Pengerjaan Siswa</span> <span className="text-destructive">*</span>
+                                    </label>
+                                    <textarea
+                                        rows={3}
+                                        placeholder="Tuliskan petunjuk atau instruksi pengerjaan bagi siswa..."
+                                        value={data.description}
+                                        onChange={(e) => setData('description', e.target.value)}
+                                        className="w-full rounded-xl border border-border bg-background px-3.5 py-2 text-xs sm:text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition min-h-[75px]"
+                                    />
+                                    {errors.description && <p className="text-xs font-bold text-destructive mt-1">{errors.description}</p>}
+                                </div>
+                            </div>
+
+                            {/* 2. Daftar Butir Soal / Pertanyaan */}
+                            <div className="space-y-3">
+                                <div className="flex items-center justify-between border-b border-border/40 pb-2">
+                                    <div className="flex items-center gap-1.5">
+                                        <ListChecks className="h-4 w-4 text-primary" />
+                                        <span className="text-xs font-black text-foreground">
+                                            Daftar Butir Soal ({questionsCount})
+                                        </span>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={handleAddQuestion}
+                                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-background border border-border text-foreground hover:bg-muted text-xs font-bold transition cursor-pointer"
+                                    >
+                                        <Plus className="h-3 w-3 text-primary" />
+                                        <span>{aiContext.manualLabel}</span>
+                                    </button>
+                                </div>
+
+                                {questionsCount === 0 ? (
+                                    <div className="text-center py-5 border border-dashed border-border rounded-xl p-4 bg-muted/10 space-y-1">
+                                        <p className="text-xs text-muted-foreground">Belum ada butir soal yang dibuat.</p>
+                                        <p className="text-[11px] text-primary font-bold">
+                                            Tekan tombol "{aiContext.ctaLabel}" di atas atau "{aiContext.manualLabel}" untuk menambahkan soal.
+                                        </p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-3">
+                                        {data.instrument_config.questions.map((q: any, qIdx: number) => (
+                                            <div key={q.id || qIdx} className="rounded-xl border border-border bg-background p-3.5 space-y-2.5 shadow-2xs">
+                                                <div className="flex items-center justify-between gap-2 border-b border-border/40 pb-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-[11px] font-black text-primary bg-primary/10 px-2 py-0.5 rounded">
+                                                            Soal #{qIdx + 1}
+                                                        </span>
+                                                        <select
+                                                            value={q.type}
+                                                            onChange={(e) => handleQuestionTypeChange(qIdx, e.target.value)}
+                                                            className="rounded-lg border border-border bg-card px-2 py-1 text-xs font-bold text-foreground outline-none cursor-pointer"
+                                                        >
+                                                            <option value="multiple_choice">Pilihan Ganda</option>
+                                                            <option value="short_answer">Isian Singkat</option>
+                                                            <option value="essay">Uraian / Esai</option>
+                                                        </select>
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleRemoveQuestion(qIdx)}
+                                                        className="p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition"
+                                                        title="Hapus Soal"
+                                                    >
+                                                        <Trash2 className="h-3.5 w-3.5" />
+                                                    </button>
+                                                </div>
+
+                                                <textarea
+                                                    rows={2}
+                                                    placeholder={`Tuliskan pertanyaan/teks soal #${qIdx + 1}...`}
+                                                    value={q.question}
+                                                    onChange={(e) => handleQuestionTextChange(qIdx, e.target.value)}
+                                                    className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground outline-none focus:border-primary"
+                                                />
+
+                                                {q.type === 'multiple_choice' && (
+                                                    <div className="space-y-1.5 pt-1">
+                                                        <p className="text-[10px] font-bold text-muted-foreground">
+                                                            Pilihan Opsi Jawaban (Pilih radio untuk menandai kunci jawaban yang benar):
+                                                        </p>
+                                                        {(q.options || []).map((opt: any, optIdx: number) => (
+                                                            <div key={opt.id || optIdx} className="flex items-center gap-2">
+                                                                <input
+                                                                    type="radio"
+                                                                    name={`correct_${qIdx}`}
+                                                                    checked={Boolean(opt.is_correct)}
+                                                                    onChange={() => handleOptionCorrectChange(qIdx, optIdx)}
+                                                                    className="h-4 w-4 text-primary focus:ring-primary cursor-pointer shrink-0"
+                                                                />
+                                                                <input
+                                                                    type="text"
+                                                                    placeholder={`Opsi ${String.fromCharCode(65 + optIdx)}`}
+                                                                    value={opt.text}
+                                                                    onChange={(e) => handleOptionTextChange(qIdx, optIdx, e.target.value)}
+                                                                    className="flex-1 rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs text-foreground outline-none"
+                                                                />
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleRemoveOption(qIdx, optIdx)}
+                                                                    className="p-1 text-muted-foreground hover:text-destructive transition rounded"
+                                                                >
+                                                                    <Trash2 className="h-3 w-3" />
+                                                                </button>
+                                                            </div>
+                                                        ))}
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleAddOption(qIdx)}
+                                                            className="inline-flex items-center gap-1 text-[11px] font-bold text-primary hover:underline pt-1"
+                                                        >
+                                                            <Plus className="h-3 w-3" /> Tambah Pilihan Opsi
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* 3. Rubrik Deskriptor 4 Level Ketercapaian (KKTP) */}
+                            <div className="space-y-3 pt-3 border-t border-border/50">
+                                <div className="p-3 rounded-xl bg-muted/40 border border-border/70 space-y-1">
+                                    <div className="flex items-center gap-1.5">
+                                        <Sliders className="h-3.5 w-3.5 text-primary" />
+                                        <span className="text-xs font-black text-foreground">
+                                            Rubrik Deskriptor 4 Tingkat Ketercapaian (KKTP)
+                                        </span>
+                                    </div>
+                                    <p className="text-[10px] text-muted-foreground">
+                                        Deskriptor kualitatif yang mengukur tingkat penguasaan kompetensi siswa (Perlu Bimbingan, Cukup, Baik/Tuntas, dan Sangat Baik).
+                                    </p>
+                                </div>
+
+                                <div className="grid gap-2.5 sm:grid-cols-2">
+                                    {(data.instrument_config.levels || [
+                                        { name: 'Perlu Bimbingan', desc: 'Siswa belum menunjukkan pemahaman konsep dasar.' },
+                                        { name: 'Cukup', desc: 'Siswa memahami sebagian besar konsep dasar.' },
+                                        { name: 'Baik', desc: 'Siswa menguasai seluruh indikator dengan baik.' },
+                                        { name: 'Sangat Baik', desc: 'Siswa menunjukkan penguasaan luar biasa.' }
+                                    ]).map((lvl: any, lIdx: number) => {
+                                        const badgeColors = [
+                                            'bg-rose-500/10 text-rose-600 border-rose-200 dark:border-rose-900',
+                                            'bg-amber-500/10 text-amber-600 border-amber-200 dark:border-amber-900',
+                                            'bg-emerald-500/10 text-emerald-600 border-emerald-200 dark:border-emerald-900',
+                                            'bg-blue-500/10 text-blue-600 border-blue-200 dark:border-blue-900'
+                                        ];
+                                        return (
+                                            <div key={lIdx} className="p-3 rounded-xl border border-border bg-background space-y-2">
+                                                <div className="flex items-center justify-between">
+                                                    <span className={`text-[11px] font-black px-2 py-0.5 rounded-md border ${badgeColors[lIdx % 4]}`}>
+                                                        {lvl.name}
+                                                    </span>
+                                                    <span className="text-[10px] text-muted-foreground font-bold">
+                                                        {lIdx === 0 ? 'Belum Tuntas' : lIdx === 1 ? 'Hampir Tuntas' : lIdx === 2 ? 'Tuntas (KKTP)' : 'Pengayaan'}
+                                                    </span>
+                                                </div>
+                                                <textarea
+                                                    rows={3}
+                                                    placeholder={`Tuliskan kriteria deskriptor untuk level ${lvl.name}...`}
+                                                    value={lvl.desc || ''}
+                                                    onChange={(e) => handleRubricDescChange(lIdx, e.target.value)}
+                                                    className="w-full rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs text-foreground outline-none focus:border-primary"
+                                                />
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
                         </div>
                     </div>
                 )}
 
-                {/* ── STEP 3: INFORMASI UTAMA & PENILAIAN ── */}
+                {/* ── STEP 3: DETAIL TENGGAT WAKTU & PUBLIKASI ── */}
                 {currentStep === 3 && (
                     <div className="w-full rounded-2xl border border-border bg-card p-4 sm:p-5 space-y-4 shadow-xs fade-in">
                         <div className="flex items-center gap-2 border-b border-border/50 pb-2.5">
@@ -1011,46 +1027,33 @@ export function AssessmentForm({
                             </div>
                             <div className="min-w-0">
                                 <h2 className="text-sm sm:text-base font-black text-foreground leading-tight">
-                                    Informasi & Tenggat Waktu
+                                    Pengaturan Nilai & Tenggat Waktu
                                 </h2>
-                                <p className="text-[11px] text-muted-foreground">Langkah 3 dari 3</p>
+                                <p className="text-[11px] text-muted-foreground">Langkah 3 dari 3: Konfirmasi akhir sebelum mempublikasikan asesmen</p>
                             </div>
                         </div>
 
-                        {/* Title Input */}
-                        <div className="space-y-1.5">
-                            <label className="text-xs font-bold text-foreground">
-                                Judul Asesmen <span className="text-destructive">*</span>
-                            </label>
-                            <input
-                                type="text"
-                                placeholder="Misal: LKPD Menjelajahi Dapur Komputer"
-                                value={data.title}
-                                onChange={(e) => setData('title', e.target.value)}
-                                className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-xs sm:text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition min-h-[46px]"
-                            />
-                            {errors.title && <p className="text-xs font-bold text-destructive mt-1">{errors.title}</p>}
-                        </div>
-
-                        {/* Description / Instructions */}
-                        <div className="space-y-1.5">
-                            <label className="text-xs font-bold text-foreground">
-                                Petunjuk & Deskripsi Pengerjaan <span className="text-destructive">*</span>
-                            </label>
-                            <textarea
-                                rows={4}
-                                placeholder="Tuliskan petunjuk pengerjaan bagi siswa..."
-                                value={data.description}
-                                onChange={(e) => setData('description', e.target.value)}
-                                className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-xs sm:text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition min-h-[90px]"
-                            />
-                            {errors.description && <p className="text-xs font-bold text-destructive mt-1">{errors.description}</p>}
+                        {/* Summary of Draft */}
+                        <div className="p-3.5 rounded-xl bg-muted/30 border border-border/80 space-y-2">
+                            <h4 className="text-xs font-black text-foreground">{data.title || 'Asesmen Tanpa Judul'}</h4>
+                            <p className="text-xs text-muted-foreground line-clamp-2">{data.description || 'Tidak ada petunjuk pengerjaan.'}</p>
+                            <div className="flex flex-wrap gap-2 pt-1">
+                                <Badge variant="outline" className="text-[10px] font-bold">
+                                    {data.assessment_type === 'initial' ? 'Asesmen Awal' : data.assessment_type === 'summative' ? 'Asesmen Sumatif' : 'Asesmen Formatif'}
+                                </Badge>
+                                <Badge variant="outline" className="text-[10px] font-bold">
+                                    {questionsCount} Butir Soal
+                                </Badge>
+                                <Badge variant="outline" className="text-[10px] font-bold">
+                                    {data.school_classes.length} Kelas Target
+                                </Badge>
+                            </div>
                         </div>
 
                         {/* Due Date Input */}
                         <div className="space-y-1.5">
                             <label className="text-xs font-bold text-foreground">
-                                Tenggat Waktu (Opsional)
+                                Tenggat Waktu Pengumpulan (Opsional)
                             </label>
                             <input
                                 type="datetime-local"
@@ -1079,7 +1082,7 @@ export function AssessmentForm({
                                 />
                             </div>
                             <div className="space-y-1.5">
-                                <label className="text-xs font-bold text-foreground">Batas KKTP</label>
+                                <label className="text-xs font-bold text-foreground">Batas Ketuntasan (KKTP)</label>
                                 <input
                                     type="number"
                                     min={0}
@@ -1121,7 +1124,7 @@ export function AssessmentForm({
                                     onClick={() => setCurrentStep(prev => Math.min(3, prev + 1))}
                                     className="inline-flex items-center gap-1.5 px-4 sm:px-5 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-black shadow-xs hover:bg-primary/90 active:scale-98 transition min-h-[42px] cursor-pointer"
                                 >
-                                    <span>{currentStep === 1 ? 'Lanjut ke Instrumen' : 'Lanjut ke Detail'}</span>
+                                    <span>{currentStep === 1 ? 'Lanjut ke Instrumen' : 'Lanjut ke Pengaturan Nilai'}</span>
                                     <ArrowRight className="h-4 w-4" />
                                 </button>
                             ) : (
