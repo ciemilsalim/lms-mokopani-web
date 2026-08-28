@@ -108,21 +108,27 @@ Jenis Instrumen: {instrument_label}
 
 ATURAN WAJIB PENYUSUNAN:
 1. JUDUL ASESMEN (WAJIB SINGKAT, JELAS, DAN SPESIFIK MATERI):
-   - Format: [Jenis]: [Topik Inti Materi] (Maksimal 3 sampai 5 kata setelah tanda titik dua).
-   - JANGAN menyalin kalimat deskripsi TP yang panjang. Ekstrak hanya topik materi intinya saja!
+   - Format: [Jenis]: [Topik Inti Materi] (Maksimal 3 sampai 4 kata setelah tanda titik dua).
+   - JANGAN menyalin judul kiasan/buku (misal: 'Membongkar Rahasia...: Bagaimana...'), ekstrak hanya nama materi murni!
    - Contoh format yang BENAR:
      * Tes: 'Tes Formatif: Perangkat Input Komputer'
-     * Observasi: 'Observasi: Praktik Rangkaian Listrik'
+     * Observasi: 'Observasi: Rangkaian Listrik'
      * LKPD: 'LKPD: Analisis Ekosistem Kolam'
      * Lisan: 'Tes Lisan: Sistem Pencernaan Manusia'
-   - DILARANG menggunakan teks template umum seperti 'Judul Singkat Relevan', 'Asesmen Pembelajaran', atau kalimat panjang.
+   - DILARANG menggunakan tanda titik dua ganda atau kalimat terpotong seperti ': Bagaimana'.
 
-2. SPESIFIKASI PER JENIS INSTRUMEN:
+2. ATURAN MUTLAK SOAL TES TULIS & LISAN (MATERI MURNI, BUKAN REFLEKSI):
+   - Seluruh butir pertanyaan WAJIB menguji materi pelajaran secara substantif (Faktual, Konseptual, Prosedural).
+   - DILARANG KERAS membuat pertanyaan refleksi diri/proses belajar seperti: 'bagaimana perasaanmu saat belajar', 'apa manfaat mempelajari materi ini', 'apa kendalamu', 'sikap apa yang terbaik saat tugas sulit'.
+   - Buatlah pertanyaan yang menguji konsep ilmiah/materi langsung:
+     * Contoh: 'Apa fungsi utama komponen RAM pada komputer?', 'Sebutkan 3 perbedaan sel hewan dan sel tumbuhan!', 'Mengapa fotosintesis membutuhkan klorofil dan cahaya matahari?'.
+
+3. SPESIFIKASI PER JENIS INSTRUMEN:
 
 A. Jika Instrumen 'Tes/Penugasan Singkat' (formative_quiz, written_test, quiz_survey):
-   - 5 butir soal materi murni (BUKAN pertanyaan refleksi):
+   - 5 butir soal materi murni:
      * Soal 1-4: Pilihan Ganda (4 opsi A, B, C, D dengan 1 kunci benar, masing-masing 20 poin).
-     * Soal 5: Uraian/Esai (20 poin) dengan 'answer_guide' kunci kriteria jawaban benar.
+     * Soal 5: Uraian/Esai (20 poin) dengan 'answer_guide' kunci kata kunci dan kriteria jawaban benar.
    - Akumulasi total skor = 100 poin.
 
 B. Jika Instrumen 'Observasi' (performance_observation, observation_checklist):
@@ -135,8 +141,8 @@ C. Jika Instrumen 'Kinerja / LKPD' (structured_assignment, performance, assignme
    - 'levels': 4 tingkat rubrik deskriptif KKTP ('Perlu Bimbingan', 'Cukup', 'Baik', 'Sangat Baik').
 
 D. Jika Instrumen 'Tes Lisan' (oral_test):
-   - 3 butir pertanyaan lisan yang FOKUS PADA SUBSTANSI MATERI (BUKAN pertanyaan refleksi perasaan):
-     * Pertanyaan 1 (Mudah / C1-C2): 20 Poin (Menyebutkan/mendefinisikan konsep dasar).
+   - 3 butir pertanyaan lisan substantif materi dengan bobot bertingkat:
+     * Pertanyaan 1 (Mudah / C1-C2): 20 Poin (Menyebutkan/mendefinisikan konsep dasar materi).
      * Pertanyaan 2 (Sedang / C3-C4): 35 Poin (Menjelaskan cara kerja/membandingkan konsep materi).
      * Pertanyaan 3 (Sulit/HOTS / C5-C6): 45 Poin (Menganalisis studi kasus nyata atau pemecahan masalah materi).
    - Setiap butir pertanyaan wajib memiliki 'points' (20, 35, 45) dan 'answer_guide' (kata kunci jawaban yang diharapkan guru).

@@ -592,17 +592,10 @@ class AssignmentController extends Controller
                                             $calculatedScore += $points;
                                         }
                                     }
-                                } else if (($q['type'] ?? '') === 'short_answer') {
-                                    $correctAnswer = $q['answer'] ?? $q['correct_answer'] ?? null;
-                                    if ($correctAnswer !== null && $studentAnswer !== null) {
-                                        if (strtolower(trim((string)$studentAnswer)) === strtolower(trim((string)$correctAnswer))) {
-                                            $calculatedScore += $points;
-                                        }
-                                    }
-                                } else if (($q['type'] ?? '') === 'essay') {
-                                    if ($studentAnswer !== null && trim((string)$studentAnswer) !== '') {
-                                        $calculatedScore += $points;
-                                    }
+                                } else if (in_array($q['type'] ?? '', ['short_answer', 'essay'])) {
+                                    $guide = $q['answer_guide'] ?? $q['rubric'] ?? null;
+                                    $correct = $q['answer'] ?? $q['correct_answer'] ?? null;
+                                    $calculatedScore += self::evaluateTextAnswer($studentAnswer, $guide, $correct, $points);
                                 }
                             }
                             if ($maxScore > 0) {
@@ -740,23 +733,10 @@ class AssignmentController extends Controller
                             $calculatedScore += $points;
                         }
                     }
-                } else if (($q['type'] ?? '') === 'short_answer') {
-                    $correctAnswer = null;
-                    if (isset($q['answer']) && trim($q['answer']) !== '') {
-                        $correctAnswer = trim($q['answer']);
-                    } else if (isset($q['correct_answer']) && trim($q['correct_answer']) !== '') {
-                        $correctAnswer = trim($q['correct_answer']);
-                    }
-
-                    if ($correctAnswer !== null && $studentAnswer !== null) {
-                        if (strtolower(trim((string)$studentAnswer)) === strtolower(trim((string)$correctAnswer))) {
-                            $calculatedScore += $points;
-                        }
-                    }
-                } else if (($q['type'] ?? '') === 'essay') {
-                    if ($studentAnswer !== null && trim((string)$studentAnswer) !== '') {
-                        $calculatedScore += $points;
-                    }
+                } else if (in_array($q['type'] ?? '', ['short_answer', 'essay'])) {
+                    $guide = $q['answer_guide'] ?? $q['rubric'] ?? null;
+                    $correct = $q['answer'] ?? $q['correct_answer'] ?? null;
+                    $calculatedScore += self::evaluateTextAnswer($studentAnswer, $guide, $correct, $points);
                 }
             }
 
@@ -1175,5 +1155,107 @@ class AssignmentController extends Controller
         });
 
         return redirect()->route('assignments.index')->with('success', 'Tugas berhasil dihapus.');
+    }
+
+    /**
+     * Non-AI Text Similarity Evaluator for Short Answer & Essay grading.
+     * Uses Stopword filtering, Tokenization, Keyword coverage, and Levenshtein/similar_text matching.
+     */
+    public static function evaluateTextAnswer(?string $studentAnswer, ?string $answerGuide, ?string $correctAnswer, int $maxPoints): int
+    {
+        if ($studentAnswer === null) return 0;
+        $studentText = trim((string)$studentAnswer);
+        if ($studentText === '') return 0;
+
+        $targetReference = !empty($correctAnswer) ? $correctAnswer : (!empty($answerGuide) ? $answerGuide : '');
+        if (empty($targetReference)) {
+            return mb_strlen($studentText) >= 5 ? $maxPoints : (int) round($maxPoints * 0.5);
+        }
+
+        // 1. Exact or near-exact match check
+        $cleanStudent = mb_strtolower(preg_replace('/[^\p{L}\p{N}\s]/u', ' ', $studentText));
+        $cleanStudent = preg_replace('/\s+/', ' ', trim($cleanStudent));
+
+        $cleanRef = mb_strtolower(preg_replace('/[^\p{L}\p{N}\s]/u', ' ', $targetReference));
+        $cleanRef = preg_replace('/\s+/', ' ', trim($cleanRef));
+
+        if ($cleanStudent === $cleanRef) {
+            return $maxPoints;
+        }
+
+        // Fast check: similar_text percent
+        similar_text($cleanStudent, $cleanRef, $simPercent);
+        if ($simPercent >= 75) {
+            return $maxPoints;
+        }
+
+        // 2. Stopwords list (Indonesian)
+        $stopwords = [
+            'yang', 'di', 'ke', 'dari', 'pada', 'untuk', 'adalah', 'yaitu', 'dan', 'atau',
+            'ini', 'itu', 'dengan', 'karena', 'sehingga', 'akan', 'bisa', 'dapat', 'juga',
+            'sudah', 'oleh', 'maka', 'serta', 'sebagai', 'ia', 'dia', 'mereka', 'kita',
+            'kami', 'saya', 'kamu', 'kalian', 'harus', 'saat', 'ketika', 'setelah',
+            'sebelum', 'agar', 'supaya', 'tentang', 'terhadap', 'menurut', 'secara',
+            'kriteria', 'jawaban', 'siswa', 'pedoman', 'minimal', 'mampu', 'menjelaskan', 'menyebutkan'
+        ];
+
+        // 3. Extract keywords from reference
+        $refWords = preg_split('/\s+/', $cleanRef);
+        $refKeyWords = array_values(array_filter($refWords, function ($w) use ($stopwords) {
+            return mb_strlen($w) >= 3 && !in_array($w, $stopwords);
+        }));
+
+        if (empty($refKeyWords)) {
+            return $simPercent >= 40 ? $maxPoints : (int) round($maxPoints * 0.5);
+        }
+
+        // 4. Extract keywords from student answer
+        $studentWords = preg_split('/\s+/', $cleanStudent);
+        $studentKeyWords = array_values(array_filter($studentWords, function ($w) use ($stopwords) {
+            return mb_strlen($w) >= 3 && !in_array($w, $stopwords);
+        }));
+
+        if (empty($studentKeyWords)) {
+            return 0;
+        }
+
+        // 5. Keyword Matching & Semantic Overlap
+        $matchedCount = 0;
+        $uniqueRefKeyWords = array_unique($refKeyWords);
+        
+        foreach ($uniqueRefKeyWords as $rw) {
+            $found = false;
+            foreach ($studentKeyWords as $sw) {
+                if ($rw === $sw || str_contains($sw, $rw) || str_contains($rw, $sw)) {
+                    $found = true;
+                    break;
+                }
+                if (mb_strlen($rw) >= 4 && mb_strlen($sw) >= 4) {
+                    $lev = levenshtein($rw, $sw);
+                    if ($lev <= 1 || ($lev <= 2 && mb_strlen($rw) >= 6)) {
+                        $found = true;
+                        break;
+                    }
+                }
+            }
+            if ($found) {
+                $matchedCount++;
+            }
+        }
+
+        $overlapRatio = count($uniqueRefKeyWords) > 0 ? ($matchedCount / count($uniqueRefKeyWords)) : 0;
+        $studentWordCount = count($studentWords);
+        
+        if ($overlapRatio >= 0.45 || ($overlapRatio >= 0.30 && $studentWordCount >= 8)) {
+            return $maxPoints; // 100% score
+        } elseif ($overlapRatio >= 0.25 || ($overlapRatio >= 0.15 && $studentWordCount >= 6)) {
+            return (int) round($maxPoints * 0.80); // 80% score
+        } elseif ($overlapRatio >= 0.10) {
+            return (int) round($maxPoints * 0.50); // 50% score
+        } elseif ($overlapRatio > 0) {
+            return (int) round($maxPoints * 0.25); // 25% score
+        }
+
+        return 0;
     }
 }

@@ -255,25 +255,49 @@ class InstructionalSmartService
         $clean = strip_tags($raw);
         $clean = html_entity_decode($clean, ENT_QUOTES | ENT_HTML5, 'UTF-8');
         $clean = str_replace(["\xc2\xa0", '&nbsp;'], ' ', $clean);
+
+        // 1. Tangani judul bertanda titik dua (contoh: "Membongkar Rahasia Dapur Komputer: Bagaimana Komputer Bekerja")
+        if (str_contains($clean, ':')) {
+            $parts = array_map('trim', explode(':', $clean));
+            $part1 = $parts[0] ?? '';
+            $part2 = $parts[1] ?? '';
+            
+            // Bersihkan kata kerja & kata tanya dari bagian 2
+            $part2Clean = preg_replace('/^(Menguasai|Mempelajari|Mengenal|Memahami|Mengetahui|Bagaimana|Mengapa|Apa\s+Itu)\s+/i', '', $part2);
+            // Bersihkan kiasan dari bagian 1
+            $part1Clean = preg_replace('/^(Membongkar\s+Rahasia|Petualangan\s+Menjelajah|Detektif\s+Masalah|Mengenal\s+Lebih\s+Dekat|Menjelajahi|Misteri|Kisah|Rahasia)\s+/i', '', $part1);
+            
+            if (mb_strlen($part2Clean) >= 4 && mb_strlen($part2Clean) <= 35) {
+                $clean = $part2Clean;
+            } elseif (mb_strlen($part1Clean) >= 4 && mb_strlen($part1Clean) <= 35) {
+                $clean = $part1Clean;
+            } else {
+                $clean = $part2Clean ?: $part1Clean ?: $clean;
+            }
+        }
         
-        // Strip prefixes like "Judul Materi:", "Peserta didik mampu (menganalisis|memahami|mengidentifikasi)..."
+        // 2. Bersihkan KKO Bloom dan frasa pengantar
         $clean = preg_replace('/^(Judul\s+Materi|Uraian\s+Materi|Materi\s+Inti|Materi)\s*[:\-]\s*/i', '', trim($clean));
         $clean = preg_replace('/^(Peserta\s+didik|Siswa|Murid)\s+(dapat|mampu|diharapkan)\s+(untuk\s+)?([a-z]+kan|[a-z]+i|[a-z]+)\s+/i', '', trim($clean));
-        $clean = preg_replace('/^(Mengidentifikasi|Menganalisis|Memahami|Menjelaskan|Mendeskripsikan|Menyajikan|Mempraktikkan|Menyimpulkan|Mengevaluasi|Menerapkan)\s+/i', '', trim($clean));
+        $clean = preg_replace('/^(Mengidentifikasi|Menganalisis|Memahami|Menjelaskan|Mendeskripsikan|Menyajikan|Mempraktikkan|Menyimpulkan|Mengevaluasi|Menerapkan|Menguasai|Mempelajari)\s+/i', '', trim($clean));
+        $clean = preg_replace('/^(Membongkar\s+Rahasia|Petualangan\s+Menjelajah|Detektif\s+Masalah|Mengenal\s+Lebih\s+Dekat|Menjelajahi|Misteri|Kisah|Rahasia)\s+/i', '', trim($clean));
+        $clean = preg_replace('/^(Bagaimana|Mengapa|Apa\s+Itu)\s+/i', '', trim($clean));
+        
+        // 3. Potong tanda baca dan preposisi yang menggantung di akhir
+        $clean = preg_replace('/\s*[:\-,\?]\s*.*$/i', '', $clean);
+        $clean = preg_replace('/\s+(untuk|pada|dalam|guna|sebagai|terkait|mengenai|tentang|secara|dengan|dan|atau|bagaimana|mengapa)$/i', '', trim($clean));
         
         $lines = explode("\n", $clean);
         $firstLine = trim($lines[0] ?? $clean);
         $firstLine = trim(explode('.', $firstLine)[0]);
         
-        // Strip trailing preposition phrases (e.g. "untuk memecahkan masalah" -> clean topic)
-        $firstLine = preg_replace('/\s+(untuk|pada|dalam|guna|sebagai|terkait|mengenai)\s+.*/i', '', $firstLine);
-        
         $words = preg_split('/\s+/', $firstLine);
-        if (count($words) > 5) {
-            $firstLine = implode(' ', array_slice($words, 0, 5));
+        if (count($words) > 4) {
+            $firstLine = implode(' ', array_slice($words, 0, 4));
         }
         
         $firstLine = ucwords(mb_strtolower(trim($firstLine)));
+        $firstLine = rtrim($firstLine, " :-?,");
         
         return $firstLine ?: 'Materi Pembelajaran';
     }
@@ -286,41 +310,23 @@ class InstructionalSmartService
             $cleaned = preg_replace('/\[DOKUMEN MODUL AJAR TERHUBUNG\][\s\S]*/i', '', $cleaned);
             $cleaned = preg_replace('/\[SPESIFIKASI ASESMEN YANG WAJIB DIHASILKAN\][\s\S]*/i', '', $cleaned);
             
-            // Remove markdown code blocks
-            $cleaned = preg_replace('/```(?:json|html|markdown)?[\s\S]*?```/i', '', $cleaned);
-            $cleaned = str_replace('```', '', $cleaned);
-            
-            // Strip HTML tags completely
-            $cleaned = strip_tags($cleaned);
-            
-            // Strip markdown bold / italic symbols
-            $cleaned = preg_replace('/(\*\*|__)(.*?)\1/', '$2', $cleaned);
-            $cleaned = preg_replace('/(\*|_)(.*?)\1/', '$2', $cleaned);
-            
-            // Clean accidental leaked "Judul Materi: ... Uraian Materi: ..." inside short indicator strings
-            if (str_contains($cleaned, 'Judul Materi:') && str_contains($cleaned, 'Uraian Materi:')) {
-                if (preg_match('/Ketepatan konsep dan penerapan materi\s+Judul Materi:\s*([^:\n]+)/i', $cleaned, $m)) {
-                    $cleaned = "Ketepatan konsep dan penerapan materi " . trim($m[1]) . ".";
-                } elseif (preg_match('/Judul Materi:\s*([^:\n]+)/i', $cleaned, $m)) {
-                    $cleaned = trim($m[1]);
-                }
-            }
-            
-            $cleaned = preg_replace('/[ \t]+/', ' ', $cleaned);
             return trim($cleaned);
         }
+
         if (is_array($data)) {
-            foreach ($data as $k => $v) {
-                $data[$k] = self::sanitizeOutput($v);
+            $sanitized = [];
+            foreach ($data as $key => $value) {
+                $sanitized[$key] = self::sanitizeOutput($value);
             }
-            return $data;
+            return $sanitized;
         }
+
         return $data;
     }
 
     public function suggestAssessment(
-        int $tpId, 
-        string $type, 
+        int|string $tpId,
+        string $type = 'rubric',
         bool $regenerate = false,
         ?string $materialTitle = null,
         ?string $materialContent = null,
@@ -328,6 +334,7 @@ class InstructionalSmartService
         ?string $quizMode = null
     ): array {
         $this->isLastRequestOnline = false;
+
         $tp = LmsLearningObjective::find($tpId);
         if (!$tp) return [];
 
@@ -341,7 +348,7 @@ class InstructionalSmartService
             $cleanMat = self::sanitizeOutput(strip_tags($materialContent));
             $words = preg_split('/\s+/', $cleanMat);
             $excerpt = implode(' ', array_slice($words, 0, 250));
-            $aiContextContent = "Topik: " . $cleanShortTopic . "\nRangkuman Esensial: " . $excerpt . "\n\nCatatan Penting: Hasilkan butir indikator, soal, dan rubrik yang RINGKAS, PADAT, dan KONTEKSTUAL (maksimal 1-2 kalimat). Jangan mengutip ulang teks materi ke dalam nama indikator.";
+            $aiContextContent = "Topik: " . $cleanShortTopic . "\nRangkuman Esensial: " . $excerpt . "\n\nCatatan Penting: Hasilkan butir indikator, soal materi murni (BUKAN refleksi), dan rubrik yang RINGKAS, PADAT, dan KONTEKSTUAL. Jangan mengutip ulang teks materi ke dalam nama indikator.";
         } else {
             $aiContextContent = $cleanShortTopic;
         }
@@ -368,18 +375,33 @@ class InstructionalSmartService
         if ($type === 'oral_test') {
             return [
                 'title' => "Tes Lisan: " . $content,
-                'description' => "Guru akan mengajukan pertanyaan secara lisan. Jawablah dengan percaya diri menggunakan bahasamu sendiri!",
-                'stimulus' => "Tes lisan mengenai pemahaman materi {$content}. Guru mengajukan pertanyaan secara langsung dan menilai jawaban siswa.",
+                'description' => "Guru akan mengajukan pertanyaan secara lisan terkait materi {$content}. Jawablah secara lugas dengan penjelasan konsep yang tepat!",
+                'stimulus' => "Tes lisan penguasaan konsep materi {$content}.",
                 'questions' => [
-                    ['text' => "Jelaskan konsep dasar {$content} dengan bahasamu sendiri!", 'points' => 20, 'difficulty' => 'Mudah', 'answer_guide' => "Cari pemaparan yang mencakup definisi, fungsi, dan contoh penerapan {$content}."],
-                    ['text' => "Apa tantangan terbesar dalam penerapan {$content} dan bagaimana cara mengatasinya?", 'points' => 35, 'difficulty' => 'Sedang', 'answer_guide' => "Jawaban harus mencakup identifikasi minimal 1 tantangan konkret dan solusi yang logis."],
-                    ['text' => "Bandingkan {$content} dengan konsep lain yang sudah dipelajari. Apa persamaan dan perbedaannya?", 'points' => 45, 'difficulty' => 'Sulit', 'answer_guide' => "Siswa harus mampu menyebutkan minimal 2 persamaan dan 1 perbedaan dengan konsep terkait."],
+                    [
+                        'text' => "Sebutkan dan jelaskan konsep dasar atau pengertian utama dari {$content}!",
+                        'points' => 20,
+                        'difficulty' => 'Mudah',
+                        'answer_guide' => "Konsep kunci {$content}, fungsi dasar, dan peran utamanya."
+                    ],
+                    [
+                        'text' => "Bagaimana mekanisme atau cara kerja utama dari {$content} saat diterapkan?",
+                        'points' => 35,
+                        'difficulty' => 'Sedang',
+                        'answer_guide' => "Tahapan cara kerja runtut, komponen yang terlibat dalam {$content}."
+                    ],
+                    [
+                        'text' => "Mengapa {$content} sangat penting dan apa dampak atau konsekuensinya jika terjadi kesalahan penerapannya?",
+                        'points' => 45,
+                        'difficulty' => 'Sulit',
+                        'answer_guide' => "Analisis hubungan sebab-akibat, dampak kesalahan, dan solusi teknis {$content}."
+                    ],
                 ],
                 'levels' => [
-                    ['name' => 'Perlu Bimbingan', 'desc' => "Jawaban sangat dangkal, tidak relevan, atau tidak mampu menjelaskan konsep dasar {$content}."],
-                    ['name' => 'Cukup', 'desc' => "Jawaban cukup relevan namun belum mendalam, masih memerlukan bimbingan guru saat ditanya lanjutan."],
-                    ['name' => 'Baik', 'desc' => "Jawaban menunjukkan pemahaman yang baik, mampu menjelaskan konsep dengan jelas dan memberikan contoh."],
-                    ['name' => 'Sangat Baik', 'desc' => "Jawaban sangat mendalam, analitis, kreatif, dan mampu mengaitkan dengan konteks nyata secara otomatis."],
+                    ['name' => 'Perlu Bimbingan', 'desc' => "Jawaban belum tepat atau tidak mampu menjelaskan konsep dasar {$content}."],
+                    ['name' => 'Cukup', 'desc' => "Jawaban cukup tepat namun belum lengkap pada penjelasan cara kerja {$content}."],
+                    ['name' => 'Baik', 'desc' => "Jawaban menjelaskan konsep dan mekanisme {$content} dengan tepat dan jelas."],
+                    ['name' => 'Sangat Baik', 'desc' => "Jawaban sangat komprehensif, menguasai analisis sebab-akibat materi {$content}."],
                 ],
                 'kktp' => [
                     'approach' => 'rubric',
@@ -392,24 +414,54 @@ class InstructionalSmartService
             $mode = $quizMode ?? 'mcq';
             $questions = [];
             if ($mode === 'essay') {
-                $questions = array_map(fn($i) => [
-                    'id' => 'q' . $i,
-                    'type' => 'essay',
-                    'text' => "Pertanyaan Esai {$i}: Deskripsikan pemahamanmu mengenai {$content}.",
-                    'answer' => "Pedoman jawaban ideal untuk pertanyaan esai {$i}.",
-                    'points' => 20
-                ], range(1, 5));
+                $questions = [
+                    [
+                        'id' => 'q1',
+                        'type' => 'essay',
+                        'text' => "Jelaskan pengertian dan fungsi utama dari {$content} secara lengkap!",
+                        'answer' => "Menyebutkan definisi akurat dan minimal 2 fungsi utama {$content}.",
+                        'points' => 20
+                    ],
+                    [
+                        'id' => 'q2',
+                        'type' => 'essay',
+                        'text' => "Sebutkan dan uraikan karakteristik atau komponen penting yang menyusun {$content}!",
+                        'answer' => "Menyebutkan minimal 3 komponen/karakteristik penting {$content}.",
+                        'points' => 20
+                    ],
+                    [
+                        'id' => 'q3',
+                        'type' => 'essay',
+                        'text' => "Bagaimanakah tahapan atau cara kerja utama dari {$content}?",
+                        'answer' => "Menjelaskan urutan langkah kerja {$content} secara sistematis.",
+                        'points' => 20
+                    ],
+                    [
+                        'id' => 'q4',
+                        'type' => 'essay',
+                        'text' => "Berikan contoh penerapan konkret {$content} dan jelaskan alasannya!",
+                        'answer' => "Memberikan contoh faktual penerapan {$content} dengan penjelasan logis.",
+                        'points' => 20
+                    ],
+                    [
+                        'id' => 'q5',
+                        'type' => 'essay',
+                        'text' => "Analisis apa yang terjadi jika salah satu prinsip atau bagian dari {$content} tidak berjalan sebagaimana mestinya!",
+                        'answer' => "Menganalisis dampak kesalahan/gangguan sistem {$content} dan memberikan solusi.",
+                        'points' => 20
+                    ]
+                ];
             } else {
                 $questions = [
                     [
                         'id' => 'q1',
                         'type' => 'multiple_choice',
-                        'text' => "Apa fungsi atau pengertian utama dari {$content} yang paling tepat?",
+                        'text' => "Manakah pernyataan berikut yang mendefinisikan {$content} secara paling tepat?",
                         'options' => [
-                            ['id' => 'a', 'text' => "Konsep penting yang membantu kita memahami dan mempraktikkan {$content} dengan benar.", 'is_correct' => true],
-                            ['id' => 'b', 'text' => "Bagian tambahan yang tidak memiliki pengaruh apa pun pada pembelajaran.", 'is_correct' => false],
-                            ['id' => 'c', 'text' => "Tugas yang hanya dikerjakan saat jam pelajaran kosong.", 'is_correct' => false],
-                            ['id' => 'd', 'text' => "Catatan hafalan tanpa ada kegunaan di kehidupan nyata.", 'is_correct' => false]
+                            ['id' => 'a', 'text' => "Prinsip dan konsep dasar yang menjadi landasan utama {$content}.", 'is_correct' => true],
+                            ['id' => 'b', 'text' => "Komponen pelengkap yang tidak berhubungan dengan {$content}.", 'is_correct' => false],
+                            ['id' => 'c', 'text' => "Bentuk kesalahan sistem yang harus dihindari.", 'is_correct' => false],
+                            ['id' => 'd', 'text' => "Perangkat yang tidak memiliki fungsi operasional.", 'is_correct' => false]
                         ],
                         'answer' => 'a',
                         'points' => 20
@@ -417,12 +469,12 @@ class InstructionalSmartService
                     [
                         'id' => 'q2',
                         'type' => 'multiple_choice',
-                        'text' => "Dalam kehidupan sehari-hari, contoh penerapan dari {$content} yang paling sering kita jumpai adalah...",
+                        'text' => "Karakteristik atau ciri utama yang membedakan {$content} dengan konsep lainnya adalah...",
                         'options' => [
-                            ['id' => 'a', 'text' => "Membantu menyelesaikan masalah atau tugas secara lebih rapi, cepat, dan teratur.", 'is_correct' => true],
-                            ['id' => 'b', 'text' => "Menghindari kerja sama dan diskusi dengan teman sekelompok.", 'is_correct' => false],
-                            ['id' => 'c', 'text' => "Membuat langkah pengerjaan menjadi lebih sulit dan membingungkan.", 'is_correct' => false],
-                            ['id' => 'd', 'text' => "Menghilangkan tahapan pemeriksaan hasil belajar.", 'is_correct' => false]
+                            ['id' => 'a', 'text' => "Memiliki struktur khusus dan fungsi terukur yang spesifik pada {$content}.", 'is_correct' => true],
+                            ['id' => 'b', 'text' => "Tidak memerlukan aturan atau prosedur tertentu.", 'is_correct' => false],
+                            ['id' => 'c', 'text' => "Hanya dapat digunakan pada situasi buatan tanpa penerapan nyata.", 'is_correct' => false],
+                            ['id' => 'd', 'text' => "Menghilangkan tahapan pemrosesan data secara keseluruhan.", 'is_correct' => false]
                         ],
                         'answer' => 'a',
                         'points' => 20
@@ -430,12 +482,12 @@ class InstructionalSmartService
                     [
                         'id' => 'q3',
                         'type' => 'multiple_choice',
-                        'text' => "Ketika kamu diminta mengerjakan tugas mengenai {$content}, langkah awal apa yang sebaiknya kamu lakukan?",
+                        'text' => "Dalam mekanisme kerja {$content}, urutan langkah utama yang benar adalah...",
                         'options' => [
-                            ['id' => 'a', 'text' => "Membaca petunjuk dengan cermat dan memahami tujuan tugas terlebih dahulu.", 'is_correct' => true],
-                            ['id' => 'b', 'text' => "Langsung menulis jawaban akhir tanpa membaca petunjuk soal.", 'is_correct' => false],
-                            ['id' => 'c', 'text' => "Mencontek hasil tugas teman tanpa berusaha memahami caranya.", 'is_correct' => false],
-                            ['id' => 'd', 'text' => "Menunggu guru memberikan kunci jawaban secara langsung.", 'is_correct' => false]
+                            ['id' => 'a', 'text' => "Mengidentifikasi input/kebutuhan, memproses data secara sistematis, dan menghasilkan output.", 'is_correct' => true],
+                            ['id' => 'b', 'text' => "Langsung menghasilkan output tanpa pemrosesan awal.", 'is_correct' => false],
+                            ['id' => 'c', 'text' => "Mengabaikan input dan mengeksekusi langkah secara acak.", 'is_correct' => false],
+                            ['id' => 'd', 'text' => "Menghentikan seluruh proses sebelum tahap verifikasi.", 'is_correct' => false]
                         ],
                         'answer' => 'a',
                         'points' => 20
@@ -443,12 +495,12 @@ class InstructionalSmartService
                     [
                         'id' => 'q4',
                         'type' => 'multiple_choice',
-                        'text' => "Jika kamu menemukan kendala atau kesulitan saat mempraktikkan {$content}, sikap terbaik yang perlu dilakukan adalah...",
+                        'text' => "Contoh kasus yang menunjukkan penerapan prinsip {$content} secara benar adalah...",
                         'options' => [
-                            ['id' => 'a', 'text' => "Memeriksa kembali langkah yang keliru, lalu berdiskusi dengan guru atau teman.", 'is_correct' => true],
-                            ['id' => 'b', 'text' => "Langsung menyerah dan tidak melanjutkan tugas.", 'is_correct' => false],
-                            ['id' => 'c', 'text' => "Menyalahkan anggota kelompok lain atas kesulitan yang terjadi.", 'is_correct' => false],
-                            ['id' => 'd', 'text' => "Mengabaikan kesulitan tersebut dan mengumpulkan tugas apa adanya.", 'is_correct' => false]
+                            ['id' => 'a', 'text' => "Penggunaan metode terstruktur untuk menyelesaikan persoalan pada {$content}.", 'is_correct' => true],
+                            ['id' => 'b', 'text' => "Penyelesaian masalah secara spekulatif tanpa analisis data.", 'is_correct' => false],
+                            ['id' => 'c', 'text' => "Pengambilan keputusan yang bertentangan dengan aturan {$content}.", 'is_correct' => false],
+                            ['id' => 'd', 'text' => "Pengabaian prosedur standar operasional yang berlaku.", 'is_correct' => false]
                         ],
                         'answer' => 'a',
                         'points' => 20
@@ -456,9 +508,9 @@ class InstructionalSmartService
                     [
                         'id' => 'q5',
                         'type' => 'essay',
-                        'text' => "Ceritakan dengan kalimatmu sendiri, apa manfaat yang kamu rasakan setelah mempelajari {$content} dan bagaimana kamu akan menggunakannya?",
+                        'text' => "Jelaskan peran penting {$content} dan sebutkan minimal 2 komponen atau tahapan utamanya!",
                         'options' => [],
-                        'answer' => "Kriteria Jawaban: Siswa mampu menjelaskan konsep dasar {$content} dengan bahasa sendiri yang santun, memberikan minimal 1 contoh manfaat nyata, serta menyebutkan rencana penggunaannya.",
+                        'answer' => "Kriteria Jawaban: Siswa menjelaskan peran penting {$content}, menyebutkan minimal 2 komponen/tahapan kunci, dan memberikan uraian logis yang relevan dengan materi.",
                         'points' => 20
                     ]
                 ];
@@ -466,7 +518,7 @@ class InstructionalSmartService
 
             return [
                 'title' => "Tes Formatif: " . $content,
-                'description' => "Kerjakan soal-soal berikut dengan teliti untuk mengukur pemahamanmu terhadap materi {$content}.",
+                'description' => "Kerjakan soal-soal berikut dengan teliti untuk mengukur penguasaan materi {$content}.",
                 'quiz_mode' => $mode,
                 'questions' => $questions,
                 'levels' => [

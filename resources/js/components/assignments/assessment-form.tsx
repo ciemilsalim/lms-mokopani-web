@@ -86,10 +86,34 @@ const formatConciseAssessmentTitle = (
     // 1. Try to extract clean topic from rawTitle if provided by AI
     if (rawTitle && rawTitle.trim()) {
         let t = cleanPlainText(rawTitle);
-        // Remove surrounding quotes and generic placeholder text
         t = t.replace(/^["'`]|["'`]$/g, '').trim();
-        t = t.replace(/^(Judul\s+Asesmen|Judul\s+Singkat|Judul|Asesmen\s+Formatif|Asesmen\s+Sumatif|Asesmen\s+Awal|Tes\s+Formatif|Observasi|LKPD|Tes\s+Lisan)\s*[:\-]\s*/i, '').trim();
         
+        // Handle double colons or colon subtitles (e.g. "Membongkar Rahasia Dapur Komputer: Bagaimana Komputer Bekerja")
+        if (t.includes(':')) {
+            const parts = t.split(':').map(p => p.trim());
+            // Filter out generic prefixes from part 0
+            const part0 = parts[0].replace(/^(Judul\s+Asesmen|Judul\s+Singkat|Judul|Asesmen\s+Formatif|Asesmen\s+Sumatif|Asesmen\s+Awal|Tes\s+Formatif|Observasi|LKPD|Tes\s+Lisan)\s*/i, '').trim();
+            const part1 = parts[1] || '';
+            
+            const part1Clean = part1.replace(/^(Bagaimana|Mengapa|Apa\s+Itu|Mengenal|Memahami)\s+/i, '').trim();
+            const part0Clean = part0.replace(/^(Membongkar\s+Rahasia|Petualangan\s+Menjelajah|Detektif\s+Masalah|Mengenal\s+Lebih\s+Dekat|Menjelajahi|Misteri)\s+/i, '').trim();
+            
+            if (part1Clean.length >= 4 && part1Clean.length <= 35) {
+                t = part1Clean;
+            } else if (part0Clean.length >= 4 && part0Clean.length <= 35) {
+                t = part0Clean;
+            } else {
+                t = part0Clean || part1Clean || t;
+            }
+        } else {
+            t = t.replace(/^(Judul\s+Asesmen|Judul\s+Singkat|Judul|Asesmen\s+Formatif|Asesmen\s+Sumatif|Asesmen\s+Awal|Tes\s+Formatif|Observasi|LKPD|Tes\s+Lisan)\s*[:\-]\s*/i, '').trim();
+            t = t.replace(/^(Membongkar\s+Rahasia|Petualangan\s+Menjelajah|Detektif\s+Masalah|Mengenal\s+Lebih\s+Dekat|Menjelajahi|Misteri)\s+/i, '').trim();
+        }
+        
+        // Strip trailing punctuation / prepositions
+        t = t.replace(/\s*[:\-,\?]\s*.*$/i, '').trim();
+        t = t.replace(/\s+(untuk|pada|dalam|guna|sebagai|terkait|mengenai|tentang|secara|dengan|dan|atau|bagaimana|mengapa)$/i, '').trim();
+
         // Ensure it's not a generic placeholder
         if (t && !/^(judul|asesmen|pembelajaran|relevan|singkat)/i.test(t)) {
             topic = t;
@@ -99,23 +123,29 @@ const formatConciseAssessmentTitle = (
     // 2. Fallback: extract concise subject matter topic from TP description
     if (!topic && tpDescription) {
         let cleanTp = cleanPlainText(tpDescription);
-        // Strip operational verbs and pedagogical preambles
         cleanTp = cleanTp.replace(/^(Peserta\s+didik|Siswa|Murid)\s+(dapat|mampu|diharapkan)\s+(untuk\s+)?([a-z]+kan|[a-z]+i|[a-z]+)\s+/i, '').trim();
         cleanTp = cleanTp.replace(/^(Mengidentifikasi|Menganalisis|Memahami|Menjelaskan|Mendeskripsikan|Menyajikan|Mempraktikkan|Menyimpulkan|Mengevaluasi|Menerapkan)\s+/i, '').trim();
-        cleanTp = cleanTp.replace(/\s+(untuk|pada|dalam|guna|sebagai|terkait|mengenai)\s+.*/i, '').trim();
+        cleanTp = cleanTp.replace(/^(Membongkar\s+Rahasia|Petualangan\s+Menjelajah|Detektif\s+Masalah|Mengenal\s+Lebih\s+Dekat|Menjelajahi|Misteri)\s+/i, '').trim();
+        cleanTp = cleanTp.replace(/\s*[:\-,\?]\s*.*$/i, '').trim();
+        cleanTp = cleanTp.replace(/\s+(untuk|pada|dalam|guna|sebagai|terkait|mengenai|tentang|secara|dengan|dan|atau|bagaimana|mengapa)$/i, '').trim();
         
-        // Take at most 5 words
         const words = cleanTp.split(/\s+/);
-        if (words.length > 5) {
-            cleanTp = words.slice(0, 5).join(' ');
+        if (words.length > 4) {
+            cleanTp = words.slice(0, 4).join(' ');
         }
         topic = cleanTp;
     }
 
     if (!topic) topic = 'Materi Pembelajaran';
 
-    // Capitalize first character
-    topic = topic.charAt(0).toUpperCase() + topic.slice(1);
+    // Capitalize each word nicely
+    topic = topic
+        .toLowerCase()
+        .split(' ')
+        .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+        .join(' ');
+
+    topic = topic.replace(/[:\-?,]+$/g, '').trim();
 
     return `${prefix}: ${topic}`;
 };
