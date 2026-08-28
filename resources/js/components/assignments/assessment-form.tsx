@@ -357,6 +357,7 @@ export function AssessmentForm({
         try {
             const res = await axios.post(route('instructional-design.auto-suggest'), {
                 learning_objective_id: Number(data.learning_objective_id),
+                suggest_type: 'assessment',
                 assessment_type: data.assessment_type || 'formative',
                 instrument_type: data.instrument_type || 'written_test',
                 regenerate: true
@@ -386,6 +387,9 @@ export function AssessmentForm({
                             ]
                         };
                     });
+                } else if (['written_test', 'formative_quiz', 'quiz_survey', 'quiz'].includes(data.instrument_type || 'written_test')) {
+                    // Fallback to rich 5 default formative questions if API response was missing questions array
+                    formattedQuestions = defaultFormativeQuestions;
                 }
 
                 // 2. Process Rubric Levels (Clean Plain Text)

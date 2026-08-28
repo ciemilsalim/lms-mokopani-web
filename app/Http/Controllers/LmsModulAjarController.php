@@ -195,7 +195,7 @@ class LmsModulAjarController extends Controller
                 $request->pedagogical_model,
                 $regenerate
             );
-        } elseif ($suggestType === 'assessment') {
+        } elseif ($suggestType === 'assessment' || $request->has('assessment_type') || $request->has('instrument_type')) {
             $materialTitle = $request->input('material_title');
             $materialContent = $request->input('material_content');
 
