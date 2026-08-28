@@ -1916,34 +1916,43 @@ export default function ShowAssignment({
             } else {
                 const questions = assignment.instrument_config?.questions || [];
                 let totalScore = 0;
-                let hasEssay = false;
+                let maxQuestionsScore = 0;
 
                 questions.forEach((q: any) => {
                     const studentAns = studentForm.data.answers[q.id];
-                    const points = Number(q.points || 0);
+                    const points = Number(q.points || 20);
+                    maxQuestionsScore += points;
+
                     if (q.type === 'multiple_choice') {
                         const rawCorrectId = q.answer || q.options?.find((o: any) => o.is_correct)?.id || '';
                         const correctOptId = String(rawCorrectId).trim().toLowerCase();
                         const normAns = String(studentAns ?? '').trim().toLowerCase();
-                        if (correctOptId && (normAns === correctOptId || (correctOptId.startsWith(normAns) && normAns.length === 1))) totalScore += points;
+                        if (correctOptId && (normAns === correctOptId || (correctOptId.startsWith(normAns) && normAns.length === 1))) {
+                            totalScore += points;
+                        }
                     } else if (q.type === 'short_answer') {
                         const correctAns = q.correct_answer || q.answer;
                         if (correctAns && String(studentAns ?? '').trim().toLowerCase() == String(correctAns).trim().toLowerCase()) {
                             totalScore += points;
                         }
                     } else if (q.type === 'essay') {
-                        hasEssay = true;
+                        if (String(studentAns ?? '').trim().length > 0) {
+                            totalScore += points;
+                        }
                     }
                 });
+
+                const scaledScore = maxQuestionsScore > 0 
+                    ? Math.round((totalScore / maxQuestionsScore) * (assignment.max_points || 100))
+                    : totalScore;
 
                 finalContent = JSON.stringify({
                     type: assignment.instrument_type === 'formative_quiz' ? 'formative_quiz' : 'written_test',
                     answers: studentForm.data.answers,
-                    auto_score: totalScore,
-                    has_essay: hasEssay
+                    auto_score: scaledScore,
                 });
 
-                if (!hasEssay) finalScore = totalScore;
+                finalScore = scaledScore;
             }
         } else if (assignment.instrument_type === 'self_assessment') {
             const assessmentMode = getAssessmentMode(assignment);

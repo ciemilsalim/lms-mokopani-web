@@ -647,8 +647,8 @@ class AssignmentController extends Controller
 
         $score = $request->score;
 
-        // Auto-grade quizzes if score is not provided
-        if ($score === null && in_array($assignment->instrument_type, ['written_test', 'formative_quiz', 'quiz_survey'])) {
+        // Auto-grade quizzes and written tests across all assessment types (initial, formative, summative)
+        if (in_array($assignment->instrument_type, ['written_test', 'formative_quiz', 'quiz_survey'])) {
             $config = is_array($assignment->instrument_config) ? $assignment->instrument_config : json_decode($assignment->instrument_config ?? '[]', true);
             $questions = $config['questions'] ?? [];
             $submittedData = json_decode($validated['content'] ?? '[]', true);
@@ -656,11 +656,11 @@ class AssignmentController extends Controller
 
             $calculatedScore = 0;
             $maxScore = 0;
-            $allAutoGradable = true;
 
             foreach ($questions as $q) {
-                $points = $q['points'] ?? 1;
+                $points = (int) ($q['points'] ?? 20);
                 $maxScore += $points;
+                $studentAnswer = $answers[$q['id'] ?? ''] ?? null;
 
                 if (($q['type'] ?? '') === 'multiple_choice') {
                     $correctAnswerId = null;
@@ -673,21 +673,16 @@ class AssignmentController extends Controller
                         }
                     }
 
-                    if ($correctAnswerId !== null) {
-                        $studentAnswer = $answers[$q['id']] ?? null;
-                        if ($studentAnswer !== null) {
-                            $normStudent = strtolower(trim((string)$studentAnswer));
-                            $normCorrect = strtolower(trim((string)$correctAnswerId));
-                            if (
-                                $normStudent === $normCorrect ||
-                                (strlen($normStudent) === 1 && str_starts_with($normCorrect, $normStudent)) ||
-                                (strlen($normCorrect) === 1 && str_starts_with($normStudent, $normCorrect))
-                            ) {
-                                $calculatedScore += $points;
-                            }
+                    if ($correctAnswerId !== null && $studentAnswer !== null) {
+                        $normStudent = strtolower(trim((string)$studentAnswer));
+                        $normCorrect = strtolower(trim((string)$correctAnswerId));
+                        if (
+                            $normStudent === $normCorrect ||
+                            (strlen($normStudent) === 1 && str_starts_with($normCorrect, $normStudent)) ||
+                            (strlen($normCorrect) === 1 && str_starts_with($normStudent, $normCorrect))
+                        ) {
+                            $calculatedScore += $points;
                         }
-                    } else {
-                        $allAutoGradable = false;
                     }
                 } else if (($q['type'] ?? '') === 'short_answer') {
                     $correctAnswer = null;
@@ -697,27 +692,22 @@ class AssignmentController extends Controller
                         $correctAnswer = trim($q['correct_answer']);
                     }
 
-                    if ($correctAnswer !== null) {
-                        $studentAnswer = strtolower(trim($answers[$q['id']] ?? ''));
-                        if (strtolower($studentAnswer) === strtolower($correctAnswer)) {
+                    if ($correctAnswer !== null && $studentAnswer !== null) {
+                        if (strtolower(trim((string)$studentAnswer)) === strtolower(trim((string)$correctAnswer))) {
                             $calculatedScore += $points;
                         }
-                    } else {
-                        $allAutoGradable = false;
                     }
-                } else {
-                    // Essay or other types cannot be auto-graded perfectly
-                    $allAutoGradable = false;
+                } else if (($q['type'] ?? '') === 'essay') {
+                    if ($studentAnswer !== null && trim((string)$studentAnswer) !== '') {
+                        $calculatedScore += $points;
+                    }
                 }
             }
 
-            if ($allAutoGradable && count($questions) > 0) {
-                // Scale score to assignment's max_points
-                if ($assignment->max_points > 0 && $maxScore > 0) {
-                    $score = round(($calculatedScore / $maxScore) * $assignment->max_points);
-                } else {
-                    $score = $calculatedScore;
-                }
+            if (count($questions) > 0 && $maxScore > 0) {
+                $score = (int) round(($calculatedScore / $maxScore) * ($assignment->max_points ?: 100));
+            } else if ($score === null) {
+                $score = (int) $calculatedScore;
             }
         }
 
