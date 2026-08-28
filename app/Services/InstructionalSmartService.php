@@ -8,6 +8,7 @@ use App\Services\AiManager;
 class InstructionalSmartService
 {
     public bool $isLastRequestOnline = false;
+    public ?string $lastErrorMessage = null;
 
     /**
      * Generate complete Lesson Design (RPP, Assessment, LKPD) in one call.
@@ -331,7 +332,8 @@ class InstructionalSmartService
         ?string $materialTitle = null,
         ?string $materialContent = null,
         ?string $observationMode = null,
-        ?string $quizMode = null
+        ?string $quizMode = null,
+        ?string $assessmentType = null
     ): array {
         $this->isLastRequestOnline = false;
 
@@ -340,8 +342,8 @@ class InstructionalSmartService
 
         $description = $tp->description ?? '';
 
-        $isInitial = str_contains($materialContent ?? '', 'JENIS ASESMEN TARGET: ASESMEN AWAL') || str_contains(strtolower($materialContent ?? ''), 'initial');
-        $isSummative = str_contains($materialContent ?? '', 'JENIS ASESMEN TARGET: ASESMEN SUMATIF') || str_contains(strtolower($materialContent ?? ''), 'summative');
+        $isInitial = ($assessmentType === 'initial') || str_contains($materialContent ?? '', 'JENIS ASESMEN TARGET: ASESMEN AWAL') || str_contains(strtolower($materialContent ?? ''), 'initial');
+        $isSummative = ($assessmentType === 'summative') || str_contains($materialContent ?? '', 'JENIS ASESMEN TARGET: ASESMEN SUMATIF') || str_contains(strtolower($materialContent ?? ''), 'summative');
         $targetAssessmentType = $isInitial ? 'initial' : ($isSummative ? 'summative' : 'formative');
         $targetQuestionCount = $isInitial ? 3 : ($isSummative ? 10 : 5);
 
@@ -373,9 +375,10 @@ class InstructionalSmartService
 
         if ($ai->isConfigured()) {
             try {
-                $suggested = $ai->suggestAssessment($description, $aiContextContent, $type, $regenerate, $observationMode, $quizMode);
+                $suggested = $ai->suggestAssessment($description, $aiContextContent, $type, $regenerate, $observationMode, $quizMode, $targetAssessmentType);
                 if (!empty($suggested)) {
                     $this->isLastRequestOnline = true;
+                    $this->lastErrorMessage = null;
                     // Enforce strict question count & points distribution for test instruments
                     if (in_array($type, ['written_test', 'formative_quiz', 'quiz_survey', 'quiz', 'oral_test']) && !empty($suggested['questions'])) {
                         $suggested['questions'] = self::enforceQuestionCount(
@@ -387,14 +390,21 @@ class InstructionalSmartService
                         );
                     }
                     return self::sanitizeOutput($suggested);
+                } else {
+                    $this->lastErrorMessage = (isset($ai->lastError) && $ai->lastError) 
+                        ? $ai->lastError 
+                        : 'AI tidak mengembalikan struktur data yang valid.';
                 }
             } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::error('InstructionalSmartService Gemini Assessment Error: ' . $e->getMessage());
+                $this->lastErrorMessage = $e->getMessage();
+                \Illuminate\Support\Facades\Log::error('InstructionalSmartService AI Assessment Error: ' . $e->getMessage());
             }
+        } else {
+            $this->lastErrorMessage = 'API Key AI belum dikonfigurasi pada sistem.';
         }
         
-        $isInitial = str_contains($materialContent ?? '', 'JENIS ASESMEN TARGET: ASESMEN AWAL') || str_contains(strtolower($materialContent ?? ''), 'initial');
-        $isSummative = str_contains($materialContent ?? '', 'JENIS ASESMEN TARGET: ASESMEN SUMATIF') || str_contains(strtolower($materialContent ?? ''), 'summative');
+        $isInitial = ($assessmentType === 'initial') || str_contains($materialContent ?? '', 'JENIS ASESMEN TARGET: ASESMEN AWAL') || str_contains(strtolower($materialContent ?? ''), 'initial');
+        $isSummative = ($assessmentType === 'summative') || str_contains($materialContent ?? '', 'JENIS ASESMEN TARGET: ASESMEN SUMATIF') || str_contains(strtolower($materialContent ?? ''), 'summative');
 
         $prefixTitle = $isInitial ? "Tes Awal: " : ($isSummative ? "Tes Sumatif: " : "Tes Formatif: ");
         $prefixOral = $isInitial ? "Tes Lisan Awal: " : ($isSummative ? "Tes Lisan Sumatif: " : "Tes Lisan: ");

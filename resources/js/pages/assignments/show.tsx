@@ -2393,8 +2393,193 @@ export default function ShowAssignment({
                 ) : (
                     <div className="space-y-12 animate-in fade-in duration-700">
                         <div className="grid gap-8 lg:grid-cols-3">
-                        {/* Submission Form */}
+                        {/* Submission Form / Observation View */}
                         <div className="lg:col-span-2 space-y-4">
+                            {['performance_observation', 'observation', 'observation_checklist'].includes(assignment.instrument_type) ? (
+                                <div className="rounded-2xl border border-border bg-card p-5 sm:p-7 shadow-xs space-y-6 animate-in fade-in duration-500">
+                                    <div className="flex items-center justify-between flex-wrap gap-3 pb-4 border-b border-border/60">
+                                        <div className="flex items-center gap-3">
+                                            <div className="h-11 w-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-black shrink-0">
+                                                <Eye className="h-6 w-6" />
+                                            </div>
+                                            <div>
+                                                <h2 className="text-base sm:text-lg font-black text-foreground tracking-tight">
+                                                    Lembar Hasil Observasi Guru
+                                                </h2>
+                                                <p className="text-xs text-muted-foreground mt-0.5 font-medium">
+                                                    Penilaian proses belajar & keaktifan langsung oleh Guru di kelas
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            {my_submission?.score !== null && my_submission?.score !== undefined ? (
+                                                <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-black bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 shadow-2xs">
+                                                    <CheckCircle2 className="h-3.5 w-3.5" /> Sudah Dinilai
+                                                </span>
+                                            ) : (
+                                                <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-black bg-amber-500/10 text-amber-600 border border-amber-500/20 shadow-2xs">
+                                                    <Clock className="h-3.5 w-3.5 animate-pulse" /> Menunggu Observasi
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Jika Sudah Dinilai */}
+                                    {my_submission?.score !== null && my_submission?.score !== undefined ? (
+                                        <div className="space-y-6">
+                                            {/* Ringkasan Skor & Level KKTP */}
+                                            <div className="grid gap-3 sm:grid-cols-3">
+                                                <div className="p-4 rounded-xl bg-primary/5 border border-primary/20 space-y-1">
+                                                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-wider">Skor Observasi</p>
+                                                    <div className="flex items-baseline gap-1">
+                                                        <span className="text-2xl sm:text-3xl font-black text-foreground">{my_submission.score}</span>
+                                                        <span className="text-xs text-muted-foreground font-bold">/ {assignment.max_points || 100}</span>
+                                                    </div>
+                                                </div>
+
+                                                <div className="p-4 rounded-xl bg-muted/40 border border-border space-y-1">
+                                                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-wider">Kategori Capaian</p>
+                                                    <p className="text-sm font-black text-foreground truncate">
+                                                        {my_submission.qualitative_score || (
+                                                            my_submission.score >= 90 ? 'Sangat Baik' :
+                                                            my_submission.score >= 75 ? 'Baik' :
+                                                            my_submission.score >= 60 ? 'Cukup' : 'Perlu Bimbingan'
+                                                        )}
+                                                    </p>
+                                                </div>
+
+                                                <div className="p-4 rounded-xl bg-muted/40 border border-border space-y-1">
+                                                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-wider">Status KKTP</p>
+                                                    <p className={`text-sm font-black ${my_submission.score >= (assignment.passing_grade || 75) ? 'text-emerald-600' : 'text-amber-600'}`}>
+                                                        {my_submission.score >= (assignment.passing_grade || 75) ? '✨ Tuntas Target' : '⚠️ Perlu Penguatan'}
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            {/* Umpan Balik Guru */}
+                                            {(my_submission.feedback || my_submission.content) && (
+                                                <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 text-foreground space-y-1.5">
+                                                    <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 text-xs font-black">
+                                                        <MessageCircle className="h-4 w-4" />
+                                                        <span>Catatan & Umpan Balik Guru</span>
+                                                    </div>
+                                                    <p className="text-xs leading-relaxed font-medium">
+                                                        {my_submission.feedback || (typeof my_submission.content === 'string' ? my_submission.content : '')}
+                                                    </p>
+                                                </div>
+                                            )}
+
+                                            {/* Rincian Indikator & Bagian Belum Tuntas */}
+                                            <div className="space-y-3 pt-2">
+                                                <div className="flex items-center justify-between">
+                                                    <h4 className="text-xs font-black text-foreground uppercase tracking-wider">
+                                                        Rincian Capaian Indikator Pengamatan
+                                                    </h4>
+                                                    <span className="text-[10px] text-muted-foreground font-bold">
+                                                        {(assignment.instrument_config?.indicators || []).length} Indikator
+                                                    </span>
+                                                </div>
+
+                                                <div className="space-y-2.5">
+                                                    {(assignment.instrument_config?.indicators || []).map((ind: any, idx: number) => {
+                                                        const indName = typeof ind === 'string' ? ind : (ind.name || `Indikator ${idx + 1}`);
+                                                        const indDetail = ind.description || ind.criteria || '';
+                                                        
+                                                        // Evaluasi data hasil penilaian guru
+                                                        const kktpData = my_submission.kktp_details || {};
+                                                        const rawVal = kktpData[indName] ?? kktpData[`ind_${idx}`] ?? kktpData[idx];
+                                                        const isChecked = rawVal === true || rawVal === 'checked' || rawVal === 1;
+                                                        const isStringLevel = typeof rawVal === 'string' ? rawVal : null;
+                                                        
+                                                        const isNeedsHelp = isStringLevel?.toLowerCase().includes('bimbingan') || isStringLevel?.toLowerCase().includes('cukup') || rawVal === false;
+                                                        const isMastered = isChecked || isStringLevel?.toLowerCase().includes('baik') || (my_submission.score >= 75 && !isNeedsHelp);
+
+                                                        return (
+                                                            <div 
+                                                                key={idx}
+                                                                className={`p-3.5 rounded-xl border transition flex items-start gap-3 ${
+                                                                    isMastered 
+                                                                        ? 'bg-emerald-500/5 border-emerald-500/25' 
+                                                                        : isNeedsHelp 
+                                                                            ? 'bg-rose-500/5 border-rose-500/25'
+                                                                            : 'bg-muted/30 border-border'
+                                                                }`}
+                                                            >
+                                                                <div className={`p-1.5 rounded-lg shrink-0 mt-0.5 ${
+                                                                    isMastered ? 'bg-emerald-500/20 text-emerald-600' : isNeedsHelp ? 'bg-rose-500/20 text-rose-600' : 'bg-muted text-muted-foreground'
+                                                                }`}>
+                                                                    {isMastered ? <CheckCircle2 className="h-4 w-4" /> : isNeedsHelp ? <AlertCircle className="h-4 w-4" /> : <Activity className="h-4 w-4" />}
+                                                                </div>
+                                                                <div className="flex-1 min-w-0">
+                                                                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                                                                        <p className="text-xs font-bold text-foreground leading-snug">{indName}</p>
+                                                                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-md ${
+                                                                            isMastered ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300' : isNeedsHelp ? 'bg-rose-500/15 text-rose-700 dark:text-rose-300' : 'bg-muted text-muted-foreground'
+                                                                        }`}>
+                                                                            {isStringLevel || (isMastered ? 'Tuntas' : 'Perlu Peningkatan')}
+                                                                        </span>
+                                                                    </div>
+                                                                    {indDetail && (
+                                                                        <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">{indDetail}</p>
+                                                                    )}
+                                                                    {isNeedsHelp && (
+                                                                        <p className="text-[10px] font-semibold text-rose-600 dark:text-rose-400 mt-1.5 flex items-center gap-1">
+                                                                            <Info className="h-3 w-3 shrink-0" /> Bagian ini belum tuntas dan perlu pendampingan/latihan lebih lanjut.
+                                                                        </p>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        /* Jika Belum Dinilai */
+                                        <div className="space-y-6 pt-2">
+                                            <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/25 flex items-start gap-3">
+                                                <div className="p-2 rounded-lg bg-amber-500/15 text-amber-600 shrink-0 mt-0.5">
+                                                    <Info className="h-4 w-4" />
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <h4 className="text-xs font-bold text-amber-700 dark:text-amber-300">
+                                                        Penilaian Langsung di Kelas
+                                                    </h4>
+                                                    <p className="text-xs text-muted-foreground leading-relaxed">
+                                                        Penilaian ini dilakukan secara langsung oleh Guru Mapel melalui pengamatan keaktifan dan unjuk kerja di kelas. Anda tidak perlu mengunggah berkas atau formulir jawaban. Nilai dan catatan guru akan otomatis muncul di sini setelah observasi selesai dinilai.
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            {/* Panduan Indikator Pengamatan */}
+                                            <div className="space-y-3">
+                                                <h4 className="text-xs font-black text-foreground uppercase tracking-wider">
+                                                    Aspek & Indikator yang Diamati Guru
+                                                </h4>
+                                                <div className="space-y-2">
+                                                    {(assignment.instrument_config?.indicators || []).map((ind: any, idx: number) => {
+                                                        const indName = typeof ind === 'string' ? ind : (ind.name || `Indikator ${idx + 1}`);
+                                                        const indDetail = ind.description || ind.criteria || '';
+                                                        return (
+                                                            <div key={idx} className="p-3.5 rounded-xl border border-border bg-muted/20 flex items-start gap-3">
+                                                                <div className="h-6 w-6 rounded-full bg-primary/10 text-primary text-[10px] font-black flex items-center justify-center shrink-0 mt-0.5">
+                                                                    {idx + 1}
+                                                                </div>
+                                                                <div className="min-w-0">
+                                                                    <p className="text-xs font-bold text-foreground leading-snug">{indName}</p>
+                                                                    {indDetail && (
+                                                                        <p className="text-[11px] text-muted-foreground mt-0.5">{indDetail}</p>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            ) : (
                             <div className="rounded-xl border border-border bg-card p-6 md:p-8 shadow-sm">
                                 <div className="flex items-center justify-between mb-6">
                                     <h2 className="text-lg font-black text-foreground tracking-tight uppercase tracking-wider">Kumpulkan Jawaban</h2>
@@ -3887,6 +4072,7 @@ export default function ShowAssignment({
                                     </fieldset>
                                 </form>
                             </div>
+                            )}
                         </div>
 
                         <div className="space-y-6">

@@ -249,7 +249,8 @@ class LmsModulAjarController extends Controller
                 $materialTitle,
                 $materialContent,
                 $request->input('observation_mode'),
-                $request->input('quiz_mode')
+                $request->input('quiz_mode'),
+                $targetAssessmentType
             );
 
             if (is_array($suggestions)) {
@@ -265,6 +266,7 @@ class LmsModulAjarController extends Controller
 
         if (is_array($suggestions)) {
             $suggestions['ai_active'] = $service->isLastRequestOnline;
+            $suggestions['ai_error'] = $service->lastErrorMessage;
             $suggestions = InstructionalSmartService::sanitizeOutput($suggestions);
         }
 

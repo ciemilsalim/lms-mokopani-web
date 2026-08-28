@@ -256,6 +256,7 @@ export function AssessmentForm({
     const [holidayWarning, setHolidayWarning] = useState<string | null>(null);
     const [aiLoading, setAiLoading] = useState(false);
     const [aiSuccessMessage, setAiSuccessMessage] = useState<string | null>(null);
+    const [aiErrorMessage, setAiErrorMessage] = useState<string | null>(null);
     const [isDraftVisible, setIsDraftVisible] = useState(
         Boolean(initialAssignment?.id || initialAssignment?.title || initialAssignment?.instrument_config?.questions?.length || initialAssignment?.instrument_config?.indicators?.length)
     );
@@ -429,6 +430,7 @@ export function AssessmentForm({
         setIsDraftVisible(true);
         setAiLoading(true);
         setAiSuccessMessage(null);
+        setAiErrorMessage(null);
 
         try {
             const res = await axios.post(route('instructional-design.auto-suggest'), {
@@ -441,6 +443,13 @@ export function AssessmentForm({
 
             if (res.data) {
                 const d = res.data;
+
+                if (d.ai_error) {
+                    setAiErrorMessage(`⚠️ Gagal generate AI: ${d.ai_error}. Silakan coba klik tombol generate kembali.`);
+                } else {
+                    setAiSuccessMessage(`✨ Asesmen (${aiContext.name}) berhasil disusun langsung oleh AI!`);
+                    setTimeout(() => setAiSuccessMessage(null), 6000);
+                }
 
                 // 1. Process Questions with Points & Answer Keys (Clean Plain Text)
                 let formattedQuestions: any[] = [];
@@ -623,11 +632,11 @@ export function AssessmentForm({
                     };
                 });
 
-                setAiSuccessMessage(`✨ Asesmen (${aiContext.name}) berhasil disusun oleh AI!`);
-                setTimeout(() => setAiSuccessMessage(null), 5000);
             }
-        } catch (err) {
+        } catch (err: any) {
             console.error('AI Generate Error:', err);
+            const errMsg = err?.response?.data?.message || err?.message || 'Gagal menghubungi asisten AI. Silakan coba sesaat lagi.';
+            setAiErrorMessage(`⚠️ Gagal generate AI: ${errMsg}`);
         } finally {
             setAiLoading(false);
         }
@@ -1185,6 +1194,13 @@ export function AssessmentForm({
                                         <div className="p-2.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 text-xs font-bold flex items-center gap-2 animate-in fade-in">
                                             <CheckCircle2 className="h-4 w-4 shrink-0" />
                                             <span>{aiSuccessMessage}</span>
+                                        </div>
+                                    )}
+
+                                    {aiErrorMessage && (
+                                        <div className="p-2.5 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-700 dark:text-rose-300 text-xs font-bold flex items-center gap-2 animate-in fade-in">
+                                            <AlertCircle className="h-4 w-4 shrink-0 text-rose-600" />
+                                            <span className="flex-1">{aiErrorMessage}</span>
                                         </div>
                                     )}
                                 </div>

@@ -15,6 +15,7 @@ class GeminiApiService implements AiProviderInterface
     private int $currentKeyIndex = 0;
     private string $model;
     private string $baseUrl;
+    public ?string $lastError = null;
 
     public function __construct()
     {
@@ -121,23 +122,9 @@ class GeminiApiService implements AiProviderInterface
         string $instrumentType,
         bool $regenerate = false,
         ?string $observationMode = null,
-        ?string $quizMode = null
+        ?string $quizMode = null,
+        ?string $assessmentType = null
     ): array {
-        $hash = md5('assessment_' . $tpDescription . $content . $instrumentType . ($observationMode ?? '') . ($quizMode ?? ''));
-
-        if (!$regenerate) {
-            $cached = \App\Models\LmsAiCache::getCache($hash);
-            if ($cached) {
-                $decoded = json_decode($cached, true);
-                if (is_array($decoded)) {
-                    $needsQuestions = in_array($instrumentType, ['formative_quiz', 'quiz_survey', 'written_test', 'exit_ticket', 'reflective_journal', 'oral_test']);
-                    if (!$needsQuestions || !empty($decoded['questions'])) {
-                        return $decoded;
-                    }
-                }
-            }
-        }
-
         $instrumentLabel = $this->getInstrumentLabel($instrumentType) . ' ("' . $instrumentType . '")';
         $teacherId = Auth::user()?->teacher?->id;
         $template = LmsAiPrompt::getPromptFor('assessment', $teacherId);
@@ -147,26 +134,20 @@ class GeminiApiService implements AiProviderInterface
             '{content}',
             '{instrument_label}',
             '{observation_mode}',
-            '{quiz_mode}'
+            '{quiz_mode}',
+            '{assessment_type}'
         ], [
             $tpDescription,
             $content,
             $instrumentLabel,
             $observationMode === 'anecdotal' ? 'anecdotal' : 'checklist',
-            $quizMode ?? 'mcq'
+            $quizMode ?? 'mcq',
+            $assessmentType ?? 'formative'
         ], $template);
 
         $response = $this->generateContent($prompt);
 
-        $result = $response ? $this->parseJsonResponse($response) : [];
-
-        \App\Models\LmsAiCache::setCache($hash, 'assessment', [
-            'tp' => $tpDescription,
-            'content' => $content,
-            'instrument_type' => $instrumentType
-        ], json_encode($result));
-
-        return $result;
+        return $response ? $this->parseJsonResponse($response) : [];
     }
 
     /**
@@ -304,15 +285,26 @@ class GeminiApiService implements AiProviderInterface
 
                 if ($response->successful()) {
                     $data = $response->json();
+                    $this->lastError = null;
                     return $data['candidates'][0]['content']['parts'][0]['text'] ?? null;
                 }
+
+                $errBody = $response->json();
+                $errMsg = $errBody['error']['message'] ?? ('HTTP ' . $response->status());
 
                 // If rate limited (429) or forbidden/quota (403), rotate key
                 if ($response->status() === 429 || $response->status() === 403) {
                     Log::warning('Gemini API rate limit/quota reached on key index ' . $this->currentKeyIndex);
+                    $this->lastError = "Batas kuota / rate limit API tercapai ({$errMsg}). Mencoba rotasi kunci...";
                     $this->currentKeyIndex = ($this->currentKeyIndex + 1) % $maxAttempts;
                     $attempts++;
                     continue; // Coba key berikutnya
+                }
+
+                if ($response->status() === 503) {
+                    $this->lastError = "Layanan AI Gemini sedang mengalami lonjakan beban tinggi (503 Unavailable). Silakan klik tombol generate kembali.";
+                } else {
+                    $this->lastError = "Gemini API Error ({$errMsg})";
                 }
 
                 Log::warning('Gemini API request failed', [
@@ -322,6 +314,7 @@ class GeminiApiService implements AiProviderInterface
                 return null;
 
             } catch (\Exception $e) {
+                $this->lastError = "Koneksi ke Gemini API terputus: " . $e->getMessage();
                 Log::error('Gemini API error', [
                     'message' => $e->getMessage(),
                 ]);
@@ -329,6 +322,7 @@ class GeminiApiService implements AiProviderInterface
             }
         }
         
+        $this->lastError = "Semua API Key Gemini telah mencapai batas limit kuota.";
         Log::error('Gemini API all keys exhausted or rate limited.');
         return null;
     }
@@ -381,9 +375,12 @@ class GeminiApiService implements AiProviderInterface
     private function parseJsonResponse(string $text): array
     {
         // Hapus markdown code fence jika ada
-        $text = preg_replace('/^```(?:json)?\s*/i', '', $text);
-        $text = preg_replace('/\s*```$/i', '', $text);
+        $text = preg_replace('/```(?:json)?/i', '', $text);
         $text = trim($text);
+
+        if (preg_match('/\{[\s\S]*\}/', $text, $matches)) {
+            $text = $matches[0];
+        }
 
         $decoded = json_decode($text, true);
 
