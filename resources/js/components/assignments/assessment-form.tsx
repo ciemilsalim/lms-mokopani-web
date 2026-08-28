@@ -67,6 +67,64 @@ const cleanPlainText = (text: string | null | undefined): string => {
         .trim();
 };
 
+const defaultFormativeQuestions = [
+    {
+        id: 'q1',
+        type: 'multiple_choice',
+        question: 'Manakah pernyataan berikut yang paling tepat mendefinisikan konsep dasar dari materi ini?',
+        points: 20,
+        options: [
+            { id: 'opt_1', text: 'Prinsip utama yang mengatur cara kerja sistem secara terstruktur dan teratur.', is_correct: true },
+            { id: 'opt_2', text: 'Elemen tambahan yang tidak memiliki dampak langsung terhadap fungsi utama.', is_correct: false },
+            { id: 'opt_3', text: 'Aktivitas yang hanya dijalankan saat terjadi kendala teknis.', is_correct: false },
+            { id: 'opt_4', text: 'Dokumen pendukung tanpa penerapan langsung dalam praktik.', is_correct: false },
+        ]
+    },
+    {
+        id: 'q2',
+        type: 'multiple_choice',
+        question: 'Apa fungsi atau manfaat utama dari konsep ini dalam pemecahan masalah di kehidupan nyata?',
+        points: 20,
+        options: [
+            { id: 'opt_1', text: 'Membantu menganalisis dan menyelesaikan masalah secara efisien dan tepat sasaran.', is_correct: true },
+            { id: 'opt_2', text: 'Menghindari proses kolaborasi dengan rekan tim dalam proyek.', is_correct: false },
+            { id: 'opt_3', text: 'Mengurangi kebutuhan evaluasi atau pengujian hasil kerja.', is_correct: false },
+            { id: 'opt_4', text: 'Menambah kerumitan langkah-langkah kerja tanpa hasil nyata.', is_correct: false },
+        ]
+    },
+    {
+        id: 'q3',
+        type: 'multiple_choice',
+        question: 'Ketika menghadapi studi kasus yang berkaitan dengan materi ini, langkah awal apa yang paling tepat dilakukan?',
+        points: 20,
+        options: [
+            { id: 'opt_1', text: 'Mengidentifikasi masalah dan menganalisis kebutuhan inti terlebih dahulu.', is_correct: true },
+            { id: 'opt_2', text: 'Langsung membuat kesimpulan akhir tanpa analisis data.', is_correct: false },
+            { id: 'opt_3', text: 'Meniru solusi studi kasus lain yang konteksnya berbeda.', is_correct: false },
+            { id: 'opt_4', text: 'Mengabaikan petunjuk dan langsung mengumpulkan tugas.', is_correct: false },
+        ]
+    },
+    {
+        id: 'q4',
+        type: 'multiple_choice',
+        question: 'Jika ditemukan kesalahan atau kendala dalam penerapan konsep, strategi apa yang paling efektif untuk memperbaikinya?',
+        points: 20,
+        options: [
+            { id: 'opt_1', text: 'Melakukan penelusuran bertahap untuk menemukan akar penyebab masalah.', is_correct: true },
+            { id: 'opt_2', text: 'Membiarkan kesalahan dan tetap melanjutkan ke tahap berikutnya.', is_correct: false },
+            { id: 'opt_3', text: 'Mengganti seluruh rencana kerja secara mendadak tanpa evaluasi.', is_correct: false },
+            { id: 'opt_4', text: 'Menyerahkan penanganan masalah sepenuhnya kepada orang lain.', is_correct: false },
+        ]
+    },
+    {
+        id: 'q5',
+        type: 'essay',
+        question: 'Jelaskan dengan bahasamu sendiri bagaimana penerapan materi ini dapat membantumu menyelesaikan tugas proyek atau tantangan nyata!',
+        points: 20,
+        options: []
+    }
+];
+
 export function AssessmentForm({
     mode,
     initialAssignment,
@@ -91,28 +149,32 @@ export function AssessmentForm({
         subject_id: initialAssignment?.subject_id ? String(initialAssignment.subject_id) : '',
         learning_objective_id: initialAssignment?.learning_objective_id ? String(initialAssignment.learning_objective_id) : '',
         school_classes: initialAssignment?.school_classes ?? ([] as number[]),
-        title: initialAssignment?.title ?? '',
-        description: initialAssignment?.description ?? '',
+        title: initialAssignment?.title ?? 'LKPD Formatif: Pemahaman Konsep & Penerapan Materi',
+        description: initialAssignment?.description ?? 'Kerjakan 5 butir soal di bawah ini dengan teliti. Pilih opsi jawaban yang paling tepat untuk soal pilihan ganda, dan uraikan penjelasanmu pada soal esai.',
         due_date: initialAssignment?.due_date ?? '',
         max_points: initialAssignment?.max_points ?? 100,
         passing_grade: initialAssignment?.passing_grade ?? 75,
-        instrument_config: initialAssignment?.instrument_config ?? {
-            stimulus: '',
-            criteria: '',
-            questions: [] as any[],
-            indicators: [] as string[],
-            focus: '',
-            context: '',
-            teacher_notes: '',
-            submission_mode: 'hybrid',
-            instructions: '',
-            levels: [
-                { name: 'Perlu Bimbingan', desc: 'Siswa belum menunjukkan pemahaman konsep dasar.' },
-                { name: 'Cukup', desc: 'Siswa memahami sebagian besar konsep dasar namun belum konsisten.' },
-                { name: 'Baik', desc: 'Siswa menguasai seluruh indikator ketuntasan dengan baik (KKTP).' },
-                { name: 'Sangat Baik', desc: 'Siswa menunjukkan penguasaan luar biasa dan siap pengayaan.' }
-            ],
-            kktp: {
+        instrument_config: {
+            stimulus: initialAssignment?.instrument_config?.stimulus ?? '',
+            criteria: initialAssignment?.instrument_config?.criteria ?? '',
+            questions: (initialAssignment?.instrument_config?.questions && initialAssignment.instrument_config.questions.length > 0)
+                ? initialAssignment.instrument_config.questions
+                : defaultFormativeQuestions,
+            indicators: initialAssignment?.instrument_config?.indicators ?? ([] as string[]),
+            focus: initialAssignment?.instrument_config?.focus ?? '',
+            context: initialAssignment?.instrument_config?.context ?? '',
+            teacher_notes: initialAssignment?.instrument_config?.teacher_notes ?? '',
+            submission_mode: initialAssignment?.instrument_config?.submission_mode ?? 'hybrid',
+            instructions: initialAssignment?.instrument_config?.instructions ?? '',
+            levels: (initialAssignment?.instrument_config?.levels && initialAssignment.instrument_config.levels.length > 0)
+                ? initialAssignment.instrument_config.levels
+                : [
+                    { name: 'Perlu Bimbingan', desc: 'Siswa belum menunjukkan pemahaman konsep dasar.' },
+                    { name: 'Cukup', desc: 'Siswa memahami sebagian besar konsep dasar namun belum konsisten.' },
+                    { name: 'Baik', desc: 'Siswa menguasai seluruh indikator ketuntasan dengan baik (KKTP).' },
+                    { name: 'Sangat Baik', desc: 'Siswa menunjukkan penguasaan luar biasa dan siap pengayaan.' }
+                ],
+            kktp: initialAssignment?.instrument_config?.kktp ?? {
                 approach: 'rubric',
                 passing_level: 'Baik',
                 threshold: 75,
