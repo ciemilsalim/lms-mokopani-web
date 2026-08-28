@@ -422,12 +422,12 @@ class InstructionalSmartService
                     [
                         'id' => 'q1',
                         'type' => 'multiple_choice',
-                        'text' => "Manakah pernyataan di bawah ini yang paling tepat mendefinisikan konsep dasar dari {$content}?",
+                        'text' => "Apa fungsi atau pengertian utama dari {$content} yang paling tepat?",
                         'options' => [
-                            ['id' => 'a', 'text' => "Prinsip utama yang mengatur cara kerja {$content} secara sistematis.", 'is_correct' => true],
-                            ['id' => 'b', 'text' => "Komponen pelengkap yang tidak berpengaruh langsung pada fungsi {$content}.", 'is_correct' => false],
-                            ['id' => 'c', 'text' => "Aktivitas sementara yang hanya digunakan saat terjadi kendala.", 'is_correct' => false],
-                            ['id' => 'd', 'text' => "Format dokumentasi tanpa penerapan praktis.", 'is_correct' => false]
+                            ['id' => 'a', 'text' => "Konsep penting yang membantu kita memahami dan mempraktikkan {$content} dengan benar.", 'is_correct' => true],
+                            ['id' => 'b', 'text' => "Bagian tambahan yang tidak memiliki pengaruh apa pun pada pembelajaran.", 'is_correct' => false],
+                            ['id' => 'c', 'text' => "Tugas yang hanya dikerjakan saat jam pelajaran kosong.", 'is_correct' => false],
+                            ['id' => 'd', 'text' => "Catatan hafalan tanpa ada kegunaan di kehidupan nyata.", 'is_correct' => false]
                         ],
                         'answer' => 'a',
                         'points' => 20
@@ -435,12 +435,12 @@ class InstructionalSmartService
                     [
                         'id' => 'q2',
                         'type' => 'multiple_choice',
-                        'text' => "Dalam konteks pembelajaran {$content}, apa manfaat utama dari penerapan konsep ini pada kehidupan sehari-hari?",
+                        'text' => "Dalam kehidupan sehari-hari, contoh penerapan dari {$content} yang paling sering kita jumpai adalah...",
                         'options' => [
-                            ['id' => 'a', 'text' => "Membantu memecahkan masalah kontekstual dengan lebih terstruktur dan efisien.", 'is_correct' => true],
-                            ['id' => 'b', 'text' => "Mengurangi kebutuhan untuk berkolaborasi dengan pihak lain.", 'is_correct' => false],
-                            ['id' => 'c', 'text' => "Menghilangkan tahapan evaluasi dalam proses belajar.", 'is_correct' => false],
-                            ['id' => 'd', 'text' => "Membuat proses pengerjaan menjadi lebih rumit.", 'is_correct' => false]
+                            ['id' => 'a', 'text' => "Membantu menyelesaikan masalah atau tugas secara lebih rapi, cepat, dan teratur.", 'is_correct' => true],
+                            ['id' => 'b', 'text' => "Menghindari kerja sama dan diskusi dengan teman sekelompok.", 'is_correct' => false],
+                            ['id' => 'c', 'text' => "Membuat langkah pengerjaan menjadi lebih sulit dan membingungkan.", 'is_correct' => false],
+                            ['id' => 'd', 'text' => "Menghilangkan tahapan pemeriksaan hasil belajar.", 'is_correct' => false]
                         ],
                         'answer' => 'a',
                         'points' => 20
@@ -448,12 +448,12 @@ class InstructionalSmartService
                     [
                         'id' => 'q3',
                         'type' => 'multiple_choice',
-                        'text' => "Langkah awal apa yang paling krusial ketika menghadapi studi kasus terkait {$content}?",
+                        'text' => "Ketika kamu diminta mengerjakan tugas mengenai {$content}, langkah awal apa yang sebaiknya kamu lakukan?",
                         'options' => [
-                            ['id' => 'a', 'text' => "Mengidentifikasi masalah dan menganalisis kebutuhan secara mendalam.", 'is_correct' => true],
-                            ['id' => 'b', 'text' => "Langsung membuat kesimpulan tanpa pengumpulan data.", 'is_correct' => false],
-                            ['id' => 'c', 'text' => "Menyalin solusi dari studi kasus yang berbeda.", 'is_correct' => false],
-                            ['id' => 'd', 'text' => "Menunggu instruksi tanpa melakukan eksplorasi mandiri.", 'is_correct' => false]
+                            ['id' => 'a', 'text' => "Membaca petunjuk dengan cermat dan memahami tujuan tugas terlebih dahulu.", 'is_correct' => true],
+                            ['id' => 'b', 'text' => "Langsung menulis jawaban akhir tanpa membaca petunjuk soal.", 'is_correct' => false],
+                            ['id' => 'c', 'text' => "Mencontek hasil tugas teman tanpa berusaha memahami caranya.", 'is_correct' => false],
+                            ['id' => 'd', 'text' => "Menunggu guru memberikan kunci jawaban secara langsung.", 'is_correct' => false]
                         ],
                         'answer' => 'a',
                         'points' => 20
@@ -461,12 +461,12 @@ class InstructionalSmartService
                     [
                         'id' => 'q4',
                         'type' => 'multiple_choice',
-                        'text' => "Jika terjadi kesalahan atau hambatan dalam penerapan {$content}, strategi perbaikan apa yang paling efektif?",
+                        'text' => "Jika kamu menemukan kendala atau kesulitan saat mempraktikkan {$content}, sikap terbaik yang perlu dilakukan adalah...",
                         'options' => [
-                            ['id' => 'a', 'text' => "Melakukan evaluasi tahap demi tahap untuk menemukan akar penyebab masalah.", 'is_correct' => true],
-                            ['id' => 'b', 'text' => "Mengabaikan kesalahan dan tetap melanjutkan proses.", 'is_correct' => false],
-                            ['id' => 'c', 'text' => "Mengubah seluruh topik pembelajaran dari awal.", 'is_correct' => false],
-                            ['id' => 'd', 'text' => "Menyerahkan seluruh tanggung jawab kepada anggota kelompok lain.", 'is_correct' => false]
+                            ['id' => 'a', 'text' => "Memeriksa kembali langkah yang keliru, lalu berdiskusi dengan guru atau teman.", 'is_correct' => true],
+                            ['id' => 'b', 'text' => "Langsung menyerah dan tidak melanjutkan tugas.", 'is_correct' => false],
+                            ['id' => 'c', 'text' => "Menyalahkan anggota kelompok lain atas kesulitan yang terjadi.", 'is_correct' => false],
+                            ['id' => 'd', 'text' => "Mengabaikan kesulitan tersebut dan mengumpulkan tugas apa adanya.", 'is_correct' => false]
                         ],
                         'answer' => 'a',
                         'points' => 20
@@ -474,9 +474,9 @@ class InstructionalSmartService
                     [
                         'id' => 'q5',
                         'type' => 'essay',
-                        'text' => "Jelaskan dengan bahasamu sendiri bagaimana pemahaman tentang {$content} dapat membantumu menyelesaikan tugas atau proyek nyata!",
+                        'text' => "Ceritakan dengan kalimatmu sendiri, apa manfaat yang kamu rasakan setelah mempelajari {$content} dan bagaimana kamu akan menggunakannya?",
                         'options' => [],
-                        'answer' => "Jawaban memuat penjelasan konsep dasar {$content}, contoh penerapan konkret, serta refleksi manfaat dalam proyek.",
+                        'answer' => "Kriteria Jawaban: Siswa mampu menjelaskan konsep dasar {$content} dengan bahasa sendiri yang santun, memberikan minimal 1 contoh manfaat nyata, serta menyebutkan rencana penggunaannya.",
                         'points' => 20
                     ]
                 ];

@@ -72,58 +72,58 @@ const defaultFormativeQuestions = [
     {
         id: 'q1',
         type: 'multiple_choice',
-        question: 'Manakah pernyataan berikut yang paling tepat mendefinisikan konsep dasar dari materi ini?',
+        question: 'Manakah kelompok perangkat di bawah ini yang seluruhnya termasuk Input Device (perangkat masukan) pada komputer?',
         points: 20,
         options: [
-            { id: 'opt_1', text: 'Prinsip utama yang mengatur cara kerja sistem secara terstruktur dan teratur.', is_correct: true },
-            { id: 'opt_2', text: 'Elemen tambahan yang tidak memiliki dampak langsung terhadap fungsi utama.', is_correct: false },
-            { id: 'opt_3', text: 'Aktivitas yang hanya dijalankan saat terjadi kendala teknis.', is_correct: false },
-            { id: 'opt_4', text: 'Dokumen pendukung tanpa penerapan langsung dalam praktik.', is_correct: false },
+            { id: 'opt_1', text: 'Keyboard, Mouse, dan Scanner', is_correct: true },
+            { id: 'opt_2', text: 'Monitor, Speaker, dan Proyektor', is_correct: false },
+            { id: 'opt_3', text: 'Printer, Harddisk, dan Flashdisk', is_correct: false },
+            { id: 'opt_4', text: 'Processor, RAM, dan Motherboard', is_correct: false },
         ]
     },
     {
         id: 'q2',
         type: 'multiple_choice',
-        question: 'Apa fungsi atau manfaat utama dari konsep ini dalam pemecahan masalah di kehidupan nyata?',
+        question: 'Perangkat input berikut yang berfungsi untuk memasukkan suara atau rekaman audio ke dalam komputer adalah...',
         points: 20,
         options: [
-            { id: 'opt_1', text: 'Membantu menganalisis dan menyelesaikan masalah secara efisien dan tepat sasaran.', is_correct: true },
-            { id: 'opt_2', text: 'Menghindari proses kolaborasi dengan rekan tim dalam proyek.', is_correct: false },
-            { id: 'opt_3', text: 'Mengurangi kebutuhan evaluasi atau pengujian hasil kerja.', is_correct: false },
-            { id: 'opt_4', text: 'Menambah kerumitan langkah-langkah kerja tanpa hasil nyata.', is_correct: false },
+            { id: 'opt_1', text: 'Mikrofon (Microphone)', is_correct: true },
+            { id: 'opt_2', text: 'Speaker', is_correct: false },
+            { id: 'opt_3', text: 'Webcam', is_correct: false },
+            { id: 'opt_4', text: 'Headphone', is_correct: false },
         ]
     },
     {
         id: 'q3',
         type: 'multiple_choice',
-        question: 'Ketika menghadapi studi kasus yang berkaitan dengan materi ini, langkah awal apa yang paling tepat dilakukan?',
+        question: 'Saat berbelanja di kasir minimarket, petugas menggunakan alat pemindai barcode barang. Alat pemindai barcode tersebut termasuk kelompok...',
         points: 20,
         options: [
-            { id: 'opt_1', text: 'Mengidentifikasi masalah dan menganalisis kebutuhan inti terlebih dahulu.', is_correct: true },
-            { id: 'opt_2', text: 'Langsung membuat kesimpulan akhir tanpa analisis data.', is_correct: false },
-            { id: 'opt_3', text: 'Meniru solusi studi kasus lain yang konteksnya berbeda.', is_correct: false },
-            { id: 'opt_4', text: 'Mengabaikan petunjuk dan langsung mengumpulkan tugas.', is_correct: false },
+            { id: 'opt_1', text: 'Input Device (Perangkat Masukan)', is_correct: true },
+            { id: 'opt_2', text: 'Output Device (Perangkat Keluaran)', is_correct: false },
+            { id: 'opt_3', text: 'Storage Device (Media Penyimpanan)', is_correct: false },
+            { id: 'opt_4', text: 'Processing Device (Unit Pemroses)', is_correct: false },
         ]
     },
     {
         id: 'q4',
         type: 'multiple_choice',
-        question: 'Jika ditemukan kesalahan atau kendala dalam penerapan konsep, strategi apa yang paling efektif untuk memperbaikinya?',
+        question: 'Jika kursor pada layar komputer tidak bisa digerakkan saat digunakan, perangkat input apa yang perlu kamu periksa koneksinya?',
         points: 20,
         options: [
-            { id: 'opt_1', text: 'Melakukan penelusuran bertahap untuk menemukan akar penyebab masalah.', is_correct: true },
-            { id: 'opt_2', text: 'Membiarkan kesalahan dan tetap melanjutkan ke tahap berikutnya.', is_correct: false },
-            { id: 'opt_3', text: 'Mengganti seluruh rencana kerja secara mendadak tanpa evaluasi.', is_correct: false },
-            { id: 'opt_4', text: 'Menyerahkan penanganan masalah sepenuhnya kepada orang lain.', is_correct: false },
+            { id: 'opt_1', text: 'Mouse atau Touchpad', is_correct: true },
+            { id: 'opt_2', text: 'Monitor', is_correct: false },
+            { id: 'opt_3', text: 'Speaker', is_correct: false },
+            { id: 'opt_4', text: 'Printer', is_correct: false },
         ]
     },
     {
         id: 'q5',
         type: 'essay',
-        question: 'Jelaskan dengan bahasamu sendiri bagaimana penerapan materi ini dapat membantumu menyelesaikan tugas proyek atau tantangan nyata!',
+        question: 'Sebutkan 3 contoh perangkat yang termasuk Input Device pada komputer dan jelaskan fungsi masing-masing perangkat tersebut!',
         points: 20,
         options: [],
-        answer_guide: 'Jawaban harus mencakup: 1. Penjelasan konsep dasar materi, 2. Contoh kasus penerapan nyata, dan 3. Refleksi manfaat solusi bagi diri atau kelompok.'
+        answer_guide: 'Kriteria Jawaban: Siswa menyebutkan minimal 3 perangkat input yang tepat (misal: Keyboard, Mouse, Scanner, Mikrofon) beserta penjelasan fungsi konkretnya dengan benar.'
     }
 ];
 

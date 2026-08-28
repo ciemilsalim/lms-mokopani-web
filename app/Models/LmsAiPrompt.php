@@ -101,25 +101,60 @@ PENTING:
 <h2>Merefleksi</h2>
 [isi kegiatan merefleksi dengan HTML formatting]",
 
-            'assessment' => "Kamu adalah asisten cerdas perancang instrumen asesmen Kurikulum Merdeka Indonesia yang ramah siswa tingkat SMP (usia 12-15 tahun).
-Tujuan Pembelajaran: {tp}
-Konten/Materi: {content}
-Jenis Asesmen: {instrument_label}
+            'assessment' => "Kamu adalah pakar penyusun instrumen tes & asesmen Kurikulum Merdeka tingkat SMP di Indonesia (usia 12-15 tahun).
+Tujuan Pembelajaran (TP): {tp}
+Materi Pembelajaran: {content}
+Jenis Instrumen: {instrument_label}
 
-Jika Jenis Asesmen adalah 'Kuis / Survei Diagnostik' (Asesmen Awal), maka WAJIB membuat tepat 3 pertanyaan yang berfokus pada KEMAMPUAN PRASYARAT (pengetahuan awal yang harus dimiliki siswa SEBELUM mempelajari materi baru ini). Jangan tanyakan materi inti yang baru akan dipelajari. Sertakan field 'description' (instruksi tugas):
-- Soal 1 (Level 1): Kemampuan Dasar/Prasyarat (Isian Singkat). Pertanyaan tentang konsep/keterampilan paling mendasar dari materi sebelumnya yang menopang topik ini.
-- Soal 2 (Level 2): Kemampuan Menengah (Isian Singkat/Uraian). Menguji pemahaman prasyarat yang lebih kompleks namun belum menyentuh materi inti.
-- Soal 3 (Level 3): Pemecahan Masalah Prasyarat (Uraian/Essay). Mengukur apakah siswa siap menerima materi baru berdasarkan pemahaman konsep-konsep prasyaratnya.
+ATURAN WAJIB PENULISAN SOAL:
+1. SOAL HARUS MENGUJI MATERI / KONTEN SECARA LANGSUNG (Faktual, Konseptual, dan Prosedural).
+   - JANGAN membuat pertanyaan umum/reflektif tentang proses belajar (seperti: 'bagaimana perasaanmu', 'apa manfaat belajar', 'sikap apa yang terbaik saat kendala').
+   - BUATLAH pertanyaan yang benar-benar menguji materi/topik pelajaran secara konkret!
+   - CONTOH INFORMATIKA (Input Device):
+     * 'Manakah di bawah ini yang termasuk Input Device pada komputer?'
+     * 'Perangkat input yang berfungsi untuk memasukkan rekaman suara ke komputer adalah...'
+     * 'Saat di kasir minimarket, alat pemindai barcode barang termasuk kelompok perangkat...'
+   - CONTOH IPA (Fotosintesis):
+     * 'Zat hijau daun yang berfungsi menyerap cahaya matahari pada proses fotosintesis adalah...'
+   - CONTOH MATEMATIKA (Aljabar):
+     * 'Bentuk sederhana dari 3x + 5 - x + 2 adalah...'
+2. Gunakan bahasa Indonesia yang lugas, jelas, dan mudah dipahami siswa SMP.
+3. Setiap soal Pilihan Ganda memiliki 4 pilihan (A, B, C, D) yang jelas dan realistis, dengan 1 kunci jawaban yang pasti benar.
 
-Buatkan instrumen asesmen lengkap dalam format JSON sesuai jenis yang diminta.
-PENTING: Setiap output JSON WAJIB menyertakan field 'description' di level root yang berisi deskripsi/instruksi tugas untuk siswa dalam bahasa Indonesia sederhana, ramah, dan mudah dipahami (1-3 kalimat).
-PENTING: Gunakan bahasa yang sederhana, jelas, komunikatif, dan mudah dipahami oleh siswa SMP (usia 12-15 tahun). Hindari penggunaan istilah ilmiah atau akademis yang terlalu tinggi. Jika ada istilah teknis, berikan penjelasan singkat di dalam tanda kurung. Pertanyaan kuis/soal harus dikemas dengan kalimat yang ringkas dan bersahabat bagi anak SMP.
-PENTING UNTUK INSTRUMEN TES / KUIS (formative_quiz, written_test, quiz_survey):
-- Hasilkan array 'questions' berisi 3-5 butir soal.
-- Setiap butir soal pilihan ganda wajib memiliki: 'id' (misal: 'q1'), 'type' ('multiple_choice'), 'text' (pertanyaan ringkas), 'options' (array 4 opsi: [{'id': 'a', 'text': '...'}, {'id': 'b', 'text': '...'}, {'id': 'c', 'text': '...'}, {'id': 'd', 'text': '...'}]), 'answer' (huruf kunci jawaban yang benar: 'a' / 'b' / 'c' / 'd'), dan 'points' (bobot nilai angka).
-- Salah satu opsi wajib memiliki 'is_correct': true sesuai dengan 'answer'.
+Jika Jenis Asesmen adalah Tes / Penugasan / Formatif / Sumatif (written_test, formative_quiz, test, quiz):
+- Buatkan 5 butir soal:
+  * Soal 1: Pilihan Ganda (Identifikasi/Klasifikasi konsep atau objek materi).
+  * Soal 2: Pilihan Ganda (Fungsi, ciri-ciri, atau karakteristik spesifik materi).
+  * Soal 3: Pilihan Ganda (Studi kasus atau contoh konkret materi dalam kehidupan sehari-hari).
+  * Soal 4: Pilihan Ganda (Analisis sebab-akibat atau pemecahan masalah teknis materi).
+  * Soal 5: Uraian/Esai (Sebutkan contoh dan jelaskan cara kerja/fungsi materi secara spesifik) disertai 'answer_guide' kunci penilaian guru.
+- Hasilkan juga 4 tingkat deskriptor KKTP ('Perlu Bimbingan', 'Cukup', 'Baik', 'Sangat Baik').
 
-Kembalikan HANYA JSON tanpa markdown code fence.",
+Kembalikan HANYA JSON valid tanpa code fence:
+{
+  \"title\": \"Judul asesmen (misal: Tes Formatif - Perangkat Input Komputer)\",
+  \"description\": \"Petunjuk pengerjaan soal\",
+  \"questions\": [
+    {
+      \"id\": \"q1\",
+      \"type\": \"multiple_choice\",
+      \"question\": \"Pertanyaan langsung menguji materi...\",
+      \"points\": 20,
+      \"options\": [
+        {\"id\": \"opt_a\", \"text\": \"Pilihan A...\", \"is_correct\": true},
+        {\"id\": \"opt_b\", \"text\": \"Pilihan B...\", \"is_correct\": false},
+        {\"id\": \"opt_c\", \"text\": \"Pilihan C...\", \"is_correct\": false},
+        {\"id\": \"opt_d\", \"text\": \"Pilihan D...\", \"is_correct\": false}
+      ]
+    }
+  ],
+  \"levels\": [
+    {\"name\": \"Perlu Bimbingan\", \"desc\": \"Belum mampu mengidentifikasi komponen dasar materi.\"},
+    {\"name\": \"Cukup\", \"desc\": \"Mampu mengidentifikasi sebagian komponen namun belum memahami fungsinya secara lengkap.\"},
+    {\"name\": \"Baik\", \"desc\": \"Mampu mengidentifikasi dan menjelaskan fungsi materi dengan tepat sesuai KKTP.\"},
+    {\"name\": \"Sangat Baik\", \"desc\": \"Menguasai materi secara menyeluruh dan mampu menganalisis penerapannya dalam berbagai kasus.\"}
+  ]
+}",
 
             'lkpd' => "Kamu adalah asisten cerdas perancang LKPD (Lembar Kerja Peserta Didik) kurikulum merdeka Indonesia.
 Buatkan rancangan LKPD terstruktur dan profesional untuk mata pelajaran {subject}, Tujuan Pembelajaran {tp}, menggunakan model {pedagogical_model}.
