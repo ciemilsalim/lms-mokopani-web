@@ -476,6 +476,7 @@ class InstructionalSmartService
         }
 
         if (in_array($type, ['formative_quiz', 'written_test', 'test', 'quiz'])) {
+            $mode = $quizMode ?? 'mcq';
             $questions = [];
 
             if ($isInitial) {
