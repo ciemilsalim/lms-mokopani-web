@@ -4,7 +4,7 @@ import {
     ChevronLeft, ChevronRight, CheckCircle2, AlertCircle,
     BookOpen, Users, Target, GraduationCap, Info, FileText, Plus, Trash2,
     Check, Lock, Sparkles, Layers, ListChecks, Calendar, ArrowRight, Save,
-    Loader2, RefreshCw, Eye, HelpCircle
+    Loader2, RefreshCw, Eye, HelpCircle, Sliders, CheckSquare
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import axios from 'axios';
@@ -49,6 +49,25 @@ export interface AssessmentFormProps {
     scoring_tools: any[];
 }
 
+// Helper to sanitize any AI output into 100% clean readable text (removes HTML, Markdown, and entity tags)
+const cleanPlainText = (text: string | null | undefined): string => {
+    if (!text) return '';
+    return text
+        .replace(/<[^>]*>/g, '') // remove HTML tags
+        .replace(/&nbsp;/g, ' ')
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .replace(/(\*\*|__)(.*?)\1/g, '$2') // remove bold
+        .replace(/(\*|_)(.*?)\1/g, '$2') // remove italic
+        .replace(/```(?:json|html|markdown)?/gi, '') // remove code markers
+        .replace(/```/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+};
+
 export function AssessmentForm({
     mode,
     initialAssignment,
@@ -63,6 +82,7 @@ export function AssessmentForm({
     const [holidayWarning, setHolidayWarning] = useState<string | null>(null);
     const [aiLoading, setAiLoading] = useState(false);
     const [aiSuccessMessage, setAiSuccessMessage] = useState<string | null>(null);
+    const [activeSubTab, setActiveSubTab] = useState<'questions' | 'rubric'>('questions');
 
     // Initial Form State
     const { data, setData, post, processing, errors } = useForm({
@@ -82,7 +102,7 @@ export function AssessmentForm({
             stimulus: '',
             criteria: '',
             questions: [] as any[],
-            indicators: [] as any[],
+            indicators: [] as string[],
             focus: '',
             context: '',
             teacher_notes: '',
@@ -90,9 +110,9 @@ export function AssessmentForm({
             instructions: '',
             levels: [
                 { name: 'Perlu Bimbingan', desc: 'Siswa belum menunjukkan pemahaman konsep dasar.' },
-                { name: 'Cukup', desc: 'Siswa memahami sebagian besar konsep dasar.' },
-                { name: 'Baik', desc: 'Siswa menguasai seluruh indikator dengan baik.' },
-                { name: 'Sangat Baik', desc: 'Siswa menunjukkan penguasaan luar biasa.' }
+                { name: 'Cukup', desc: 'Siswa memahami sebagian besar konsep dasar namun belum konsisten.' },
+                { name: 'Baik', desc: 'Siswa menguasai seluruh indikator ketuntasan dengan baik.' },
+                { name: 'Sangat Baik', desc: 'Siswa menunjukkan penguasaan luar biasa dan pemahaman mendalam.' }
             ],
             kktp: {
                 approach: 'rubric',
@@ -158,23 +178,25 @@ export function AssessmentForm({
             case 'quiz_survey':
                 return {
                     name: 'Tes Tertulis / Kuis',
-                    desc: 'Buat butir soal pilihan ganda, isian, atau esai beserta kunci jawaban yang selaras dengan TP.',
-                    capabilities: ['Pilihan Ganda & Esai', 'Kunci Jawaban Otomatis', 'Indikator Penilaian'],
-                    ctaLabel: 'Buat Soal dengan AI',
+                    desc: 'Buat butir soal pilihan ganda, isian, atau esai beserta kunci jawaban dan rubrik ketuntasan KKTP.',
+                    capabilities: ['Pilihan Ganda & Esai', 'Kunci Jawaban Otomatis', 'Rubrik Kriteria KKTP'],
+                    ctaLabel: 'Buat Soal & Rubrik dengan AI',
                     manualLabel: 'Tambah Soal Manual',
-                    loadingLabel: 'Menyusun Soal...',
-                    icon: ListChecks
+                    loadingLabel: 'Menyusun Soal & Rubrik...',
+                    icon: ListChecks,
+                    defaultSubTab: 'questions'
                 };
             case 'observation_checklist':
             case 'observation':
                 return {
                     name: 'Lembar Observasi',
-                    desc: 'Buat indikator observasi dan lembar pengamatan terstruktur sesuai aktivitas pembelajaran.',
-                    capabilities: ['Indikator Pengamatan', 'Skala Ketercapaian', 'Catatan Guru'],
-                    ctaLabel: 'Buat Instrumen Observasi',
+                    desc: 'Buat indikator observasi terstruktur, skala pengamatan guru, dan panduan rubrik penilaian.',
+                    capabilities: ['Indikator Pengamatan', 'Skala Ketercapaian', 'Rubrik KKTP'],
+                    ctaLabel: 'Buat Instrumen Observasi & Rubrik',
                     manualLabel: 'Tambah Indikator Manual',
-                    loadingLabel: 'Menyusun Indikator...',
-                    icon: Eye
+                    loadingLabel: 'Menyusun Indikator & Rubrik...',
+                    icon: Eye,
+                    defaultSubTab: 'rubric'
                 };
             case 'performance':
             case 'project':
@@ -182,65 +204,71 @@ export function AssessmentForm({
             case 'assignment':
                 return {
                     name: 'Tugas Kinerja / LKPD',
-                    desc: 'Buat instruksi penugasan praktik, kriteria keberhasilan, dan rubrik penilaian kinerja.',
-                    capabilities: ['Instruksi Langkah Kerja', 'Kriteria Penilaian Karya', 'Skala KKTP'],
-                    ctaLabel: 'Buat Rubrik & Panduan Kinerja',
+                    desc: 'Buat instruksi penugasan praktik, kriteria keberhasilan karya, dan rubrik penilaian kinerja.',
+                    capabilities: ['Instruksi Langkah Kerja', 'Kriteria Penilaian Karya', 'Rubrik 4 Level KKTP'],
+                    ctaLabel: 'Buat Panduan Tugas & Rubrik',
                     manualLabel: 'Tambah Kriteria Manual',
-                    loadingLabel: 'Menyusun Rubrik & Panduan...',
-                    icon: FileText
+                    loadingLabel: 'Menyusun Tugas & Rubrik...',
+                    icon: FileText,
+                    defaultSubTab: 'rubric'
                 };
             case 'reflective_journal':
             case 'reflection':
                 return {
                     name: 'Jurnal Reflektif',
-                    desc: 'Buat pertanyaan refleksi mendalam yang memandu siswa mengevaluasi proses belajarnya.',
-                    capabilities: ['Pertanyaan Pemantik Refleksi', 'Evaluasi Diri Siswa', 'Rangkuman Umpan Balik'],
-                    ctaLabel: 'Buat Pertanyaan Refleksi',
+                    desc: 'Buat pertanyaan pemantik refleksi mendalam dan rubrik evaluasi kesadaran belajar siswa.',
+                    capabilities: ['Pertanyaan Refleksi', 'Panduan Jawaban Siswa', 'Rubrik Evaluasi Diri'],
+                    ctaLabel: 'Buat Pertanyaan & Rubrik Refleksi',
                     manualLabel: 'Tambah Pertanyaan Manual',
-                    loadingLabel: 'Menyusun Pertanyaan Refleksi...',
-                    icon: HelpCircle
+                    loadingLabel: 'Menyusun Pertanyaan & Rubrik...',
+                    icon: HelpCircle,
+                    defaultSubTab: 'questions'
                 };
             case 'self_assessment':
                 return {
                     name: 'Penilaian Diri',
-                    desc: 'Buat lembar checklist penilaian diri berbasis indikator ketuntasan belajar.',
-                    capabilities: ['Checklist Kemampuan Diri', 'Bahasa Ramah Siswa', 'Refleksi Pemahaman'],
-                    ctaLabel: 'Buat Lembar Penilaian Diri',
+                    desc: 'Buat lembar pernyataan checklist penilaian diri dan rubrik refleksi ketuntasan belajar.',
+                    capabilities: ['Checklist Kemampuan Diri', 'Bahasa Ramah Siswa', 'Rubrik KKTP'],
+                    ctaLabel: 'Buat Lembar Penilaian Diri & Rubrik',
                     manualLabel: 'Tambah Pernyataan Manual',
                     loadingLabel: 'Menyusun Penilaian Diri...',
-                    icon: CheckCircle2
+                    icon: CheckCircle2,
+                    defaultSubTab: 'rubric'
                 };
             case 'peer_assessment':
                 return {
                     name: 'Penilaian Antarteman',
-                    desc: 'Buat kriteria pengamatan antarteman dan panduan feedback konstruktif dalam kolaborasi.',
-                    capabilities: ['Kriteria Kolaborasi Tim', 'Rubrik Bahasa Positif', 'Panduan Umpan Balik'],
-                    ctaLabel: 'Buat Instrumen Antarteman',
+                    desc: 'Buat kriteria pengamatan antarteman, umpan balik positif, dan rubrik kolaborasi kelompok.',
+                    capabilities: ['Kriteria Kolaborasi Tim', 'Panduan Umpan Balik', 'Rubrik Antarteman'],
+                    ctaLabel: 'Buat Instrumen Antarteman & Rubrik',
                     manualLabel: 'Tambah Kriteria Manual',
-                    loadingLabel: 'Menyusun Penilaian Antarteman...',
-                    icon: Users
+                    loadingLabel: 'Menyusun Antarteman & Rubrik...',
+                    icon: Users,
+                    defaultSubTab: 'rubric'
                 };
             case 'exit_ticket':
             case 'cats':
                 return {
                     name: 'Exit Ticket / CATs',
-                    desc: 'Buat pertanyaan cepat 1–2 menit di akhir sesi untuk memetakan pemahaman siswa.',
-                    capabilities: ['Pertanyaan Cepat Ringkas', 'Identifikasi Miskonsepsi', 'Tindak Lanjut Cepat'],
-                    ctaLabel: 'Buat Pertanyaan Exit Ticket',
+                    desc: 'Buat pertanyaan cepat 1–2 menit di akhir sesi dan rubrik identifikasi miskonsepsi.',
+                    capabilities: ['Pertanyaan Cepat Ringkas', 'Identifikasi Miskonsepsi', 'Rubrik Respon Cepat'],
+                    ctaLabel: 'Buat Exit Ticket & Rubrik',
                     manualLabel: 'Tambah Pertanyaan Manual',
                     loadingLabel: 'Menyusun Exit Ticket...',
-                    icon: Sparkles
+                    icon: Sparkles,
+                    defaultSubTab: 'questions'
                 };
             case 'rubric':
             default:
                 return {
                     name: 'Rubrik Kriteria KKTP',
                     desc: 'Buat deskriptor rubrik kualitatif 4 level (Perlu Bimbingan, Cukup, Baik, Sangat Baik) sesuai TP.',
-                    capabilities: ['4 Level Kualitatif KKTP', 'Deskriptor Ketercapaian Jelas', 'Panduan Interval Nilai'],
+                    capabilities: ['4 Level Kualitatif KKTP', 'Deskriptor Ketercapaian Jelas', 'Panduan Nilai'],
                     ctaLabel: 'Buat Rubrik KKTP dengan AI',
-                    manualLabel: 'Tambah Kriteria Manual',
+                    manualLabel: 'Tambah Level Kriteria',
                     loadingLabel: 'Menyusun Rubrik KKTP...',
-                    icon: Layers
+                    icon: Layers,
+                    defaultSubTab: 'rubric'
                 };
         }
     }, [data.instrument_type]);
@@ -262,46 +290,78 @@ export function AssessmentForm({
             if (res.data) {
                 const d = res.data;
                 
-                // Set suggested Title & Description if empty or update
+                // 1. Title & Description (Clean Plain Text)
                 if (d.title) {
-                    setData('title', d.title);
+                    setData('title', cleanPlainText(d.title));
                 } else if (!data.title) {
                     const activeTp = objectives.find(o => o.id === Number(data.learning_objective_id));
                     const typeName = data.assessment_type === 'initial' ? 'Asesmen Awal' : data.assessment_type === 'summative' ? 'Asesmen Sumatif' : 'LKPD Formatif';
-                    setData('title', `${typeName}: ${activeTp?.description || 'Pembelajaran'}`);
+                    setData('title', `${typeName}: ${cleanPlainText(activeTp?.description || 'Pembelajaran')}`);
                 }
 
                 if (d.description || d.instructions || d.stimulus) {
-                    setData('description', d.description || d.instructions || d.stimulus || '');
+                    setData('description', cleanPlainText(d.description || d.instructions || d.stimulus));
                 }
 
-                // Process generated Questions
+                // 2. Process Questions (Clean Plain Text for Question & Options)
+                let formattedQuestions = [...(data.instrument_config.questions || [])];
                 if (d.questions && Array.isArray(d.questions) && d.questions.length > 0) {
-                    const formattedQuestions = d.questions.map((q: any, idx: number) => {
+                    formattedQuestions = d.questions.map((q: any, idx: number) => {
                         const isMcq = q.type === 'multiple_choice' || (q.options && q.options.length > 0);
                         return {
                             id: q.id || `q_${Date.now()}_${idx}`,
                             type: isMcq ? 'multiple_choice' : (q.type || 'short_answer'),
-                            question: q.question || q.text || '',
+                            question: cleanPlainText(q.question || q.text || ''),
                             points: q.points || 10,
                             options: isMcq && q.options ? q.options.map((opt: any, optIdx: number) => ({
                                 id: opt.id || `opt_${optIdx}_${Date.now()}`,
-                                text: opt.text || opt.label || '',
-                                is_correct: Boolean(opt.is_correct || optIdx === 0)
+                                text: cleanPlainText(opt.text || opt.label || ''),
+                                is_correct: Boolean(opt.is_correct || opt.id === q.answer || optIdx === 0)
                             })) : [
                                 { id: `opt_1_${Date.now()}`, text: '', is_correct: true },
                                 { id: `opt_2_${Date.now()}`, text: '', is_correct: false },
                             ]
                         };
                     });
-
-                    setData('instrument_config', {
-                        ...data.instrument_config,
-                        questions: formattedQuestions
-                    });
                 }
 
-                setAiSuccessMessage(`✨ Instrumen ${aiContext.name} berhasil disusun oleh AI!`);
+                // 3. Process Rubric Levels (Clean Plain Text)
+                let formattedLevels = data.instrument_config.levels || [
+                    { name: 'Perlu Bimbingan', desc: 'Siswa belum menunjukkan pemahaman konsep dasar.' },
+                    { name: 'Cukup', desc: 'Siswa memahami sebagian besar konsep dasar.' },
+                    { name: 'Baik', desc: 'Siswa menguasai seluruh indikator dengan baik.' },
+                    { name: 'Sangat Baik', desc: 'Siswa menunjukkan penguasaan luar biasa.' }
+                ];
+                if (d.levels && Array.isArray(d.levels) && d.levels.length > 0) {
+                    formattedLevels = d.levels.map((lvl: any) => ({
+                        name: cleanPlainText(lvl.name || 'Level'),
+                        desc: cleanPlainText(lvl.desc || lvl.description || '')
+                    }));
+                }
+
+                // 4. Process Indicators (Clean Plain Text)
+                let formattedIndicators = data.instrument_config.indicators || [];
+                if (d.indicators && Array.isArray(d.indicators) && d.indicators.length > 0) {
+                    formattedIndicators = d.indicators.map((ind: any) => cleanPlainText(typeof ind === 'string' ? ind : ind.text || ''));
+                }
+
+                setData('instrument_config', {
+                    ...data.instrument_config,
+                    questions: formattedQuestions,
+                    levels: formattedLevels,
+                    indicators: formattedIndicators,
+                    criteria: cleanPlainText(d.criteria || ''),
+                    stimulus: cleanPlainText(d.stimulus || ''),
+                });
+
+                // Auto select appropriate sub-tab
+                if (formattedQuestions.length > 0) {
+                    setActiveSubTab('questions');
+                } else {
+                    setActiveSubTab('rubric');
+                }
+
+                setAiSuccessMessage(`✨ Soal & Rubrik ${aiContext.name} berhasil dibuat tanpa tag HTML!`);
                 setTimeout(() => setAiSuccessMessage(null), 4500);
             }
         } catch (err) {
@@ -408,6 +468,18 @@ export function AssessmentForm({
             ...data.instrument_config,
             questions: currentQuestions
         });
+    };
+
+    // Rubric Level Handler
+    const handleRubricDescChange = (lvlIdx: number, desc: string) => {
+        const currentLevels = [...(data.instrument_config.levels || [])];
+        if (currentLevels[lvlIdx]) {
+            currentLevels[lvlIdx].desc = desc;
+            setData('instrument_config', {
+                ...data.instrument_config,
+                levels: currentLevels
+            });
+        }
     };
 
     // Toggle Class Selection
@@ -678,7 +750,7 @@ export function AssessmentForm({
                             </div>
                         </div>
 
-                        {/* 3. Context-Aware AI Assistant Card (Adapts dynamically to the chosen instrument!) */}
+                        {/* 3. Context-Aware AI Assistant Card */}
                         {data.instrument_type && (
                             <div className="p-3.5 rounded-2xl bg-gradient-to-r from-primary/10 via-primary/5 to-purple-500/10 border border-primary/25 space-y-2.5 transition-all">
                                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
@@ -707,7 +779,7 @@ export function AssessmentForm({
                                         </div>
                                     </div>
 
-                                    {/* Action Buttons: AI Button & Manual Button */}
+                                    {/* Action Button: Dynamic AI Button */}
                                     <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
                                         <button
                                             type="button"
@@ -745,111 +817,189 @@ export function AssessmentForm({
                             </div>
                         )}
 
-                        {/* 4. Question & Instrument Content Editor */}
-                        {['written_test', 'formative_quiz', 'quiz_survey'].includes(data.instrument_type) && (
-                            <div className="space-y-3 pt-2 border-t border-border/50">
-                                <div className="flex items-center justify-between">
-                                    <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                        {/* 4. Dual Tab Editor: [ Butir Soal / Pertanyaan ] & [ Rubrik Kriteria & KKTP ] */}
+                        <div className="space-y-3 pt-2 border-t border-border/50">
+                            <div className="flex items-center justify-between gap-2 border-b border-border/60 pb-2">
+                                <div className="flex items-center gap-1.5 p-1 rounded-xl bg-muted/60">
+                                    <button
+                                        type="button"
+                                        onClick={() => setActiveSubTab('questions')}
+                                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                                            activeSubTab === 'questions'
+                                                ? 'bg-card text-foreground shadow-2xs font-black'
+                                                : 'text-muted-foreground hover:text-foreground'
+                                        }`}
+                                    >
                                         <ListChecks className="h-3.5 w-3.5 text-primary" />
-                                        <span>Daftar Butir Soal ({data.instrument_config.questions?.length || 0})</span>
-                                    </span>
+                                        <span>Butir Soal ({data.instrument_config.questions?.length || 0})</span>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setActiveSubTab('rubric')}
+                                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                                            activeSubTab === 'rubric'
+                                                ? 'bg-card text-foreground shadow-2xs font-black'
+                                                : 'text-muted-foreground hover:text-foreground'
+                                        }`}
+                                    >
+                                        <Layers className="h-3.5 w-3.5 text-primary" />
+                                        <span>Rubrik Kriteria KKTP</span>
+                                    </button>
+                                </div>
+
+                                {activeSubTab === 'questions' && (
                                     <button
                                         type="button"
                                         onClick={handleAddQuestion}
-                                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-background border border-border text-foreground hover:bg-muted text-xs font-bold transition cursor-pointer"
+                                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-background border border-border text-foreground hover:bg-muted text-xs font-bold transition cursor-pointer shrink-0"
                                     >
                                         <Plus className="h-3 w-3 text-primary" />
                                         <span>{aiContext.manualLabel}</span>
                                     </button>
-                                </div>
-
-                                {(!data.instrument_config.questions || data.instrument_config.questions.length === 0) ? (
-                                    <div className="text-center py-6 border border-dashed border-border rounded-xl p-4 bg-muted/20 space-y-1.5">
-                                        <p className="text-xs font-medium text-muted-foreground">Belum ada butir instrumen.</p>
-                                        <p className="text-[11px] text-primary font-bold">
-                                            Gunakan tombol "{aiContext.ctaLabel}" di atas atau tekan "{aiContext.manualLabel}".
-                                        </p>
-                                    </div>
-                                ) : (
-                                    <div className="space-y-2.5">
-                                        {data.instrument_config.questions.map((q: any, qIdx: number) => (
-                                            <div key={q.id || qIdx} className="rounded-xl border border-border bg-background p-3 space-y-2 shadow-2xs">
-                                                <div className="flex items-center justify-between gap-2 border-b border-border/40 pb-1.5">
-                                                    <span className="text-[11px] font-black text-primary bg-primary/10 px-2 py-0.5 rounded">
-                                                        Soal #{qIdx + 1}
-                                                    </span>
-                                                    <div className="flex items-center gap-1.5">
-                                                        <select
-                                                            value={q.type}
-                                                            onChange={(e) => handleQuestionTypeChange(qIdx, e.target.value)}
-                                                            className="rounded-lg border border-border bg-card px-2 py-0.5 text-xs font-bold text-foreground outline-none"
-                                                        >
-                                                            <option value="multiple_choice">Pilihan Ganda</option>
-                                                            <option value="short_answer">Isian Singkat</option>
-                                                            <option value="essay">Uraian / Esai</option>
-                                                        </select>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => handleRemoveQuestion(qIdx)}
-                                                            className="p-1 text-destructive hover:bg-destructive/10 rounded-lg transition"
-                                                            title="Hapus Soal"
-                                                        >
-                                                            <Trash2 className="h-3.5 w-3.5" />
-                                                        </button>
-                                                    </div>
-                                                </div>
-
-                                                <textarea
-                                                    rows={2}
-                                                    placeholder={`Tuliskan teks soal #${qIdx + 1}...`}
-                                                    value={q.question}
-                                                    onChange={(e) => handleQuestionTextChange(qIdx, e.target.value)}
-                                                    className="w-full rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs text-foreground outline-none focus:border-primary"
-                                                />
-
-                                                {q.type === 'multiple_choice' && (
-                                                    <div className="space-y-1.5 pt-1">
-                                                        <p className="text-[10px] font-bold text-muted-foreground">Pilihan Jawaban (Klik radio untuk kunci):</p>
-                                                        {(q.options || []).map((opt: any, optIdx: number) => (
-                                                            <div key={opt.id || optIdx} className="flex items-center gap-1.5">
-                                                                <input
-                                                                    type="radio"
-                                                                    name={`correct_${qIdx}`}
-                                                                    checked={Boolean(opt.is_correct)}
-                                                                    onChange={() => handleOptionCorrectChange(qIdx, optIdx)}
-                                                                    className="h-3.5 w-3.5 text-primary focus:ring-primary cursor-pointer"
-                                                                />
-                                                                <input
-                                                                    type="text"
-                                                                    placeholder={`Opsi ${String.fromCharCode(65 + optIdx)}`}
-                                                                    value={opt.text}
-                                                                    onChange={(e) => handleOptionTextChange(qIdx, optIdx, e.target.value)}
-                                                                    className="flex-1 rounded-lg border border-border bg-card px-2 py-1 text-xs text-foreground outline-none"
-                                                                />
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => handleRemoveOption(qIdx, optIdx)}
-                                                                    className="p-1 text-muted-foreground hover:text-destructive transition rounded"
-                                                                >
-                                                                    <Trash2 className="h-3 w-3" />
-                                                                </button>
-                                                            </div>
-                                                        ))}
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => handleAddOption(qIdx)}
-                                                            className="inline-flex items-center gap-1 text-[11px] font-bold text-primary hover:underline"
-                                                        >
-                                                            <Plus className="h-3 w-3" /> Tambah Opsi
-                                                        </button>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        ))}
-                                    </div>
                                 )}
                             </div>
-                        )}
+
+                            {/* SUB-TAB A: QUESTIONS / PERTANYAAN */}
+                            {activeSubTab === 'questions' && (
+                                <div className="space-y-3">
+                                    {(!data.instrument_config.questions || data.instrument_config.questions.length === 0) ? (
+                                        <div className="text-center py-6 border border-dashed border-border rounded-xl p-4 bg-muted/20 space-y-1.5">
+                                            <p className="text-xs font-medium text-muted-foreground">Belum ada butir soal.</p>
+                                            <p className="text-[11px] text-primary font-bold">
+                                                Gunakan tombol "{aiContext.ctaLabel}" di atas atau tekan "{aiContext.manualLabel}".
+                                            </p>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-2.5">
+                                            {data.instrument_config.questions.map((q: any, qIdx: number) => (
+                                                <div key={q.id || qIdx} className="rounded-xl border border-border bg-background p-3 space-y-2 shadow-2xs">
+                                                    <div className="flex items-center justify-between gap-2 border-b border-border/40 pb-1.5">
+                                                        <span className="text-[11px] font-black text-primary bg-primary/10 px-2 py-0.5 rounded">
+                                                            Soal #{qIdx + 1}
+                                                        </span>
+                                                        <div className="flex items-center gap-1.5">
+                                                            <select
+                                                                value={q.type}
+                                                                onChange={(e) => handleQuestionTypeChange(qIdx, e.target.value)}
+                                                                className="rounded-lg border border-border bg-card px-2 py-0.5 text-xs font-bold text-foreground outline-none"
+                                                            >
+                                                                <option value="multiple_choice">Pilihan Ganda</option>
+                                                                <option value="short_answer">Isian Singkat</option>
+                                                                <option value="essay">Uraian / Esai</option>
+                                                            </select>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleRemoveQuestion(qIdx)}
+                                                                className="p-1 text-destructive hover:bg-destructive/10 rounded-lg transition"
+                                                                title="Hapus Soal"
+                                                            >
+                                                                <Trash2 className="h-3.5 w-3.5" />
+                                                            </button>
+                                                        </div>
+                                                    </div>
+
+                                                    <textarea
+                                                        rows={2}
+                                                        placeholder={`Tuliskan teks soal #${qIdx + 1}...`}
+                                                        value={q.question}
+                                                        onChange={(e) => handleQuestionTextChange(qIdx, e.target.value)}
+                                                        className="w-full rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs text-foreground outline-none focus:border-primary"
+                                                    />
+
+                                                    {q.type === 'multiple_choice' && (
+                                                        <div className="space-y-1.5 pt-1">
+                                                            <p className="text-[10px] font-bold text-muted-foreground">Pilihan Jawaban (Klik radio untuk kunci):</p>
+                                                            {(q.options || []).map((opt: any, optIdx: number) => (
+                                                                <div key={opt.id || optIdx} className="flex items-center gap-1.5">
+                                                                    <input
+                                                                        type="radio"
+                                                                        name={`correct_${qIdx}`}
+                                                                        checked={Boolean(opt.is_correct)}
+                                                                        onChange={() => handleOptionCorrectChange(qIdx, optIdx)}
+                                                                        className="h-3.5 w-3.5 text-primary focus:ring-primary cursor-pointer"
+                                                                    />
+                                                                    <input
+                                                                        type="text"
+                                                                        placeholder={`Opsi ${String.fromCharCode(65 + optIdx)}`}
+                                                                        value={opt.text}
+                                                                        onChange={(e) => handleOptionTextChange(qIdx, optIdx, e.target.value)}
+                                                                        className="flex-1 rounded-lg border border-border bg-card px-2 py-1 text-xs text-foreground outline-none"
+                                                                    />
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => handleRemoveOption(qIdx, optIdx)}
+                                                                        className="p-1 text-muted-foreground hover:text-destructive transition rounded"
+                                                                    >
+                                                                        <Trash2 className="h-3 w-3" />
+                                                                    </button>
+                                                                </div>
+                                                            ))}
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleAddOption(qIdx)}
+                                                                className="inline-flex items-center gap-1 text-[11px] font-bold text-primary hover:underline"
+                                                            >
+                                                                <Plus className="h-3 w-3" /> Tambah Opsi
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* SUB-TAB B: RUBRIK KRITERIA & 4 LEVEL KKTP */}
+                            {activeSubTab === 'rubric' && (
+                                <div className="space-y-3">
+                                    <div className="p-3 rounded-xl bg-muted/40 border border-border/70 space-y-1">
+                                        <p className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                                            <Sliders className="h-3.5 w-3.5 text-primary" />
+                                            <span>Rubrik Deskriptor 4 Tingkat Ketercapaian (KKTP)</span>
+                                        </p>
+                                        <p className="text-[11px] text-muted-foreground">
+                                            Deskriptor kualitatif yang membantu guru mengevaluasi level pemahaman siswa secara objektif.
+                                        </p>
+                                    </div>
+
+                                    <div className="grid gap-2.5 sm:grid-cols-2">
+                                        {(data.instrument_config.levels || [
+                                            { name: 'Perlu Bimbingan', desc: 'Siswa belum menunjukkan pemahaman konsep dasar.' },
+                                            { name: 'Cukup', desc: 'Siswa memahami sebagian besar konsep dasar.' },
+                                            { name: 'Baik', desc: 'Siswa menguasai seluruh indikator dengan baik.' },
+                                            { name: 'Sangat Baik', desc: 'Siswa menunjukkan penguasaan luar biasa.' }
+                                        ]).map((lvl: any, lIdx: number) => {
+                                            const badgeColors = [
+                                                'bg-rose-500/10 text-rose-600 border-rose-200 dark:border-rose-900',
+                                                'bg-amber-500/10 text-amber-600 border-amber-200 dark:border-amber-900',
+                                                'bg-emerald-500/10 text-emerald-600 border-emerald-200 dark:border-emerald-900',
+                                                'bg-blue-500/10 text-blue-600 border-blue-200 dark:border-blue-900'
+                                            ];
+                                            return (
+                                                <div key={lIdx} className="p-3 rounded-xl border border-border bg-background space-y-2">
+                                                    <div className="flex items-center justify-between">
+                                                        <span className={`text-[11px] font-black px-2 py-0.5 rounded-md border ${badgeColors[lIdx % 4]}`}>
+                                                            {lvl.name}
+                                                        </span>
+                                                        <span className="text-[10px] text-muted-foreground font-bold">
+                                                            {lIdx === 0 ? 'Belum Tuntas' : lIdx === 1 ? 'Hampir Tuntas' : lIdx === 2 ? 'Tuntas (KKTP)' : 'Pengayaan'}
+                                                        </span>
+                                                    </div>
+                                                    <textarea
+                                                        rows={3}
+                                                        placeholder={`Tuliskan kriteria deskriptor untuk level ${lvl.name}...`}
+                                                        value={lvl.desc || ''}
+                                                        onChange={(e) => handleRubricDescChange(lIdx, e.target.value)}
+                                                        className="w-full rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs text-foreground outline-none focus:border-primary"
+                                                    />
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 )}
 

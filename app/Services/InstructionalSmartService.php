@@ -282,6 +282,17 @@ class InstructionalSmartService
             $cleaned = preg_replace('/\[DOKUMEN MODUL AJAR TERHUBUNG\][\s\S]*/i', '', $cleaned);
             $cleaned = preg_replace('/\[SPESIFIKASI ASESMEN YANG WAJIB DIHASILKAN\][\s\S]*/i', '', $cleaned);
             
+            // Remove markdown code blocks
+            $cleaned = preg_replace('/```(?:json|html|markdown)?[\s\S]*?```/i', '', $cleaned);
+            $cleaned = str_replace('```', '', $cleaned);
+            
+            // Strip HTML tags completely
+            $cleaned = strip_tags($cleaned);
+            
+            // Strip markdown bold / italic symbols
+            $cleaned = preg_replace('/(\*\*|__)(.*?)\1/', '$2', $cleaned);
+            $cleaned = preg_replace('/(\*|_)(.*?)\1/', '$2', $cleaned);
+            
             // Clean accidental leaked "Judul Materi: ... Uraian Materi: ..." inside short indicator strings
             if (str_contains($cleaned, 'Judul Materi:') && str_contains($cleaned, 'Uraian Materi:')) {
                 if (preg_match('/Ketepatan konsep dan penerapan materi\s+Judul Materi:\s*([^:\n]+)/i', $cleaned, $m)) {
