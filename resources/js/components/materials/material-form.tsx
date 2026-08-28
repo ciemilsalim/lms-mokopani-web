@@ -205,7 +205,7 @@ export function MaterialForm({
         .filter((value, index, self) =>
             index === self.findIndex((t) => t.school_class?.name === value.school_class?.name)
         )
-        .sort((a, b) => (a.school_class?.name || '').localeCompare(b.school_class?.name || ''));
+        .sort((a, b) => (a.school_class?.name || '').localeCompare(b.school_class?.name || '', undefined, { numeric: true, sensitivity: 'base' }));
 
     const filteredObjectives = objectives.filter(obj => obj.subject_id === parseInt(subjectId));
 

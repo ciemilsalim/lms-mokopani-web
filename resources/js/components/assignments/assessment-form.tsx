@@ -102,23 +102,32 @@ export function AssessmentForm({
         },
     });
 
-    // Filtered Subjects & Classes from teachings
+    // Filtered Subjects & Classes from teachings (Sorted naturally)
     const availableSubjects = useMemo(() => {
         const map = new Map<number, string>();
         teachings.forEach(t => map.set(t.subject_id, t.subject_name));
-        return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
+        return Array.from(map.entries())
+            .map(([id, name]) => ({ id, name }))
+            .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
     }, [teachings]);
 
     const availableClasses = useMemo(() => {
         if (!data.subject_id) return [];
-        return teachings
+        const classMap = new Map<number, string>();
+        teachings
             .filter(t => t.subject_id === Number(data.subject_id))
-            .map(t => ({ id: t.class_id, name: t.class_name }));
+            .forEach(t => classMap.set(t.class_id, t.class_name));
+        
+        return Array.from(classMap.entries())
+            .map(([id, name]) => ({ id, name }))
+            .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
     }, [teachings, data.subject_id]);
 
     const availableObjectives = useMemo(() => {
         if (!data.subject_id) return [];
-        return objectives.filter(o => o.subject_id === Number(data.subject_id));
+        return objectives
+            .filter(o => o.subject_id === Number(data.subject_id))
+            .sort((a, b) => (a.code || '').localeCompare(b.code || '', undefined, { numeric: true, sensitivity: 'base' }));
     }, [objectives, data.subject_id]);
 
     // Check Holiday Warning
