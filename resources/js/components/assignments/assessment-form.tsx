@@ -200,6 +200,9 @@ export function AssessmentForm({
     const [holidayWarning, setHolidayWarning] = useState<string | null>(null);
     const [aiLoading, setAiLoading] = useState(false);
     const [aiSuccessMessage, setAiSuccessMessage] = useState<string | null>(null);
+    const [isDraftVisible, setIsDraftVisible] = useState(
+        Boolean(initialAssignment?.id || initialAssignment?.title || initialAssignment?.instrument_config?.questions?.length || initialAssignment?.instrument_config?.indicators?.length)
+    );
 
     // Initial Form State (Starts clean and empty for new assessments)
     const { data, setData, post, processing, errors } = useForm({
@@ -410,6 +413,7 @@ export function AssessmentForm({
     // AI Generation Handler
     const handleAiGenerate = async () => {
         if (!data.learning_objective_id) return;
+        setIsDraftVisible(true);
         setAiLoading(true);
         setAiSuccessMessage(null);
 
@@ -1064,8 +1068,42 @@ export function AssessmentForm({
                             )}
                         </div>
 
-                        {/* ── BAGIAN DRAF SOAL, KUNCI JAWABAN & SKOR ── */}
-                        <div className="rounded-2xl border border-border bg-card p-4 sm:p-5 space-y-5 shadow-xs">
+                        {/* ── BAGIAN DRAF SOAL, KUNCI JAWABAN & SKOR (TERSEMBUNYI SEBELUM AI GENERATE ATAU TULIS MANUAL) ── */}
+                        {!isDraftVisible ? (
+                            <div className="rounded-2xl border border-dashed border-border bg-card/60 p-8 text-center space-y-4 animate-in fade-in shadow-2xs">
+                                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                                    <Sparkles className="h-6 w-6 animate-pulse" />
+                                </div>
+                                <div className="space-y-1 max-w-md mx-auto">
+                                    <h4 className="text-sm font-black text-foreground">
+                                        Rancangan Asesmen Siap Disusun
+                                    </h4>
+                                    <p className="text-xs text-muted-foreground leading-relaxed">
+                                        Klik <strong className="text-primary font-bold">"{aiContext.ctaLabel}"</strong> agar AI menyusun draf judul, butir soal, kunci jawaban, dan rubrik KKTP secara otomatis, atau klik <strong className="text-foreground font-bold">"Tulis Manual"</strong>.
+                                    </p>
+                                </div>
+                                <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+                                    <button
+                                        type="button"
+                                        disabled={aiLoading || !data.learning_objective_id}
+                                        onClick={handleAiGenerate}
+                                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-black shadow-xs hover:bg-primary/90 transition active:scale-95 cursor-pointer disabled:opacity-50"
+                                    >
+                                        {aiLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+                                        <span>{aiContext.ctaLabel}</span>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsDraftVisible(true)}
+                                        className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-background border border-border text-foreground text-xs font-bold hover:bg-muted transition cursor-pointer"
+                                    >
+                                        <Edit3 className="h-3.5 w-3.5 text-muted-foreground" />
+                                        <span>Tulis Manual</span>
+                                    </button>
+                                </div>
+                            </div>
+                        ) : (
+                        <div className="rounded-2xl border border-border bg-card p-4 sm:p-5 space-y-5 shadow-xs animate-in fade-in">
                             <div className="flex items-center justify-between border-b border-border/50 pb-2.5">
                                 <div className="flex items-center gap-2">
                                     <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-primary shrink-0">
@@ -1774,6 +1812,7 @@ export function AssessmentForm({
                                 )}
                             </div>
                         </div>
+                        )}
                     </div>
                 )}
 
