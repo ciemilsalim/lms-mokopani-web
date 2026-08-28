@@ -73,12 +73,33 @@ export function TeacherGradingWorkspace({
     const [toastMessage, setToastMessage] = useState<string | null>(null);
     const [isStickyHeaderVisible, setIsStickyHeaderVisible] = useState(false);
 
+    // Helper to get score from submission or parsed auto_score
+    const getSubmissionScore = (sub?: Submission | null) => {
+        if (!sub) return null;
+        if (sub.score !== null && sub.score !== undefined) return sub.score;
+        if (sub.content && typeof sub.content === 'string') {
+            try {
+                const parsed = JSON.parse(sub.content);
+                if (parsed.auto_score !== undefined && parsed.auto_score !== null) {
+                    return parsed.auto_score;
+                }
+            } catch(e) {}
+        }
+        return null;
+    };
+
     // Local inline scores and saving states for rapid batch grading
     const [localScores, setLocalScores] = useState<Record<number, string | number>>(() => {
         const initial: Record<number, string | number> = {};
         (assignment.submissions || []).forEach((sub: Submission) => {
-            if (sub.score !== null && sub.score !== undefined) {
-                initial[sub.student_id] = sub.score;
+            const scoreVal = sub.score !== null && sub.score !== undefined ? sub.score : (() => {
+                try {
+                    const parsed = JSON.parse(sub.content || '{}');
+                    return parsed.auto_score ?? null;
+                } catch(e) { return null; }
+            })();
+            if (scoreVal !== null && scoreVal !== undefined) {
+                initial[sub.student_id] = scoreVal;
             }
         });
         return initial;
@@ -99,6 +120,20 @@ export function TeacherGradingWorkspace({
         return map;
     }, [assignment.submissions]);
 
+    // Keep localScores synced if assignment.submissions updates
+    useEffect(() => {
+        const updated: Record<number, string | number> = {};
+        (assignment.submissions || []).forEach((sub: Submission) => {
+            const scoreVal = getSubmissionScore(sub);
+            if (scoreVal !== null && scoreVal !== undefined) {
+                updated[sub.student_id] = scoreVal;
+            }
+        });
+        if (Object.keys(updated).length > 0) {
+            setLocalScores(prev => ({ ...updated, ...prev }));
+        }
+    }, [assignment.submissions]);
+
     // Active class name
     const selectedClassName = useMemo(() => {
         if (selectedClassId === 'all') return 'Semua Kelas';
@@ -111,8 +146,9 @@ export function TeacherGradingWorkspace({
     const scoredCount = useMemo(() => {
         return students.filter(student => {
             const sub = submissionMap[student.id];
+            const subScore = getSubmissionScore(sub);
             const local = localScores[student.id];
-            return (sub && sub.score !== null && sub.score !== undefined) || (local !== '' && local !== undefined && local !== null);
+            return (subScore !== null && subScore !== undefined) || (local !== '' && local !== undefined && local !== null);
         }).length;
     }, [students, submissionMap, localScores]);
 
@@ -138,8 +174,9 @@ export function TeacherGradingWorkspace({
         return students
             .filter((student) => {
                 const sub = submissionMap[student.id];
+                const subScore = getSubmissionScore(sub);
                 const local = localScores[student.id];
-                const isScored = (sub && sub.score !== null && sub.score !== undefined) || (local !== '' && local !== undefined && local !== null);
+                const isScored = (subScore !== null && subScore !== undefined) || (local !== '' && local !== undefined && local !== null);
 
                 // Status filtering: 'all' | 'unscored' | 'scored'
                 if (statusFilter === 'scored' && !isScored) return false;
@@ -509,9 +546,10 @@ export function TeacherGradingWorkspace({
                     <div className="divide-y divide-border">
                         {filteredStudents.map((student, idx) => {
                             const sub = submissionMap[student.id];
+                            const subScore = getSubmissionScore(sub);
                             const currentScore = localScores[student.id] ?? '';
-                            const isScored = (sub && sub.score !== null && sub.score !== undefined) || (currentScore !== '' && currentScore !== undefined);
-                            const effectiveScore = currentScore !== '' && currentScore !== undefined ? currentScore : (sub?.score ?? '');
+                            const isScored = (subScore !== null && subScore !== undefined) || (currentScore !== '' && currentScore !== undefined);
+                            const effectiveScore = currentScore !== '' && currentScore !== undefined ? currentScore : (subScore ?? '');
                             const isSubmitted = !!sub;
                             const isPassed = isScored && assignment.passing_grade !== null && assignment.passing_grade !== undefined
                                 ? Number(effectiveScore) >= assignment.passing_grade

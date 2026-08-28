@@ -563,21 +563,83 @@ class AssignmentController extends Controller
                 'instrument_config' => $instrumentConfig,
                 'scoring_tool'      => $assignment->scoring_tool,
                 'scoring_tool_config' => $assignment->scoring_tool_config,
-                'submissions'       => $assignment->submissions->map(fn ($s) => [
-                    'id'               => $s->id,
-                    'student_id'       => $s->student_id,
-                    'student_name'     => $s->student?->name ?? 'Unknown',
-                    'student_photo_url'=> $s->student?->photo_url,
-                    'content'          => $s->content,
-                    'file_path'        => $s->file_path,
-                    'score'            => $s->score,
-                    'attempts'         => $s->attempts,
-                    'is_remedial_open' => (bool) $s->is_remedial_open,
-                    'remedial_history' => $s->remedial_history,
-                    'is_passed'        => $getIsPassed($s),
-                    'feedback'         => $s->feedback,
-                    'submitted_at'     => $s->created_at->format('d M Y, H:i'),
-                ]),
+                'submissions'       => $assignment->submissions->map(function ($s) use ($assignment, $getIsPassed) {
+                    $score = $s->score;
+                    if ($score === null && in_array($assignment->instrument_type, ['written_test', 'formative_quiz', 'quiz_survey']) && !empty($s->content)) {
+                        $config = is_array($assignment->instrument_config) ? $assignment->instrument_config : json_decode($assignment->instrument_config ?? '[]', true);
+                        $questions = $config['questions'] ?? [];
+                        $submittedData = json_decode($s->content, true) ?: [];
+                        $answers = $submittedData['answers'] ?? [];
+
+                        if (isset($submittedData['auto_score']) && is_numeric($submittedData['auto_score'])) {
+                            $score = (int) $submittedData['auto_score'];
+                        } else if (!empty($questions) && !empty($answers)) {
+                            $calculatedScore = 0;
+                            $maxScore = 0;
+                            foreach ($questions as $q) {
+                                $points = (int) ($q['points'] ?? 20);
+                                $maxScore += $points;
+                                $studentAnswer = $answers[$q['id'] ?? ''] ?? null;
+
+                                if (($q['type'] ?? '') === 'multiple_choice') {
+                                    $correctAnswerId = $q['answer'] ?? null;
+                                    if (!$correctAnswerId) {
+                                        $correctOption = collect($q['options'] ?? [])->firstWhere('is_correct', true);
+                                        $correctAnswerId = $correctOption['id'] ?? null;
+                                    }
+                                    if ($correctAnswerId !== null && $studentAnswer !== null) {
+                                        $normStudent = strtolower(trim((string)$studentAnswer));
+                                        $normCorrect = strtolower(trim((string)$correctAnswerId));
+                                        if (
+                                            $normStudent === $normCorrect ||
+                                            (strlen($normStudent) === 1 && str_starts_with($normCorrect, $normStudent)) ||
+                                            (strlen($normCorrect) === 1 && str_starts_with($normStudent, $normCorrect))
+                                        ) {
+                                            $calculatedScore += $points;
+                                        }
+                                    }
+                                } else if (($q['type'] ?? '') === 'short_answer') {
+                                    $correctAnswer = $q['answer'] ?? $q['correct_answer'] ?? null;
+                                    if ($correctAnswer !== null && $studentAnswer !== null) {
+                                        if (strtolower(trim((string)$studentAnswer)) === strtolower(trim((string)$correctAnswer))) {
+                                            $calculatedScore += $points;
+                                        }
+                                    }
+                                } else if (($q['type'] ?? '') === 'essay') {
+                                    if ($studentAnswer !== null && trim((string)$studentAnswer) !== '') {
+                                        $calculatedScore += $points;
+                                    }
+                                }
+                            }
+                            if ($maxScore > 0) {
+                                $score = (int) round(($calculatedScore / $maxScore) * ($assignment->max_points ?: 100));
+                            } else {
+                                $score = (int) $calculatedScore;
+                            }
+                        }
+
+                        if ($score !== null) {
+                            $s->update(['score' => $score]);
+                            $s->score = $score;
+                        }
+                    }
+
+                    return [
+                        'id'               => $s->id,
+                        'student_id'       => $s->student_id,
+                        'student_name'     => $s->student?->name ?? 'Unknown',
+                        'student_photo_url'=> $s->student?->photo_url,
+                        'content'          => $s->content,
+                        'file_path'        => $s->file_path,
+                        'score'            => $score,
+                        'attempts'         => $s->attempts,
+                        'is_remedial_open' => (bool) $s->is_remedial_open,
+                        'remedial_history' => $s->remedial_history,
+                        'is_passed'        => $getIsPassed($s),
+                        'feedback'         => $s->feedback,
+                        'submitted_at'     => $s->created_at->format('d M Y, H:i'),
+                    ];
+                }),
             ],
             'students'      => $students,
             'comments'      => $comments,
