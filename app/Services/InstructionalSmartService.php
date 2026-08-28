@@ -383,7 +383,7 @@ class InstructionalSmartService
             ];
         }
 
-        if ($type === 'formative_quiz') {
+        if (in_array($type, ['formative_quiz', 'written_test', 'test', 'quiz'])) {
             $mode = $quizMode ?? 'mcq';
             $questions = [];
             if ($mode === 'essay') {
@@ -418,33 +418,83 @@ class InstructionalSmartService
                     ], range(1, 3))
                 );
             } else {
-                $questions = array_map(fn($i) => [
-                    'id' => 'q' . $i,
-                    'type' => 'multiple_choice',
-                    'text' => "Soal {$i}: Pilih pernyataan yang paling tepat mengenai konsep {$content} (soal ke-{$i}).",
-                    'options' => [
-                        ['id' => 'a', 'text' => "Jawaban A tentang {$content} - definisi dasar."],
-                        ['id' => 'b', 'text' => "Jawaban B tentang {$content} - penerapan praktis."],
-                        ['id' => 'c', 'text' => "Jawaban C tentang {$content} - analisis kritis."],
-                        ['id' => 'd', 'text' => "Semua jawaban di atas benar."]
+                $questions = [
+                    [
+                        'id' => 'q1',
+                        'type' => 'multiple_choice',
+                        'text' => "Manakah pernyataan di bawah ini yang paling tepat mendefinisikan konsep dasar dari {$content}?",
+                        'options' => [
+                            ['id' => 'a', 'text' => "Prinsip utama yang mengatur cara kerja {$content} secara sistematis.", 'is_correct' => true],
+                            ['id' => 'b', 'text' => "Komponen pelengkap yang tidak berpengaruh langsung pada fungsi {$content}.", 'is_correct' => false],
+                            ['id' => 'c', 'text' => "Aktivitas sementara yang hanya digunakan saat terjadi kendala.", 'is_correct' => false],
+                            ['id' => 'd', 'text' => "Format dokumentasi tanpa penerapan praktis.", 'is_correct' => false]
+                        ],
+                        'answer' => 'a',
+                        'points' => 20
                     ],
-                    'answer' => ['a', 'b', 'c', 'd', 'a', 'b', 'c', 'd', 'a', 'b'][$i - 1] ?? 'a',
-                    'points' => 1
-                ], range(1, 10));
+                    [
+                        'id' => 'q2',
+                        'type' => 'multiple_choice',
+                        'text' => "Dalam konteks pembelajaran {$content}, apa manfaat utama dari penerapan konsep ini pada kehidupan sehari-hari?",
+                        'options' => [
+                            ['id' => 'a', 'text' => "Membantu memecahkan masalah kontekstual dengan lebih terstruktur dan efisien.", 'is_correct' => true],
+                            ['id' => 'b', 'text' => "Mengurangi kebutuhan untuk berkolaborasi dengan pihak lain.", 'is_correct' => false],
+                            ['id' => 'c', 'text' => "Menghilangkan tahapan evaluasi dalam proses belajar.", 'is_correct' => false],
+                            ['id' => 'd', 'text' => "Membuat proses pengerjaan menjadi lebih rumit.", 'is_correct' => false]
+                        ],
+                        'answer' => 'a',
+                        'points' => 20
+                    ],
+                    [
+                        'id' => 'q3',
+                        'type' => 'multiple_choice',
+                        'text' => "Langkah awal apa yang paling krusial ketika menghadapi studi kasus terkait {$content}?",
+                        'options' => [
+                            ['id' => 'a', 'text' => "Mengidentifikasi masalah dan menganalisis kebutuhan secara mendalam.", 'is_correct' => true],
+                            ['id' => 'b', 'text' => "Langsung membuat kesimpulan tanpa pengumpulan data.", 'is_correct' => false],
+                            ['id' => 'c', 'text' => "Menyalin solusi dari studi kasus yang berbeda.", 'is_correct' => false],
+                            ['id' => 'd', 'text' => "Menunggu instruksi tanpa melakukan eksplorasi mandiri.", 'is_correct' => false]
+                        ],
+                        'answer' => 'a',
+                        'points' => 20
+                    ],
+                    [
+                        'id' => 'q4',
+                        'type' => 'multiple_choice',
+                        'text' => "Jika terjadi kesalahan atau hambatan dalam penerapan {$content}, strategi perbaikan apa yang paling efektif?",
+                        'options' => [
+                            ['id' => 'a', 'text' => "Melakukan evaluasi tahap demi tahap untuk menemukan akar penyebab masalah.", 'is_correct' => true],
+                            ['id' => 'b', 'text' => "Mengabaikan kesalahan dan tetap melanjutkan proses.", 'is_correct' => false],
+                            ['id' => 'c', 'text' => "Mengubah seluruh topik pembelajaran dari awal.", 'is_correct' => false],
+                            ['id' => 'd', 'text' => "Menyerahkan seluruh tanggung jawab kepada anggota kelompok lain.", 'is_correct' => false]
+                        ],
+                        'answer' => 'a',
+                        'points' => 20
+                    ],
+                    [
+                        'id' => 'q5',
+                        'type' => 'essay',
+                        'text' => "Jelaskan dengan bahasamu sendiri bagaimana pemahaman tentang {$content} dapat membantumu menyelesaikan tugas atau proyek nyata!",
+                        'options' => [],
+                        'answer' => "Jawaban memuat penjelasan konsep dasar {$content}, contoh penerapan konkret, serta refleksi manfaat dalam proyek.",
+                        'points' => 20
+                    ]
+                ];
             }
 
             return [
-                'description' => "Kerjakan soal-soal berikut dengan teliti untuk mengukur pemahamanmu terhadap materi ini.",
+                'description' => "Kerjakan soal-soal berikut dengan teliti untuk mengukur pemahamanmu terhadap materi {$content}.",
                 'quiz_mode' => $mode,
                 'questions' => $questions,
                 'levels' => [
-                    ['name' => 'Perlu Bimbingan', 'desc' => "Skor < 60: Pemahaman dasar belum tercapai."],
-                    ['name' => 'Cukup', 'desc' => "Skor 60-75: Pemahaman cukup namun belum tuntas."],
-                    ['name' => 'Baik', 'desc' => "Skor 76-90: Pemahaman baik (Tuntas)."],
-                    ['name' => 'Sangat Baik', 'desc' => "Skor > 90: Pemahaman sangat baik (Pengayaan)."],
+                    ['name' => 'Perlu Bimbingan', 'desc' => "Skor < 60: Siswa belum menguasai konsep dasar {$content}."],
+                    ['name' => 'Cukup', 'desc' => "Skor 60-75: Siswa memahami sebagian konsep {$content} namun belum konsisten."],
+                    ['name' => 'Baik', 'desc' => "Skor 76-90: Siswa menguasai materi {$content} dengan baik dan mencapai ketuntasan (KKTP)."],
+                    ['name' => 'Sangat Baik', 'desc' => "Skor > 90: Siswa menunjukkan penguasaan luar biasa terhadap {$content} dan siap pengayaan."],
                 ],
                 'kktp' => [
-                    'approach' => 'percentage',
+                    'approach' => 'rubric',
+                    'passing_level' => 'Baik',
                     'threshold' => 75
                 ]
             ];

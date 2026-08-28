@@ -289,22 +289,8 @@ export function AssessmentForm({
 
             if (res.data) {
                 const d = res.data;
-                
-                // 1. Title & Description (Clean Plain Text)
-                if (d.title) {
-                    setData('title', cleanPlainText(d.title));
-                } else if (!data.title) {
-                    const activeTp = objectives.find(o => o.id === Number(data.learning_objective_id));
-                    const typeName = data.assessment_type === 'initial' ? 'Asesmen Awal' : data.assessment_type === 'summative' ? 'Asesmen Sumatif' : 'LKPD Formatif';
-                    setData('title', `${typeName}: ${cleanPlainText(activeTp?.description || 'Pembelajaran')}`);
-                }
-
-                if (d.description || d.instructions || d.stimulus) {
-                    setData('description', cleanPlainText(d.description || d.instructions || d.stimulus));
-                }
-
-                // 2. Process Questions (Clean Plain Text for Question & Options)
-                let formattedQuestions = [...(data.instrument_config.questions || [])];
+                // 1. Process Questions (Clean Plain Text for Question & Options)
+                let formattedQuestions: any[] = [];
                 if (d.questions && Array.isArray(d.questions) && d.questions.length > 0) {
                     formattedQuestions = d.questions.map((q: any, idx: number) => {
                         const isMcq = q.type === 'multiple_choice' || (q.options && q.options.length > 0);
@@ -325,7 +311,7 @@ export function AssessmentForm({
                     });
                 }
 
-                // 3. Process Rubric Levels (Clean Plain Text)
+                // 2. Process Rubric Levels (Clean Plain Text)
                 let formattedLevels = data.instrument_config.levels || [
                     { name: 'Perlu Bimbingan', desc: 'Siswa belum menunjukkan pemahaman konsep dasar.' },
                     { name: 'Cukup', desc: 'Siswa memahami sebagian besar konsep dasar.' },
@@ -339,29 +325,42 @@ export function AssessmentForm({
                     }));
                 }
 
-                // 4. Process Indicators (Clean Plain Text)
+                // 3. Process Indicators (Clean Plain Text)
                 let formattedIndicators = data.instrument_config.indicators || [];
                 if (d.indicators && Array.isArray(d.indicators) && d.indicators.length > 0) {
                     formattedIndicators = d.indicators.map((ind: any) => cleanPlainText(typeof ind === 'string' ? ind : ind.text || ''));
                 }
 
-                setData('instrument_config', {
-                    ...data.instrument_config,
-                    questions: formattedQuestions,
-                    levels: formattedLevels,
-                    indicators: formattedIndicators,
-                    criteria: cleanPlainText(d.criteria || ''),
-                    stimulus: cleanPlainText(d.stimulus || ''),
+                // Atomic state update for Inertia useForm
+                setData(prev => {
+                    const finalTitle = d.title ? cleanPlainText(d.title) : prev.title;
+                    const finalDesc = (d.description || d.instructions || d.stimulus) 
+                        ? cleanPlainText(d.description || d.instructions || d.stimulus) 
+                        : prev.description;
+
+                    return {
+                        ...prev,
+                        title: finalTitle,
+                        description: finalDesc,
+                        instrument_config: {
+                            ...prev.instrument_config,
+                            questions: formattedQuestions,
+                            levels: formattedLevels,
+                            indicators: formattedIndicators,
+                            criteria: cleanPlainText(d.criteria || ''),
+                            stimulus: cleanPlainText(d.stimulus || ''),
+                        }
+                    };
                 });
 
-                // Auto select appropriate sub-tab
+                // Auto select questions sub-tab if questions are present
                 if (formattedQuestions.length > 0) {
                     setActiveSubTab('questions');
                 } else {
                     setActiveSubTab('rubric');
                 }
 
-                setAiSuccessMessage(`✨ Soal & Rubrik ${aiContext.name} berhasil dibuat tanpa tag HTML!`);
+                setAiSuccessMessage(`✨ Soal & Rubrik ${aiContext.name} berhasil dibuat! (${formattedQuestions.length} butir soal)`);
                 setTimeout(() => setAiSuccessMessage(null), 4500);
             }
         } catch (err) {
