@@ -69,6 +69,60 @@ const cleanPlainText = (text: string | null | undefined): string => {
         .trim();
 };
 
+// Helper to generate and format concise, clear, and relevant assessment titles
+const formatConciseAssessmentTitle = (
+    rawTitle: string | null | undefined,
+    instrumentType: string,
+    tpDescription: string | null | undefined
+): string => {
+    let prefix = 'Formatif';
+    if (instrumentType === 'formative_quiz' || instrumentType === 'written_test') prefix = 'Tes Formatif';
+    else if (instrumentType === 'performance_observation' || instrumentType === 'observation_checklist' || instrumentType === 'observation') prefix = 'Observasi';
+    else if (instrumentType === 'structured_assignment' || instrumentType === 'performance' || instrumentType === 'assignment') prefix = 'LKPD';
+    else if (instrumentType === 'oral_test') prefix = 'Tes Lisan';
+
+    let topic = '';
+
+    // 1. Try to extract clean topic from rawTitle if provided by AI
+    if (rawTitle && rawTitle.trim()) {
+        let t = cleanPlainText(rawTitle);
+        // Remove surrounding quotes and generic placeholder text
+        t = t.replace(/^["'`]|["'`]$/g, '').trim();
+        t = t.replace(/^(Judul\s+Asesmen|Judul\s+Singkat|Judul|Asesmen\s+Formatif|Asesmen\s+Sumatif|Asesmen\s+Awal|Tes\s+Formatif|Observasi|LKPD|Tes\s+Lisan)\s*[:\-]\s*/i, '').trim();
+        
+        // Ensure it's not a generic placeholder
+        if (t && !/^(judul|asesmen|pembelajaran|relevan|singkat)/i.test(t)) {
+            topic = t;
+        }
+    }
+
+    // 2. Fallback: extract concise subject matter topic from TP description
+    if (!topic && tpDescription) {
+        let cleanTp = cleanPlainText(tpDescription);
+        // Strip operational verbs and pedagogical preambles
+        cleanTp = cleanTp.replace(/^(Peserta\s+didik|Siswa|Murid)\s+(dapat|mampu|diharapkan)\s+(untuk\s+)?([a-z]+kan|[a-z]+i|[a-z]+)\s+/i, '').trim();
+        cleanTp = cleanTp.replace(/^(Mengidentifikasi|Menganalisis|Memahami|Menjelaskan|Mendeskripsikan|Menyajikan|Mempraktikkan|Menyimpulkan|Mengevaluasi|Menerapkan)\s+/i, '').trim();
+        cleanTp = cleanTp.split('.')[0].trim();
+        
+        // Take at most 5-6 words or 45 chars
+        const words = cleanTp.split(/\s+/);
+        if (words.length > 6) {
+            cleanTp = words.slice(0, 6).join(' ');
+        }
+        if (cleanTp.length > 45) {
+            cleanTp = cleanTp.substring(0, 45).trim();
+        }
+        topic = cleanTp;
+    }
+
+    if (!topic) topic = 'Materi Pembelajaran';
+
+    // Capitalize first character
+    topic = topic.charAt(0).toUpperCase() + topic.slice(1);
+
+    return `${prefix}: ${topic}`;
+};
+
 const defaultFormativeQuestions = [
     {
         id: 'q1',
@@ -444,22 +498,12 @@ export function AssessmentForm({
                     ];
                 }
 
-                // 4. Clean and Concise Title
+                // 4. Clean, Concise, and Relevant Title
                 const activeTp = objectives.find(o => o.id === Number(data.learning_objective_id));
-                const shortTpDesc = (activeTp?.description || 'Materi').split('.')[0].slice(0, 45);
-                const defaultGeneratedTitle = data.instrument_type === 'formative_quiz'
-                    ? `Tes Formatif: ${shortTpDesc}`
-                    : data.instrument_type === 'performance_observation'
-                        ? `Observasi: ${shortTpDesc}`
-                        : data.instrument_type === 'structured_assignment'
-                            ? `LKPD: ${shortTpDesc}`
-                            : data.instrument_type === 'oral_test'
-                                ? `Tes Lisan: ${shortTpDesc}`
-                                : `Formatif: ${shortTpDesc}`;
+                const finalTitle = formatConciseAssessmentTitle(d.title, data.instrument_type, activeTp?.description);
 
                 // Atomic state update for Inertia useForm
                 setData(prev => {
-                    const finalTitle = d.title ? cleanPlainText(d.title) : defaultGeneratedTitle;
                     const finalDesc = (d.description || d.instructions || d.stimulus) 
                         ? cleanPlainText(d.description || d.instructions || d.stimulus) 
                         : (prev.description || 'Pahami instruksi dan laksanakan asesmen ini dengan teliti.');

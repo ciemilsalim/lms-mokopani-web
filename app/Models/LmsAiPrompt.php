@@ -107,9 +107,15 @@ Materi Pembelajaran: {content}
 Jenis Instrumen: {instrument_label}
 
 ATURAN WAJIB PENYUSUNAN:
-1. JUDUL ASESMEN:
-   - Buat judul yang SINGKAT, JELAS, dan RELEVAN langsung dengan materi pokok (maksimal 4-6 kata).
-   - Contoh: 'Tes Formatif: Perangkat Input Komputer' atau 'Observasi: Diskusi Algoritma' atau 'LKPD: Praktik Rangkaian Listrik' atau 'Tes Lisan: Sistem Pencernaan'.
+1. JUDUL ASESMEN (WAJIB SINGKAT, JELAS, DAN SPESIFIK MATERI):
+   - Format: [Jenis]: [Topik Inti Materi] (Maksimal 3 sampai 5 kata setelah tanda titik dua).
+   - JANGAN menyalin kalimat deskripsi TP yang panjang. Ekstrak hanya topik materi intinya saja!
+   - Contoh format yang BENAR:
+     * Tes: "Tes Formatif: Perangkat Input Komputer"
+     * Observasi: "Observasi: Praktik Rangkaian Listrik"
+     * LKPD: "LKPD: Analisis Ekosistem Kolam"
+     * Lisan: "Tes Lisan: Sistem Pencernaan Manusia"
+   - DILARANG menggunakan teks template umum seperti "Judul Singkat Relevan", "Asesmen Pembelajaran", atau kalimat panjang.
 
 2. SPESIFIKASI PER JENIS INSTRUMEN:
 

@@ -249,26 +249,24 @@ class InstructionalSmartService
         return $base . $journal . " " . $meta;
     }
 
-    public static function extractConciseTopic(?string $title, ?string $tpContent): string
+    public static function extractConciseTopic(?string $title, ?string $tpContent, ?string $tpDescription = null): string
     {
-        $raw = !empty($title) ? $title : (!empty($tpContent) ? $tpContent : 'Materi Pembelajaran');
+        $raw = !empty($title) ? $title : (!empty($tpContent) ? $tpContent : (!empty($tpDescription) ? $tpDescription : 'Materi Pembelajaran'));
         $clean = strip_tags($raw);
         $clean = html_entity_decode($clean, ENT_QUOTES | ENT_HTML5, 'UTF-8');
         $clean = str_replace(["\xc2\xa0", '&nbsp;'], ' ', $clean);
+        
+        // Strip prefixes like "Judul Materi:", "Peserta didik mampu (menganalisis|memahami|mengidentifikasi)..."
         $clean = preg_replace('/^(Judul\s+Materi|Uraian\s+Materi|Materi\s+Inti|Materi)\s*[:\-]\s*/i', '', trim($clean));
+        $clean = preg_replace('/^(Peserta\s+didik|Siswa|Murid)\s+(dapat|mampu|diharapkan)\s+(untuk\s+)?([a-z]+kan|[a-z]+i|[a-z]+)\s+/i', '', trim($clean));
+        $clean = preg_replace('/^(Mengidentifikasi|Menganalisis|Memahami|Menjelaskan|Mendeskripsikan|Menyajikan|Mempraktikkan|Menyimpulkan|Mengevaluasi|Menerapkan)\s+/i', '', trim($clean));
         
         $lines = explode("\n", $clean);
         $firstLine = trim($lines[0] ?? $clean);
+        $firstLine = trim(explode('.', $firstLine)[0]);
         
-        if (mb_strlen($firstLine) > 60 && str_contains($firstLine, ':')) {
-            $parts = explode(':', $firstLine);
-            if (!empty($parts[0]) && mb_strlen($parts[0]) >= 5 && mb_strlen($parts[0]) <= 60) {
-                return trim($parts[0]);
-            }
-        }
-        
-        if (mb_strlen($firstLine) > 75) {
-            return mb_substr($firstLine, 0, 75);
+        if (mb_strlen($firstLine) > 50) {
+            $firstLine = mb_substr($firstLine, 0, 50);
         }
         
         return $firstLine ?: 'Materi Pembelajaran';
@@ -330,7 +328,7 @@ class InstructionalSmartService
         $description = $tp->description ?? '';
 
         // Ekstrak nama topik ringkas yang bersih untuk fallback template
-        $cleanShortTopic = self::extractConciseTopic($materialTitle, $tp->content);
+        $cleanShortTopic = self::extractConciseTopic($materialTitle, $tp->content, $description);
 
         // Siapkan teks konteks ringkas & padat untuk dikirim ke AI Provider (maksimal 500 kata agar AI fokus pada indikator)
         if (!empty($materialContent)) {
@@ -363,12 +361,13 @@ class InstructionalSmartService
         
         if ($type === 'oral_test') {
             return [
+                'title' => "Tes Lisan: " . $content,
                 'description' => "Guru akan mengajukan pertanyaan secara lisan. Jawablah dengan percaya diri menggunakan bahasamu sendiri!",
                 'stimulus' => "Tes lisan mengenai pemahaman materi {$content}. Guru mengajukan pertanyaan secara langsung dan menilai jawaban siswa.",
                 'questions' => [
-                    ['text' => "Jelaskan konsep dasar {$content} dengan bahasamu sendiri!", 'answer_guide' => "Cari pemaparan yang mencakup definisi, fungsi, dan contoh penerapan {$content}."],
-                    ['text' => "Apa tantangan terbesar dalam penerapan {$content} dan bagaimana cara mengatasinya?", 'answer_guide' => "Jawaban harus mencakup identifikasi minimal 1 tantangan konkret dan solusi yang logis."],
-                    ['text' => "Bandingkan {$content} dengan konsep lain yang sudah dipelajari. Apa persamaan dan perbedaannya?", 'answer_guide' => "Siswa harus mampu menyebutkan minimal 2 persamaan dan 1 perbedaan dengan konsep terkait."],
+                    ['text' => "Jelaskan konsep dasar {$content} dengan bahasamu sendiri!", 'points' => 20, 'difficulty' => 'Mudah', 'answer_guide' => "Cari pemaparan yang mencakup definisi, fungsi, dan contoh penerapan {$content}."],
+                    ['text' => "Apa tantangan terbesar dalam penerapan {$content} dan bagaimana cara mengatasinya?", 'points' => 35, 'difficulty' => 'Sedang', 'answer_guide' => "Jawaban harus mencakup identifikasi minimal 1 tantangan konkret dan solusi yang logis."],
+                    ['text' => "Bandingkan {$content} dengan konsep lain yang sudah dipelajari. Apa persamaan dan perbedaannya?", 'points' => 45, 'difficulty' => 'Sulit', 'answer_guide' => "Siswa harus mampu menyebutkan minimal 2 persamaan dan 1 perbedaan dengan konsep terkait."],
                 ],
                 'levels' => [
                     ['name' => 'Perlu Bimbingan', 'desc' => "Jawaban sangat dangkal, tidak relevan, atau tidak mampu menjelaskan konsep dasar {$content}."],
@@ -392,31 +391,8 @@ class InstructionalSmartService
                     'type' => 'essay',
                     'text' => "Pertanyaan Esai {$i}: Deskripsikan pemahamanmu mengenai {$content}.",
                     'answer' => "Pedoman jawaban ideal untuk pertanyaan esai {$i}.",
-                    'points' => 5
+                    'points' => 20
                 ], range(1, 5));
-            } elseif ($mode === 'mixed') {
-                $questions = array_merge(
-                    array_map(fn($i) => [
-                        'id' => 'q' . $i,
-                        'type' => 'multiple_choice',
-                        'text' => "Pertanyaan PG {$i}: Pilih konsep yang tepat tentang {$content}.",
-                        'options' => [
-                            ['id' => 'a', 'text' => "Opsi A tentang {$content}"],
-                            ['id' => 'b', 'text' => "Opsi B tentang {$content}"],
-                            ['id' => 'c', 'text' => "Opsi C tentang {$content}"],
-                            ['id' => 'd', 'text' => "Opsi D tentang {$content}"]
-                        ],
-                        'answer' => 'a',
-                        'points' => 1
-                    ], range(1, 5)),
-                    array_map(fn($i) => [
-                        'id' => 'q' . ($i + 5),
-                        'type' => 'essay',
-                        'text' => "Pertanyaan Esai {$i}: Jelaskan penerapan {$content}.",
-                        'answer' => "Pedoman jawaban ideal.",
-                        'points' => 5
-                    ], range(1, 3))
-                );
             } else {
                 $questions = [
                     [
@@ -483,6 +459,7 @@ class InstructionalSmartService
             }
 
             return [
+                'title' => "Tes Formatif: " . $content,
                 'description' => "Kerjakan soal-soal berikut dengan teliti untuk mengukur pemahamanmu terhadap materi {$content}.",
                 'quiz_mode' => $mode,
                 'questions' => $questions,
@@ -500,16 +477,47 @@ class InstructionalSmartService
             ];
         }
 
-        if ($type === 'rubric' || $type === 'oral_qa') {
+        if (in_array($type, ['performance_observation', 'observation_checklist', 'observation', 'rubric', 'oral_qa'])) {
             return [
-                'description' => "Amati dua contoh yang diberikan guru, lalu jawablah pertanyaan pemantik dengan pendapatmu sendiri.",
-                'stimulus' => "Guru menyajikan dua contoh kontras terkait {$content} (misalnya: benar vs salah, fakta vs hoaks, atau efektif vs tidak efektif). Guru mengajukan pertanyaan pemantik: \"Menurut kalian mana yang lebih tepat? Mengapa? Bagaimana kalian membuktikannya?\"",
-                'criteria' => "Kemampuan Analisis Awal " . $content,
+                'title' => "Observasi: " . $content,
+                'description' => "Amati aktivitas murid selama KBM materi {$content} berdasarkan indikator yang ditentukan.",
+                'stimulus' => "Guru mengamati proses diskusi dan keterlibatan murid terkait {$content}.",
+                'indicators' => [
+                    "Aktif menyampaikan gagasan dan mengajukan pertanyaan terkait {$content}",
+                    "Bekerja sama secara efektif dalam menyelesaikan tugas kelompok",
+                    "Menunjukkan ketelitian dan tanggung jawab selama proses belajar",
+                    "Menyampaikan hasil kerja dengan bahasa yang jelas dan percaya diri"
+                ],
+                'criteria' => "Kemampuan Analisis dan Partisipasi " . $content,
                 'levels' => [
-                    ['name' => 'Perlu Bimbingan', 'desc' => "Murid belum mampu mengidentifikasi perbedaan atau elemen dasar dari {$content} yang disajikan."],
-                    ['name' => 'Cukup', 'desc' => "Murid mampu mengidentifikasi/memilih contoh yang tepat terkait {$content}, namun belum mampu memberikan alasan logis atas pilihannya."],
-                    ['name' => 'Baik', 'desc' => "Murid mampu mengidentifikasi contoh yang tepat dan memberikan alasan logis sederhana mengapa hal tersebut dianggap benar/sesuai."],
-                    ['name' => 'Sangat Baik', 'desc' => "Murid mampu mengidentifikasi, memberikan alasan logis yang mendalam, dan mampu menjelaskan langkah verifikasi atau cara membuktikan kebenaran terkait {$content}."],
+                    ['name' => 'Perlu Bimbingan', 'desc' => "Murid belum menunjukkan keterlibatan aktif dalam materi {$content}."],
+                    ['name' => 'Cukup', 'desc' => "Murid terlibat dalam aktivitas {$content}, namun masih membutuhkan dorongan guru."],
+                    ['name' => 'Baik', 'desc' => "Murid aktif berpartisipasi dan memahami konsep materi {$content} sesuai target KKTP."],
+                    ['name' => 'Sangat Baik', 'desc' => "Murid sangat aktif, mandiri, dan mampu memandu rekan sejawat memahami {$content}."],
+                ],
+                'kktp' => [
+                    'approach' => 'rubric',
+                    'passing_level' => 'Baik',
+                ]
+            ];
+        }
+
+        if (in_array($type, ['structured_assignment', 'performance', 'assignment'])) {
+            return [
+                'title' => "LKPD: " . $content,
+                'description' => "Kerjakan lembar kerja berikut secara berkelompok/mandiri untuk menyelesaikan tugas praktik materi {$content}.",
+                'indicators' => [
+                    "Mengidentifikasi kebutuhan alat, bahan, dan konsep dasar {$content}",
+                    "Melaksanakan langkah kerja/prosedur tugas secara runtut dan tepat",
+                    "Mengolah data temuan ke dalam format laporan LKPD",
+                    "Menyusun kesimpulan pemecahan masalah secara logis dan terstruktur"
+                ],
+                'criteria' => "Kualitas Hasil Kerja dan Prosedur " . $content,
+                'levels' => [
+                    ['name' => 'Perlu Bimbingan', 'desc' => "Hasil kerja LKPD belum memenuhi instruksi dasar."],
+                    ['name' => 'Cukup', 'desc' => "Hasil kerja LKPD cukup baik namun analisis belum mendalam."],
+                    ['name' => 'Baik', 'desc' => "Hasil kerja LKPD lengkap, rapi, dan sesuai dengan kriteria target KKTP."],
+                    ['name' => 'Sangat Baik', 'desc' => "Hasil kerja LKPD sangat kreatif, komprehensif, dan solutif."],
                 ],
                 'kktp' => [
                     'approach' => 'rubric',
