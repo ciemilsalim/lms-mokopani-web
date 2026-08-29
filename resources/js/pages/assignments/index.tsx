@@ -187,17 +187,17 @@ function TeacherGroupedView({
         setExpandedClasses({});
     }, [filterType]);
 
-    // Check if class is expanded: defaults to true unless explicitly toggled
+    // Check if class is expanded: defaults to false (tertutup semua) unless actively searching or explicitly toggled
     const getClassExpanded = (classId: number) => {
         if (expandedClasses[classId] !== undefined) {
             return expandedClasses[classId];
         }
-        return true;
+        return Boolean(search.trim());
     };
 
     const toggleClass = (id: number) => {
         setExpandedClasses(prev => {
-            const current = prev[id] !== undefined ? prev[id] : true;
+            const current = prev[id] !== undefined ? prev[id] : Boolean(search.trim());
             return { ...prev, [id]: !current };
         });
     };
