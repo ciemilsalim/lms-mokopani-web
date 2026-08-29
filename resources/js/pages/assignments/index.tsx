@@ -3,7 +3,7 @@ import { type BreadcrumbItem } from '@/types';
 import { Head, router, usePage } from '@inertiajs/react';
 import {
     ClipboardList, Plus, Users, BookOpen, ChevronDown, ChevronRight,
-    Sparkles, CheckCircle2, AlertCircle, Clock
+    Sparkles, CheckCircle2, AlertCircle, Clock, X
 } from 'lucide-react';
 import { useState, useEffect, useMemo } from 'react';
 import { EmptyState } from '@/components/dashboard/empty-state';
@@ -69,10 +69,11 @@ const sortAssignments = (assignments: AssignmentItem[]) => {
 };
 
 // ── Student View ─────────────────────────────────────────────
-function StudentAssignmentsView({ groups, search, studentStatusFilter }: {
+function StudentAssignmentsView({ groups, search, studentStatusFilter, onClearSearch }: {
     groups: SubjectGroup[];
     search: string;
     studentStatusFilter: 'all' | 'pending' | 'submitted' | 'graded';
+    onClearSearch: () => void;
 }) {
     const [selectedSubjectId, setSelectedSubjectId] = useState<number | 'all'>('all');
 
@@ -113,14 +114,14 @@ function StudentAssignmentsView({ groups, search, studentStatusFilter }: {
     }, [allStudentAssignments, search, selectedSubjectId, studentStatusFilter]);
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-4 w-full min-w-0">
             {/* Subject Filter Pills */}
             {groups.length > 1 && (
                 <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
                     <button
                         type="button"
                         onClick={() => setSelectedSubjectId('all')}
-                        className={`shrink-0 rounded-2xl px-3.5 py-1.5 text-xs font-bold transition active:scale-95 min-h-[36px] ${
+                        className={`shrink-0 rounded-2xl px-3.5 py-1.5 text-xs font-bold transition active:scale-95 min-h-[44px] ${
                             selectedSubjectId === 'all'
                                 ? 'bg-primary text-primary-foreground shadow-xs'
                                 : 'bg-card border border-border text-muted-foreground hover:text-foreground'
@@ -135,7 +136,7 @@ function StudentAssignmentsView({ groups, search, studentStatusFilter }: {
                                 key={g.subject_id}
                                 type="button"
                                 onClick={() => setSelectedSubjectId(g.subject_id)}
-                                className={`shrink-0 rounded-2xl px-3.5 py-1.5 text-xs font-bold transition active:scale-95 min-h-[36px] ${
+                                className={`shrink-0 rounded-2xl px-3.5 py-1.5 text-xs font-bold transition active:scale-95 min-h-[44px] ${
                                     selectedSubjectId === g.subject_id
                                         ? 'bg-primary text-primary-foreground shadow-xs'
                                         : 'bg-card border border-border text-muted-foreground hover:text-foreground'
@@ -149,13 +150,29 @@ function StudentAssignmentsView({ groups, search, studentStatusFilter }: {
             )}
 
             {filteredAssignments.length === 0 ? (
-                <EmptyState
-                    icon={ClipboardList}
-                    title="Tidak Ada Asesmen"
-                    description="Tidak ada tugas atau asesmen yang sesuai dengan filter atau kata kunci Anda."
-                />
+                <div className="rounded-2xl border border-border/80 bg-card p-8 text-center space-y-3">
+                    <div className="flex h-12 w-12 mx-auto items-center justify-center rounded-2xl bg-muted text-muted-foreground">
+                        <ClipboardList className="h-6 w-6 opacity-60" />
+                    </div>
+                    <div>
+                        <h3 className="text-sm font-bold text-foreground">Tidak ada asesmen ditemukan</h3>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                            {search ? 'Coba gunakan kata kunci pencarian lain.' : 'Tidak ada tugas yang sesuai dengan filter.'}
+                        </p>
+                    </div>
+                    {search && (
+                        <button
+                            type="button"
+                            onClick={onClearSearch}
+                            className="inline-flex items-center gap-1 text-xs font-bold text-primary hover:underline pt-1"
+                        >
+                            <X className="h-3.5 w-3.5" />
+                            <span>Hapus Pencarian</span>
+                        </button>
+                    )}
+                </div>
             ) : (
-                <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3 w-full min-w-0">
                     {filteredAssignments.map((asgn) => (
                         <AssessmentCard
                             key={asgn.id}
@@ -170,24 +187,26 @@ function StudentAssignmentsView({ groups, search, studentStatusFilter }: {
     );
 }
 
-// ── Teacher Accordion View ───────────────────────────────────────────
+// ── Teacher Grouped View (Mobile-Native: Collapsed by Default) ───────────────────
 function TeacherGroupedView({
     groups,
     search,
     filterType,
+    onClearSearch,
 }: {
     groups: TeacherClassGroup[];
     search: string;
     filterType: string;
+    onClearSearch: () => void;
 }) {
     const [expandedClasses, setExpandedClasses] = useState<Record<number, boolean>>({});
 
-    // Reset accordion overrides when switching filter tabs so it starts cleanly
+    // Reset accordion overrides when switching filter tabs
     useEffect(() => {
         setExpandedClasses({});
     }, [filterType]);
 
-    // Check if class is expanded: defaults to false (tertutup semua) unless actively searching or explicitly toggled
+    // Check if class is expanded: strictly false (collapsed) unless actively searching or explicitly toggled
     const getClassExpanded = (classId: number) => {
         if (expandedClasses[classId] !== undefined) {
             return expandedClasses[classId];
@@ -231,7 +250,7 @@ function TeacherGroupedView({
     const areAllExpanded = useMemo(() => {
         if (visible.length === 0) return false;
         return visible.every(cls => getClassExpanded(cls.class_id));
-    }, [visible, expandedClasses]);
+    }, [visible, expandedClasses, search]);
 
     const handleToggleAll = () => {
         if (areAllExpanded) {
@@ -251,49 +270,66 @@ function TeacherGroupedView({
 
     if (visible.length === 0) {
         return (
-            <EmptyState
-                icon={ClipboardList}
-                title="Belum Ada Asesmen"
-                description={
-                    search || filterType !== 'all'
-                        ? 'Tidak ada asesmen yang sesuai dengan filter atau pencarian Anda.'
-                        : 'Asesmen pembelajaran yang Anda buat akan muncul di sini.'
-                }
-                actionLabel="+ Buat Asesmen Baru"
-                onAction={() => router.visit(route('assignments.create'))}
-            />
+            <div className="rounded-2xl border border-border/80 bg-card p-8 text-center space-y-3">
+                <div className="flex h-12 w-12 mx-auto items-center justify-center rounded-2xl bg-muted text-muted-foreground">
+                    <ClipboardList className="h-6 w-6 opacity-60" />
+                </div>
+                <div>
+                    <h3 className="text-sm font-bold text-foreground">Tidak ada asesmen ditemukan</h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                        {search ? 'Tidak ada asesmen yang cocok dengan kata kunci pencarian Anda.' : 'Belum ada asesmen yang sesuai dengan kategori filter ini.'}
+                    </p>
+                </div>
+                {search ? (
+                    <button
+                        type="button"
+                        onClick={onClearSearch}
+                        className="inline-flex items-center gap-1 text-xs font-bold text-primary hover:underline pt-1"
+                    >
+                        <X className="h-3.5 w-3.5" />
+                        <span>Hapus Pencarian</span>
+                    </button>
+                ) : (
+                    <button
+                        type="button"
+                        onClick={() => router.visit(route('assignments.create'))}
+                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-bold shadow-xs hover:bg-primary/90 transition min-h-[44px]"
+                    >
+                        <Plus className="h-4 w-4" />
+                        <span>Buat Asesmen Baru</span>
+                    </button>
+                )}
+            </div>
         );
     }
 
     return (
-        <div className="space-y-3">
-            {/* Toolbar: Counter & Single Expand/Collapse Toggle */}
-            <div className="flex items-center justify-between gap-2 border-b border-border/50 pb-1.5 px-0.5">
-                <span className="text-[11px] font-black uppercase tracking-wider text-muted-foreground">
-                    {filterType !== 'all' ? `${filterType.toUpperCase()} • ` : ''}{visible.length} Kelas
+        <div className="space-y-3 w-full min-w-0">
+            {/* Section Header: e.g. "1 Kelas" and "Buka Semua / Tutup Semua" (44px touch area) */}
+            <div className="flex items-center justify-between gap-2 border-b border-border/60 pb-1.5 px-0.5 w-full min-w-0">
+                <span className="text-xs font-bold text-foreground">
+                    {visible.length} Kelas
                 </span>
                 <button
                     type="button"
                     onClick={handleToggleAll}
-                    className="text-[11px] font-bold text-primary hover:underline cursor-pointer"
+                    className="text-xs font-bold text-primary hover:underline cursor-pointer min-h-[44px] flex items-center px-1"
                 >
                     {areAllExpanded ? 'Tutup Semua' : 'Buka Semua'}
                 </button>
             </div>
 
-            {/* Class Cards with Status */}
-            <div className="flex flex-col gap-3">
+            {/* Class Cards (Default: Collapsed, 72-80px height, 16px radius, 16px padding) */}
+            <div className="flex flex-col gap-3 w-full min-w-0">
                 {visible.map((cls) => {
                     const isClassExpanded = getClassExpanded(cls.class_id);
                     const totalAsgnInClass = cls.subjects.reduce((acc, sub) => acc + sub.objectives.reduce((oAcc, obj) => oAcc + obj.assignments.length, 0), 0);
                     
-                    // Aggregate stats across all assignments in this class
                     let classPendingGrading = 0;
                     let classGradedCount = 0;
                     let classSubmissionsCount = 0;
                     const studentCount = cls.students_count || 0;
 
-                    // Flatten assignments for clean hierarchical rendering
                     const flatAssignments: (AssignmentItem & { topicCode?: string })[] = [];
 
                     cls.subjects.forEach(sub => {
@@ -317,67 +353,56 @@ function TeacherGroupedView({
                         });
                     });
 
-                    // Real status calculation
-                    const isAllGraded = classPendingGrading === 0 && classSubmissionsCount > 0;
-                    const isFullyCompleted = isAllGraded && studentCount > 0 && classGradedCount >= (studentCount * totalAsgnInClass);
-
                     return (
-                        <div key={cls.class_id} className="rounded-2xl border border-border/80 bg-card overflow-hidden shadow-xs hover:border-primary/40 transition-all">
-                            {/* Class Header */}
+                        <div
+                            key={cls.class_id}
+                            className="rounded-2xl border border-border/80 bg-card overflow-hidden shadow-xs hover:border-primary/40 transition-all w-full min-w-0 box-border"
+                        >
+                            {/* Class Header Card (Tap to Expand/Collapse) */}
                             <div
                                 onClick={() => toggleClass(cls.class_id)}
-                                className="flex items-center justify-between px-3.5 sm:px-4 py-3 bg-card cursor-pointer hover:bg-muted/30 transition-colors gap-2"
+                                className="flex items-center justify-between p-4 bg-card cursor-pointer hover:bg-muted/20 active:bg-muted/40 transition-colors gap-3 min-h-[72px] sm:min-h-[78px] w-full min-w-0 box-border"
+                                role="button"
+                                aria-expanded={isClassExpanded}
+                                tabIndex={0}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' || e.key === ' ') {
+                                        e.preventDefault();
+                                        toggleClass(cls.class_id);
+                                    }
+                                }}
                             >
-                                <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                                    <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary shrink-0">
-                                        <Users className="h-4 w-4" />
+                                <div className="flex items-center gap-3 min-w-0 flex-1">
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary shrink-0">
+                                        <Users className="h-5 w-5" />
                                     </div>
                                     <div className="min-w-0 flex-1">
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-xs sm:text-sm font-black text-foreground truncate">
-                                                {cls.class_name}
-                                            </span>
-                                            {studentCount > 0 && (
-                                                <span className="text-[10px] text-muted-foreground font-mono">
-                                                    ({studentCount} siswa)
-                                                </span>
-                                            )}
-                                        </div>
-
-                                        {/* Status Row */}
-                                        <div className="flex items-center gap-1.5 text-[11px] mt-0.5 flex-wrap">
-                                            {classPendingGrading > 0 ? (
-                                                <span className="font-extrabold text-amber-700 dark:text-amber-300 inline-flex items-center gap-1">
-                                                    <span>🟠</span>
-                                                    <span>{classPendingGrading} Hasil Perlu Dinilai</span>
-                                                </span>
-                                            ) : isFullyCompleted ? (
-                                                <span className="font-bold text-emerald-600 dark:text-emerald-400 inline-flex items-center gap-1">
-                                                    <span>🟢</span>
-                                                    <span>Semua hasil selesai dinilai ({studentCount}/{studentCount})</span>
-                                                </span>
-                                            ) : isAllGraded ? (
-                                                <span className="font-bold text-emerald-600 dark:text-emerald-400 inline-flex items-center gap-1">
-                                                    <span>🟢</span>
-                                                    <span>{classGradedCount} hasil selesai dinilai</span>
-                                                </span>
-                                            ) : (
-                                                <span className="text-muted-foreground">
-                                                    {totalAsgnInClass} Asesmen Aktif
-                                                </span>
-                                            )}
-                                        </div>
+                                        <h3 className="text-sm sm:text-base font-bold text-foreground truncate leading-tight">
+                                            {cls.class_name}
+                                        </h3>
+                                        <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                                            {studentCount > 0 ? `${studentCount} siswa` : ''}
+                                            {studentCount > 0 ? ' • ' : ''}
+                                            {totalAsgnInClass} asesmen
+                                        </p>
                                     </div>
                                 </div>
 
                                 <div className="flex items-center gap-2 shrink-0">
-                                    <div className={`p-1.5 rounded-lg bg-muted/60 text-muted-foreground transition-transform duration-200 ${isClassExpanded ? 'rotate-180' : ''}`}>
-                                        <ChevronDown className="h-3.5 w-3.5" />
+                                    {classPendingGrading > 0 ? (
+                                        <span className="hidden xs:inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-500/15 text-amber-700 dark:text-amber-300 font-bold text-[11px] border border-amber-500/30">
+                                            <span>🟠</span>
+                                            <span>{classPendingGrading} Perlu Nilai</span>
+                                        </span>
+                                    ) : null}
+
+                                    <div className={`h-8 w-8 rounded-lg bg-muted/60 text-muted-foreground flex items-center justify-center transition-transform duration-200 ${isClassExpanded ? 'rotate-180' : ''}`}>
+                                        <ChevronDown className="h-4 w-4" />
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Class Content: Streamlined Assessment List */}
+                            {/* Class Content: Compact Assessment Cards */}
                             {isClassExpanded && (
                                 <div className="border-t border-border/70 divide-y divide-border/40 bg-card">
                                     {flatAssignments.map(asgn => (
@@ -399,7 +424,12 @@ function TeacherGroupedView({
 }
 
 // ── Flat View (Admin / Parent Fallback) ──────────────────────────────────
-function FlatView({ assignments, search, filterType }: { assignments: AssignmentItem[]; search: string; filterType: string }) {
+function FlatView({ assignments, search, filterType, onClearSearch }: {
+    assignments: AssignmentItem[];
+    search: string;
+    filterType: string;
+    onClearSearch: () => void;
+}) {
     const filtered = useMemo(() => {
         return sortAssignments(assignments.filter(a => {
             const matchSearch = a.title.toLowerCase().includes(search.toLowerCase());
@@ -410,16 +440,30 @@ function FlatView({ assignments, search, filterType }: { assignments: Assignment
 
     if (filtered.length === 0) {
         return (
-            <EmptyState
-                icon={ClipboardList}
-                title="Belum Ada Asesmen"
-                description="Daftar asesmen belum tersedia."
-            />
+            <div className="rounded-2xl border border-border/80 bg-card p-8 text-center space-y-3">
+                <div className="flex h-12 w-12 mx-auto items-center justify-center rounded-2xl bg-muted text-muted-foreground">
+                    <ClipboardList className="h-6 w-6 opacity-60" />
+                </div>
+                <div>
+                    <h3 className="text-sm font-bold text-foreground">Tidak ada asesmen ditemukan</h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">Daftar asesmen belum tersedia atau tidak cocok dengan pencarian.</p>
+                </div>
+                {search && (
+                    <button
+                        type="button"
+                        onClick={onClearSearch}
+                        className="inline-flex items-center gap-1 text-xs font-bold text-primary hover:underline pt-1"
+                    >
+                        <X className="h-3.5 w-3.5" />
+                        <span>Hapus Pencarian</span>
+                    </button>
+                )}
+            </div>
         );
     }
 
     return (
-        <div className="flex flex-col rounded-2xl border border-border bg-card overflow-hidden shadow-xs divide-y divide-border/30">
+        <div className="flex flex-col rounded-2xl border border-border bg-card overflow-hidden shadow-xs divide-y divide-border/30 w-full min-w-0">
             {filtered.map(asgn => (
                 <AssessmentCard key={asgn.id} assignment={asgn} viewMode="row" />
             ))}
@@ -463,90 +507,103 @@ export default function Assignments({
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Asesmen & Penilaian – LMS Mokopani" />
 
-            {/* Container with generous bottom padding (pb-32 on mobile) to ensure zero overlap with bottom navigation */}
-            <div className="space-y-3.5 sm:space-y-4 max-w-7xl mx-auto w-full min-w-0 pb-32 sm:pb-24 fade-in">
-                {/* Header Section */}
-                <div className="flex items-center justify-between gap-3 pt-1">
-                    <div className="min-w-0">
-                        <h1 className="text-xl sm:text-2xl font-black text-foreground tracking-tight">
-                            {user_role === 'student' ? 'Asesmen & Tugas' : 'Asesmen'}
-                        </h1>
-                        <p className="text-xs sm:text-sm text-muted-foreground font-medium mt-0.5 truncate">
-                            {user_role === 'student'
-                                ? 'Pantau dan kerjakan tugas serta asesmen belajarmu tepat waktu.'
-                                : `Kelola dan pantau penilaian siswa • Periode ${active_year || '2026/2027'} (${active_semester || 'Ganjil'})`}
-                        </p>
-                    </div>
+            {/* Canvas Container: 12px padding on 320-359px, 16px on 360-639px, 24px on 640px+ */}
+            <div className="w-full max-w-7xl mx-auto min-w-0 box-border px-3 xs:px-4 sm:px-6 space-y-4 sm:space-y-5 pb-24 sm:pb-8 fade-in">
+                
+                {/* 1. Page Header (Title: 24px, Subtitle: 13-14px) */}
+                <div className="w-full min-w-0 space-y-1">
+                    <h1 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight leading-tight">
+                        {user_role === 'student' ? 'Asesmen & Tugas' : 'Asesmen'}
+                    </h1>
+                    <p className="text-xs sm:text-sm text-muted-foreground font-medium leading-relaxed">
+                        {user_role === 'student'
+                            ? 'Pantau dan kerjakan tugas serta asesmen belajarmu tepat waktu.'
+                            : 'Kelola dan pantau penilaian siswa'}
+                    </p>
+                </div>
 
-                    {isTeacher && (
+                {/* 2. Add Assessment Primary CTA (Mobile: 100% width, 48px height, 16px radius) */}
+                {isTeacher && (
+                    <div className="w-full min-w-0">
                         <button
                             type="button"
                             onClick={() => router.visit(route('assignments.create'))}
-                            className="inline-flex items-center justify-center gap-1.5 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-primary text-primary-foreground text-xs sm:text-sm font-extrabold shadow-sm hover:bg-primary/90 transition active:scale-97 min-h-[38px] sm:min-h-[42px] shrink-0"
+                            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-primary text-primary-foreground text-sm font-bold shadow-xs hover:bg-primary/90 transition active:scale-[0.98] min-h-[48px] box-border"
                         >
-                            <Plus className="h-4 w-4" />
+                            <Plus className="h-5 w-5" />
                             <span>Tambah Asesmen</span>
                         </button>
-                    )}
-                </div>
-
-                {/* Teacher Action-First Summary Chips (Max 3 concise indicators) */}
-                {isTeacher && stats && (stats.total_pending_grading > 0 || stats.total_active > 0) && (
-                    <div className="flex flex-wrap items-center gap-2">
-                        {stats.total_pending_grading > 0 && (
-                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20 text-xs font-bold">
-                                <span>🟠</span>
-                                <span>{stats.total_pending_grading} hasil perlu dinilai</span>
-                            </span>
-                        )}
-                        {stats.total_active > 0 && (
-                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-primary/10 text-primary border border-primary/20 text-xs font-bold">
-                                <span>🔵</span>
-                                <span>{stats.total_active} asesmen aktif</span>
-                            </span>
-                        )}
-                        {stats.total_overdue && stats.total_overdue > 0 && (
-                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-rose-500/10 text-rose-700 dark:text-rose-300 border border-rose-500/20 text-xs font-bold">
-                                <span>🔴</span>
-                                <span>{stats.total_overdue} hasil terlambat</span>
-                            </span>
-                        )}
                     </div>
                 )}
 
-                {/* Filter & Search Toolbar */}
-                <AssessmentFilter
-                    search={search}
-                    onSearchChange={setSearch}
-                    userRole={user_role}
-                    filterType={filterType}
-                    onFilterTypeChange={setFilterType}
-                    studentStatusFilter={studentStatusFilter}
-                    onStudentStatusFilterChange={setStudentStatusFilter}
-                    countsByType={counts_by_type}
-                />
-
-                {/* Role-based Content Views */}
-                {user_role === 'teacher' ? (
-                    <TeacherGroupedView
-                        groups={teacher_grouped ?? []}
-                        search={search}
-                        filterType={filterType}
-                    />
-                ) : user_role === 'student' ? (
-                    <StudentAssignmentsView
-                        groups={grouped_assignments ?? []}
-                        search={search}
-                        studentStatusFilter={studentStatusFilter}
-                    />
-                ) : (
-                    <FlatView assignments={assignments ?? []} search={search} filterType={filterType} />
+                {/* 3. Compact Active Assessment Summary Badge (Height: 40-44px) */}
+                {isTeacher && stats && (stats.total_pending_grading > 0 || stats.total_active > 0) && (
+                    <div className="flex flex-wrap items-center gap-2 w-full min-w-0">
+                        {stats.total_active > 0 && (
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary/10 text-primary border border-primary/20 text-xs font-bold min-h-[38px]">
+                                <span>●</span>
+                                <span>{stats.total_active} asesmen aktif</span>
+                            </span>
+                        )}
+                        {stats.total_pending_grading > 0 && (
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20 text-xs font-bold min-h-[38px]">
+                                <span>🟠</span>
+                                <span>{stats.total_pending_grading} perlu dinilai</span>
+                            </span>
+                        )}
+                        {stats.total_overdue && stats.total_overdue > 0 ? (
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-500/10 text-rose-700 dark:text-rose-300 border border-rose-500/20 text-xs font-bold min-h-[38px]">
+                                <span>🔴</span>
+                                <span>{stats.total_overdue} terlambat</span>
+                            </span>
+                        ) : null}
+                    </div>
                 )}
+
+                {/* 4. Filter Tabs & Search Bar */}
+                <div className="w-full min-w-0">
+                    <AssessmentFilter
+                        search={search}
+                        onSearchChange={setSearch}
+                        userRole={user_role}
+                        filterType={filterType}
+                        onFilterTypeChange={setFilterType}
+                        studentStatusFilter={studentStatusFilter}
+                        onStudentStatusFilterChange={setStudentStatusFilter}
+                        countsByType={counts_by_type}
+                    />
+                </div>
+
+                {/* 5. Role-based Assessment List (Default: Collapsed Class Cards) */}
+                <div className="w-full min-w-0">
+                    {user_role === 'teacher' ? (
+                        <TeacherGroupedView
+                            groups={teacher_grouped ?? []}
+                            search={search}
+                            filterType={filterType}
+                            onClearSearch={() => setSearch('')}
+                        />
+                    ) : user_role === 'student' ? (
+                        <StudentAssignmentsView
+                            groups={grouped_assignments ?? []}
+                            search={search}
+                            studentStatusFilter={studentStatusFilter}
+                            onClearSearch={() => setSearch('')}
+                        />
+                    ) : (
+                        <FlatView
+                            assignments={assignments ?? []}
+                            search={search}
+                            filterType={filterType}
+                            onClearSearch={() => setSearch('')}
+                        />
+                    )}
+                </div>
             </div>
 
             {/* Floating Toast Notification */}
             {toast && (
-                <div className={`fixed bottom-20 right-6 z-50 flex max-w-md items-center gap-3 rounded-2xl border px-4 py-3 shadow-xl backdrop-blur-md transition-all duration-300 animate-in fade-in slide-in-from-bottom-5 ${
+                <div className={`fixed bottom-20 right-4 sm:right-6 z-50 flex max-w-md items-center gap-3 rounded-2xl border px-4 py-3 shadow-xl backdrop-blur-md transition-all duration-300 animate-in fade-in slide-in-from-bottom-5 ${
                     toast.type === 'success'
                         ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
                         : 'border-destructive/20 bg-destructive/10 text-destructive'

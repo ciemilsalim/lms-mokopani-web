@@ -13,6 +13,10 @@ interface AssessmentFilterProps {
     className?: string;
 }
 
+/**
+ * AssessmentFilter
+ * Mobile-Native filter tabs (44px target) & search bar (48px height, 16px radius).
+ */
 export function AssessmentFilter({
     search,
     onSearchChange,
@@ -27,21 +31,21 @@ export function AssessmentFilter({
     const isStudent = userRole === 'student';
 
     return (
-        <div className={`flex flex-col gap-2.5 md:flex-row md:items-center justify-between ${className}`}>
+        <div className={`flex flex-col gap-3 w-full min-w-0 ${className}`}>
             {/* Filter Tabs */}
             {isStudent ? (
-                <div className="flex p-1 bg-muted/70 rounded-2xl w-full sm:w-fit overflow-x-auto scrollbar-hide border border-border/50 shrink-0">
+                <div className="flex p-1 bg-muted/80 rounded-2xl w-full overflow-x-auto scrollbar-hide border border-border/60 shrink-0 gap-1 min-h-[50px] items-center">
                     {[
-                        { id: 'all', label: 'Semua Status' },
+                        { id: 'all', label: 'Semua' },
                         { id: 'pending', label: 'Perlu Dikerjakan' },
-                        { id: 'submitted', label: 'Menunggu Penilaian' },
-                        { id: 'graded', label: 'Selesai Dinilai' },
+                        { id: 'submitted', label: 'Menunggu Nilai' },
+                        { id: 'graded', label: 'Selesai' },
                     ].map(f => (
                         <button
                             key={f.id}
                             type="button"
                             onClick={() => onStudentStatusFilterChange && onStudentStatusFilterChange(f.id as any)}
-                            className={`shrink-0 px-3.5 py-1.5 rounded-xl text-xs font-bold transition active:scale-95 cursor-pointer min-h-[36px] ${
+                            className={`shrink-0 px-3.5 py-2 rounded-xl text-xs font-bold transition active:scale-95 cursor-pointer min-h-[44px] flex items-center justify-center ${
                                 studentStatusFilter === f.id
                                     ? 'bg-primary text-primary-foreground shadow-xs'
                                     : 'text-muted-foreground hover:text-foreground'
@@ -52,7 +56,7 @@ export function AssessmentFilter({
                     ))}
                 </div>
             ) : (
-                <div className="flex p-1 bg-muted rounded-2xl w-full sm:w-fit overflow-x-auto scrollbar-hide border border-border/50 shrink-0 gap-0.5">
+                <div className="flex p-1 bg-muted/80 rounded-2xl w-full overflow-x-auto scrollbar-hide border border-border/60 shrink-0 gap-1 min-h-[50px] items-center">
                     {[
                         { id: 'all', label: 'Semua', count: countsByType?.all },
                         { id: 'initial', label: 'Awal', count: countsByType?.initial },
@@ -65,9 +69,9 @@ export function AssessmentFilter({
                                 key={f.id}
                                 type="button"
                                 onClick={() => onFilterTypeChange && onFilterTypeChange(f.id)}
-                                className={`inline-flex items-center gap-1.5 shrink-0 px-3.5 py-1.5 rounded-xl text-xs font-bold transition active:scale-95 cursor-pointer min-h-[36px] ${
+                                className={`inline-flex items-center justify-center gap-1.5 shrink-0 px-4 py-2 rounded-xl text-xs font-bold transition active:scale-95 cursor-pointer min-h-[44px] ${
                                     isActive
-                                        ? 'bg-background text-foreground shadow-xs font-black'
+                                        ? 'bg-card text-foreground shadow-xs font-black border border-border/60'
                                         : 'text-muted-foreground hover:text-foreground'
                                 }`}
                             >
@@ -87,24 +91,25 @@ export function AssessmentFilter({
                 </div>
             )}
 
-            {/* Search Input */}
-            <div className="relative max-w-full md:max-w-xs flex-1">
-                <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+            {/* Search Input (48px height, 16px radius, 20px icon) */}
+            <div className="relative w-full min-w-0">
+                <Search className="absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                 <input
                     type="text"
                     placeholder="Cari asesmen, kelas, atau mapel..."
                     value={search}
                     onChange={(e) => onSearchChange(e.target.value)}
-                    className="w-full rounded-xl border border-border/70 bg-card py-2 pl-9 pr-8 text-xs sm:text-sm text-foreground placeholder:text-muted-foreground/60 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition min-h-[38px] shadow-2xs"
+                    className="w-full rounded-2xl border border-border/70 bg-card py-2.5 pl-11 pr-10 text-sm text-foreground placeholder:text-muted-foreground/60 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition min-h-[48px] shadow-2xs box-border"
                 />
                 {search && (
                     <button
                         type="button"
                         onClick={() => onSearchChange('')}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground transition rounded-lg"
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 h-8 w-8 flex items-center justify-center text-muted-foreground hover:text-foreground transition rounded-xl active:bg-muted"
                         title="Hapus pencarian"
+                        aria-label="Hapus pencarian"
                     >
-                        <X className="h-3.5 w-3.5" />
+                        <X className="h-4 w-4" />
                     </button>
                 )}
             </div>
