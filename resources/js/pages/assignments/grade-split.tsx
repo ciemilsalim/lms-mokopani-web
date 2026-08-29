@@ -2,13 +2,12 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Head, router, Link } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import {
-    ChevronLeft, ChevronRight, Save, CheckCircle2, FileText,
-    Camera, AlertCircle, Target, Info, CheckSquare, Square, Users, ArrowRight,
-    Upload, Eye, Check, Loader2, Sparkles, RefreshCw, Maximize2, X, ChevronDown, ChevronUp,
-    PenTool, Image as ImageIcon, Mic
+    ArrowLeft, ArrowRight, Save, CheckCircle2, FileText,
+    Camera, Target, Info, CheckSquare, Square, Users,
+    Upload, Check, Loader2, Sparkles, Maximize2, X, ChevronDown, ChevronUp,
+    PenTool, Image as ImageIcon, Mic, ExternalLink, Activity, Star, Eye
 } from 'lucide-react';
 import { KktpModal } from '@/components/assignments/KktpModal';
-import { StudentSwitcher } from '@/components/assignments/student-switcher';
 import axios from 'axios';
 
 interface Student {
@@ -35,6 +34,15 @@ const QUICK_FEEDBACK_CHIPS = [
     { label: '🔄 Perlu Remedial', text: 'Perlu ulas kembali materi dasar sebelum melanjutkan ke topik berikutnya.' },
 ];
 
+/**
+ * GradeSplitPage (PROMPT 20C — Mobile-First Observation Grading Workspace)
+ * - Mobile (<= 639px): Single Focus Workspace with Segmented Tabs (Karya Siswa | Penilaian)
+ * - Tablet (640–1023px): Adaptive Split Workspace
+ * - Desktop (>= 1024px): True Split-Screen Workspace (50/50)
+ * - NO RAW JSON: All observation, checklist, and quiz payloads are parsed into semantic UI.
+ * - Standardized 48px Upload buttons with clean "Upload Foto" / "Upload File" labels.
+ * - Sticky bottom action bar with 44px prev/next and 48px save button, guarded against overlap.
+ */
 export default function GradeSplitPage({
     assignment,
     students = [],
@@ -55,7 +63,6 @@ export default function GradeSplitPage({
     const [kktpDetails, setKktpDetails] = useState<any>(submission?.kktp_details ?? {});
     const [isSaving, setIsSaving] = useState(false);
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
-    const [lastSavedTime, setLastSavedTime] = useState<string | null>(null);
     const [isUploadingProof, setIsUploadingProof] = useState(false);
     const [isKktpModalOpen, setIsKktpModalOpen] = useState(false);
     const [showInfoBanner, setShowInfoBanner] = useState(false);
@@ -74,9 +81,13 @@ export default function GradeSplitPage({
 
     // Submissions map for switcher
     const submissionsMap = useMemo(() => {
-        const map: Record<number, { score: number | null; submitted_at?: string }> = {};
+        const map: Record<number, { score: number | null; submitted_at?: string; is_graded?: boolean }> = {};
         (assignment.submissions || []).forEach((s: any) => {
-            map[s.student_id] = { score: s.score, submitted_at: s.submitted_at };
+            map[s.student_id] = { 
+                score: s.score, 
+                submitted_at: s.submitted_at,
+                is_graded: s.score !== null && s.score !== undefined
+            };
         });
         return map;
     }, [assignment.submissions]);
@@ -88,15 +99,22 @@ export default function GradeSplitPage({
         return found ? found.name : (assigned_classes[0]?.name ?? 'Kelas 8A');
     }, [selected_class_id, assigned_classes]);
 
+    const isSummative = assignment.assessment_type === 'summative';
+    const isOralTest = assignment.instrument_type === 'oral_test' || assignment.instrument_type === 'oral';
+    const assessmentTypeLabel = assignment.assessment_type === 'initial' 
+        ? 'Asesmen Awal' 
+        : isSummative 
+            ? 'Asesmen Sumatif' 
+            : 'Asesmen Formatif';
+
+    const hasRubric = assignment.scoring_tool === 'rubric' && assignment.instrument_config?.kktp?.criteria?.length > 0;
+
     let isOffline = false;
-    let textContent = submission?.content || '';
+    let rawContent = submission?.content || '';
     if (submission?.content) {
         try {
             const parsed = JSON.parse(submission.content);
             isOffline = !!parsed.submitted_offline;
-            if (isOffline) {
-                textContent = '';
-            }
         } catch (e) {}
     }
 
@@ -111,7 +129,7 @@ export default function GradeSplitPage({
     // Keyboard Shortcuts (Arrow Left / Right, Alt+S for save)
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
-            const isEditing = ['INPUT', 'TEXTAREA', 'SELECT'].includes((document.activeElement?.tagName || ''));
+            if (['INPUT', 'TEXTAREA', 'SELECT'].includes((document.activeElement?.tagName || ''))) return;
             
             if (e.altKey && e.key === 'ArrowRight') {
                 e.preventDefault();
@@ -130,9 +148,9 @@ export default function GradeSplitPage({
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [currentStudentIndex, students.length, score, feedback, kktpDetails]);
 
-    // Autosave handler
+    // Save handler
     const handleSave = async (autoNext = false) => {
-        if (!currentStudent) return;
+        if (!currentStudent || isSaving) return;
         setIsSaving(true);
         setSaveStatus('saving');
 
@@ -152,8 +170,7 @@ export default function GradeSplitPage({
             });
 
             setSaveStatus('saved');
-            const now = new Date();
-            setLastSavedTime(now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+            showNotification('Nilai berhasil disimpan!', 'success');
 
             if (autoNext && currentStudentIndex < students.length - 1) {
                 setCurrentStudentIndex(prev => prev + 1);
@@ -162,18 +179,15 @@ export default function GradeSplitPage({
             }
         } catch (error) {
             setSaveStatus('idle');
-            showNotification('Gagal menyimpan nilai.', 'error');
+            showNotification('Penilaian belum tersimpan. Coba lagi.', 'error');
         } finally {
             setIsSaving(false);
         }
     };
 
-    // Disabled autosave on blur
-    const handleAutosaveOnBlur = () => {};
-
     const handleUploadProof = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
-        if (!file || !currentStudent) return;
+        if (!file || !currentStudent || isUploadingProof) return;
 
         setIsUploadingProof(true);
         const formData = new FormData();
@@ -218,34 +232,137 @@ export default function GradeSplitPage({
         });
     };
 
-    const isSummative = assignment.assessment_type === 'summative';
-    const isOralTest = assignment.instrument_type === 'oral_test' || assignment.instrument_type === 'oral';
-    const assessmentTypeLabel = assignment.assessment_type === 'initial' 
-        ? 'Asesmen Awal' 
-        : isSummative 
-            ? 'Asesmen Sumatif' 
-            : 'Asesmen Formatif';
-
-    const hasRubric = assignment.scoring_tool === 'rubric' && assignment.instrument_config?.kktp?.criteria?.length > 0;
-
+    /**
+     * Semantic Presentation for all Submissions (RAW JSON IS NEVER USER FACING)
+     */
     const renderFormattedAnswer = (contentString: string, assignment: any) => {
-        if (!contentString) return null;
+        if (!contentString) {
+            return (
+                <div className="p-4 text-center text-xs text-muted-foreground bg-muted/20 rounded-2xl border border-dashed border-border">
+                    Informasi karya belum tersedia.
+                </div>
+            );
+        }
+
         let parsed: any = null;
         try {
             parsed = JSON.parse(contentString);
         } catch {
             return (
-                <div className="p-2.5 sm:p-3 bg-muted/30 rounded-xl border border-border space-y-1.5 overflow-hidden">
+                <div className="p-3.5 bg-muted/30 rounded-2xl border border-border space-y-1.5 overflow-hidden">
                     <span className="text-[11px] font-bold text-primary flex items-center gap-1.5 uppercase tracking-wider">
-                        <FileText className="w-3.5 h-3.5" /> Jawaban / Laporan Siswa
+                        <FileText className="w-4 h-4" /> Jawaban / Catatan Siswa
                     </span>
-                    <div className="text-xs text-foreground whitespace-pre-wrap leading-relaxed break-words">
+                    <div className="text-xs sm:text-sm text-foreground whitespace-pre-wrap leading-relaxed break-words">
                         {contentString}
                     </div>
                 </div>
             );
         }
 
+        // 1. Performance Observation / Observation Checklist
+        if (parsed.type === 'performance_observation' || parsed.type === 'observation' || parsed.observations || parsed.checklist) {
+            const indicators = assignment?.instrument_config?.indicators || [];
+            const obsMap = parsed.observations || parsed.checklist || {};
+            const notes = parsed.notes || parsed.note || '';
+            const actionPlan = parsed.action_plan || '';
+
+            return (
+                <div className="space-y-3 w-full animate-in fade-in duration-200">
+                    <div className="flex items-center justify-between p-3 rounded-2xl bg-primary/10 border border-primary/20">
+                        <div className="flex items-center gap-2">
+                            <Activity className="w-4 h-4 text-primary" />
+                            <h4 className="text-xs font-bold text-foreground">Hasil Pengamatan Observasi</h4>
+                        </div>
+                    </div>
+
+                    {/* Indicators list */}
+                    {indicators.length > 0 ? (
+                        <div className="space-y-1.5">
+                            {indicators.map((ind: any, idx: number) => {
+                                const indKey = ind.id || ind.name || ind.text || idx.toString();
+                                const isChecked = !!obsMap[indKey];
+                                const labelText = typeof ind === 'string' ? ind : (ind.text || ind.name || ind.description || `Indikator ${idx + 1}`);
+
+                                return (
+                                    <div
+                                        key={indKey}
+                                        className={`flex items-center gap-2.5 p-3 rounded-xl border text-xs transition-colors ${
+                                            isChecked 
+                                                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-950 dark:text-emerald-200 font-bold'
+                                                : 'bg-card border-border text-muted-foreground'
+                                        }`}
+                                    >
+                                        <div className={`h-5 w-5 rounded-lg flex items-center justify-center shrink-0 border ${
+                                            isChecked 
+                                                ? 'bg-emerald-600 border-emerald-600 text-white' 
+                                                : 'border-border bg-muted/40'
+                                        }`}>
+                                            {isChecked ? <Check className="h-3.5 w-3.5 stroke-[3]" /> : <span className="text-[10px] text-muted-foreground/60">{idx + 1}</span>}
+                                        </div>
+                                        <span className="flex-1 leading-snug line-clamp-2">{labelText}</span>
+                                        <span className={`text-[10px] font-bold uppercase px-1.5 py-0.2 rounded shrink-0 ${
+                                            isChecked ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300' : 'bg-muted text-muted-foreground'
+                                        }`}>
+                                            {isChecked ? 'Muncul' : 'Belum'}
+                                        </span>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    ) : (
+                        <p className="text-xs text-muted-foreground italic">Daftar kriteria observasi tidak tercatat.</p>
+                    )}
+
+                    {/* Qualitative Notes */}
+                    {notes && (
+                        <div className="p-3 rounded-xl bg-card border border-border space-y-1">
+                            <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block">Catatan Pengamatan:</span>
+                            <p className="text-xs text-foreground leading-relaxed whitespace-pre-line">{notes}</p>
+                        </div>
+                    )}
+
+                    {actionPlan && (
+                        <div className="p-3 rounded-xl bg-card border border-border space-y-1">
+                            <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block">Strategi Tindak Lanjut:</span>
+                            <p className="text-xs text-foreground leading-relaxed whitespace-pre-line">{actionPlan}</p>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        // 2. Anecdotal Notes
+        if (parsed.type === 'anecdotal') {
+            return (
+                <div className="space-y-2.5 w-full">
+                    <div className="p-3 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-between">
+                        <span className="text-xs font-bold text-foreground">Catatan Anekdotal Guru</span>
+                        <span className="text-[11px] font-mono text-muted-foreground">{parsed.date || '—'} {parsed.time || ''}</span>
+                    </div>
+                    {parsed.context && (
+                        <div className="p-2.5 rounded-xl bg-card border border-border text-xs">
+                            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Konteks:</span>
+                            <p className="text-foreground mt-0.5">{parsed.context}</p>
+                        </div>
+                    )}
+                    {parsed.event_description && (
+                        <div className="p-2.5 rounded-xl bg-card border border-border text-xs">
+                            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Deskripsi Peristiwa:</span>
+                            <p className="text-foreground mt-0.5 leading-relaxed whitespace-pre-line">{parsed.event_description}</p>
+                        </div>
+                    )}
+                    {parsed.analysis_followup && (
+                        <div className="p-2.5 rounded-xl bg-card border border-border text-xs">
+                            <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider block">Analisis & Tindak Lanjut:</span>
+                            <p className="text-foreground mt-0.5 leading-relaxed whitespace-pre-line">{parsed.analysis_followup}</p>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        // 3. Quiz / Written Test
         if (parsed.type === 'written_test' || parsed.type === 'formative_quiz' || parsed.type === 'quiz_response' || (parsed && typeof parsed === 'object' && parsed.answers && !parsed.type)) {
             const questions = assignment?.instrument_config?.questions || [];
             const answers = parsed.answers || {};
@@ -254,13 +371,13 @@ export default function GradeSplitPage({
                 <div className="space-y-2.5 w-full">
                     <div className="flex items-center justify-between p-2.5 rounded-xl bg-primary/10 border border-primary/20">
                         <div className="flex items-center gap-1.5 min-w-0">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-primary shrink-0" />
+                            <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
                             <h4 className="text-xs font-bold text-foreground truncate">
                                 {parsed.type === 'written_test' ? 'Tes Tertulis' : 'Kuis Formatif'}
                             </h4>
                         </div>
                         {parsed.auto_score !== undefined && (
-                            <span className="text-xs font-black text-primary shrink-0">
+                            <span className="text-xs font-bold text-primary shrink-0">
                                 Skor Auto: {parsed.auto_score}
                             </span>
                         )}
@@ -275,12 +392,12 @@ export default function GradeSplitPage({
                             const isCorrect = isMcq ? (correctOpt?.id == studentAns) : (studentAns && (q.correct_answer || q.answer) && studentAns.trim().toLowerCase() == (q.correct_answer || q.answer).trim().toLowerCase());
 
                             return (
-                                <div key={q.id || idx} className="p-2.5 rounded-xl bg-card border border-border shadow-2xs space-y-1.5 overflow-hidden">
+                                <div key={q.id || idx} className="p-3 rounded-xl bg-card border border-border shadow-xs space-y-1.5 overflow-hidden">
                                     <div className="flex items-start justify-between gap-1.5">
                                         <p className="text-xs font-bold text-foreground leading-snug break-words flex-1 min-w-0">
                                             {idx + 1}. {q.question || q.text}
                                         </p>
-                                        <span className={`shrink-0 text-[9px] font-black uppercase px-1.5 py-0.5 rounded ${
+                                        <span className={`shrink-0 text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${
                                             isCorrect ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300' : 'bg-rose-500/15 text-rose-700 dark:text-rose-300'
                                         }`}>
                                             {isCorrect ? 'Benar' : 'Salah'}
@@ -288,13 +405,13 @@ export default function GradeSplitPage({
                                     </div>
                                     <div className="text-[11px] grid grid-cols-2 gap-2 pt-1 border-t border-border/50">
                                         <div className="min-w-0">
-                                            <span className="text-muted-foreground block text-[10px]">Jawaban:</span>
+                                            <span className="text-muted-foreground block text-[10px]">Jawaban Siswa:</span>
                                             <span className={`font-bold truncate block ${isCorrect ? 'text-emerald-600' : 'text-rose-600'}`}>
                                                 {isMcq ? (studentOpt?.text || studentAns || '—') : (studentAns || '—')}
                                             </span>
                                         </div>
                                         <div className="min-w-0">
-                                            <span className="text-muted-foreground block text-[10px]">Kunci:</span>
+                                            <span className="text-muted-foreground block text-[10px]">Kunci Jawaban:</span>
                                             <span className="font-bold text-emerald-600 truncate block">
                                                 {isMcq ? (correctOpt?.text || '—') : (q.correct_answer || q.answer || '—')}
                                             </span>
@@ -308,14 +425,18 @@ export default function GradeSplitPage({
             );
         }
 
+        // Generic fallback with clean text (NEVER RAW JSON DUMP)
         return (
-            <div className="p-2.5 sm:p-3 bg-muted/30 rounded-xl border border-border text-xs text-foreground whitespace-pre-wrap break-words">
-                {contentString}
+            <div className="p-3.5 bg-muted/30 rounded-2xl border border-border text-xs text-foreground space-y-1">
+                <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block">Detail Pengumpulan:</span>
+                <p className="text-xs text-foreground leading-relaxed">
+                    {parsed.description || parsed.notes || parsed.text || 'Informasi tugas telah tercatat dalam sistem.'}
+                </p>
             </div>
         );
     };
 
-    // Submissions Viewer Component
+    // Submissions Viewer Component (Left Panel)
     const renderSubmissionContent = () => {
         const isImage = submission?.file_path && /\.(jpeg|jpg|gif|png|webp)$/i.test(submission.file_path);
         const isPdf = submission?.file_path && /\.pdf$/i.test(submission.file_path);
@@ -323,30 +444,30 @@ export default function GradeSplitPage({
         if (isOralTest) {
             const oralQuestions = assignment?.instrument_config?.questions || assignment?.questions || [];
             return (
-                <div className="flex flex-col h-full space-y-2.5 w-full min-w-0">
-                    <div className="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-xl bg-muted/30 border border-border text-xs w-full">
-                        <span className="font-bold text-foreground text-[11px] flex items-center gap-1.5 min-w-0 truncate">
-                            <Mic className="h-3.5 w-3.5 text-primary shrink-0" />
+                <div className="flex flex-col h-full space-y-3 w-full min-w-0">
+                    <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-muted/30 border border-border text-xs w-full">
+                        <span className="font-bold text-foreground text-xs flex items-center gap-1.5 min-w-0 truncate">
+                            <Mic className="h-4 w-4 text-primary shrink-0" />
                             <span className="truncate">Pedoman Pertanyaan Lisan Guru</span>
                         </span>
                         <button
                             type="button"
                             onClick={() => setShowInfoBanner(!showInfoBanner)}
-                            className="text-[10px] font-bold text-primary hover:underline cursor-pointer flex items-center gap-0.5 shrink-0"
+                            className="text-[11px] font-bold text-primary hover:underline cursor-pointer flex items-center gap-0.5 shrink-0"
                         >
-                            <span>{showInfoBanner ? 'Tutup Info' : 'Panduan'}</span>
-                            <Info className="h-3 w-3" />
+                            <span>{showInfoBanner ? 'Tutup' : 'Panduan'}</span>
+                            <Info className="h-3.5 w-3.5" />
                         </button>
                     </div>
 
                     {showInfoBanner && (
-                        <div className="p-2.5 rounded-xl bg-primary/5 border border-primary/15 text-[11px] text-muted-foreground leading-relaxed animate-in fade-in duration-150">
-                            Gunakan daftar pertanyaan di bawah ini sebagai panduan saat melakukan ujian lisan atau tanya jawab langsung dengan siswa di kelas. Masukkan nilai dan catatan umpan balik pada panel sebelah kanan.
+                        <div className="p-3 rounded-xl bg-primary/5 border border-primary/15 text-xs text-muted-foreground leading-relaxed animate-in fade-in duration-150">
+                            Gunakan daftar pertanyaan di bawah ini sebagai panduan saat melakukan ujian lisan atau tanya jawab langsung dengan siswa di kelas.
                         </div>
                     )}
 
                     {oralQuestions.length > 0 ? (
-                        <div className="flex-1 overflow-y-auto space-y-3.5 min-h-[180px] w-full min-w-0 pr-1">
+                        <div className="flex-1 overflow-y-auto space-y-3 min-h-[140px] w-full min-w-0 pr-0.5">
                             {oralQuestions.map((q: any, idx: number) => {
                                 const selectedLevel = kktpDetails[q.id] || '';
                                 const qPoints = Number(q.points) || (assignment.max_points / oralQuestions.length) || 10;
@@ -355,100 +476,26 @@ export default function GradeSplitPage({
                                 const qScore = selectedLevel ? Math.round((pct / 100) * qPoints) : 0;
                                 
                                 return (
-                                    <div key={q.id || idx} className="p-4 rounded-xl bg-card border border-border shadow-2xs space-y-3">
-                                        <div className="space-y-2.5">
-                                            {/* Header Nomor & Bobot */}
+                                    <div key={q.id || idx} className="p-3.5 rounded-xl bg-card border border-border shadow-xs space-y-2.5">
+                                        <div className="space-y-1.5">
                                             <div className="flex items-center justify-between gap-2">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="px-2 py-0.5 rounded-md bg-primary/10 text-[10px] font-black text-primary uppercase tracking-wider">
-                                                        Pertanyaan 0{idx + 1}
-                                                    </span>
-                                                    {q.difficulty && (
-                                                        <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
-                                                            {q.difficulty}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                                <span className="text-[10px] font-black px-2 py-0.5 rounded bg-muted/60 text-muted-foreground">
+                                                <span className="px-2 py-0.5 rounded-md bg-primary/10 text-[10px] font-bold text-primary uppercase tracking-wider">
+                                                    Pertanyaan 0{idx + 1}
+                                                </span>
+                                                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-muted/60 text-muted-foreground">
                                                     {qPoints} pt
                                                 </span>
                                             </div>
-
-                                            {/* Teks Pertanyaan Lebar Penuh */}
                                             <p className="text-xs sm:text-sm font-bold text-foreground leading-relaxed">
                                                 {q.question || q.text}
                                             </p>
-
-                                            {/* Panduan Jawaban Ideal */}
                                             {(q.answer_guide || q.answer) && (
-                                                <div className="p-2.5 rounded-lg bg-emerald-500/5 border border-emerald-500/15 text-[11px] space-y-0.5">
-                                                    <span className="text-[9px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block">Panduan Kunci / Jawaban Ideal:</span>
-                                                    <p className="text-foreground leading-relaxed font-medium pl-1">
+                                                <div className="p-2 rounded-lg bg-emerald-500/5 border border-emerald-500/15 text-[11px] space-y-0.5">
+                                                    <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block">Panduan Jawaban:</span>
+                                                    <p className="text-foreground leading-relaxed pl-0.5">
                                                         {q.answer_guide || q.answer}
                                                     </p>
                                                 </div>
-                                            )}
-                                        </div>
-                                        
-                                        {/* Pemahaman Konsep Rubric Selector */}
-                                        <div className="pt-3 border-t border-border/60 space-y-2">
-                                            <div className="flex items-center justify-between text-xs">
-                                                <span className="font-black text-muted-foreground uppercase tracking-widest">Pemahaman Konsep</span>
-                                                <span className="font-black text-primary bg-primary/5 px-2 py-0.5 rounded border border-primary/10">
-                                                    Skor: {qScore} / {qPoints}
-                                                </span>
-                                            </div>
-                                            
-                                            <div className="grid grid-cols-4 gap-1.5">
-                                                {[
-                                                    { code: 'BB', name: 'Baru Berkembang', desc: 'Belum mampu menjelaskan konsep dasar meskipun sudah dipancing.' },
-                                                    { code: 'LY', name: 'Layak', desc: 'Mampu menjelaskan konsep dasar, namun masih ada kekeliruan kecil.' },
-                                                    { code: 'CK', name: 'Cakap', desc: 'Mampu menjelaskan sebagian besar konsep materi dengan benar.' },
-                                                    { code: 'MH', name: 'Mahir', desc: 'Mampu menjelaskan seluruh konsep secara mendalam dan akurat.' }
-                                                ].map((lvl) => {
-                                                    const isSelected = selectedLevel === lvl.code;
-                                                    return (
-                                                        <button
-                                                            key={lvl.code}
-                                                            type="button"
-                                                            title={lvl.desc}
-                                                            onClick={() => {
-                                                                const newDetails = { ...kktpDetails, [q.id]: lvl.code };
-                                                                setKktpDetails(newDetails);
-                                                                
-                                                                let totalScore = 0;
-                                                                oralQuestions.forEach((oq: any) => {
-                                                                    const oqPoints = Number(oq.points) || (assignment.max_points / oralQuestions.length) || 10;
-                                                                    const levelCode = newDetails[oq.id];
-                                                                    if (levelCode) {
-                                                                        const pctVal = scoresMap[levelCode] || 0;
-                                                                        totalScore += (pctVal / 100) * oqPoints;
-                                                                    }
-                                                                });
-                                                                setScore(Math.min(assignment.max_points, Math.round(totalScore)));
-                                                            }}
-                                                            className={`py-2 rounded-lg border text-center text-xs font-black transition cursor-pointer leading-tight ${
-                                                                isSelected
-                                                                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm font-black'
-                                                                    : 'bg-background border-border text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                                                            }`}
-                                                        >
-                                                            {lvl.code}
-                                                        </button>
-                                                    );
-                                                })}
-                                            </div>
-                                            {selectedLevel && (
-                                                <p className="text-[10px] text-muted-foreground leading-normal mt-1 italic p-2 bg-background/50 border border-border/40 rounded-lg">
-                                                    {
-                                                        [
-                                                            { code: 'BB', desc: 'Belum mampu menjelaskan konsep dasar meskipun sudah dipancing.' },
-                                                            { code: 'LY', desc: 'Mampu menjelaskan konsep dasar, namun masih ada kekeliruan kecil.' },
-                                                            { code: 'CK', desc: 'Mampu menjelaskan sebagian besar konsep materi dengan benar.' },
-                                                            { code: 'MH', desc: 'Mampu menjelaskan seluruh konsep secara mendalam dan akurat.' }
-                                                        ].find(l => l.code === selectedLevel)?.desc
-                                                    }
-                                                </p>
                                             )}
                                         </div>
                                     </div>
@@ -456,75 +503,54 @@ export default function GradeSplitPage({
                             })}
                         </div>
                     ) : (
-                        <div className="flex-1 flex flex-col items-center justify-center p-4 text-center bg-muted/15 rounded-xl border border-dashed border-border min-h-[180px] space-y-2 w-full">
-                            <Mic className="w-8 h-8 text-primary/60 animate-pulse" />
+                        <div className="flex-1 flex flex-col items-center justify-center p-4 text-center bg-muted/15 rounded-xl border border-dashed border-border min-h-[140px] space-y-2 w-full">
+                            <Mic className="w-8 h-8 text-primary/60" />
                             <p className="text-xs font-bold text-foreground">Pengujian Lisan Langsung di Kelas</p>
-                            <p className="text-[11px] text-muted-foreground max-w-xs leading-tight">
-                                Lakukan tanya jawab lisan langsung dengan siswa, lalu berikan skor dan umpan balik pada panel penilaian.
-                            </p>
                         </div>
                     )}
-
-                    <div className="pt-2 border-t border-border/60 shrink-0 w-full">
-                        <div className="p-2.5 rounded-xl bg-primary/5 border border-primary/15 text-center text-xs font-bold text-primary flex items-center justify-center gap-2">
-                            <Mic className="w-4 h-4 shrink-0 animate-pulse" />
-                            <span>Ujian Lisan — Penilaian Langsung Tanpa Berkas Upload</span>
-                        </div>
-                    </div>
                 </div>
             );
         }
 
         return (
-            <div className="flex flex-col h-full space-y-2.5 w-full min-w-0">
-                {/* Collapsible Mini Guide */}
-                <div className="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-xl bg-muted/30 border border-border text-xs w-full">
-                    <span className="font-bold text-foreground text-[11px] flex items-center gap-1.5 min-w-0 truncate">
-                        <ImageIcon className="h-3.5 w-3.5 text-primary shrink-0" />
+            <div className="flex flex-col h-full space-y-3 w-full min-w-0">
+                {/* Header Submissions View */}
+                <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-muted/30 border border-border text-xs w-full">
+                    <span className="font-bold text-foreground text-xs flex items-center gap-1.5 min-w-0 truncate">
+                        <ImageIcon className="h-4 w-4 text-primary shrink-0" />
                         <span className="truncate">Karya Siswa (Fisik / Digital)</span>
                     </span>
-                    <button
-                        type="button"
-                        onClick={() => setShowInfoBanner(!showInfoBanner)}
-                        className="text-[10px] font-bold text-primary hover:underline cursor-pointer flex items-center gap-0.5 shrink-0"
-                    >
-                        <span>{showInfoBanner ? 'Tutup Info' : 'Panduan'}</span>
-                        <Info className="h-3 w-3" />
-                    </button>
+                    <span className="text-[11px] text-muted-foreground shrink-0 font-medium">
+                        {submission?.file_path ? 'Berkas Terlampir' : isOffline ? 'Penyerahan Fisik' : 'Belum Ada Berkas'}
+                    </span>
                 </div>
 
-                {showInfoBanner && (
-                    <div className="p-2.5 rounded-xl bg-primary/5 border border-primary/15 text-[11px] text-muted-foreground leading-relaxed animate-in fade-in duration-150">
-                        Ambil foto LKPD fisik siswa menggunakan kamera smartphone atau periksa berkas digital yang telah dikirimkan siswa. Nilai akan tersimpan otomatis.
-                    </div>
-                )}
-
                 {/* Submissions Viewer / Content Area */}
-                {submission && (submission.file_path || textContent || isOffline) ? (
-                    <div className="flex-1 overflow-y-auto space-y-2.5 min-h-[180px] w-full min-w-0">
+                {submission && (submission.file_path || rawContent || isOffline) ? (
+                    <div className="flex-1 overflow-y-auto space-y-3 w-full min-w-0">
                         {isOffline && !submission.file_path && (
-                            <div className="p-2.5 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs text-amber-800 dark:text-amber-300 font-bold">
+                            <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs text-amber-800 dark:text-amber-300 font-bold">
                                 📝 Tugas LKPD diserahkan secara fisik di kelas
                             </div>
                         )}
 
-                        {textContent && renderFormattedAnswer(textContent, assignment)}
+                        {rawContent && !isOffline && renderFormattedAnswer(rawContent, assignment)}
 
                         {submission.file_path && (
-                            <div className="relative rounded-xl border border-border overflow-hidden bg-muted/20 min-h-[180px] flex items-center justify-center w-full">
+                            <div className="relative rounded-2xl border border-border overflow-hidden bg-muted/20 flex items-center justify-center w-full min-h-[160px]">
                                 {isImage ? (
-                                    <div className="relative group w-full h-full flex flex-col items-center">
+                                    <div className="relative group w-full h-full flex flex-col items-center p-1.5">
                                         <img
                                             src={`/storage/${submission.file_path}`}
                                             alt="Karya Siswa"
-                                            className="w-full max-h-[360px] object-contain cursor-pointer rounded-lg"
+                                            className="w-full max-h-[360px] object-contain cursor-pointer rounded-xl"
                                             onClick={() => setPreviewImageModal(`/storage/${submission.file_path}`)}
                                         />
-                                        <div className="absolute top-2 right-2 flex items-center gap-1.5">
+                                        <div className="absolute top-3 right-3 flex items-center gap-1.5">
                                             <button
                                                 type="button"
                                                 onClick={() => setPreviewImageModal(`/storage/${submission.file_path}`)}
-                                                className="p-1.5 rounded-lg bg-black/60 text-white hover:bg-black/80 transition cursor-pointer"
+                                                className="p-2 rounded-xl bg-black/70 text-white hover:bg-black/90 transition cursor-pointer shadow-md"
                                                 title="Perbesar Foto"
                                             >
                                                 <Maximize2 className="h-4 w-4" />
@@ -562,18 +588,18 @@ export default function GradeSplitPage({
                         )}
                     </div>
                 ) : (
-                    /* Compact Empty State */
-                    <div className="flex-1 flex flex-col items-center justify-center p-4 text-center bg-muted/15 rounded-xl border border-dashed border-border min-h-[150px] space-y-1.5 w-full">
-                        <FileText className="w-7 h-7 text-muted-foreground/40" />
-                        <p className="text-xs font-bold text-foreground">Belum ada karya digital</p>
-                        <p className="text-[11px] text-muted-foreground max-w-xs leading-tight">
-                            Gunakan foto untuk menilai LKPD fisik atau beri nilai langsung di lembar penilaian.
+                    /* Compact Clean Empty State (No giant empty space) */
+                    <div className="flex-1 flex flex-col items-center justify-center p-6 text-center bg-muted/15 rounded-2xl border border-dashed border-border space-y-2 w-full">
+                        <FileText className="w-8 h-8 text-muted-foreground/40" />
+                        <p className="text-xs font-bold text-foreground">Karya siswa belum diunggah</p>
+                        <p className="text-[11px] text-muted-foreground max-w-xs leading-relaxed">
+                            Upload foto bukti fisik atau nilai langsung pada panel penilaian.
                         </p>
                     </div>
                 )}
 
-                {/* Direct Action Buttons for Photo & Upload */}
-                <div className="pt-2 border-t border-border/60 grid grid-cols-2 gap-2 shrink-0 w-full">
+                {/* Standardized Photo & File Upload Buttons */}
+                <div className="pt-2 border-t border-border/60 w-full">
                     <input
                         ref={cameraInputRef}
                         type="file"
@@ -592,45 +618,58 @@ export default function GradeSplitPage({
                         disabled={isUploadingProof}
                     />
 
-                    {/* Primary Button: Take Photo */}
-                    <button
-                        type="button"
-                        disabled={isUploadingProof}
-                        onClick={() => cameraInputRef.current?.click()}
-                        className="inline-flex items-center justify-center gap-1.5 px-2.5 py-2 sm:py-2.5 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-bold shadow-xs transition active:scale-98 cursor-pointer disabled:opacity-50 truncate"
-                    >
-                        <Camera className="w-3.5 h-3.5 shrink-0" />
-                        <span className="truncate">{isUploadingProof ? 'Mengunggah...' : (submission?.file_path ? 'Ganti Foto' : 'Ambil Foto LKPD')}</span>
-                    </button>
+                    {/* Responsive Upload Buttons: stacked <= 359px, 2-cols >= 360px */}
+                    <div className="grid grid-cols-1 xs:grid-cols-2 gap-2 w-full">
+                        {/* Primary Button: Upload Foto (48px height) */}
+                        <button
+                            type="button"
+                            disabled={isUploadingProof}
+                            onClick={() => cameraInputRef.current?.click()}
+                            className="inline-flex items-center justify-center gap-2 h-12 px-4 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 text-sm font-bold shadow-xs transition active:scale-98 cursor-pointer disabled:opacity-50 w-full"
+                        >
+                            <Camera className="w-4 h-4 shrink-0" />
+                            <span>{isUploadingProof ? 'Mengunggah...' : 'Upload Foto'}</span>
+                        </button>
 
-                    {/* Secondary Button: Upload File */}
-                    <button
-                        type="button"
-                        disabled={isUploadingProof}
-                        onClick={() => fileInputRef.current?.click()}
-                        className="inline-flex items-center justify-center gap-1.5 px-2.5 py-2 sm:py-2.5 rounded-xl border border-border bg-card text-foreground hover:bg-muted text-xs font-bold transition active:scale-98 cursor-pointer disabled:opacity-50 truncate"
-                    >
-                        <Upload className="w-3.5 h-3.5 shrink-0" />
-                        <span className="truncate">Upload File</span>
-                    </button>
+                        {/* Secondary Button: Upload File (48px height) */}
+                        <button
+                            type="button"
+                            disabled={isUploadingProof}
+                            onClick={() => fileInputRef.current?.click()}
+                            className="inline-flex items-center justify-center gap-2 h-12 px-4 rounded-xl border border-border bg-card text-foreground hover:bg-muted text-sm font-bold transition active:scale-98 cursor-pointer disabled:opacity-50 w-full"
+                        >
+                            <Upload className="w-4 h-4 shrink-0" />
+                            <span>Upload File</span>
+                        </button>
+                    </div>
                 </div>
             </div>
         );
     };
 
-    // Grading Form Component (Score + Rubric + Feedback)
+    // Grading Form Component (Right Panel)
     const renderGradingForm = () => {
+        const isPassed = score !== '' && score !== undefined && score !== null && assignment.passing_grade !== null
+            ? Number(score) >= assignment.passing_grade
+            : true;
+
         return (
-            <div className="flex flex-col space-y-3 h-full w-full min-w-0">
-                {/* ① Final Score Input (Clear & Prominent) */}
-                <div className="p-3 rounded-xl bg-primary/5 border border-primary/15 space-y-1.5 w-full">
+            <div className="flex flex-col space-y-3.5 h-full w-full min-w-0">
+                {/* 1. Final Score Input (48px height, 18-20px font) */}
+                <div className="p-3.5 rounded-2xl bg-primary/5 border border-primary/15 space-y-2 w-full">
                     <div className="flex items-center justify-between gap-2">
-                        <label className="text-xs font-bold text-foreground truncate">
-                            Nilai Akhir (0 - {assignment.max_points || 100})
+                        <label className="text-xs font-bold text-foreground">
+                            Nilai Akhir Siswa
                         </label>
                         {assignment.passing_grade && (
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-background border border-border text-muted-foreground shrink-0">
-                                KKTP: {assignment.passing_grade}
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${
+                                score !== '' && isPassed 
+                                    ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' 
+                                    : score !== '' && !isPassed 
+                                        ? 'bg-rose-500/10 text-rose-600 border-rose-500/20' 
+                                        : 'bg-background text-muted-foreground border-border'
+                            }`}>
+                                {score !== '' ? (isPassed ? '✓ Tuntas' : 'Remedial') : `KKTP: ${assignment.passing_grade}`}
                             </span>
                         )}
                     </div>
@@ -642,9 +681,8 @@ export default function GradeSplitPage({
                             max={assignment.max_points || 100}
                             value={score}
                             onChange={(e) => setScore(e.target.value)}
-                            onBlur={handleAutosaveOnBlur}
                             placeholder="0"
-                            className="w-full h-11 px-3 text-xl font-black text-primary bg-background border border-border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-center"
+                            className="w-full h-12 px-3 text-xl font-bold text-primary bg-background border border-border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-center"
                         />
                         <span className="text-xs font-bold text-muted-foreground shrink-0">
                             / {assignment.max_points || 100}
@@ -652,9 +690,7 @@ export default function GradeSplitPage({
                     </div>
                 </div>
 
-
-
-                {/* ② Interactive Rubric Accordion (if configured) */}
+                {/* 2. Interactive Rubric Accordion (if configured) */}
                 {hasRubric && !isOralTest && (
                     <div className="space-y-2 w-full">
                         <div className="flex items-center justify-between gap-2">
@@ -675,17 +711,16 @@ export default function GradeSplitPage({
                         {showRubricDetails && (
                             <div className="space-y-2 animate-in fade-in duration-150 w-full">
                                 {assignment.instrument_config.kktp.criteria.map((crit: any, i: number) => (
-                                    <div key={i} className="p-2 sm:p-2.5 rounded-xl border border-border/80 bg-muted/20 space-y-1.5 w-full overflow-hidden">
+                                    <div key={i} className="p-2.5 rounded-xl border border-border/80 bg-muted/20 space-y-1.5 w-full overflow-hidden">
                                         <div className="flex items-center justify-between text-xs gap-2">
                                             <span className="font-bold text-foreground truncate flex-1">{crit.name}</span>
                                             {kktpDetails[i] && (
-                                                <span className="text-[9px] sm:text-[10px] font-black text-primary px-1.5 py-0.2 rounded bg-primary/10 shrink-0">
+                                                <span className="text-[10px] font-bold text-primary px-2 py-0.5 rounded bg-primary/10 shrink-0">
                                                     {kktpDetails[i]}
                                                 </span>
                                             )}
                                         </div>
-                                        {/* 2-columns on mobile, 4-columns on tablet/desktop to avoid overflow */}
-                                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 text-[10px] sm:text-[11px] w-full">
+                                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 text-[11px] w-full">
                                             {[
                                                 { label: 'Bimbingan', full: 'Perlu Bimbingan' },
                                                 { label: 'Cukup', full: 'Cukup' },
@@ -700,7 +735,7 @@ export default function GradeSplitPage({
                                                         onClick={() => handleRubricClick(i, 0, lvl.full)}
                                                         className={`p-1.5 rounded-lg border text-center font-bold transition cursor-pointer leading-tight truncate ${
                                                             isSelected
-                                                                ? 'bg-primary text-primary-foreground border-primary shadow-2xs font-black'
+                                                                ? 'bg-primary text-primary-foreground border-primary shadow-xs'
                                                                 : 'bg-background border-border/60 text-muted-foreground hover:text-foreground hover:bg-muted/50'
                                                         }`}
                                                     >
@@ -716,10 +751,10 @@ export default function GradeSplitPage({
                     </div>
                 )}
 
-                {/* ③ Qualitative Feedback Section */}
+                {/* 3. Qualitative Feedback Section (88-104px textarea height) */}
                 <div className="space-y-1.5 flex-1 flex flex-col w-full">
                     <label className="text-xs font-bold text-foreground flex items-center justify-between gap-2">
-                        <span className="truncate">Umpan Balik (Feedback)</span>
+                        <span>Umpan Balik (Feedback)</span>
                         <span className="text-[10px] text-muted-foreground font-normal shrink-0">Pilihan cepat:</span>
                     </label>
 
@@ -730,7 +765,7 @@ export default function GradeSplitPage({
                                 key={idx}
                                 type="button"
                                 onClick={() => appendFeedback(chip.text)}
-                                className="text-[10px] font-bold px-2 py-0.5 sm:py-1 rounded-lg border border-border bg-muted/20 hover:bg-primary/10 hover:border-primary/30 text-muted-foreground hover:text-primary transition active:scale-95 cursor-pointer"
+                                className="text-[10px] font-bold px-2.5 py-1 rounded-lg border border-border bg-muted/20 hover:bg-primary/10 hover:border-primary/30 text-muted-foreground hover:text-primary transition active:scale-95 cursor-pointer"
                             >
                                 {chip.label}
                             </button>
@@ -742,8 +777,7 @@ export default function GradeSplitPage({
                         placeholder="Tuliskan catatan apresiasi atau perbaikan untuk siswa..."
                         value={feedback}
                         onChange={(e) => setFeedback(e.target.value)}
-                        onBlur={handleAutosaveOnBlur}
-                        className="w-full p-2.5 rounded-xl border border-border bg-background text-xs text-foreground placeholder:text-muted-foreground/60 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none resize-y min-h-[60px]"
+                        className="w-full p-3 rounded-2xl border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground/60 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none resize-y min-h-[88px]"
                     />
                 </div>
             </div>
@@ -754,36 +788,36 @@ export default function GradeSplitPage({
         <AppLayout title="Penilaian Asesmen Guru" hideBottomNav={true}>
             <Head title={`Penilaian ${assignment.title} – LMS Mokopani`} />
 
-            <div className="w-full max-w-6xl mx-auto px-2.5 sm:px-6 pt-1.5 pb-20 space-y-2 overflow-x-hidden">
-                {/* ① Compact Header Bar */}
-                <div className="flex items-center justify-between gap-2 border-b border-border/60 pb-1.5 w-full">
-                    <div className="flex items-center gap-1.5 min-w-0 flex-1">
+            <div className="w-full max-w-6xl mx-auto px-3 sm:px-6 pt-2 pb-28 sm:pb-32 space-y-3 overflow-x-hidden">
+                {/* 1. Header (56px, Back button 44x44px) */}
+                <div className="flex items-center justify-between gap-2 h-14 border-b border-border/70 pb-1.5 w-full">
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
                         <Link 
                             href={route('assignments.show', selected_class_id && selected_class_id !== 'all' ? { assignment: assignment.id, class_id: selected_class_id } : assignment.id)} 
-                            className="p-1 rounded-xl border border-border text-muted-foreground hover:text-foreground transition h-8 w-8 flex items-center justify-center cursor-pointer shrink-0"
-                            title="Kembali ke Ringkasan Asesmen"
+                            className="h-11 w-11 rounded-2xl border border-border bg-card text-foreground hover:bg-muted transition flex items-center justify-center cursor-pointer shrink-0"
+                            title="Kembali ke Detail Asesmen"
                         >
-                            <ChevronLeft className="w-4 h-4" />
+                            <ArrowLeft className="w-5 h-5" />
                         </Link>
                         <div className="min-w-0 flex-1">
-                            <h1 className="font-bold text-xs sm:text-sm text-foreground leading-tight truncate">
+                            <h1 className="font-bold text-sm sm:text-base text-foreground leading-tight truncate">
                                 {assignment.title}
                             </h1>
-                            <p className="text-[10px] sm:text-[11px] text-muted-foreground flex items-center gap-1 leading-tight truncate">
-                                <span className="font-bold text-primary truncate">{selectedClassName}</span>
-                                <span>•</span>
-                                <span className="truncate">{assessmentTypeLabel}</span>
+                            <p className="text-xs text-muted-foreground truncate">
+                                <span className="font-bold text-foreground">{selectedClassName}</span>
+                                <span> · </span>
+                                <span>{assessmentTypeLabel}</span>
                             </p>
                         </div>
                     </div>
 
-                    {/* Quick Class Dropdown & KKTP */}
-                    <div className="flex items-center gap-1 shrink-0">
+                    {/* KKTP Control (secondary context, 40px height) */}
+                    <div className="flex items-center gap-1.5 shrink-0">
                         {assigned_classes.length > 1 && (
                             <select
                                 value={selected_class_id || assigned_classes[0]?.id}
                                 onChange={(e) => router.visit(route('assignments.grade-view', { assignment: assignment.id, class_id: e.target.value }), { preserveScroll: true })}
-                                className="rounded-xl border border-border bg-card px-2 py-1 text-xs font-bold text-foreground outline-none cursor-pointer h-8 max-w-[110px] sm:max-w-none truncate"
+                                className="rounded-xl border border-border bg-card px-2.5 py-1.5 text-xs font-bold text-foreground outline-none cursor-pointer h-10 max-w-[120px] sm:max-w-none truncate"
                             >
                                 {assigned_classes.map(c => (
                                     <option key={c.id} value={c.id}>
@@ -796,137 +830,201 @@ export default function GradeSplitPage({
                         <button
                             type="button"
                             onClick={() => setIsKktpModalOpen(true)}
-                            className="inline-flex items-center gap-1 px-2 py-1 rounded-xl text-xs font-bold bg-muted/40 hover:bg-muted text-muted-foreground hover:text-foreground border border-border transition cursor-pointer h-8 shrink-0"
+                            className="inline-flex items-center gap-1.5 px-3 rounded-xl text-xs font-bold bg-muted/40 hover:bg-muted text-muted-foreground hover:text-foreground border border-border transition cursor-pointer h-10 shrink-0"
                         >
-                            <Target className="h-3.5 w-3.5 text-primary" />
+                            <Target className="h-4 w-4 text-primary" />
                             <span>KKTP</span>
                         </button>
                     </div>
                 </div>
 
-                {/* ② Student Switcher Toolbar */}
-                <StudentSwitcher
-                    students={students}
-                    submissionsMap={submissionsMap}
-                    currentIndex={currentStudentIndex}
-                    onSelectIndex={(idx) => setCurrentStudentIndex(idx)}
-                />
+                {/* 2. Student Switcher (64px target, clean dropdown + counter) */}
+                <div className="w-full max-w-full bg-card rounded-2xl border border-border/80 p-3 shadow-xs space-y-2 overflow-hidden">
+                    {/* Top Row: Navigation bar + Counter + Select */}
+                    <div className="flex items-center justify-between gap-2 w-full">
+                        <button
+                            type="button"
+                            disabled={currentStudentIndex === 0}
+                            onClick={() => setCurrentStudentIndex(prev => prev - 1)}
+                            className="inline-flex items-center justify-center h-10 px-3 rounded-xl border border-border bg-background text-xs font-bold text-foreground hover:bg-muted disabled:opacity-30 disabled:pointer-events-none cursor-pointer shrink-0"
+                        >
+                            <ArrowLeft className="h-4 w-4" />
+                            <span className="hidden sm:inline ml-1">Sebelumnya</span>
+                        </button>
 
-                {/* ③ Mobile Segmented Tab Switcher (Visible only on < lg) */}
-                <div className="grid grid-cols-2 gap-1 p-1 bg-muted/40 rounded-xl border border-border lg:hidden w-full">
+                        <div className="flex items-center gap-2 min-w-0 flex-1 justify-center max-w-[calc(100%-80px)] sm:max-w-none">
+                            <span className="text-xs font-bold text-primary font-mono px-2.5 py-1 rounded-lg bg-primary/10 border border-primary/20 shrink-0">
+                                {String(currentStudentIndex + 1).padStart(2, '0')} / {String(students.length).padStart(2, '0')}
+                            </span>
+
+                            <div className="relative min-w-0 flex-1 max-w-[200px] sm:max-w-[280px]">
+                                <select
+                                    value={currentStudentIndex}
+                                    onChange={(e) => setCurrentStudentIndex(Number(e.target.value))}
+                                    className="w-full rounded-xl border border-border bg-background pl-2.5 pr-7 py-1.5 text-xs font-bold text-foreground outline-none focus:ring-2 focus:ring-primary/20 truncate cursor-pointer h-10 appearance-none"
+                                >
+                                    {students.map((s, idx) => {
+                                        const sub = submissionsMap[s.id];
+                                        const scored = sub && sub.score !== null && sub.score !== undefined;
+                                        const statusLabel = scored ? `✓ ${sub.score}` : '○';
+                                        return (
+                                            <option key={s.id} value={idx}>
+                                                {String(idx + 1).padStart(2, '0')}. {s.name} ({statusLabel})
+                                            </option>
+                                        );
+                                    })}
+                                </select>
+                                <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground">
+                                    <ChevronDown className="h-4 w-4" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <button
+                            type="button"
+                            disabled={currentStudentIndex === students.length - 1}
+                            onClick={() => setCurrentStudentIndex(prev => prev + 1)}
+                            className="inline-flex items-center justify-center h-10 px-3 rounded-xl border border-border bg-background text-xs font-bold text-foreground hover:bg-muted disabled:opacity-30 disabled:pointer-events-none cursor-pointer shrink-0"
+                        >
+                            <span className="hidden sm:inline mr-1">Berikutnya</span>
+                            <ArrowRight className="h-4 w-4" />
+                        </button>
+                    </div>
+
+                    {/* Bottom Row: Active Student Identity & Assessment Status */}
+                    <div className="flex items-center justify-between gap-2 pt-2 border-t border-border/60 w-full">
+                        <div className="min-w-0 flex-1 space-y-0.5">
+                            <h3 className="text-sm sm:text-base font-bold text-foreground leading-snug line-clamp-2 overflow-wrap-anywhere">
+                                {currentStudent?.name}
+                            </h3>
+                            {currentStudent?.nis && (
+                                <p className="text-xs font-mono text-muted-foreground truncate">
+                                    NIS: {currentStudent.nis}
+                                </p>
+                            )}
+                        </div>
+
+                        <div className="shrink-0">
+                            {score !== '' && score !== undefined && score !== null ? (
+                                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-xl bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 text-sm font-bold border border-emerald-500/20">
+                                    <Check className="h-4 w-4 stroke-[3]" />
+                                    <span>Nilai <strong>{score}</strong></span>
+                                </span>
+                            ) : (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-muted text-muted-foreground text-xs font-medium border border-border">
+                                    <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60" />
+                                    <span>Belum dinilai</span>
+                                </span>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                {/* 3. Mobile Segmented Tab Switcher (Visible ONLY on Mobile < 640px) */}
+                <div 
+                    role="tablist" 
+                    className="grid grid-cols-2 gap-1 p-1 bg-muted/40 rounded-2xl border border-border sm:hidden w-full h-12 box-border"
+                >
                     <button
                         type="button"
+                        role="tab"
+                        aria-selected={mobileTab === 'work'}
                         onClick={() => setMobileTab('work')}
-                        className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-bold transition cursor-pointer truncate ${
+                        className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-bold transition cursor-pointer min-h-[40px] truncate ${
                             mobileTab === 'work'
-                                ? 'bg-background text-foreground shadow-xs'
+                                ? 'bg-background text-primary shadow-xs'
                                 : 'text-muted-foreground hover:text-foreground'
                         }`}
                     >
-                        {isOralTest ? (
-                            <>
-                                <Mic className="w-3.5 h-3.5 shrink-0" />
-                                <span className="truncate">Panduan Soal</span>
-                            </>
-                        ) : (
-                            <>
-                                <FileText className="w-3.5 h-3.5 shrink-0" />
-                                <span className="truncate">Karya Siswa</span>
-                            </>
-                        )}
+                        <FileText className="w-4 h-4 shrink-0" />
+                        <span className="truncate">Karya Siswa</span>
                     </button>
+
                     <button
                         type="button"
+                        role="tab"
+                        aria-selected={mobileTab === 'grade'}
                         onClick={() => setMobileTab('grade')}
-                        className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-bold transition cursor-pointer truncate ${
+                        className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-bold transition cursor-pointer min-h-[40px] truncate ${
                             mobileTab === 'grade'
-                                ? 'bg-background text-foreground shadow-xs'
+                                ? 'bg-background text-primary shadow-xs'
                                 : 'text-muted-foreground hover:text-foreground'
                         }`}
                     >
-                        <PenTool className="w-3.5 h-3.5 shrink-0" />
+                        <PenTool className="w-4 h-4 shrink-0" />
                         <span className="truncate">Penilaian {score !== '' && score !== undefined && score !== null ? `(${score})` : ''}</span>
                     </button>
                 </div>
 
-                {/* ④ Responsive Workspace Content */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 w-full">
-                    {/* Left Panel: Student Submission Viewer (Always on Desktop, Tab on Mobile) */}
-                    <div className={`lg:col-span-7 border border-border rounded-2xl p-3 sm:p-4 bg-card flex flex-col min-h-[260px] shadow-xs w-full overflow-hidden ${
-                        mobileTab === 'work' ? 'block' : 'hidden lg:flex'
+                {/* 4. Responsive Workspace Content: Single-Focus on Mobile, Adaptive on Tablet, True Split on Desktop */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-3.5 w-full">
+                    {/* Left Panel: Student Submission Viewer */}
+                    <div className={`border border-border/80 rounded-2xl p-4 sm:p-5 bg-card flex flex-col shadow-xs w-full overflow-hidden ${
+                        mobileTab === 'work' ? 'flex' : 'hidden sm:flex'
                     }`}>
                         {renderSubmissionContent()}
                     </div>
 
-                    {/* Right Panel: Grading Form (Always on Desktop, Tab on Mobile) */}
-                    <div className={`lg:col-span-5 border border-border rounded-2xl p-3 sm:p-4 bg-card flex flex-col space-y-3 shadow-xs w-full overflow-hidden ${
-                        mobileTab === 'grade' ? 'block' : 'hidden lg:flex'
+                    {/* Right Panel: Grading Form */}
+                    <div className={`border border-border/80 rounded-2xl p-4 sm:p-5 bg-card flex flex-col space-y-3 shadow-xs w-full overflow-hidden ${
+                        mobileTab === 'grade' ? 'flex' : 'hidden sm:flex'
                     }`}>
                         {renderGradingForm()}
                     </div>
                 </div>
             </div>
 
-            {/* ⑤ Sticky Bottom Action Footer (Safe-Area Guarded & Responsive) */}
-            <div className="fixed bottom-0 left-0 right-0 z-40 bg-card/95 backdrop-blur-md border-t border-border shadow-lg py-2.5 px-3 sm:px-8 w-full">
-                <div className="max-w-6xl mx-auto flex items-center justify-between gap-2 sm:gap-4 w-full">
-                    {/* Left Status Message (Hidden on small mobile screens to prevent overlap) */}
-                    <div className="hidden sm:flex items-center gap-1.5 text-xs min-w-0 flex-1">
-                        {saveStatus === 'saving' ? (
-                            <span className="inline-flex items-center gap-1.5 text-primary font-bold animate-pulse text-xs truncate">
-                                <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
-                                <span className="truncate">Menyimpan nilai...</span>
-                            </span>
+            {/* 5. Sticky Bottom Action Bar (64px + safe area, guarded against overlap) */}
+            <div className="fixed bottom-0 left-0 right-0 z-40 bg-card/95 backdrop-blur-md border-t border-border shadow-xl py-3 px-3 sm:px-8 w-full">
+                <div className="max-w-6xl mx-auto flex items-center justify-between gap-2.5 w-full">
+                    {/* Previous Button (44px min target) */}
+                    <button
+                        type="button"
+                        disabled={currentStudentIndex === 0 || isSaving}
+                        onClick={() => setCurrentStudentIndex(prev => prev - 1)}
+                        className="inline-flex items-center justify-center h-12 w-12 sm:w-auto sm:px-4 rounded-2xl border border-border bg-background text-xs font-bold text-foreground hover:bg-muted transition cursor-pointer disabled:opacity-30 disabled:pointer-events-none shrink-0"
+                        title="Siswa Sebelumnya"
+                    >
+                        <ArrowLeft className="w-5 h-5" />
+                        <span className="hidden sm:inline ml-1.5">Sebelumnya</span>
+                    </button>
+
+                    {/* Save Button (48px primary button) */}
+                    <button
+                        type="button"
+                        disabled={isSaving}
+                        onClick={() => handleSave(false)}
+                        className="inline-flex items-center justify-center gap-2 h-12 px-6 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-sm shadow-xs transition active:scale-98 cursor-pointer disabled:opacity-50 flex-1 sm:flex-none sm:min-w-[200px]"
+                    >
+                        {isSaving ? (
+                            <>
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                <span>Menyimpan...</span>
+                            </>
                         ) : saveStatus === 'saved' ? (
-                            <span className="inline-flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-bold text-xs truncate">
-                                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-                                <span className="truncate">Nilai Berhasil Disimpan</span>
-                            </span>
+                            <>
+                                <Check className="w-4 h-4 stroke-[3]" />
+                                <span>Tersimpan</span>
+                            </>
                         ) : (
-                            <span className="text-muted-foreground font-medium text-xs truncate">
-                                Klik Simpan untuk memperbarui nilai
-                            </span>
+                            <>
+                                <Save className="w-4 h-4" />
+                                <span>Simpan Nilai</span>
+                            </>
                         )}
-                    </div>
+                    </button>
 
-                    {/* Action Buttons (Full width and well-spaced on mobile) */}
-                    <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
-                        <button
-                            type="button"
-                            disabled={currentStudentIndex === 0}
-                            onClick={() => setCurrentStudentIndex(prev => prev - 1)}
-                            className="inline-flex items-center justify-center h-9 px-3 sm:px-3.5 rounded-xl border border-border bg-background text-xs font-bold text-foreground hover:bg-muted transition cursor-pointer disabled:opacity-30 disabled:pointer-events-none shrink-0"
-                            title="Siswa Sebelumnya"
-                        >
-                            <ChevronLeft className="w-4 h-4" />
-                            <span className="hidden xs:inline sm:inline ml-1">Sebelumnya</span>
-                        </button>
-
-                        <button
-                            type="button"
-                            disabled={isSaving}
-                            onClick={() => handleSave(false)}
-                            className="inline-flex items-center justify-center gap-1.5 h-9 px-4 sm:px-6 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition active:scale-98 cursor-pointer disabled:opacity-50 flex-1 sm:flex-none"
-                        >
-                            {isSaving ? (
-                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                            ) : (
-                                <Save className="w-3.5 h-3.5" />
-                            )}
-                            <span className="whitespace-nowrap">Simpan Nilai</span>
-                        </button>
-
-                        <button
-                            type="button"
-                            disabled={currentStudentIndex === students.length - 1}
-                            onClick={() => setCurrentStudentIndex(prev => prev + 1)}
-                            className="inline-flex items-center justify-center h-9 px-3 sm:px-3.5 rounded-xl border border-border bg-background text-xs font-bold text-foreground hover:bg-muted transition cursor-pointer disabled:opacity-30 disabled:pointer-events-none shrink-0"
-                            title="Siswa Berikutnya"
-                        >
-                            <span className="hidden xs:inline sm:inline mr-1">Berikutnya</span>
-                            <ChevronRight className="w-4 h-4" />
-                        </button>
-                    </div>
+                    {/* Next Button (44px min target) */}
+                    <button
+                        type="button"
+                        disabled={currentStudentIndex === students.length - 1 || isSaving}
+                        onClick={() => setCurrentStudentIndex(prev => prev + 1)}
+                        className="inline-flex items-center justify-center h-12 w-12 sm:w-auto sm:px-4 rounded-2xl border border-border bg-background text-xs font-bold text-foreground hover:bg-muted transition cursor-pointer disabled:opacity-30 disabled:pointer-events-none shrink-0"
+                        title="Siswa Berikutnya"
+                    >
+                        <span className="hidden sm:inline mr-1.5">Berikutnya</span>
+                        <ArrowRight className="w-5 h-5" />
+                    </button>
                 </div>
             </div>
 
@@ -956,10 +1054,10 @@ export default function GradeSplitPage({
 
             {/* Notification Toast */}
             {toastMessage && (
-                <div className={`fixed bottom-14 right-4 z-50 px-3.5 py-2 rounded-xl shadow-lg flex items-center gap-2 text-xs font-bold animate-in slide-in-from-bottom-3 ${
+                <div className={`fixed bottom-24 right-4 z-50 px-4 py-2.5 rounded-2xl shadow-xl flex items-center gap-2 text-xs font-bold animate-in slide-in-from-bottom-3 ${
                     toastMessage.type === 'success' ? 'bg-emerald-600 text-white' : 'bg-destructive text-destructive-foreground'
                 }`}>
-                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                    <CheckCircle2 className="w-4 h-4 shrink-0" />
                     <span className="truncate">{toastMessage.message}</span>
                 </div>
             )}

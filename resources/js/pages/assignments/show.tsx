@@ -1880,7 +1880,10 @@ export default function ShowAssignment({
         });
     };
 
-    const handleSavePerformanceObservation = () => {
+    const handleSavePerformanceObservation = (andNext = false) => {
+        if (!selectedStudent || isSavingObservation) return;
+        setIsSavingObservation(true);
+
         const content = JSON.stringify({
             type: 'performance_observation',
             observations: performanceObsData.observations,
@@ -1891,16 +1894,30 @@ export default function ShowAssignment({
         const checkedCount = Object.values(performanceObsData.observations).filter(Boolean).length;
         const averageScore = total > 0 ? Math.round((checkedCount / total) * 100) : 0;
 
+        const currentStudentId = selectedStudent.id;
+        const currentIdx = students.findIndex(s => s.id === currentStudentId);
+
         router.post(route('assignments.grade'), {
             assignment_id: assignment.id,
-            student_id: teacherForm.data.student_id,
+            student_id: currentStudentId,
             score: averageScore,
             feedback: performanceObsData.notes,
             content: content
         }, {
+            preserveScroll: true,
             onSuccess: () => {
-                setSelectedStudent(null);
-                teacherForm.reset();
+                setIsSavingObservation(false);
+                if (andNext && currentIdx >= 0 && currentIdx < students.length - 1) {
+                    const next = students[currentIdx + 1];
+                    const nextSub = submissions.find(s => s.student_id === next.id);
+                    openObservationModal(next, nextSub);
+                } else {
+                    setSelectedStudent(null);
+                    teacherForm.reset();
+                }
+            },
+            onError: () => {
+                setIsSavingObservation(false);
             }
         });
     };
@@ -5328,21 +5345,22 @@ export default function ShowAssignment({
                                     />
                                 </div>
 
-                                <div className="flex gap-4 pt-6">
+                                <div className="flex flex-col sm:flex-row gap-2.5 pt-4 border-t border-border">
                                     <button 
                                         type="button"
+                                        disabled={isSavingObservation}
                                         onClick={() => setSelectedStudent(null)}
-                                        className="flex-1 rounded-md bg-slate-100 dark:bg-slate-800 py-4 text-xs font-black text-muted-foreground uppercase tracking-widest hover:bg-slate-200 transition-all"
+                                        className="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-border bg-muted/40 hover:bg-muted text-xs font-bold text-muted-foreground hover:text-foreground transition min-h-[44px] cursor-pointer"
                                     >
                                         Batal
                                     </button>
                                     <button 
                                         type="button"
                                         onClick={handleSaveAnecdotal}
-                                        className="flex-[2] rounded-md bg-gradient-to-r from-indigo-500 to-purple-600 py-4 text-xs font-black text-white shadow-xl shadow-indigo-200 dark:shadow-none hover:scale-[1.02] active:scale-[0.98] transition-all uppercase tracking-widest"
+                                        className="flex-1 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 py-2.5 px-4 text-xs font-bold shadow-xs transition min-h-[44px] cursor-pointer inline-flex items-center justify-center gap-1.5"
                                     >
-                                        <Save className="h-4 w-4 inline mr-2" />
-                                        Simpan Catatan
+                                        <Save className="h-4 w-4" />
+                                        <span>Simpan Catatan</span>
                                     </button>
                                 </div>
                             </div>
@@ -6158,21 +6176,22 @@ export default function ShowAssignment({
                                     </div>
                                 </div>
 
-                                <div className="flex gap-4 pt-4 border-t border-slate-50 dark:border-slate-800">
+                                <div className="flex flex-col sm:flex-row gap-2.5 pt-4 border-t border-border">
                                     <button 
                                         type="button"
+                                        disabled={isSavingObservation}
                                         onClick={() => setSelectedStudent(null)}
-                                        className="flex-1 rounded-md bg-slate-100 dark:bg-slate-800 py-4 text-xs font-black text-muted-foreground uppercase tracking-widest hover:bg-slate-200 transition-all"
+                                        className="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-border bg-muted/40 hover:bg-muted text-xs font-bold text-muted-foreground hover:text-foreground transition min-h-[44px] cursor-pointer"
                                     >
                                         Batal
                                     </button>
                                     <button 
                                         type="button"
                                         onClick={handleSaveRubric}
-                                        className="flex-[2] rounded-md bg-gradient-to-r from-amber-500 to-orange-600 py-4 text-xs font-black text-white shadow-xl shadow-amber-200 dark:shadow-none hover:scale-[1.02] active:scale-[0.98] transition-all uppercase tracking-widest"
+                                        className="flex-1 rounded-xl bg-amber-600 hover:bg-amber-500 text-white py-2.5 px-4 text-xs font-bold shadow-xs transition min-h-[44px] cursor-pointer inline-flex items-center justify-center gap-1.5"
                                     >
-                                        <Save className="h-4 w-4 inline mr-2" />
-                                        Simpan Penilaian Rubrik
+                                        <Save className="h-4 w-4" />
+                                        <span>Simpan Penilaian Rubrik</span>
                                     </button>
                                 </div>
                             </div>
@@ -6421,33 +6440,61 @@ export default function ShowAssignment({
                                     })()}
                                 </div>
 
-                                <div className="space-y-3 border-t border-slate-50 dark:border-slate-800 pt-4">
-                                    <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-4">Catatan Pengamatan & Umpan Balik</label>
+                                <div className="space-y-1.5 border-t border-border pt-4">
+                                    <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Catatan Pengamatan & Umpan Balik</label>
                                     <textarea 
-                                        rows={4}
+                                        rows={3}
                                         value={performanceObsData.notes}
                                         onChange={(e) => setPerformanceObsData({ ...performanceObsData, notes: e.target.value })}
                                         placeholder="Tuliskan detail observasi atau masukan perbaikan untuk siswa..."
-                                        className="w-full rounded-xl border border-border bg-slate-50/50 dark:bg-slate-800/50 px-6 py-5 text-xs font-medium focus:border-emerald-400 outline-none transition-all resize-none shadow-sm"
+                                        className="w-full rounded-2xl border border-border bg-card p-3.5 text-xs sm:text-sm font-medium focus:border-emerald-500 outline-none transition-all resize-none min-h-[76px] box-border"
                                     />
                                 </div>
 
-                                <div className="flex gap-4 pt-4 border-t border-slate-50 dark:border-slate-800">
+                                {/* Sticky-friendly Clean Actions */}
+                                <div className="flex flex-col sm:flex-row gap-2.5 pt-4 border-t border-border">
                                     <button 
                                         type="button"
+                                        disabled={isSavingObservation}
                                         onClick={() => setSelectedStudent(null)}
-                                        className="flex-1 rounded-md bg-slate-100 dark:bg-slate-800 py-4 text-xs font-black text-muted-foreground uppercase tracking-widest hover:bg-slate-200 transition-all"
+                                        className="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-border bg-muted/40 hover:bg-muted text-xs font-bold text-muted-foreground hover:text-foreground transition min-h-[44px] cursor-pointer"
                                     >
                                         Batal
                                     </button>
-                                    <button 
-                                        type="button"
-                                        onClick={handleSavePerformanceObservation}
-                                        className="flex-1 rounded-md bg-gradient-to-r from-emerald-500 to-teal-600 py-4 text-xs font-black text-white shadow-xl shadow-emerald-200 dark:shadow-none hover:scale-[1.02] active:scale-[0.98] transition-all uppercase tracking-widest"
-                                    >
-                                        <Save className="h-4 w-4 inline mr-2" />
-                                        Simpan Observasi Kinerja
-                                    </button>
+                                    
+                                    <div className="flex-1 flex items-center gap-2">
+                                        <button 
+                                            type="button"
+                                            disabled={isSavingObservation}
+                                            onClick={() => handleSavePerformanceObservation(false)}
+                                            className="flex-1 rounded-xl bg-muted/80 hover:bg-muted text-foreground border border-border py-2.5 px-3 text-xs font-bold transition min-h-[44px] disabled:opacity-50 cursor-pointer"
+                                        >
+                                            <Save className="h-4 w-4 inline mr-1.5" />
+                                            <span>Simpan</span>
+                                        </button>
+
+                                        {currentStudentIndex < students.length - 1 ? (
+                                            <button 
+                                                type="button"
+                                                disabled={isSavingObservation}
+                                                onClick={() => handleSavePerformanceObservation(true)}
+                                                className="flex-1 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 py-2.5 px-3 text-xs font-bold shadow-xs transition min-h-[44px] disabled:opacity-50 cursor-pointer inline-flex items-center justify-center gap-1"
+                                            >
+                                                <span>Simpan & Berikutnya</span>
+                                                <ChevronRight className="h-4 w-4" />
+                                            </button>
+                                        ) : (
+                                            <button 
+                                                type="button"
+                                                disabled={isSavingObservation}
+                                                onClick={() => handleSavePerformanceObservation(false)}
+                                                className="flex-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white py-2.5 px-3 text-xs font-bold shadow-xs transition min-h-[44px] disabled:opacity-50 cursor-pointer inline-flex items-center justify-center gap-1"
+                                            >
+                                                <Check className="h-4 w-4" />
+                                                <span>Simpan Selesai</span>
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         ) : (
