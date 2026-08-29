@@ -2169,7 +2169,7 @@ export default function ShowAssignment({
             <Head title={`${assignment.title} – LMS Mokopani`} />
 
             <>
-                <div className="flex h-full flex-1 flex-col gap-6 min-w-0 fade-in max-w-7xl mx-auto w-full">
+                <div className="space-y-4 sm:space-y-5 fade-in pb-24 sm:pb-8 max-w-7xl mx-auto w-full min-w-0">
                 {user_role !== 'teacher' && (
                     <>
                         <AssessmentDetailHeader

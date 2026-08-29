@@ -788,7 +788,7 @@ export default function GradeSplitPage({
         <AppLayout title="Penilaian Asesmen Guru" hideBottomNav={true}>
             <Head title={`Penilaian ${assignment.title} – LMS Mokopani`} />
 
-            <div className="w-full max-w-6xl mx-auto px-3 sm:px-6 pt-2 pb-28 sm:pb-32 space-y-3 overflow-x-hidden">
+            <div className="space-y-4 sm:space-y-5 fade-in pb-28 sm:pb-32 max-w-7xl mx-auto w-full min-w-0">
                 {/* 1. Header (56px, Back button 44x44px) */}
                 <div className="flex items-center justify-between gap-2 h-14 border-b border-border/70 pb-1.5 w-full">
                     <div className="flex items-center gap-2 min-w-0 flex-1">
@@ -975,8 +975,8 @@ export default function GradeSplitPage({
             </div>
 
             {/* 5. Sticky Bottom Action Bar (64px + safe area, guarded against overlap) */}
-            <div className="fixed bottom-0 left-0 right-0 z-40 bg-card/95 backdrop-blur-md border-t border-border shadow-xl py-3 px-3 sm:px-8 w-full">
-                <div className="max-w-6xl mx-auto flex items-center justify-between gap-2.5 w-full">
+            <div className="fixed bottom-0 left-0 right-0 z-40 bg-card/95 backdrop-blur-md border-t border-border shadow-xl py-3 px-3.5 sm:px-6 w-full">
+                <div className="max-w-7xl mx-auto flex items-center justify-between gap-2.5 w-full">
                     {/* Previous Button (44px min target) */}
                     <button
                         type="button"
