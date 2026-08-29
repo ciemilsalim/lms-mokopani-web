@@ -466,11 +466,22 @@ export function AssessmentForm({
                             points: Number(q.points) || defaultPoints,
                             difficulty: q.difficulty || (data.instrument_type === 'oral_test' ? defaultOralDifficulty : undefined),
                             answer_guide: cleanPlainText(q.answer_guide || q.answer || ''),
-                            options: isMcq && q.options ? q.options.map((opt: any, optIdx: number) => ({
-                                id: opt.id || `opt_${optIdx}_${Date.now()}`,
-                                text: cleanPlainText(opt.text || opt.label || ''),
-                                is_correct: Boolean(opt.is_correct || opt.id === q.answer || optIdx === 0)
-                            })) : [
+                            options: isMcq && q.options ? (() => {
+                                const rawOpts = q.options || [];
+                                let correctIdx = rawOpts.findIndex((opt: any) => 
+                                    opt.is_correct === true || 
+                                    opt.id === q.answer || 
+                                    opt.key === q.answer || 
+                                    opt.label === q.answer ||
+                                    opt.text === q.answer
+                                );
+                                if (correctIdx === -1) correctIdx = 0;
+                                return rawOpts.map((opt: any, optIdx: number) => ({
+                                    id: opt.id || `opt_${optIdx}_${Date.now()}`,
+                                    text: cleanPlainText(opt.text || opt.label || ''),
+                                    is_correct: optIdx === correctIdx
+                                }));
+                            })() : [
                                 { id: `opt_1_${Date.now()}`, text: '', is_correct: true },
                                 { id: `opt_2_${Date.now()}`, text: '', is_correct: false },
                             ]
@@ -735,6 +746,8 @@ export function AssessmentForm({
             questions: currentQuestions
         });
     };
+
+    const handleSetCorrectOption = handleOptionCorrectChange;
 
     const handleAddOption = (qIndex: number) => {
         const currentQuestions = [...(data.instrument_config.questions || [])];
@@ -1360,116 +1373,121 @@ export function AssessmentForm({
                                         </div>
                                     ) : (
                                         <div className="space-y-3">
-                                            {data.instrument_config.questions.map((q: any, qIdx: number) => (
-                                                <div key={q.id || qIdx} className="rounded-xl border border-border bg-background p-3.5 space-y-2.5 shadow-2xs">
-                                                    {/* Card Header: Number, Type, Points & Delete */}
-                                                    <div className="flex items-center justify-between gap-2 border-b border-border/40 pb-2">
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="text-[11px] font-black text-primary bg-primary/10 px-2 py-0.5 rounded">
-                                                                Soal #{qIdx + 1}
-                                                            </span>
-                                                            <select
-                                                                value={q.type}
-                                                                onChange={(e) => handleQuestionTypeChange(qIdx, e.target.value)}
-                                                                className="rounded-lg border border-border bg-card px-2 py-1 text-xs font-bold text-foreground outline-none cursor-pointer"
-                                                            >
-                                                                <option value="multiple_choice">Pilihan Ganda</option>
-                                                                <option value="short_answer">Isian Singkat</option>
-                                                                <option value="essay">Uraian / Esai</option>
-                                                            </select>
-                                                        </div>
-
-                                                        <div className="flex items-center gap-2">
-                                                            {/* Score / Points input */}
-                                                            <div className="flex items-center gap-1 bg-muted/50 px-2 py-0.5 rounded-lg border border-border/70">
-                                                                <span className="text-[10px] font-bold text-muted-foreground">Skor:</span>
-                                                                <input
-                                                                    type="number"
-                                                                    min={0}
-                                                                    max={100}
-                                                                    value={q.points || 0}
-                                                                    onChange={(e) => handleQuestionPointsChange(qIdx, Number(e.target.value))}
-                                                                    className="w-12 text-center text-xs font-black text-primary bg-transparent outline-none"
-                                                                />
-                                                                <span className="text-[10px] text-muted-foreground font-bold">Poin</span>
+                                            {data.instrument_config.questions.map((q: any, qIdx: number) => {
+                                                const qText = q.question || q.text || '';
+                                                const calcRows = Math.max(3, Math.min(8, Math.ceil(qText.length / 40)));
+                                                return (
+                                                    <div key={q.id || qIdx} className="rounded-2xl border border-border bg-card p-3.5 sm:p-4 space-y-3 shadow-2xs overflow-hidden">
+                                                        {/* Card Header: Number, Type, Points & Delete */}
+                                                        <div className="flex items-center justify-between gap-2 border-b border-border/50 pb-2.5 flex-wrap">
+                                                            <div className="flex items-center gap-2 flex-wrap">
+                                                                <span className="text-[11px] font-black text-primary bg-primary/10 px-2 py-1 rounded-md shrink-0">
+                                                                    Soal #{qIdx + 1}
+                                                                </span>
+                                                                <select
+                                                                    value={q.type}
+                                                                    onChange={(e) => handleQuestionTypeChange(qIdx, e.target.value)}
+                                                                    className="rounded-lg border border-border bg-background px-2.5 py-1 text-xs font-bold text-foreground outline-none cursor-pointer"
+                                                                >
+                                                                    <option value="multiple_choice">Pilihan Ganda</option>
+                                                                    <option value="short_answer">Isian Singkat</option>
+                                                                    <option value="essay">Uraian / Esai</option>
+                                                                </select>
                                                             </div>
 
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => handleRemoveQuestion(qIdx)}
-                                                                className="p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition"
-                                                                title="Hapus Soal"
-                                                            >
-                                                                <Trash2 className="h-3.5 w-3.5" />
-                                                            </button>
-                                                        </div>
-                                                    </div>
+                                                            <div className="flex items-center gap-2 ml-auto shrink-0">
+                                                                {/* Score / Points input */}
+                                                                <div className="flex items-center gap-1 bg-muted/60 px-2 py-0.5 rounded-lg border border-border/70">
+                                                                    <span className="text-[10px] font-bold text-muted-foreground">Skor:</span>
+                                                                    <input
+                                                                        type="number"
+                                                                        min={0}
+                                                                        max={100}
+                                                                        value={q.points || 0}
+                                                                        onChange={(e) => handleQuestionPointsChange(qIdx, Number(e.target.value))}
+                                                                        className="w-10 text-center text-xs font-black text-primary bg-transparent outline-none"
+                                                                    />
+                                                                    <span className="text-[10px] text-muted-foreground font-bold">Poin</span>
+                                                                </div>
 
-                                                    {/* Question Text */}
-                                                    <textarea
-                                                        rows={2}
-                                                        placeholder="Tuliskan pertanyaan soal di sini..."
-                                                        value={q.question || q.text || ''}
-                                                        onChange={(e) => handleQuestionTextChange(qIdx, e.target.value)}
-                                                        className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground outline-none focus:border-primary"
-                                                    />
-
-                                                    {/* Multiple Choice Options */}
-                                                    {q.type === 'multiple_choice' && (
-                                                        <div className="space-y-2 pt-1">
-                                                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                                                                Pilihan Jawaban & Kunci:
-                                                            </p>
-                                                            <div className="space-y-1.5">
-                                                                {(q.options || []).map((opt: any, optIdx: number) => {
-                                                                    const optLabel = String.fromCharCode(65 + optIdx);
-                                                                    const isCorrect = Boolean(opt.is_correct);
-                                                                    return (
-                                                                        <div key={opt.id || optIdx} className="flex items-center gap-2">
-                                                                            <button
-                                                                                type="button"
-                                                                                onClick={() => handleSetCorrectOption(qIdx, optIdx)}
-                                                                                className={`flex h-7 w-7 items-center justify-center rounded-lg text-xs font-black transition cursor-pointer shrink-0 ${
-                                                                                    isCorrect
-                                                                                        ? 'bg-emerald-600 text-white shadow-xs'
-                                                                                        : 'bg-muted text-muted-foreground hover:bg-emerald-500/20 hover:text-emerald-700'
-                                                                                }`}
-                                                                                title={isCorrect ? 'Kunci Jawaban Benar' : 'Klik untuk jadikan kunci jawaban benar'}
-                                                                            >
-                                                                                {optLabel}
-                                                                            </button>
-                                                                            <input
-                                                                                type="text"
-                                                                                placeholder={`Pilihan ${optLabel}...`}
-                                                                                value={opt.text}
-                                                                                onChange={(e) => handleOptionTextChange(qIdx, optIdx, e.target.value)}
-                                                                                className={`flex-1 rounded-lg border px-2.5 py-1 text-xs text-foreground outline-none focus:border-primary ${
-                                                                                    isCorrect ? 'border-emerald-500 bg-emerald-500/5 font-semibold' : 'border-border bg-card'
-                                                                                }`}
-                                                                            />
-                                                                            <button
-                                                                                type="button"
-                                                                                onClick={() => handleRemoveOption(qIdx, optIdx)}
-                                                                                className="p-1 text-muted-foreground hover:text-destructive rounded transition"
-                                                                                title="Hapus Opsi"
-                                                                            >
-                                                                                <X className="h-3 w-3" />
-                                                                            </button>
-                                                                        </div>
-                                                                    );
-                                                                })}
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleRemoveQuestion(qIdx)}
+                                                                    className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition shrink-0 cursor-pointer"
+                                                                    title="Hapus Soal"
+                                                                >
+                                                                    <Trash2 className="h-4 w-4" />
+                                                                </button>
                                                             </div>
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => handleAddOption(qIdx)}
-                                                                className="inline-flex items-center gap-1 text-[11px] font-bold text-primary hover:underline pt-1 cursor-pointer"
-                                                            >
-                                                                <Plus className="h-3 w-3" /> Tambah Pilihan Opsi
-                                                            </button>
                                                         </div>
-                                                    )}
 
-                                                    {/* Essay / Short Answer: Rubric & Answer Key Guide */}
+                                                        {/* Question Textarea (Displays full text without scrolling) */}
+                                                        <div className="space-y-1">
+                                                            <textarea
+                                                                rows={calcRows}
+                                                                placeholder="Tuliskan pertanyaan soal di sini..."
+                                                                value={qText}
+                                                                onChange={(e) => handleQuestionTextChange(qIdx, e.target.value)}
+                                                                className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs sm:text-sm text-foreground outline-none focus:border-primary transition leading-relaxed min-h-[72px]"
+                                                            />
+                                                        </div>
+
+                                                        {/* Multiple Choice Options */}
+                                                        {q.type === 'multiple_choice' && (
+                                                            <div className="space-y-2 pt-1">
+                                                                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                                                                    Pilihan Jawaban & Kunci:
+                                                                </p>
+                                                                <div className="space-y-2">
+                                                                    {(q.options || []).map((opt: any, optIdx: number) => {
+                                                                        const optLabel = String.fromCharCode(65 + optIdx);
+                                                                        const isCorrect = Boolean(opt.is_correct);
+                                                                        return (
+                                                                            <div key={opt.id || optIdx} className="flex items-center gap-2">
+                                                                                <button
+                                                                                    type="button"
+                                                                                    onClick={() => handleSetCorrectOption(qIdx, optIdx)}
+                                                                                    className={`flex h-8 w-8 items-center justify-center rounded-xl text-xs font-black transition cursor-pointer shrink-0 ${
+                                                                                        isCorrect
+                                                                                            ? 'bg-emerald-600 text-white shadow-xs'
+                                                                                            : 'bg-muted text-muted-foreground hover:bg-emerald-500/20 hover:text-emerald-700'
+                                                                                    }`}
+                                                                                    title={isCorrect ? 'Kunci Jawaban Benar' : 'Klik untuk jadikan kunci jawaban benar'}
+                                                                                >
+                                                                                    {optLabel}
+                                                                                </button>
+                                                                                <input
+                                                                                    type="text"
+                                                                                    placeholder={`Pilihan ${optLabel}...`}
+                                                                                    value={opt.text}
+                                                                                    onChange={(e) => handleOptionTextChange(qIdx, optIdx, e.target.value)}
+                                                                                    className={`flex-1 rounded-xl border px-3 py-1.5 text-xs text-foreground outline-none focus:border-primary min-w-0 transition ${
+                                                                                        isCorrect ? 'border-emerald-500 bg-emerald-500/5 font-semibold' : 'border-border bg-background'
+                                                                                    }`}
+                                                                                />
+                                                                                <button
+                                                                                    type="button"
+                                                                                    onClick={() => handleRemoveOption(qIdx, optIdx)}
+                                                                                    className="p-1.5 text-muted-foreground hover:text-destructive rounded-lg transition shrink-0 cursor-pointer"
+                                                                                    title="Hapus Opsi"
+                                                                                >
+                                                                                    <X className="h-3.5 w-3.5" />
+                                                                                </button>
+                                                                            </div>
+                                                                        );
+                                                                    })}
+                                                                </div>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleAddOption(qIdx)}
+                                                                    className="inline-flex items-center gap-1 text-[11px] font-bold text-primary hover:underline pt-1 cursor-pointer"
+                                                                >
+                                                                    <Plus className="h-3.5 w-3.5" /> Tambah Pilihan Opsi
+                                                                </button>
+                                                            </div>
+                                                        )}
+
+                                                        {/* Essay / Short Answer: Rubric & Answer Key Guide */}
                                                     {q.type !== 'multiple_choice' && (
                                                         <div className="space-y-1 pt-1 p-2.5 rounded-xl bg-muted/30 border border-border/70">
                                                             <label className="text-[10px] font-bold text-foreground flex items-center gap-1">
@@ -1486,7 +1504,8 @@ export function AssessmentForm({
                                                         </div>
                                                     )}
                                                 </div>
-                                            ))}
+                                            );
+                                        })}
                                         </div>
                                     )}
                                 </div>
