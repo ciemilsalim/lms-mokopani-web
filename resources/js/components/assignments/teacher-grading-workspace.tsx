@@ -6,7 +6,7 @@ import {
     Activity, ListChecks, Mic, FileText, CheckSquare, RotateCcw,
     MessageSquare, Award, ArrowUpDown, Filter, Eye, Check, Loader2,
     SlidersHorizontal, UserCheck, UserX, Star, Info, ChevronDown, ChevronUp,
-    ExternalLink, Send, CheckCheck
+    ExternalLink, Send, CheckCheck, ArrowRight
 } from 'lucide-react';
 import { StudentAvatar } from '@/components/student-avatar';
 
@@ -50,6 +50,14 @@ interface TeacherGradingWorkspaceProps {
     onOpenRemedial?: (studentId: number) => void;
 }
 
+/**
+ * TeacherGradingWorkspace
+ * Real Mobile-Native Formative Observation & Rapid Assessment Workspace:
+ * - Ultra-narrow viewport safe (253px–430px) with 0 horizontal overflow.
+ * - Compact mobile student card (72–92px height, full-card tap).
+ * - Legible status (○ Belum dinilai / ✓ Dinilai) and 18-20px bold score.
+ * - Instant next student switching workflow.
+ */
 export function TeacherGradingWorkspace({
     assignment,
     students = [],
@@ -107,9 +115,7 @@ export function TeacherGradingWorkspace({
 
     const [savingStates, setSavingStates] = useState<Record<number, 'idle' | 'saving' | 'saved' | 'error'>>({});
 
-    // References to score inputs for keyboard navigation (Tab/Enter/ArrowDown/ArrowUp)
     const inputRefs = useRef<Record<number, HTMLInputElement | null>>({});
-    const headerSentinelRef = useRef<HTMLDivElement | null>(null);
 
     // Submission map
     const submissionMap = useMemo(() => {
@@ -203,7 +209,6 @@ export function TeacherGradingWorkspace({
         const numScore = Number(rawScore);
         if (isNaN(numScore) || numScore < 0 || numScore > (assignment.max_points || 100)) return;
 
-        // Check if unchanged
         const currentSub = submissionMap[studentId];
         if (currentSub && currentSub.score === numScore) return;
 
@@ -222,13 +227,12 @@ export function TeacherGradingWorkspace({
             setSavingStates((prev) => ({ ...prev, [studentId]: 'saved' }));
             setGlobalSaveStatus('saved');
             const now = new Date();
-            setLastSavedTime(now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+            setLastSavedTime(now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
 
             setTimeout(() => {
                 setSavingStates((prev) => ({ ...prev, [studentId]: 'idle' }));
-            }, 2500);
+            }, 2000);
 
-            // Silent Inertia reload for state integrity
             router.reload({ only: ['assignment'], preserveScroll: true });
         } catch (err) {
             setSavingStates((prev) => ({ ...prev, [studentId]: 'error' }));
@@ -236,7 +240,6 @@ export function TeacherGradingWorkspace({
         }
     };
 
-    // Keyboard navigation between student inputs
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, currentIndex: number, studentId: number) => {
         if (e.key === 'Enter' || e.key === 'Tab') {
             handleScoreBlurOrEnter(studentId);
@@ -247,20 +250,6 @@ export function TeacherGradingWorkspace({
                     inputRefs.current[nextStudent.id]?.focus();
                     inputRefs.current[nextStudent.id]?.select();
                 }
-            }
-        } else if (e.key === 'ArrowDown') {
-            e.preventDefault();
-            const nextStudent = filteredStudents[currentIndex + 1];
-            if (nextStudent && inputRefs.current[nextStudent.id]) {
-                inputRefs.current[nextStudent.id]?.focus();
-                inputRefs.current[nextStudent.id]?.select();
-            }
-        } else if (e.key === 'ArrowUp') {
-            e.preventDefault();
-            const prevStudent = filteredStudents[currentIndex - 1];
-            if (prevStudent && inputRefs.current[prevStudent.id]) {
-                inputRefs.current[prevStudent.id]?.focus();
-                inputRefs.current[prevStudent.id]?.select();
             }
         }
     };
@@ -273,7 +262,7 @@ export function TeacherGradingWorkspace({
             onOpenAnecdotalModal(student, sub);
         } else if (type === 'rubric') {
             onOpenRubricModal(student, sub);
-        } else if (type === 'oral_test') {
+        } else if (type === 'oral_test' || type === 'oral') {
             onOpenOralGrading(student);
         } else if (type === 'performance') {
             onOpenPerformanceGrading(student);
@@ -281,7 +270,7 @@ export function TeacherGradingWorkspace({
             onOpenProjectGrading(student);
         } else if (type === 'portfolio') {
             onOpenPortfolioGrading(student);
-        } else if (['observation_checklist', 'performance_observation', 'guided_discussion'].includes(type)) {
+        } else if (['observation_checklist', 'performance_observation', 'guided_discussion', 'observation'].includes(type || '')) {
             onOpenObservationModal(student, sub);
         } else {
             if (sub) {
@@ -305,40 +294,31 @@ export function TeacherGradingWorkspace({
             : 'Asesmen Formatif';
 
     const handleCompleteGrading = () => {
-        setToastMessage(`✓ Berhasil: ${scoredCount} nilai siswa telah tersimpan.`);
-        setTimeout(() => setToastMessage(null), 4000);
+        setToastMessage(`✓ ${scoredCount} nilai siswa telah tersimpan.`);
+        setTimeout(() => setToastMessage(null), 3000);
     };
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-4 w-full max-w-full min-w-0 box-border">
             {/* Sticky Compact Header on Scroll */}
             {isStickyHeaderVisible && (
-                <div className="fixed top-0 left-0 right-0 z-40 bg-card/95 backdrop-blur-md border-b border-border shadow-md py-2.5 px-4 sm:px-8 animate-in slide-in-from-top-2 duration-300">
-                    <div className="max-w-6xl mx-auto flex items-center justify-between gap-4">
-                        <div className="flex items-center gap-3 min-w-0">
+                <div className="fixed top-0 left-0 right-0 z-40 bg-card/95 backdrop-blur-md border-b border-border shadow-md py-2.5 px-3 sm:px-6 animate-in slide-in-from-top-2 duration-200">
+                    <div className="max-w-7xl mx-auto flex items-center justify-between gap-3 w-full min-w-0">
+                        <div className="flex items-center gap-2.5 min-w-0">
                             <span className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" />
                             <div className="min-w-0">
                                 <h4 className="text-xs sm:text-sm font-bold text-foreground truncate">
                                     {assignment.title}
                                 </h4>
-                                <p className="text-[10px] text-muted-foreground">
-                                    {selectedClassName} • {scoredCount}/{totalStudents} Siswa Dinilai ({progressPercentage}%)
+                                <p className="text-[11px] text-muted-foreground truncate">
+                                    {selectedClassName} • {scoredCount}/{totalStudents} dinilai ({progressPercentage}%)
                                 </p>
                             </div>
                         </div>
 
                         <div className="flex items-center gap-2 shrink-0">
-                            {unscoredCount > 0 && statusFilter !== 'unscored' && (
-                                <button
-                                    type="button"
-                                    onClick={() => setStatusFilter('unscored')}
-                                    className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-700 dark:text-amber-300 text-[11px] font-bold border border-amber-500/20 hover:bg-amber-500/20 transition cursor-pointer"
-                                >
-                                    <span>Lanjut {unscoredCount} Belum Dinilai</span>
-                                </button>
-                            )}
-                            <div className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/20">
-                                <Check className="h-3 w-3" />
+                            <div className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-xl border border-emerald-500/20">
+                                <Check className="h-3.5 w-3.5" />
                                 <span>Tersimpan</span>
                             </div>
                         </div>
@@ -346,11 +326,11 @@ export function TeacherGradingWorkspace({
                 </div>
             )}
 
-            {/* ① Minimalist Context Header */}
-            <div className="rounded-2xl border border-border bg-card p-4 sm:p-5 shadow-xs space-y-3">
-                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-                    <div className="space-y-1">
-                        <div className="flex items-center gap-2">
+            {/* 1. Assessment Context Card */}
+            <div className="rounded-2xl border border-border bg-card p-4 sm:p-5 shadow-xs space-y-3 w-full min-w-0 box-border">
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 w-full min-w-0">
+                    <div className="space-y-1 min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
                             <span className="px-2 py-0.5 rounded-md bg-primary/10 text-primary text-[10px] font-black uppercase tracking-wider border border-primary/20">
                                 {assessmentTypeLabel}
                             </span>
@@ -358,34 +338,34 @@ export function TeacherGradingWorkspace({
                                 {assignment.subject || 'Informatika'}
                             </span>
                         </div>
-                        <h1 className="text-base sm:text-xl font-black text-foreground tracking-tight leading-snug">
+                        <h1 className="text-base sm:text-lg font-bold text-foreground tracking-tight leading-snug line-clamp-2 overflow-wrap-anywhere">
                             {assignment.title}
                         </h1>
-                        <p className="text-xs font-bold text-muted-foreground flex items-center gap-2">
+                        <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5 truncate">
                             <span className="text-foreground">{selectedClassName}</span>
                             <span>•</span>
-                            <span>{totalStudents} Siswa Terdaftar</span>
+                            <span>{totalStudents} siswa</span>
                         </p>
                     </div>
 
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-2 shrink-0 pt-1 sm:pt-0">
                         {assignment.description && (
                             <button
                                 type="button"
                                 onClick={() => setShowInstructions(!showInstructions)}
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border bg-muted/30 hover:bg-muted/60 text-xs font-bold text-muted-foreground hover:text-foreground transition cursor-pointer"
+                                className="inline-flex items-center gap-1 px-3 py-2 rounded-xl border border-border bg-muted/30 hover:bg-muted/60 text-xs font-bold text-muted-foreground hover:text-foreground transition cursor-pointer min-h-[44px]"
                             >
-                                <Info className="h-3.5 w-3.5" />
-                                <span>{showInstructions ? 'Tutup Panduan' : 'Detail Asesmen'}</span>
-                                {showInstructions ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                                <Info className="h-4 w-4" />
+                                <span>{showInstructions ? 'Tutup' : 'Detail'}</span>
+                                {showInstructions ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
                             </button>
                         )}
                         <button
                             type="button"
                             onClick={() => router.visit(route('assignments.grade-view', selectedClassId && selectedClassId !== 'all' ? { assignment: assignment.id, class_id: selectedClassId } : assignment.id))}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary text-primary-foreground text-xs font-bold shadow-xs hover:bg-primary/90 transition cursor-pointer"
+                            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-bold shadow-xs hover:bg-primary/90 transition cursor-pointer min-h-[44px]"
                         >
-                            <SlidersHorizontal className="h-3.5 w-3.5" />
+                            <SlidersHorizontal className="h-4 w-4" />
                             <span>Split-Screen</span>
                         </button>
                     </div>
@@ -393,7 +373,7 @@ export function TeacherGradingWorkspace({
 
                 {/* Collapsible Instructions Details */}
                 {showInstructions && assignment.description && (
-                    <div className="mt-3 p-3.5 rounded-xl bg-muted/40 border border-border/60 text-xs text-muted-foreground leading-relaxed animate-in fade-in duration-200">
+                    <div className="mt-2 p-3.5 rounded-xl bg-muted/40 border border-border/60 text-xs text-muted-foreground leading-relaxed animate-in fade-in duration-200">
                         <p className="font-bold text-foreground text-[11px] uppercase tracking-wider mb-1">Panduan / Deskripsi Tugas:</p>
                         <div className="whitespace-pre-line">{assignment.description}</div>
                     </div>
@@ -401,10 +381,7 @@ export function TeacherGradingWorkspace({
 
                 {/* Class Switcher Pills (If Multi-Class) */}
                 {assignedClasses.length > 1 && (
-                    <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-2 border-t border-border/50 scrollbar-hide">
-                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider shrink-0">
-                            Pilih Kelas:
-                        </span>
+                    <div className="flex items-center gap-1.5 overflow-x-auto pb-1 pt-2 border-t border-border/50 scrollbar-hide">
                         {assignedClasses.map((cls) => {
                             const isActive = selectedClassId === cls.id || (!selectedClassId && assignedClasses[0]?.id === cls.id);
                             return (
@@ -412,7 +389,7 @@ export function TeacherGradingWorkspace({
                                     key={cls.id}
                                     type="button"
                                     onClick={() => router.visit(route('assignments.show', { assignment: assignment.id, class_id: cls.id }), { preserveScroll: true })}
-                                    className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                                    className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer min-h-[40px] ${
                                         isActive
                                             ? 'bg-primary text-primary-foreground shadow-xs font-black'
                                             : 'bg-muted/40 hover:bg-muted/70 text-muted-foreground hover:text-foreground border border-border/60'
@@ -425,83 +402,71 @@ export function TeacherGradingWorkspace({
                                 </button>
                             );
                         })}
-                        <button
-                            type="button"
-                            onClick={() => router.visit(route('assignments.show', { assignment: assignment.id, class_id: 'all' }), { preserveScroll: true })}
-                            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                                selectedClassId === 'all'
-                                    ? 'bg-primary text-primary-foreground shadow-xs font-black'
-                                    : 'bg-muted/40 hover:bg-muted/70 text-muted-foreground hover:text-foreground border border-border/60'
-                            }`}
-                        >
-                            <span>Semua Siswa</span>
-                        </button>
                     </div>
                 )}
             </div>
 
-            {/* ② Actionable Progress Section */}
-            <div className="rounded-2xl border border-border bg-card p-4 sm:p-5 shadow-xs space-y-3">
+            {/* 2. Progress Card */}
+            <div className="rounded-2xl border border-border bg-card p-4 sm:p-5 shadow-xs space-y-3 w-full min-w-0 box-border">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <div>
                         <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
                             Progres Penilaian
                         </span>
                         <div className="flex items-baseline gap-2 mt-0.5">
-                            <span className="text-base sm:text-lg font-black text-foreground">
-                                {scoredCount} dari {totalStudents} siswa sudah dinilai
+                            <span className="text-base sm:text-lg font-bold text-foreground">
+                                {scoredCount} / {totalStudents} siswa dinilai
                             </span>
-                            <span className="text-xs font-black text-primary">
+                            <span className="text-xs font-bold text-primary">
                                 ({progressPercentage}%)
                             </span>
                         </div>
                     </div>
 
-                    {/* Alert Pill for Next Action */}
                     <div>
                         {unscoredCount > 0 ? (
-                            <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20 text-xs font-bold">
+                            <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20 text-xs font-bold min-h-[36px]">
                                 <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
                                 <span>{unscoredCount} siswa belum dinilai</span>
                             </div>
                         ) : (
-                            <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 text-xs font-bold">
+                            <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 text-xs font-bold min-h-[36px]">
                                 <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                                <span>Semua siswa telah selesai dinilai</span>
+                                <span>Semua siswa telah dinilai</span>
                             </div>
                         )}
                     </div>
                 </div>
 
-                {/* Progress Bar */}
+                {/* Progress Bar (8px height, rounded-full) */}
                 <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
                     <div
-                        className="h-full rounded-full bg-gradient-to-r from-primary to-emerald-500 transition-all duration-500"
+                        className="h-full rounded-full bg-gradient-to-r from-primary to-emerald-500 transition-all duration-300"
                         style={{ width: `${progressPercentage}%` }}
                     />
                 </div>
             </div>
 
-            {/* ③ Quick Filter & Search Controls */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-1">
-                {/* Search Box */}
-                <div className="relative flex-1 max-w-sm">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+            {/* 3. Search & Filter Controls */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-1 w-full min-w-0">
+                {/* Search Box (48px height, 16px radius) */}
+                <div className="relative flex-1 w-full min-w-0">
+                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground pointer-events-none" />
                     <input
                         type="text"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         placeholder="Cari nama atau NIS siswa..."
-                        className="w-full pl-9 pr-3 py-2 bg-card border border-border rounded-xl text-xs font-medium text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition"
+                        className="w-full pl-11 pr-4 py-2.5 bg-card border border-border/80 rounded-2xl text-sm font-medium text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition min-h-[48px] box-border"
                     />
                 </div>
 
-                {/* Filter Pills */}
-                <div className="flex items-center gap-1.5 shrink-0 overflow-x-auto pb-1 sm:pb-0">
+                {/* Filter Tabs (40-44px height) */}
+                <div className="flex items-center gap-1.5 shrink-0 overflow-x-auto pb-1 sm:pb-0 scrollbar-hide">
                     <button
                         type="button"
                         onClick={() => setStatusFilter('all')}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                        className={`px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer min-h-[44px] flex items-center justify-center ${
                             statusFilter === 'all'
                                 ? 'bg-primary text-primary-foreground shadow-xs font-black'
                                 : 'bg-card border border-border text-muted-foreground hover:text-foreground'
@@ -512,7 +477,7 @@ export function TeacherGradingWorkspace({
                     <button
                         type="button"
                         onClick={() => setStatusFilter('unscored')}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                        className={`px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer min-h-[44px] flex items-center justify-center ${
                             statusFilter === 'unscored'
                                 ? 'bg-amber-600 text-white shadow-xs font-black'
                                 : 'bg-card border border-border text-amber-600 dark:text-amber-400 hover:bg-amber-500/10'
@@ -523,7 +488,7 @@ export function TeacherGradingWorkspace({
                     <button
                         type="button"
                         onClick={() => setStatusFilter('scored')}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                        className={`px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer min-h-[44px] flex items-center justify-center ${
                             statusFilter === 'scored'
                                 ? 'bg-emerald-600 text-white shadow-xs font-black'
                                 : 'bg-card border border-border text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10'
@@ -534,23 +499,22 @@ export function TeacherGradingWorkspace({
                 </div>
             </div>
 
-            {/* ④ Ultra-Compact Student Assessment List (~64px height per item) */}
-            <div className="rounded-2xl border border-border bg-card shadow-xs overflow-hidden">
+            {/* 4. Primary Work Area: Compact Mobile Student Cards (72-92px height, full card tap) */}
+            <div className="rounded-2xl border border-border/80 bg-card shadow-xs overflow-hidden w-full min-w-0 box-border">
                 {filteredStudents.length === 0 ? (
-                    <div className="p-10 text-center space-y-2">
+                    <div className="p-8 text-center space-y-2">
                         <UserX className="h-8 w-8 text-muted-foreground mx-auto opacity-50" />
-                        <p className="text-xs font-bold text-foreground">Tidak ada siswa yang sesuai filter.</p>
-                        <p className="text-[11px] text-muted-foreground">Coba ubah kata kunci atau pilih filter 'Semua'.</p>
+                        <p className="text-sm font-bold text-foreground">Tidak ada siswa yang sesuai filter.</p>
+                        <p className="text-xs text-muted-foreground">Coba ubah kata kunci atau pilih tab 'Semua'.</p>
                     </div>
                 ) : (
-                    <div className="divide-y divide-border">
+                    <div className="divide-y divide-border/60">
                         {filteredStudents.map((student, idx) => {
                             const sub = submissionMap[student.id];
                             const subScore = getSubmissionScore(sub);
                             const currentScore = localScores[student.id] ?? '';
                             const isScored = (subScore !== null && subScore !== undefined) || (currentScore !== '' && currentScore !== undefined);
                             const effectiveScore = currentScore !== '' && currentScore !== undefined ? currentScore : (subScore ?? '');
-                            const isSubmitted = !!sub;
                             const isPassed = isScored && assignment.passing_grade !== null && assignment.passing_grade !== undefined
                                 ? Number(effectiveScore) >= assignment.passing_grade
                                 : true;
@@ -559,48 +523,46 @@ export function TeacherGradingWorkspace({
                             return (
                                 <div
                                     key={student.id}
-                                    className="px-3.5 sm:px-5 py-3 hover:bg-muted/30 transition-colors flex items-center justify-between gap-3 min-h-[64px]"
+                                    onClick={() => handleOpenDetailModal(student)}
+                                    className="p-3.5 sm:p-4 hover:bg-muted/20 active:bg-muted/40 transition-colors cursor-pointer flex items-center justify-between gap-3 min-h-[76px] sm:min-h-[84px] w-full min-w-0 box-border"
+                                    role="button"
+                                    tabIndex={0}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' || e.key === ' ') {
+                                            e.preventDefault();
+                                            handleOpenDetailModal(student);
+                                        }
+                                    }}
                                 >
-                                    {/* Left: Number + Avatar + Name + Clear Status */}
-                                    <div className="flex items-center gap-3 min-w-0 flex-1">
-                                        <span className="text-[11px] font-mono font-bold text-muted-foreground/80 w-5 shrink-0 text-center">
+                                    {/* Left: Number + Avatar (36x36) + Name (13px bold) + NIS + Legible Status */}
+                                    <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
+                                        <span className="text-[10px] sm:text-11px font-mono font-bold text-muted-foreground/70 w-4 sm:w-5 shrink-0 text-center">
                                             {String(idx + 1).padStart(2, '0')}
                                         </span>
 
                                         <StudentAvatar
                                             photoUrl={student.photo_url}
                                             name={student.name}
-                                            className="h-8 w-8 sm:h-9 sm:w-9 rounded-xl shrink-0"
+                                            className="h-9 w-9 rounded-xl shrink-0"
                                         />
 
-                                        <div className="min-w-0 flex-1">
-                                            <div className="flex items-center gap-2 flex-wrap">
-                                                <p className="text-xs sm:text-sm font-bold text-foreground truncate">
-                                                    {student.name}
+                                        <div className="min-w-0 flex-1 space-y-0.5">
+                                            <p className="text-[13px] sm:text-sm font-bold text-foreground leading-snug line-clamp-2 overflow-wrap-anywhere">
+                                                {student.name}
+                                            </p>
+                                            
+                                            {student.nis && (
+                                                <p className="text-[11px] font-mono text-muted-foreground truncate">
+                                                    {student.nis}
                                                 </p>
-                                                {student.nis && (
-                                                    <span className="text-[10px] font-mono text-muted-foreground shrink-0">
-                                                        ({student.nis})
-                                                    </span>
-                                                )}
-                                            </div>
+                                            )}
 
-                                            {/* Status Indicator: Legible Text */}
-                                            <div className="flex items-center gap-2 mt-0.5">
+                                            {/* Status Indicator (Text + Icon) */}
+                                            <div className="flex items-center gap-1.5 pt-0.5">
                                                 {isScored ? (
                                                     <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
-                                                        <Check className="h-3 w-3 stroke-[3]" />
-                                                        <span>Nilai: <strong>{effectiveScore}</strong></span>
-                                                        {assignment.passing_grade && (
-                                                            <span className={`ml-1 text-[9px] font-black uppercase px-1.5 py-0.2 rounded ${isPassed ? 'bg-emerald-500/10 text-emerald-600' : 'bg-rose-500/10 text-rose-600'}`}>
-                                                                {isPassed ? 'Tuntas' : 'Remedial'}
-                                                            </span>
-                                                        )}
-                                                    </span>
-                                                ) : isSubmitted ? (
-                                                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 dark:text-blue-400">
-                                                        <Clock className="h-3 w-3" />
-                                                        <span>Terkumpul (Belum Dinilai)</span>
+                                                        <Check className="h-3.5 w-3.5 stroke-[3]" />
+                                                        <span>Dinilai</span>
                                                     </span>
                                                 ) : (
                                                     <span className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground/80">
@@ -612,10 +574,37 @@ export function TeacherGradingWorkspace({
                                         </div>
                                     </div>
 
-                                    {/* Right: Direct Score Input & Action Button */}
-                                    <div className="flex items-center gap-2 shrink-0">
-                                        {/* Inline Rapid Score Input */}
-                                        <div className="relative flex items-center">
+                                    {/* Right: Score or Action CTA */}
+                                    <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
+                                        {isScored ? (
+                                            <div
+                                                onClick={() => handleOpenDetailModal(student)}
+                                                className="flex flex-col items-end cursor-pointer"
+                                            >
+                                                <span className="text-base sm:text-lg font-bold text-foreground leading-tight">
+                                                    {effectiveScore}
+                                                </span>
+                                                {assignment.passing_grade && (
+                                                    <span className={`text-[9px] font-bold uppercase px-1.5 py-0.2 rounded mt-0.5 ${
+                                                        isPassed ? 'bg-emerald-500/10 text-emerald-600' : 'bg-rose-500/10 text-rose-600'
+                                                    }`}>
+                                                        {isPassed ? 'Tuntas' : 'Remedial'}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <button
+                                                type="button"
+                                                onClick={() => handleOpenDetailModal(student)}
+                                                className="inline-flex items-center gap-1 px-3.5 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-bold shadow-xs hover:bg-primary/90 transition active:scale-95 cursor-pointer min-h-[44px]"
+                                            >
+                                                <span>Nilai</span>
+                                                <ArrowRight className="h-3.5 w-3.5" />
+                                            </button>
+                                        )}
+
+                                        {/* Desktop-only quick inline input */}
+                                        <div className="hidden md:flex items-center relative pl-2 border-l border-border/60">
                                             <input
                                                 ref={(el) => { inputRefs.current[student.id] = el; }}
                                                 type="number"
@@ -629,30 +618,10 @@ export function TeacherGradingWorkspace({
                                                 onBlur={() => handleScoreBlurOrEnter(student.id)}
                                                 onKeyDown={(e) => handleKeyDown(e, idx, student.id)}
                                                 placeholder="—"
-                                                className={`w-14 sm:w-16 h-9 px-2 text-center text-xs font-black rounded-xl border transition focus:outline-none focus:ring-2 focus:ring-primary/20 ${
-                                                    isScored
-                                                        ? 'border-emerald-500/40 bg-emerald-500/5 text-emerald-700 dark:text-emerald-300 font-black'
-                                                        : 'border-border bg-card text-foreground placeholder:text-muted-foreground/60'
-                                                }`}
+                                                className="w-14 h-9 px-2 text-center text-xs font-bold rounded-xl border border-border bg-card text-foreground transition focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                                title="Input nilai cepat (Desktop)"
                                             />
-                                            {savingState === 'saving' && (
-                                                <Loader2 className="absolute -right-5 h-3.5 w-3.5 animate-spin text-primary shrink-0" />
-                                            )}
-                                            {savingState === 'saved' && (
-                                                <Check className="absolute -right-5 h-3.5 w-3.5 text-emerald-500 shrink-0" />
-                                            )}
                                         </div>
-
-                                        {/* Detail Modal / Sheet Trigger */}
-                                        <button
-                                            type="button"
-                                            onClick={() => handleOpenDetailModal(student)}
-                                            className="px-2.5 sm:px-3 h-9 rounded-xl border border-border bg-muted/20 hover:bg-muted/60 text-xs font-bold text-muted-foreground hover:text-foreground transition inline-flex items-center gap-1 cursor-pointer"
-                                            title="Buka Lembar Kerja Detail"
-                                        >
-                                            <Activity className="h-3.5 w-3.5" />
-                                            <span className="hidden sm:inline">Detail</span>
-                                        </button>
                                     </div>
                                 </div>
                             );
@@ -661,53 +630,43 @@ export function TeacherGradingWorkspace({
                 )}
             </div>
 
-            {/* ⑤ Sticky Bottom Footer: Autosave Status & Quick Finalize */}
-            <div className="sticky bottom-0 z-30 -mx-4 sm:-mx-6 -mb-6 px-4 sm:px-6 py-3 bg-card/95 backdrop-blur-md border-t border-border shadow-lg flex items-center justify-between gap-4">
-                <div className="flex items-center gap-2 text-xs">
+            {/* 5. Sticky Bottom Footer on Mobile: Autosave & Finish Button */}
+            <div className="sticky bottom-0 z-30 -mx-3 xs:-mx-4 sm:-mx-6 -mb-6 px-4 sm:px-6 py-3 bg-card/95 backdrop-blur-md border-t border-border shadow-lg flex items-center justify-between gap-3 w-auto min-w-0">
+                <div className="flex items-center gap-2 text-xs truncate">
                     {globalSaveStatus === 'saving' ? (
                         <span className="inline-flex items-center gap-1.5 text-primary font-bold animate-pulse">
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            <span>Menyimpan nilai ke server...</span>
+                            <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
+                            <span className="truncate">Menyimpan nilai...</span>
                         </span>
                     ) : (
-                        <span className="inline-flex items-center gap-1.5 text-muted-foreground font-medium">
-                            <CheckCheck className="h-4 w-4 text-emerald-500" />
-                            <span>
-                                <strong>{scoredCount}</strong> dari {totalStudents} nilai tersimpan otomatis
-                                {lastSavedTime && <span className="hidden sm:inline opacity-70"> ({lastSavedTime})</span>}
+                        <span className="inline-flex items-center gap-1.5 text-muted-foreground font-medium truncate">
+                            <CheckCheck className="h-4 w-4 text-emerald-500 shrink-0" />
+                            <span className="truncate">
+                                <strong>{scoredCount}/{totalStudents}</strong> tersimpan otomatis
                             </span>
                         </span>
                     )}
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="shrink-0">
                     <button
                         type="button"
                         onClick={handleCompleteGrading}
-                        className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition shadow-xs cursor-pointer ${
+                        className={`inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold transition shadow-xs cursor-pointer min-h-[44px] ${
                             unscoredCount === 0
                                 ? 'bg-emerald-600 text-white hover:bg-emerald-500'
                                 : 'bg-primary text-primary-foreground hover:bg-primary/90'
                         }`}
                     >
-                        {unscoredCount === 0 ? (
-                            <>
-                                <CheckCircle2 className="h-3.5 w-3.5" />
-                                <span>Publikasikan Hasil</span>
-                            </>
-                        ) : (
-                            <>
-                                <Send className="h-3.5 w-3.5" />
-                                <span>Selesaikan Penilaian</span>
-                            </>
-                        )}
+                        <CheckCircle2 className="h-4 w-4" />
+                        <span>Selesai</span>
                     </button>
                 </div>
             </div>
 
             {/* Toast Notification */}
             {toastMessage && (
-                <div className="fixed bottom-16 right-6 z-50 bg-slate-900 text-white px-4 py-2.5 rounded-xl shadow-xl border border-slate-800 text-xs font-bold animate-in slide-in-from-bottom-3 duration-200 flex items-center gap-2">
+                <div className="fixed bottom-20 right-4 sm:right-6 z-50 bg-slate-900 text-white px-4 py-2.5 rounded-xl shadow-xl border border-slate-800 text-xs font-bold animate-in slide-in-from-bottom-3 duration-200 flex items-center gap-2">
                     <CheckCircle2 className="h-4 w-4 text-emerald-400" />
                     <span>{toastMessage}</span>
                 </div>

@@ -636,6 +636,8 @@ export default function ShowAssignment({
     const [isRetryActive, setIsRetryActive] = useState(false);
     const isSummativeLocked = assignment.assessment_type === 'summative' && my_submission && !my_submission.is_remedial_open;
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+    const [showDiscussion, setShowDiscussion] = useState(false);
+    const [isSavingObservation, setIsSavingObservation] = useState(false);
     const [emojiFilter, setEmojiFilter] = useState<'all' | 'paham' | 'ragu' | 'bingung'>('all');
     const [conceptRubric, setConceptRubric] = useState({
         koneksi: false,
@@ -1789,10 +1791,14 @@ export default function ShowAssignment({
                 setSelectedSubmission(null);
                 setSelectedStudent(null);
                 teacherForm.reset();
-            },
+            }
         });
     };
-    const handleSaveObservation = () => {
+
+    const handleSaveObservation = (andNext = false) => {
+        if (!selectedStudent || isSavingObservation) return;
+        setIsSavingObservation(true);
+
         const content = JSON.stringify({
             type: 'observation',
             checklist: obsData.checklist,
@@ -1804,16 +1810,30 @@ export default function ShowAssignment({
         const munculCount = Object.values(obsData.checklist).filter(v => v === true).length;
         const score = total > 0 ? Math.round((munculCount / total) * 100) : 0;
 
+        const currentStudentId = selectedStudent.id;
+        const currentIdx = students.findIndex(s => s.id === currentStudentId);
+
         router.post(route('assignments.grade'), {
             assignment_id: assignment.id,
-            student_id: teacherForm.data.student_id,
+            student_id: currentStudentId,
             score: score,
             feedback: teacherForm.data.feedback,
             content: content
         }, {
+            preserveScroll: true,
             onSuccess: () => {
-                setSelectedStudent(null);
-                teacherForm.reset();
+                setIsSavingObservation(false);
+                if (andNext && currentIdx >= 0 && currentIdx < students.length - 1) {
+                    const next = students[currentIdx + 1];
+                    const nextSub = submissions.find(s => s.student_id === next.id);
+                    openObservationModal(next, nextSub);
+                } else {
+                    setSelectedStudent(null);
+                    teacherForm.reset();
+                }
+            },
+            onError: () => {
+                setIsSavingObservation(false);
             }
         });
     };
@@ -2381,17 +2401,40 @@ export default function ShowAssignment({
                         />
 
                         
-                        {/* Diskusi & Catatan Asesmen Kelas */}
-                        <div className="rounded-2xl border border-border bg-card p-4 sm:p-6 shadow-xs">
-                            <h3 className="text-xs sm:text-sm font-black text-foreground uppercase tracking-wider mb-4">
-                                Diskusi & Catatan Kelas
-                            </h3>
-                            <CommentSection 
-                                assignmentId={assignment.id} 
-                                comments={comments} 
-                                authId={auth_id} 
-                                userRole={user_role} 
-                            />
+                        {/* Diskusi & Catatan Asesmen Kelas (Collapsed by default on mobile) */}
+                        <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-xs">
+                            <button
+                                type="button"
+                                onClick={() => setShowDiscussion(!showDiscussion)}
+                                className="w-full flex items-center justify-between p-4 sm:p-5 bg-card hover:bg-muted/20 transition cursor-pointer text-left"
+                                aria-expanded={showDiscussion}
+                            >
+                                <div className="flex items-center gap-2">
+                                    <MessageSquare className="h-4 w-4 text-primary" />
+                                    <h3 className="text-xs sm:text-sm font-bold text-foreground">
+                                        Diskusi Pembelajaran
+                                    </h3>
+                                    {comments && comments.length > 0 && (
+                                        <span className="text-[10px] font-mono font-bold bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                                            {comments.length}
+                                        </span>
+                                    )}
+                                </div>
+                                <div className={`p-1 rounded-lg bg-muted text-muted-foreground transition-transform duration-200 ${showDiscussion ? 'rotate-180' : ''}`}>
+                                    <ChevronDown className="h-4 w-4" />
+                                </div>
+                            </button>
+
+                            {showDiscussion && (
+                                <div className="p-4 sm:p-6 border-t border-border/60">
+                                    <CommentSection 
+                                        assignmentId={assignment.id} 
+                                        comments={comments} 
+                                        authId={auth_id} 
+                                        userRole={user_role} 
+                                    />
+                                </div>
+                            )}
                         </div>
                     </div>
                 ) : (
@@ -5123,27 +5166,30 @@ export default function ShowAssignment({
         </div>
 
             {/* Observation Modal (TEACHER) */}
-            {selectedStudent && (
+            {selectedStudent && (() => {
+                const currentStudentIndex = students.findIndex(s => s.id === selectedStudent.id);
+                return (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm p-2 sm:p-4 animate-in fade-in duration-300">
-                    <div className="w-full max-w-2xl max-h-[92vh] overflow-y-auto custom-scrollbar rounded-xl bg-card p-4 sm:p-6 shadow-none border border-border animate-in zoom-in-95 duration-300">
-                        <div className="flex items-center justify-between mb-8">
-                            <div className="flex items-center gap-4">
-                                <div className={`h-12 w-12 rounded-xl ${
+                    <div className="w-full max-w-2xl max-h-[92vh] overflow-y-auto custom-scrollbar rounded-2xl bg-card p-4 sm:p-6 shadow-xl border border-border animate-in zoom-in-95 duration-200">
+                        {/* Modal Header */}
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-3 min-w-0">
+                                <div className={`h-10 w-10 sm:h-11 sm:w-11 rounded-xl ${
                                     assignment.instrument_type === 'anecdotal_notes' 
-                                        ? 'bg-indigo-500 shadow-indigo-200' 
+                                        ? 'bg-indigo-500' 
                                         : (assignment.instrument_type === 'oral_test' || assignment.instrument_type === 'oral')
-                                            ? 'bg-emerald-500 shadow-emerald-200'
-                                            : 'bg-sky-500 shadow-sky-200'
-                                } flex items-center justify-center text-white shadow-lg`}>
+                                            ? 'bg-emerald-500'
+                                            : 'bg-primary'
+                                } flex items-center justify-center text-white shrink-0 shadow-xs`}>
                                     {assignment.instrument_type === 'anecdotal_notes' 
-                                        ? <FileText className="h-6 w-6" /> 
+                                        ? <FileText className="h-5 w-5" /> 
                                         : (assignment.instrument_type === 'oral_test' || assignment.instrument_type === 'oral')
-                                            ? <Mic className="h-6 w-6" />
-                                            : <Activity className="h-6 w-6" />
+                                            ? <Mic className="h-5 w-5" />
+                                            : <Activity className="h-5 w-5" />
                                     }
                                 </div>
-                                <div>
-                                    <h3 className="text-xl font-black text-foreground tracking-tight">
+                                <div className="min-w-0">
+                                    <h3 className="text-base sm:text-lg font-bold text-foreground tracking-tight leading-tight truncate">
                                         {assignment.instrument_type === 'anecdotal_notes' 
                                             ? 'Catatan Anekdotal' 
                                             : (assignment.instrument_type === 'oral_test' || assignment.instrument_type === 'oral')
@@ -5151,13 +5197,59 @@ export default function ShowAssignment({
                                                 : 'Observasi Siswa'
                                         }
                                     </h3>
-                                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">{selectedStudent.name}</p>
+                                    <p className="text-xs font-semibold text-muted-foreground truncate">{selectedStudent.name}</p>
                                 </div>
                             </div>
-                            <button onClick={() => setSelectedStudent(null)} className="h-10 w-10 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center transition-colors">
-                                <X className="h-6 w-6 text-muted-foreground" />
+                            <button 
+                                type="button"
+                                onClick={() => setSelectedStudent(null)} 
+                                className="h-11 w-11 rounded-xl hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center transition cursor-pointer"
+                                aria-label="Tutup"
+                            >
+                                <X className="h-5 w-5" />
                             </button>
                         </div>
+
+                        {/* Fast Student Switcher Header */}
+                        {currentStudentIndex >= 0 && (
+                            <div className="flex items-center justify-between py-2 px-2 mb-4 border border-border bg-muted/30 rounded-xl">
+                                <button
+                                    type="button"
+                                    disabled={currentStudentIndex <= 0 || isSavingObservation}
+                                    onClick={() => {
+                                        if (currentStudentIndex > 0) {
+                                            const prev = students[currentStudentIndex - 1];
+                                            const prevSub = submissions.find(s => s.student_id === prev.id);
+                                            openObservationModal(prev, prevSub);
+                                        }
+                                    }}
+                                    className="inline-flex items-center gap-1 text-xs font-bold text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:pointer-events-none px-2.5 py-1.5 rounded-lg min-h-[40px] cursor-pointer"
+                                >
+                                    <ChevronLeft className="h-4 w-4" />
+                                    <span className="hidden xs:inline">Sebelumnya</span>
+                                </button>
+
+                                <span className="text-xs font-bold text-foreground text-center">
+                                    Siswa {currentStudentIndex + 1} dari {students.length}
+                                </span>
+
+                                <button
+                                    type="button"
+                                    disabled={currentStudentIndex >= students.length - 1 || isSavingObservation}
+                                    onClick={() => {
+                                        if (currentStudentIndex < students.length - 1) {
+                                            const next = students[currentStudentIndex + 1];
+                                            const nextSub = submissions.find(s => s.student_id === next.id);
+                                            openObservationModal(next, nextSub);
+                                        }
+                                    }}
+                                    className="inline-flex items-center gap-1 text-xs font-bold text-primary hover:underline disabled:opacity-30 disabled:pointer-events-none px-2.5 py-1.5 rounded-lg min-h-[40px] cursor-pointer"
+                                >
+                                    <span className="hidden xs:inline">Berikutnya</span>
+                                    <ChevronRight className="h-4 w-4" />
+                                </button>
+                            </div>
+                        )}
 
                         {assignment.instrument_type === 'anecdotal_notes' ? (
                             <div className="space-y-6 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
@@ -6111,14 +6203,22 @@ export default function ShowAssignment({
                                                         <button 
                                                             type="button"
                                                             onClick={() => setObsData({ ...obsData, checklist: { ...obsData.checklist, [indicatorKey]: true } })}
-                                                            className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${obsData.checklist[indicatorKey] === true ? 'bg-emerald-500 text-white shadow-sm' : 'bg-slate-100 text-muted-foreground hover:bg-emerald-50 hover:text-emerald-500'}`}
+                                                            className={`px-3.5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all min-h-[44px] cursor-pointer ${
+                                                                obsData.checklist[indicatorKey] === true 
+                                                                    ? 'bg-emerald-600 text-white shadow-xs' 
+                                                                    : 'bg-muted text-muted-foreground hover:bg-emerald-500/10 hover:text-emerald-600'
+                                                            }`}
                                                         >
                                                             Muncul
                                                         </button>
                                                         <button 
                                                             type="button"
                                                             onClick={() => setObsData({ ...obsData, checklist: { ...obsData.checklist, [indicatorKey]: false } })}
-                                                            className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${obsData.checklist[indicatorKey] === false ? 'bg-rose-500 text-white shadow-sm' : 'bg-slate-100 text-muted-foreground hover:bg-rose-50 hover:text-rose-500'}`}
+                                                            className={`px-3.5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all min-h-[44px] cursor-pointer ${
+                                                                obsData.checklist[indicatorKey] === false 
+                                                                    ? 'bg-rose-600 text-white shadow-xs' 
+                                                                    : 'bg-muted text-muted-foreground hover:bg-rose-500/10 hover:text-rose-600'
+                                                            }`}
                                                         >
                                                             Belum
                                                         </button>
@@ -6129,11 +6229,11 @@ export default function ShowAssignment({
                                     </div>
                                 </div>
 
-                                <div className="pt-4 border-t border-slate-50 dark:border-slate-800 flex items-center justify-between mb-4">
-                                    <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Status KKTP:</span>
+                                <div className="pt-4 border-t border-border flex items-center justify-between mb-3">
+                                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Status KKTP:</span>
                                     {(() => {
                                         const kktp = assignment.instrument_config?.kktp;
-                                        if (!kktp) return <span className="text-[9px] font-black text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-md uppercase tracking-wider">Belum Diatur</span>;
+                                        if (!kktp) return <span className="text-[10px] font-bold text-muted-foreground bg-muted px-2.5 py-1 rounded-lg uppercase">Belum Diatur</span>;
                                         const total = (assignment.instrument_config?.indicators || []).length;
                                         const checkedCount = Object.values(obsData.checklist).filter(v => v === true).length;
                                         let isPassed = false;
@@ -6151,53 +6251,81 @@ export default function ShowAssignment({
                                             isPassed = total > 0 ? (checkedCount / total) >= 0.75 : false;
                                         }
                                         return isPassed ? (
-                                            <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 dark:bg-emerald-950/20 px-2 py-1 rounded-md uppercase tracking-wider">Tuntas ({checkedCount}/{total})</span>
+                                            <span className="text-xs font-bold text-emerald-600 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-lg">Tuntas ({checkedCount}/{total})</span>
                                         ) : (
-                                            <span className="text-[9px] font-black text-rose-600 bg-rose-50 dark:bg-rose-950/20 px-2 py-1 rounded-md uppercase tracking-wider">Belum Tuntas ({checkedCount}/{total})</span>
+                                            <span className="text-xs font-bold text-rose-600 bg-rose-500/10 border border-rose-500/20 px-2.5 py-1 rounded-lg">Belum Tuntas ({checkedCount}/{total})</span>
                                         );
                                     })()}
                                 </div>
 
-                                {/* Qualitative Notes */}
-                                <div className="grid md:grid-cols-2 gap-6">
-                                    <div className="space-y-3">
-                                        <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Catatan Observasi</label>
+                                {/* Qualitative Notes (72-88px height) */}
+                                <div className="grid md:grid-cols-2 gap-4">
+                                    <div className="space-y-1.5">
+                                        <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Catatan Observasi</label>
                                         <textarea 
-                                            rows={4}
+                                            rows={3}
                                             value={obsData.note}
                                             onChange={(e) => setObsData({ ...obsData, note: e.target.value })}
                                             placeholder="Deskripsikan perilaku menonjol atau kejadian saat itu..."
-                                            className="w-full rounded-xl border border-border bg-slate-50/50 dark:bg-slate-800/50 px-6 py-4 text-xs font-medium focus:border-sky-400 outline-none transition-all resize-none"
+                                            className="w-full rounded-2xl border border-border bg-card p-3.5 text-xs sm:text-sm font-medium focus:border-primary outline-none transition-all resize-none min-h-[76px] box-border"
                                         />
                                     </div>
-                                    <div className="space-y-3">
-                                        <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Strategi Tindak Lanjut</label>
+                                    <div className="space-y-1.5">
+                                        <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Strategi Tindak Lanjut</label>
                                         <textarea 
-                                            rows={4}
+                                            rows={3}
                                             value={obsData.action_plan}
                                             onChange={(e) => setObsData({ ...obsData, action_plan: e.target.value })}
                                             placeholder="Tuliskan rencana bimbingan atau tantangan selanjutnya..."
-                                            className="w-full rounded-xl border border-border bg-slate-50/50 dark:bg-slate-800/50 px-6 py-4 text-xs font-medium focus:border-emerald-400 outline-none transition-all resize-none"
+                                            className="w-full rounded-2xl border border-border bg-card p-3.5 text-xs sm:text-sm font-medium focus:border-emerald-500 outline-none transition-all resize-none min-h-[76px] box-border"
                                         />
                                     </div>
                                 </div>
 
-                                <div className="flex gap-4 pt-4">
+                                {/* Sticky-friendly Actions */}
+                                <div className="flex flex-col sm:flex-row gap-2.5 pt-4 border-t border-border">
                                     <button 
                                         type="button"
+                                        disabled={isSavingObservation}
                                         onClick={() => setSelectedStudent(null)}
-                                        className="flex-1 rounded-md bg-slate-100 dark:bg-slate-800 py-4 text-xs font-black text-muted-foreground uppercase tracking-widest hover:bg-slate-200 transition-all"
+                                        className="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-border bg-muted/40 hover:bg-muted text-xs font-bold text-muted-foreground hover:text-foreground transition min-h-[44px] cursor-pointer"
                                     >
                                         Batal
                                     </button>
-                                    <button 
-                                        type="button"
-                                        onClick={handleSaveObservation}
-                                        className="flex-1 rounded-md bg-gradient-to-r from-emerald-500 to-teal-600 py-4 text-xs font-black text-white shadow-xl shadow-emerald-200 dark:shadow-none hover:scale-[1.02] active:scale-[0.98] transition-all uppercase tracking-widest"
-                                    >
-                                        <Save className="h-4 w-4 inline mr-2" />
-                                        Simpan Observasi
-                                    </button>
+                                    
+                                    <div className="flex-1 flex items-center gap-2">
+                                        <button 
+                                            type="button"
+                                            disabled={isSavingObservation}
+                                            onClick={() => handleSaveObservation(false)}
+                                            className="flex-1 rounded-xl bg-muted/80 hover:bg-muted text-foreground border border-border py-2.5 px-3 text-xs font-bold transition min-h-[44px] disabled:opacity-50 cursor-pointer"
+                                        >
+                                            <Save className="h-4 w-4 inline mr-1.5" />
+                                            <span>Simpan</span>
+                                        </button>
+
+                                        {currentStudentIndex < students.length - 1 ? (
+                                            <button 
+                                                type="button"
+                                                disabled={isSavingObservation}
+                                                onClick={() => handleSaveObservation(true)}
+                                                className="flex-1 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 py-2.5 px-3 text-xs font-bold shadow-xs transition min-h-[44px] disabled:opacity-50 cursor-pointer inline-flex items-center justify-center gap-1"
+                                            >
+                                                <span>Simpan & Berikutnya</span>
+                                                <ChevronRight className="h-4 w-4" />
+                                            </button>
+                                        ) : (
+                                            <button 
+                                                type="button"
+                                                disabled={isSavingObservation}
+                                                onClick={() => handleSaveObservation(false)}
+                                                className="flex-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white py-2.5 px-3 text-xs font-bold shadow-xs transition min-h-[44px] disabled:opacity-50 cursor-pointer inline-flex items-center justify-center gap-1"
+                                            >
+                                                <Check className="h-4 w-4" />
+                                                <span>Simpan Selesai</span>
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         ) : assignment.instrument_type === 'performance_observation' ? (
@@ -6327,7 +6455,8 @@ export default function ShowAssignment({
                         )}
                     </div>
                 </div>
-            )}
+                );
+            })()}
 
             {/* Grading Modal (Standard Quiz/Essay) */}
             {selectedSubmission && (
