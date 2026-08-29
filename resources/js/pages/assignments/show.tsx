@@ -5046,12 +5046,28 @@ export default function ShowAssignment({
                     <div className="w-full max-w-2xl max-h-[92vh] overflow-y-auto custom-scrollbar rounded-xl bg-card p-4 sm:p-6 shadow-none border border-border animate-in zoom-in-95 duration-300">
                         <div className="flex items-center justify-between mb-8">
                             <div className="flex items-center gap-4">
-                                <div className={`h-12 w-12 rounded-xl ${assignment.instrument_type === 'anecdotal_notes' ? 'bg-indigo-500 shadow-indigo-200' : 'bg-sky-500 shadow-sky-200'} flex items-center justify-center text-white shadow-lg`}>
-                                    {assignment.instrument_type === 'anecdotal_notes' ? <FileText className="h-6 w-6" /> : <Activity className="h-6 w-6" />}
+                                <div className={`h-12 w-12 rounded-xl ${
+                                    assignment.instrument_type === 'anecdotal_notes' 
+                                        ? 'bg-indigo-500 shadow-indigo-200' 
+                                        : (assignment.instrument_type === 'oral_test' || assignment.instrument_type === 'oral')
+                                            ? 'bg-emerald-500 shadow-emerald-200'
+                                            : 'bg-sky-500 shadow-sky-200'
+                                } flex items-center justify-center text-white shadow-lg`}>
+                                    {assignment.instrument_type === 'anecdotal_notes' 
+                                        ? <FileText className="h-6 w-6" /> 
+                                        : (assignment.instrument_type === 'oral_test' || assignment.instrument_type === 'oral')
+                                            ? <Mic className="h-6 w-6" />
+                                            : <Activity className="h-6 w-6" />
+                                    }
                                 </div>
                                 <div>
                                     <h3 className="text-xl font-black text-foreground tracking-tight">
-                                        {assignment.instrument_type === 'anecdotal_notes' ? 'Catatan Anekdotal' : 'Observasi Siswa'}
+                                        {assignment.instrument_type === 'anecdotal_notes' 
+                                            ? 'Catatan Anekdotal' 
+                                            : (assignment.instrument_type === 'oral_test' || assignment.instrument_type === 'oral')
+                                                ? 'Penilaian Tes Lisan' 
+                                                : 'Observasi Siswa'
+                                        }
                                     </h3>
                                     <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">{selectedStudent.name}</p>
                                 </div>
@@ -5207,7 +5223,7 @@ export default function ShowAssignment({
                                                     <div className="flex items-start justify-between gap-4">
                                                         <div className="flex-1 space-y-1">
                                                             <span className="text-[9px] font-black text-indigo-500 uppercase tracking-widest">Pertanyaan 0{idx + 1}</span>
-                                                            <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{q.text}</p>
+                                                            <p className="text-xs font-black text-slate-800 dark:text-slate-100 leading-relaxed whitespace-pre-wrap">{q.question || q.text}</p>
                                                         </div>
                                                         <div className="px-4 py-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30 max-w-[240px]">
                                                             <span className="text-[8px] font-black text-emerald-600 uppercase tracking-widest block mb-1">Panduan Kunci</span>
