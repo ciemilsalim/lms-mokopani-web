@@ -78,6 +78,8 @@ interface Submission {
     file_path: string | null;
     score: number | null;
     feedback: string | null;
+    kktp_details?: any;
+    qualitative_score?: string | null;
     is_passed?: boolean;
     attempts?: number;
     content_type?: string | null;

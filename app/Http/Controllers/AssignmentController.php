@@ -619,6 +619,8 @@ class AssignmentController extends Controller
                         'content'          => $s->content,
                         'file_path'        => $s->file_path,
                         'score'            => $score,
+                        'kktp_details'     => $s->kktp_details,
+                        'qualitative_score'=> $s->qualitative_score,
                         'attempts'         => $s->attempts,
                         'is_remedial_open' => (bool) $s->is_remedial_open,
                         'remedial_history' => $s->remedial_history,
