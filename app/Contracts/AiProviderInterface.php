@@ -49,7 +49,9 @@ interface AiProviderInterface
         string $tpContent, 
         string $instrumentType, 
         bool $regenerate = false,
-        ?string $observationMode = null
+        ?string $observationMode = null,
+        ?string $quizMode = null,
+        ?string $assessmentType = null
     ): array;
 
     /**

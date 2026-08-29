@@ -261,14 +261,17 @@ class GeminiApiService implements AiProviderInterface
 
         $attempts = 0;
         $maxAttempts = count($this->apiKeys) * 2;
-        $candidateModels = array_unique(array_filter([
+        $candidateModels = array_values(array_unique(array_filter([
             $this->model,
-            'gemini-2.0-flash',
-            'gemini-1.5-flash',
-        ]));
+            'gemini-2.5-flash',
+            'gemini-3.6-flash',
+            'gemini-flash-latest',
+        ])));
+        $keyCount = count($this->apiKeys);
+        $keys = array_values($this->apiKeys);
 
         while ($attempts < $maxAttempts) {
-            $currentKey = $this->apiKeys[$this->currentKeyIndex];
+            $currentKey = $keys[$this->currentKeyIndex % $keyCount];
             $currentModel = $candidateModels[$attempts % count($candidateModels)];
             
             try {

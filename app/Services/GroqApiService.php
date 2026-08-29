@@ -85,9 +85,10 @@ class GroqApiService implements AiProviderInterface
         string $instrumentType,
         bool $regenerate = false,
         ?string $observationMode = null,
-        ?string $quizMode = null
+        ?string $quizMode = null,
+        ?string $assessmentType = null
     ): array {
-        $hash = md5('groq_assessment_' . $tpDescription . $content . $instrumentType . ($observationMode ?? '') . ($quizMode ?? ''));
+        $hash = md5('groq_assessment_' . $tpDescription . $content . $instrumentType . ($observationMode ?? '') . ($quizMode ?? '') . ($assessmentType ?? ''));
 
         if (!$regenerate) {
             $cached = \App\Models\LmsAiCache::getCache($hash);
@@ -107,11 +108,12 @@ class GroqApiService implements AiProviderInterface
         $template = LmsAiPrompt::getPromptFor('assessment', $teacherId);
 
         $prompt = str_replace([
-            '{tp}', '{content}', '{instrument_label}', '{observation_mode}', '{quiz_mode}'
+            '{tp}', '{content}', '{instrument_label}', '{observation_mode}', '{quiz_mode}', '{assessment_type}'
         ], [
             $tpDescription, $content, $instrumentLabel,
             $observationMode === 'anecdotal' ? 'anecdotal' : 'checklist',
-            $quizMode ?? 'mcq'
+            $quizMode ?? 'mcq',
+            $assessmentType ?? 'formative'
         ], $template);
 
         $response = $this->generateContent($prompt);

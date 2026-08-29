@@ -94,9 +94,10 @@ class OpenRouterApiService implements AiProviderInterface
         string $instrumentType,
         bool $regenerate = false,
         ?string $observationMode = null,
-        ?string $quizMode = null
+        ?string $quizMode = null,
+        ?string $assessmentType = null
     ): array {
-        $hash = md5('openai_assessment_' . $tpDescription . $content . $instrumentType . ($observationMode ?? '') . ($quizMode ?? ''));
+        $hash = md5('openai_assessment_' . $tpDescription . $content . $instrumentType . ($observationMode ?? '') . ($quizMode ?? '') . ($assessmentType ?? ''));
 
         if (!$regenerate) {
             $cached = \App\Models\LmsAiCache::getCache($hash);
@@ -116,11 +117,12 @@ class OpenRouterApiService implements AiProviderInterface
         $template = LmsAiPrompt::getPromptFor('assessment', $teacherId);
 
         $prompt = str_replace([
-            '{tp}', '{content}', '{instrument_label}', '{observation_mode}', '{quiz_mode}'
+            '{tp}', '{content}', '{instrument_label}', '{observation_mode}', '{quiz_mode}', '{assessment_type}'
         ], [
             $tpDescription, $content, $instrumentLabel,
             $observationMode === 'anecdotal' ? 'anecdotal' : 'checklist',
-            $quizMode ?? 'mcq'
+            $quizMode ?? 'mcq',
+            $assessmentType ?? 'formative'
         ], $template);
 
         $response = $this->generateContent($prompt);
@@ -175,59 +177,87 @@ class OpenRouterApiService implements AiProviderInterface
         return $result;
     }
 
+    public ?string $lastError = null;
+
     public function generateContent(string $prompt): ?string
     {
-        if (empty($this->apiKeys)) return null;
+        if (empty($this->apiKeys)) {
+            $this->lastError = 'API Key OpenRouter belum dikonfigurasi.';
+            return null;
+        }
 
         $attempts = 0;
-        $maxAttempts = count($this->apiKeys);
+        $candidateModels = array_values(array_unique(array_filter([
+            $this->model,
+            'google/gemini-2.5-flash',
+            'deepseek/deepseek-chat',
+            'openai/gpt-4o-mini',
+            'openrouter/auto',
+        ])));
+        $keyCount = count($this->apiKeys);
+        $keys = array_values($this->apiKeys);
+        $maxAttempts = $keyCount * count($candidateModels);
 
         while ($attempts < $maxAttempts) {
-            $currentKey = $this->apiKeys[$this->currentKeyIndex];
+            $currentKey = $keys[$this->currentKeyIndex % $keyCount];
+            $currentModel = $candidateModels[$attempts % count($candidateModels)];
             
             try {
                 $url = "{$this->baseUrl}/chat/completions";
 
                 $response = Http::withToken($currentKey)->withHeaders([
-                    'HTTP-Referer' => config('app.url'),
-                    'X-Title' => config('app.name'),
-                ])->timeout(60)->post($url, [
-                    'model' => $this->model,
+                    'HTTP-Referer' => config('app.url', 'http://localhost'),
+                    'X-Title' => config('app.name', 'LMS Mokopani'),
+                ])->timeout(120)->connectTimeout(15)->post($url, [
+                    'model' => $currentModel,
                     'messages' => [
                         ['role' => 'user', 'content' => $prompt]
                     ],
                     'temperature' => 0.7,
                     'top_p' => 0.9,
-                    'max_tokens' => 4096,
+                    'max_tokens' => 8192,
                 ]);
 
                 if ($response->successful()) {
                     $data = $response->json();
+                    $this->lastError = null;
                     return $data['choices'][0]['message']['content'] ?? null;
                 }
 
-                if ($response->status() === 429 || $response->status() === 403) {
-                    Log::warning('OpenAI API rate limit/quota reached on key index ' . $this->currentKeyIndex);
-                    $this->currentKeyIndex = ($this->currentKeyIndex + 1) % $maxAttempts;
+                $errBody = $response->json();
+                $errMsg = $errBody['error']['message'] ?? ('HTTP ' . $response->status());
+
+                if ($response->status() === 429 || $response->status() === 403 || $response->status() === 404 || $response->status() === 400 || $response->status() === 503) {
+                    Log::warning("OpenRouter API issue ({$response->status()}) on model {$currentModel}: {$errMsg}");
+                    $this->currentKeyIndex = ($this->currentKeyIndex + 1) % $keyCount;
                     $attempts++;
                     continue; 
                 }
 
-                Log::warning('OpenAI API request failed', [
+                $this->lastError = "OpenRouter API Error: {$errMsg}";
+                Log::warning('OpenRouter API request failed', [
+                    'model'  => $currentModel,
                     'status' => $response->status(),
                     'body'   => $response->body(),
                 ]);
-                return null;
+                $this->currentKeyIndex = ($this->currentKeyIndex + 1) % $keyCount;
+                $attempts++;
+                continue;
 
             } catch (\Exception $e) {
-                Log::error('OpenAI API error', [
-                    'message' => $e->getMessage(),
-                ]);
-                return null;
+                Log::warning("OpenRouter API exception on model {$currentModel}: " . $e->getMessage());
+                $this->currentKeyIndex = ($this->currentKeyIndex + 1) % $keyCount;
+                $attempts++;
+                if ($attempts >= $maxAttempts) {
+                    $this->lastError = "Koneksi ke OpenRouter API terputus: " . $e->getMessage();
+                    return null;
+                }
+                continue;
             }
         }
         
-        Log::error('OpenAI API all keys exhausted or rate limited.');
+        $this->lastError = 'Semua model atau kuota OpenRouter telah habis.';
+        Log::error('OpenRouter API all keys or models exhausted.');
         return null;
     }
 
@@ -255,18 +285,22 @@ class OpenRouterApiService implements AiProviderInterface
 
     private function parseJsonResponse(string $text): array
     {
-        $text = preg_replace('/^```(?:json)?\s*/i', '', $text);
-        $text = preg_replace('/\s*```$/i', '', $text);
-        $text = trim($text);
-        $decoded = json_decode($text, true);
+        $clean = preg_replace('/```(?:json)?\s*([\s\S]*?)\s*```/i', '$1', $text);
+        if (preg_match('/\{[\s\S]*\}/', $clean, $matches)) {
+            $clean = $matches[0];
+        } else {
+            $clean = trim($clean);
+        }
+
+        $decoded = json_decode($clean, true);
         if (json_last_error() !== JSON_ERROR_NONE) {
-            Log::warning('Failed to parse OpenAI JSON response', [
+            Log::warning('Failed to parse OpenRouter JSON response', [
                 'error' => json_last_error_msg(),
                 'text'  => substr($text, 0, 500),
             ]);
             return [];
         }
-        return $decoded;
+        return is_array($decoded) ? $decoded : [];
     }
 
     private function getInstrumentLabel(string $type): string
