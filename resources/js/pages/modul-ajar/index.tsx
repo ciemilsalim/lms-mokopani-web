@@ -48,7 +48,7 @@ export default function Index({ modulAjars, period }: IndexProps) {
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Pembelajaran (Modul Ajar) – LMS Mokopani" />
 
-            <div className="flex h-full flex-1 flex-col gap-4 sm:gap-5 w-full max-w-full min-w-0 pb-24 sm:pb-12">
+            <div className="space-y-4 sm:space-y-5 fade-in pb-24 sm:pb-12 max-w-7xl mx-auto w-full min-w-0">
                 {/* Header Hero Banner (Height ~190px, Rounded 20px, Mobile-First) */}
                 <div className="rounded-[20px] bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 p-5 sm:p-6 text-white shadow-md shadow-indigo-500/10 dark:shadow-none overflow-hidden relative">
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between min-w-0">

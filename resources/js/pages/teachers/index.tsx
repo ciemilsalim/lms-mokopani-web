@@ -60,7 +60,7 @@ export default function Teachers({ teachers }: TeachersProps) {
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Guru – LMS Mokopani" />
 
-            <div className="flex h-full flex-1 flex-col gap-6 p-6">
+            <div className="space-y-4 sm:space-y-5 fade-in pb-24 sm:pb-8 max-w-7xl mx-auto w-full min-w-0">
                 {/* Header */}
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>

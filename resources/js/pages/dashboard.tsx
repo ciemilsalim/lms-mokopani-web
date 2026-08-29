@@ -646,7 +646,7 @@ export default function Dashboard(props: DashboardProps) {
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Dashboard - LMS Mokopani" />
 
-            <div className="space-y-5 sm:space-y-6 fade-in pb-10 md:pb-0">
+            <div className="space-y-4 sm:space-y-5 fade-in pb-24 sm:pb-8 max-w-7xl mx-auto w-full min-w-0">
                 {/* Welcome Banner + Identity */}
                 <div className="relative">
                     <div className="relative overflow-hidden rounded-2xl md:rounded-xl bg-gradient-to-br from-primary via-primary/95 to-indigo-700 p-5 sm:p-6 text-white shadow-md">

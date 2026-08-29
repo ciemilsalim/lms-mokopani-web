@@ -126,8 +126,8 @@ export function TeacherDashboardView({
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Dashboard Guru - LMS Mokopani" />
 
-            {/* Main Canvas Container: 12px padding on 320-359px, 16px on 360-639px, 24px on 640px+ */}
-            <div className="w-full max-w-7xl mx-auto min-w-0 box-border px-3 xs:px-4 sm:px-6 space-y-4 sm:space-y-5 pb-24 sm:pb-8 fade-in">
+            {/* Main Canvas Container: Standardized to match Kelas Saya */}
+            <div className="space-y-4 sm:space-y-5 fade-in pb-24 sm:pb-8 max-w-7xl mx-auto w-full min-w-0">
                 
                 {/* 02. WELCOME CARD (~148px height, 20px radius, 16px padding) */}
                 <div className="w-full min-w-0 box-border">

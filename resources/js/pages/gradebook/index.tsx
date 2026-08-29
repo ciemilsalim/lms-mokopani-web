@@ -31,7 +31,7 @@ export default function GradebookIndex({ teachings }: GradebookIndexProps) {
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Laporan Nilai – LMS Mokopani" />
 
-            <div className="flex h-full flex-1 flex-col gap-6 min-w-0">
+            <div className="space-y-4 sm:space-y-5 fade-in pb-24 sm:pb-8 max-w-7xl mx-auto w-full min-w-0">
                 <div className="flex flex-col gap-1">
                     <h1 className="text-2xl font-bold text-foreground">Penilaian</h1>
                     <p className="text-sm text-muted-foreground">Pilih kelas untuk melihat nilai, laporan CP, dan rapor siswa</p>

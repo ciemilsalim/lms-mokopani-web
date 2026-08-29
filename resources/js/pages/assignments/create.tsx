@@ -31,7 +31,7 @@ export default function CreateAssignment({
         <AppLayout breadcrumbs={breadcrumbs} hideBottomNav={true}>
             <Head title="Buat Asesmen Baru – LMS Mokopani" />
 
-            <div className="w-full max-w-7xl mx-auto min-w-0 box-border px-3 xs:px-4 sm:px-6 pt-2 pb-28 sm:pb-32">
+            <div className="space-y-4 sm:space-y-5 fade-in pb-28 sm:pb-32 max-w-7xl mx-auto w-full min-w-0">
                 {/* 56px Header with 44x44px Back button (Prompt 18B Header) */}
                 <div className="h-14 flex items-center justify-between gap-2 border-b border-border/70 mb-4 pb-1 w-full">
                     <div className="flex items-center gap-2.5 min-w-0 flex-1">

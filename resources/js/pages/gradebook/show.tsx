@@ -115,7 +115,7 @@ export default function GradebookShow({ summative_headers = [], initial_headers 
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`Alur Asesmen Detail – LMS Mokopani`} />
 
-            <div className="space-y-5 sm:space-y-6 fade-in pb-16 md:pb-6 max-w-7xl mx-auto px-4 sm:px-6">
+            <div className="space-y-4 sm:space-y-5 fade-in pb-24 sm:pb-8 max-w-7xl mx-auto w-full min-w-0">
                 {/* Header Actions */}
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pt-2">
                     <div>

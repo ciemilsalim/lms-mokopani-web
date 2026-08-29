@@ -471,7 +471,7 @@ export default function LearningObjectiveIndex({ objectives, subjects, cpList }:
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Manajemen Perencanaan TP & ATP – LMS Mokopani" />
 
-            <div className="flex h-full flex-1 flex-col gap-4 sm:gap-6">
+            <div className="space-y-4 sm:space-y-5 fade-in pb-24 sm:pb-8 max-w-7xl mx-auto w-full min-w-0">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                         <h1 className="text-2xl font-black text-foreground tracking-tight">Perencanaan Pembelajaran</h1>
