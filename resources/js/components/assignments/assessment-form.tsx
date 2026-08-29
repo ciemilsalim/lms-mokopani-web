@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useForm, router } from '@inertiajs/react';
 import {
-    ChevronLeft, ChevronDown, ChevronUp, CheckCircle2, AlertCircle,
+    ChevronLeft, CheckCircle2, AlertCircle,
     BookOpen, Users, Target, GraduationCap, Info, FileText, Plus, Trash2,
     Check, Lock, Sparkles, Layers, ListChecks, Calendar, ArrowRight,
     Loader2, Sliders, Edit3, HelpCircle, Eye, Calculator, CheckSquare, Zap,
-    X, Mic, Copy
+    X, Mic
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import axios from 'axios';
@@ -257,8 +257,6 @@ export function AssessmentForm({
     const [aiLoading, setAiLoading] = useState(false);
     const [aiSuccessMessage, setAiSuccessMessage] = useState<string | null>(null);
     const [aiErrorMessage, setAiErrorMessage] = useState<string | null>(null);
-    const [expandedQuestionIndex, setExpandedQuestionIndex] = useState<number | null>(0);
-    const [isChangingInstrument, setIsChangingInstrument] = useState<boolean>(false);
     const [isDraftVisible, setIsDraftVisible] = useState(
         Boolean(initialAssignment?.id || initialAssignment?.title || initialAssignment?.instrument_config?.questions?.length || initialAssignment?.instrument_config?.indicators?.length)
     );
@@ -325,31 +323,6 @@ export function AssessmentForm({
     const isTestInstrument = useMemo(() => {
         return ['formative_quiz', 'written_test', 'quiz_survey', 'quiz'].includes(data.instrument_type);
     }, [data.instrument_type]);
-
-    // Check completeness of a single question
-    const isQuestionComplete = (q: any): boolean => {
-        const hasText = Boolean((q.question || q.text || '').trim());
-        if (!hasText) return false;
-        if (q.type === 'multiple_choice') {
-            const opts = q.options || [];
-            if (opts.length < 2) return false;
-            const allOptsValid = opts.every((o: any) => Boolean((o.text || '').trim()));
-            const hasCorrect = opts.some((o: any) => Boolean(o.is_correct));
-            return allOptsValid && hasCorrect && (Number(q.points) > 0);
-        }
-        return Number(q.points) > 0;
-    };
-
-    // Calculate question statistics & completeness
-    const questionStats = useMemo(() => {
-        const questions = data.instrument_config.questions || [];
-        const total = questions.length;
-        const mcq = questions.filter((q: any) => q.type === 'multiple_choice').length;
-        const short = questions.filter((q: any) => q.type === 'short_answer').length;
-        const essay = questions.filter((q: any) => q.type === 'essay').length;
-        const complete = questions.filter((q: any) => isQuestionComplete(q)).length;
-        return { total, mcq, short, essay, complete };
-    }, [data.instrument_config.questions]);
 
     // Filtered Subjects & Classes from teachings (Sorted naturally)
     const availableSubjects = useMemo(() => {
@@ -675,7 +648,7 @@ export function AssessmentForm({
             id: `q_${Date.now()}`,
             type: 'multiple_choice',
             question: '',
-            points: 10,
+            points: 20,
             options: [
                 { id: `opt_1_${Date.now()}`, text: '', is_correct: true },
                 { id: `opt_2_${Date.now()}`, text: '', is_correct: false },
@@ -689,22 +662,6 @@ export function AssessmentForm({
             ...data.instrument_config,
             questions: [...currentQuestions, newQuestion]
         });
-        setExpandedQuestionIndex(currentQuestions.length);
-    };
-
-    const handleDuplicateQuestion = (qIndex: number) => {
-        const currentQuestions = [...(data.instrument_config.questions || [])];
-        const target = currentQuestions[qIndex];
-        const duplicated = {
-            ...JSON.parse(JSON.stringify(target)),
-            id: `q_${Date.now()}_dup`
-        };
-        currentQuestions.splice(qIndex + 1, 0, duplicated);
-        setData('instrument_config', {
-            ...data.instrument_config,
-            questions: currentQuestions
-        });
-        setExpandedQuestionIndex(qIndex + 1);
     };
 
     const handleRemoveQuestion = (qIndex: number) => {
@@ -714,11 +671,6 @@ export function AssessmentForm({
             ...data.instrument_config,
             questions: currentQuestions
         });
-        if (expandedQuestionIndex === qIndex) {
-            setExpandedQuestionIndex(Math.max(0, qIndex - 1));
-        } else if (expandedQuestionIndex !== null && expandedQuestionIndex > qIndex) {
-            setExpandedQuestionIndex(expandedQuestionIndex - 1);
-        }
     };
 
     const handleQuestionTextChange = (qIndex: number, text: string) => {
@@ -1125,102 +1077,57 @@ export function AssessmentForm({
                                 </div>
                             </div>
 
-                            {/* Instrument Selection Grid (Compact Banner if selected, Grid if editing) */}
+                            {/* Instrument Selection Grid (Min height 72px, line-clamp-2 desc) */}
                             <div className="space-y-1.5 pt-1">
-                                <div className="flex items-center justify-between">
-                                    <label className="text-sm font-bold text-foreground">
-                                        Instrumen Penilaian <span className="text-destructive">*</span>
-                                    </label>
-                                    {!isChangingInstrument && data.instrument_type && (
-                                        <button
-                                            type="button"
-                                            onClick={() => setIsChangingInstrument(true)}
-                                            className="text-xs font-bold text-primary hover:underline cursor-pointer"
-                                        >
-                                            Ubah Pilihan
-                                        </button>
-                                    )}
-                                </div>
-
-                                {!isChangingInstrument && data.instrument_type ? (
-                                    <div className="flex items-center justify-between p-3.5 rounded-2xl border border-primary/30 bg-primary/5 min-h-[64px] transition-all">
-                                        <div className="flex items-center gap-3 min-w-0">
-                                            <div className="p-2.5 rounded-xl bg-primary text-primary-foreground shrink-0 shadow-xs">
-                                                {(() => {
-                                                    const currentList = standardInstrumentsByAssessmentType[data.assessment_type || 'formative'] || standardInstrumentsByAssessmentType.formative;
-                                                    const match = currentList.find(i => i.id === data.instrument_type);
-                                                    const Icon = match?.icon || FileText;
-                                                    return <Icon className="h-4 w-4" />;
-                                                })()}
-                                            </div>
-                                            <div className="min-w-0">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-[10px] uppercase tracking-wider font-extrabold text-primary bg-primary/10 px-2 py-0.5 rounded">
-                                                        Instrumen Terpilih
-                                                    </span>
-                                                </div>
-                                                <p className="text-xs sm:text-sm font-black text-foreground truncate mt-0.5">
-                                                    {(standardInstrumentsByAssessmentType[data.assessment_type || 'formative'] || standardInstrumentsByAssessmentType.formative).find(i => i.id === data.instrument_type)?.name || data.instrument_type}
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <button
-                                            type="button"
-                                            onClick={() => setIsChangingInstrument(true)}
-                                            className="px-3 py-1.5 rounded-xl border border-border bg-background hover:bg-muted text-xs font-bold text-foreground transition shrink-0 min-h-[38px] cursor-pointer"
-                                        >
-                                            Ubah
-                                        </button>
-                                    </div>
-                                ) : (
-                                    <div className="grid gap-2 sm:grid-cols-2">
-                                        {(standardInstrumentsByAssessmentType[data.assessment_type || 'formative'] || standardInstrumentsByAssessmentType.formative).map(inst => {
-                                            const isSelected = data.instrument_type === inst.id;
-                                            const Icon = inst.icon || FileText;
-                                            return (
-                                                <button
-                                                    key={inst.id}
-                                                    type="button"
-                                                    onClick={() => {
-                                                        let newKktpApproach = 'score_interval';
-                                                        if (['performance_observation', 'observation', 'observation_checklist', 'structured_assignment', 'performance', 'project', 'assignment', 'rubric'].includes(inst.id)) {
-                                                            newKktpApproach = 'rubric';
-                                                        }
-                                                        setData(prev => ({
-                                                            ...prev,
-                                                            instrument_type: inst.id,
-                                                            instrument_config: {
-                                                                ...prev.instrument_config,
-                                                                kktp: {
-                                                                    ...prev.instrument_config?.kktp,
-                                                                    approach: newKktpApproach,
-                                                                }
-                                                            },
-                                                            scoring_tool_config: {
-                                                                ...prev.scoring_tool_config,
-                                                                kktp_approach: newKktpApproach,
+                                <label className="text-sm font-bold text-foreground">
+                                    Instrumen Penilaian <span className="text-destructive">*</span>
+                                </label>
+                                <div className="grid gap-2 sm:grid-cols-2">
+                                    {(standardInstrumentsByAssessmentType[data.assessment_type || 'formative'] || standardInstrumentsByAssessmentType.formative).map(inst => {
+                                        const isSelected = data.instrument_type === inst.id;
+                                        const Icon = inst.icon || FileText;
+                                        return (
+                                            <button
+                                                key={inst.id}
+                                                type="button"
+                                                onClick={() => {
+                                                    let newKktpApproach = 'score_interval';
+                                                    if (['performance_observation', 'observation', 'observation_checklist', 'structured_assignment', 'performance', 'project', 'assignment', 'rubric'].includes(inst.id)) {
+                                                        newKktpApproach = 'rubric';
+                                                    }
+                                                    setData(prev => ({
+                                                        ...prev,
+                                                        instrument_type: inst.id,
+                                                        instrument_config: {
+                                                            ...prev.instrument_config,
+                                                            kktp: {
+                                                                ...prev.instrument_config?.kktp,
+                                                                approach: newKktpApproach,
                                                             }
-                                                        }));
-                                                        setIsChangingInstrument(false);
-                                                    }}
-                                                    className={`flex items-center gap-3 p-3.5 rounded-2xl border text-left transition min-h-[72px] cursor-pointer ${
-                                                        isSelected
-                                                            ? 'bg-primary/10 border-primary text-foreground shadow-xs font-bold ring-1 ring-primary/40'
-                                                            : 'bg-background hover:bg-muted/40 border-border text-foreground'
-                                                    }`}
-                                                >
-                                                    <div className={`p-2 rounded-xl shrink-0 ${isSelected ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
-                                                        <Icon className="h-4 w-4" />
-                                                    </div>
-                                                    <div className="min-w-0 flex-1">
-                                                        <p className="text-xs sm:text-sm font-bold truncate leading-tight">{inst.name}</p>
-                                                        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2 leading-relaxed">{inst.desc}</p>
-                                                    </div>
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
-                                )}
+                                                        },
+                                                        scoring_tool_config: {
+                                                            ...prev.scoring_tool_config,
+                                                            kktp_approach: newKktpApproach,
+                                                        }
+                                                    }));
+                                                }}
+                                                className={`flex items-center gap-3 p-3.5 rounded-2xl border text-left transition min-h-[72px] cursor-pointer ${
+                                                    isSelected
+                                                        ? 'bg-primary/10 border-primary text-foreground shadow-xs font-bold ring-1 ring-primary/40'
+                                                        : 'bg-background hover:bg-muted/40 border-border text-foreground'
+                                                }`}
+                                            >
+                                                <div className={`p-2 rounded-xl shrink-0 ${isSelected ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
+                                                    <Icon className="h-4 w-4" />
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="text-xs sm:text-sm font-bold truncate leading-tight">{inst.name}</p>
+                                                    <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2 leading-relaxed">{inst.desc}</p>
+                                                </div>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
                             </div>
 
                             {/* Secondary AI Assistant Generator Card (96-120px height target) */}
@@ -1411,331 +1318,175 @@ export function AssessmentForm({
                             {/* 2. Daftar Butir Soal & Skor Header Bar (HANYA MUNCUL DI TES/PENUGASAN SINGKAT) */}
                             {isTestInstrument && (
                                 <div className="space-y-3">
-                                    {/* Summary Stats Header */}
-                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-primary/10 via-primary/5 to-muted/20 border border-primary/20">
-                                        <div className="space-y-1">
-                                            <div className="flex items-center gap-2 flex-wrap">
-                                                <h3 className="text-sm sm:text-base font-black text-foreground">
-                                                    Question Builder
-                                                </h3>
-                                                <span className="text-xs font-black text-primary bg-primary/15 px-2.5 py-0.5 rounded-full">
-                                                    {questionStats.total} Butir Soal
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3 rounded-xl bg-primary/5 border border-primary/20">
+                                        <div className="flex items-center gap-2">
+                                            <Calculator className="h-4 w-4 text-primary shrink-0" />
+                                            <div>
+                                                <span className="text-xs font-black text-foreground">
+                                                    Total Skor Akumulasi: <span className="text-primary font-black">{totalAccumulatedScore} Poin</span>
                                                 </span>
-                                                <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
-                                                    {totalAccumulatedScore} Poin Total
-                                                </span>
-                                            </div>
-                                            <div className="flex items-center gap-2 text-[11px] text-muted-foreground flex-wrap pt-0.5">
-                                                {questionStats.mcq > 0 && (
-                                                    <span className="bg-background/80 border border-border px-2 py-0.5 rounded-md font-semibold text-foreground">
-                                                        {questionStats.mcq} Pilihan Ganda
-                                                    </span>
-                                                )}
-                                                {questionStats.short > 0 && (
-                                                    <span className="bg-background/80 border border-border px-2 py-0.5 rounded-md font-semibold text-foreground">
-                                                        {questionStats.short} Isian Singkat
-                                                    </span>
-                                                )}
-                                                {questionStats.essay > 0 && (
-                                                    <span className="bg-background/80 border border-border px-2 py-0.5 rounded-md font-semibold text-foreground">
-                                                        {questionStats.essay} Esai
-                                                    </span>
-                                                )}
-                                                <span className={`font-bold ${questionStats.complete === questionStats.total && questionStats.total > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
-                                                    • {questionStats.complete} dari {questionStats.total} soal lengkap
-                                                </span>
+                                                <p className="text-[10px] text-muted-foreground">
+                                                    Tersusun dari {questionsCount} butir soal (PG & Esai)
+                                                </p>
                                             </div>
                                         </div>
-
-                                        <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                                        <div className="flex items-center gap-2">
                                             <button
                                                 type="button"
                                                 onClick={handleEvenlyDistributePoints}
-                                                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-background border border-border text-foreground hover:bg-muted text-xs font-bold transition cursor-pointer min-h-[44px]"
+                                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-background border border-border text-foreground hover:bg-muted text-[11px] font-bold transition cursor-pointer"
                                                 title="Bagi rata total 100 poin ke seluruh butir soal"
                                             >
-                                                <Zap className="h-3.5 w-3.5 text-amber-500" />
+                                                <Zap className="h-3 w-3 text-amber-500" />
                                                 <span>Bagi Rata (100 Poin)</span>
                                             </button>
                                             <button
                                                 type="button"
                                                 onClick={handleAddQuestion}
-                                                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-bold shadow-xs hover:bg-primary/90 transition active:scale-95 cursor-pointer min-h-[44px]"
+                                                className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-primary text-primary-foreground text-[11px] font-black transition cursor-pointer hover:bg-primary/90"
                                             >
-                                                <Plus className="h-4 w-4 stroke-[3]" />
-                                                <span>+ Tambah Soal</span>
+                                                <Plus className="h-3 w-3" />
+                                                <span>{aiContext.manualLabel}</span>
                                             </button>
                                         </div>
                                     </div>
 
-                                    {/* Question Accordion List */}
                                     {questionsCount === 0 ? (
-                                        <div className="text-center py-8 border border-dashed border-border rounded-2xl p-4 bg-muted/10 space-y-2">
-                                            <p className="text-xs sm:text-sm text-muted-foreground font-medium">Belum ada butir soal yang dibuat.</p>
-                                            <p className="text-xs text-primary font-bold">
-                                                Tekan tombol "{aiContext.ctaLabel}" di atas untuk otomatis membuat soal dengan AI, atau klik "+ Tambah Soal".
+                                        <div className="text-center py-5 border border-dashed border-border rounded-xl p-4 bg-muted/10 space-y-1">
+                                            <p className="text-xs text-muted-foreground">Belum ada butir soal yang dibuat.</p>
+                                            <p className="text-[11px] text-primary font-bold">
+                                                Tekan tombol "{aiContext.ctaLabel}" di atas atau "{aiContext.manualLabel}" untuk menambahkan soal.
                                             </p>
                                         </div>
                                     ) : (
-                                        <div className="space-y-2.5">
-                                            {data.instrument_config.questions.map((q: any, qIdx: number) => {
-                                                const isExpanded = expandedQuestionIndex === qIdx;
-                                                const complete = isQuestionComplete(q);
-                                                const questionNumberStr = String(qIdx + 1).padStart(2, '0');
-
-                                                if (!isExpanded) {
-                                                    return (
-                                                        <div
-                                                            key={q.id || qIdx}
-                                                            onClick={() => setExpandedQuestionIndex(qIdx)}
-                                                            className="flex items-center justify-between p-3.5 sm:p-4 rounded-2xl border border-border bg-card hover:bg-muted/30 hover:border-primary/40 transition cursor-pointer gap-3 min-h-[64px] shadow-2xs group"
-                                                        >
-                                                            <div className="flex items-center gap-3 min-w-0 flex-1">
-                                                                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary font-black text-xs shrink-0 group-hover:bg-primary group-hover:text-primary-foreground transition">
-                                                                    {questionNumberStr}
-                                                                </div>
-                                                                <div className="min-w-0 flex-1">
-                                                                    <div className="flex items-center gap-2 flex-wrap">
-                                                                        <span className="text-xs font-bold text-foreground">
-                                                                            {q.type === 'multiple_choice' ? 'Pilihan Ganda' : q.type === 'short_answer' ? 'Isian Singkat' : 'Uraian / Esai'}
-                                                                        </span>
-                                                                        <span className="text-[11px] font-bold text-primary bg-primary/5 px-2 py-0.5 rounded-md border border-primary/20">
-                                                                            {q.points || 0} Poin
-                                                                        </span>
-                                                                        {complete ? (
-                                                                            <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                                                                                <CheckCircle2 className="h-3.5 w-3.5" /> Lengkap
-                                                                            </span>
-                                                                        ) : (
-                                                                            <span className="text-[11px] font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1">
-                                                                                <AlertCircle className="h-3.5 w-3.5" /> Perlu diperiksa
-                                                                            </span>
-                                                                        )}
-                                                                    </div>
-                                                                    <p className="text-xs text-muted-foreground truncate mt-0.5 max-w-[280px] xs:max-w-[340px] sm:max-w-xl">
-                                                                        {q.question || q.text || 'Belum ada pertanyaan ditulis...'}
-                                                                    </p>
-                                                                </div>
-                                                            </div>
-                                                            <div className="flex items-center gap-1.5 shrink-0 text-muted-foreground group-hover:text-primary transition">
-                                                                <ChevronDown className="h-4 w-4" />
-                                                            </div>
-                                                        </div>
-                                                    );
-                                                }
-
-                                                return (
-                                                    <div
-                                                        key={q.id || qIdx}
-                                                        className="rounded-2xl border-2 border-primary/40 bg-card p-3.5 sm:p-5 space-y-4 shadow-sm animate-in fade-in ring-1 ring-primary/20"
-                                                    >
-                                                        {/* Header Bar */}
-                                                        <div className="flex items-center justify-between gap-2 border-b border-border/60 pb-3 flex-wrap">
-                                                            <div className="flex items-center gap-2 flex-wrap">
-                                                                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary text-primary-foreground font-black text-xs shrink-0">
-                                                                    {questionNumberStr}
-                                                                </div>
-                                                                <select
-                                                                    value={q.type}
-                                                                    onChange={(e) => handleQuestionTypeChange(qIdx, e.target.value)}
-                                                                    className="rounded-xl border border-border bg-background px-3 py-2 text-xs font-bold text-foreground outline-none cursor-pointer min-h-[40px] focus:ring-2 focus:ring-primary/20"
-                                                                >
-                                                                    <option value="multiple_choice">Pilihan Ganda</option>
-                                                                    <option value="short_answer">Isian Singkat</option>
-                                                                    <option value="essay">Uraian / Esai</option>
-                                                                </select>
-                                                                <div className="flex items-center gap-1.5 bg-muted/60 px-2.5 py-1.5 rounded-xl border border-border">
-                                                                    <span className="text-xs font-bold text-muted-foreground">Skor:</span>
-                                                                    <input
-                                                                        type="number"
-                                                                        min={0}
-                                                                        max={100}
-                                                                        value={q.points || 0}
-                                                                        onChange={(e) => handleQuestionPointsChange(qIdx, Number(e.target.value))}
-                                                                        className="w-12 text-center text-xs font-black text-primary bg-background rounded-lg border border-border/80 py-0.5 outline-none focus:border-primary"
-                                                                    />
-                                                                    <span className="text-xs text-muted-foreground font-bold">Poin</span>
-                                                                </div>
-                                                                {complete ? (
-                                                                    <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-lg flex items-center gap-1">
-                                                                        <CheckCircle2 className="h-3 w-3" /> Lengkap
-                                                                    </span>
-                                                                ) : (
-                                                                    <span className="text-[11px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-1 rounded-lg flex items-center gap-1">
-                                                                        <AlertCircle className="h-3 w-3" /> Perlu diperiksa
-                                                                    </span>
-                                                                )}
-                                                            </div>
-
-                                                            <div className="flex items-center gap-1.5 ml-auto">
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => handleDuplicateQuestion(qIdx)}
-                                                                    className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-xl transition min-h-[38px] cursor-pointer"
-                                                                    title="Duplikat Soal Ini"
-                                                                >
-                                                                    <Copy className="h-3.5 w-3.5" />
-                                                                    <span className="hidden xs:inline">Duplikat</span>
-                                                                </button>
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => handleRemoveQuestion(qIdx)}
-                                                                    className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl transition min-h-[38px] cursor-pointer"
-                                                                    title="Hapus Soal Ini"
-                                                                >
-                                                                    <Trash2 className="h-3.5 w-3.5" />
-                                                                    <span className="hidden xs:inline">Hapus</span>
-                                                                </button>
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => setExpandedQuestionIndex(null)}
-                                                                    className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-xl transition cursor-pointer min-h-[38px] min-w-[38px] flex items-center justify-center"
-                                                                    title="Tutup (Collapse) Soal Ini"
-                                                                >
-                                                                    <ChevronUp className="h-4 w-4" />
-                                                                </button>
-                                                            </div>
+                                        <div className="space-y-3">
+                                            {data.instrument_config.questions.map((q: any, qIdx: number) => (
+                                                <div key={q.id || qIdx} className="rounded-xl border border-border bg-background p-3.5 space-y-2.5 shadow-2xs">
+                                                    {/* Card Header: Number, Type, Points & Delete */}
+                                                    <div className="flex items-center justify-between gap-2 border-b border-border/40 pb-2">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-[11px] font-black text-primary bg-primary/10 px-2 py-0.5 rounded">
+                                                                Soal #{qIdx + 1}
+                                                            </span>
+                                                            <select
+                                                                value={q.type}
+                                                                onChange={(e) => handleQuestionTypeChange(qIdx, e.target.value)}
+                                                                className="rounded-lg border border-border bg-card px-2 py-1 text-xs font-bold text-foreground outline-none cursor-pointer"
+                                                            >
+                                                                <option value="multiple_choice">Pilihan Ganda</option>
+                                                                <option value="short_answer">Isian Singkat</option>
+                                                                <option value="essay">Uraian / Esai</option>
+                                                            </select>
                                                         </div>
 
-                                                        {/* Question Textarea */}
-                                                        <div className="space-y-1.5">
-                                                            <label className="text-xs font-bold text-foreground flex items-center gap-1">
-                                                                <span>Pertanyaan Soal</span> <span className="text-destructive">*</span>
-                                                            </label>
-                                                            <textarea
-                                                                rows={3}
-                                                                placeholder="Tuliskan teks pertanyaan soal di sini..."
-                                                                value={q.question || q.text || ''}
-                                                                onChange={(e) => handleQuestionTextChange(qIdx, e.target.value)}
-                                                                className="w-full rounded-xl border border-border bg-background p-3 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition min-h-[88px] font-normal"
-                                                            />
-                                                        </div>
-
-                                                        {/* Multiple Choice Options */}
-                                                        {q.type === 'multiple_choice' && (
-                                                            <div className="space-y-2.5 pt-1">
-                                                                <div className="flex items-center justify-between">
-                                                                    <label className="text-xs font-bold text-foreground">
-                                                                        Pilihan Jawaban & Kunci Benar:
-                                                                    </label>
-                                                                    <span className="text-[10px] text-muted-foreground">
-                                                                        *Klik tombol huruf (A, B, C, D) untuk memilih kunci jawaban benar
-                                                                    </span>
-                                                                </div>
-                                                                <div className="space-y-2">
-                                                                    {(q.options || []).map((opt: any, optIdx: number) => {
-                                                                        const optLabel = String.fromCharCode(65 + optIdx);
-                                                                        const isCorrect = Boolean(opt.is_correct);
-                                                                        return (
-                                                                            <div
-                                                                                key={opt.id || optIdx}
-                                                                                className={`flex items-center gap-2 p-1.5 rounded-xl border transition ${
-                                                                                    isCorrect
-                                                                                        ? 'border-emerald-500/80 bg-emerald-500/10'
-                                                                                        : 'border-border bg-background'
-                                                                                }`}
-                                                                            >
-                                                                                <button
-                                                                                    type="button"
-                                                                                    onClick={() => handleSetCorrectOption(qIdx, optIdx)}
-                                                                                    className={`flex h-11 w-11 items-center justify-center rounded-xl text-xs font-black transition cursor-pointer shrink-0 ${
-                                                                                        isCorrect
-                                                                                            ? 'bg-emerald-600 text-white shadow-xs scale-105'
-                                                                                            : 'bg-muted text-muted-foreground hover:bg-emerald-500/20 hover:text-emerald-700'
-                                                                                    }`}
-                                                                                    title={isCorrect ? 'Kunci Jawaban Benar' : 'Klik untuk jadikan kunci jawaban benar'}
-                                                                                >
-                                                                                    {optLabel}
-                                                                                </button>
-                                                                                <input
-                                                                                    type="text"
-                                                                                    placeholder={`Teks pilihan ${optLabel}...`}
-                                                                                    value={opt.text}
-                                                                                    onChange={(e) => handleOptionTextChange(qIdx, optIdx, e.target.value)}
-                                                                                    className="flex-1 rounded-lg border-0 bg-transparent px-3 py-2 text-xs sm:text-sm text-foreground outline-none min-h-[44px]"
-                                                                                />
-                                                                                {(q.options || []).length > 2 && (
-                                                                                    <button
-                                                                                        type="button"
-                                                                                        onClick={() => handleRemoveOption(qIdx, optIdx)}
-                                                                                        className="h-10 w-10 flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl transition shrink-0 cursor-pointer"
-                                                                                        title="Hapus Opsi"
-                                                                                    >
-                                                                                        <X className="h-4 w-4" />
-                                                                                    </button>
-                                                                                )}
-                                                                            </div>
-                                                                        );
-                                                                    })}
-                                                                </div>
-
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => handleAddOption(qIdx)}
-                                                                    className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-dashed border-primary/40 text-primary hover:bg-primary/5 text-xs font-bold transition cursor-pointer min-h-[44px]"
-                                                                >
-                                                                    <Plus className="h-4 w-4" />
-                                                                    <span>+ Tambah Pilihan Jawaban</span>
-                                                                </button>
-                                                            </div>
-                                                        )}
-
-                                                        {/* Essay / Short Answer Rubric / Answer Guide */}
-                                                        {q.type !== 'multiple_choice' && (
-                                                            <div className="space-y-1.5 pt-1 p-3.5 rounded-xl bg-muted/30 border border-border/80">
-                                                                <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                                                                    <CheckSquare className="h-3.5 w-3.5 text-primary" />
-                                                                    <span>Pedoman Kunci Jawaban & Rubrik Penilaian Guru</span>
-                                                                </label>
-                                                                <textarea
-                                                                    rows={3}
-                                                                    placeholder="Tuliskan kata kunci, kriteria jawaban ideal, atau petunjuk penskoran..."
-                                                                    value={q.answer_guide || ''}
-                                                                    onChange={(e) => handleQuestionGuideChange(qIdx, e.target.value)}
-                                                                    className="w-full rounded-xl border border-border bg-background p-3 text-xs sm:text-sm text-foreground outline-none focus:border-primary min-h-[75px]"
+                                                        <div className="flex items-center gap-2">
+                                                            {/* Score / Points input */}
+                                                            <div className="flex items-center gap-1 bg-muted/50 px-2 py-0.5 rounded-lg border border-border/70">
+                                                                <span className="text-[10px] font-bold text-muted-foreground">Skor:</span>
+                                                                <input
+                                                                    type="number"
+                                                                    min={0}
+                                                                    max={100}
+                                                                    value={q.points || 0}
+                                                                    onChange={(e) => handleQuestionPointsChange(qIdx, Number(e.target.value))}
+                                                                    className="w-12 text-center text-xs font-black text-primary bg-transparent outline-none"
                                                                 />
+                                                                <span className="text-[10px] text-muted-foreground font-bold">Poin</span>
                                                             </div>
-                                                        )}
 
-                                                        {/* Card Inner Navigation Footer (Soal X dari Y) */}
-                                                        <div className="flex items-center justify-between gap-2 pt-2 border-t border-border/50 text-xs">
                                                             <button
                                                                 type="button"
-                                                                disabled={qIdx === 0}
-                                                                onClick={() => setExpandedQuestionIndex(qIdx - 1)}
-                                                                className="inline-flex items-center gap-1 px-3 py-2 rounded-xl border border-border bg-background hover:bg-muted text-foreground font-bold transition cursor-pointer disabled:opacity-30 disabled:pointer-events-none min-h-[40px]"
+                                                                onClick={() => handleRemoveQuestion(qIdx)}
+                                                                className="p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition"
+                                                                title="Hapus Soal"
                                                             >
-                                                                <ChevronLeft className="h-3.5 w-3.5" />
-                                                                <span>Soal Sebelumnya</span>
+                                                                <Trash2 className="h-3.5 w-3.5" />
                                                             </button>
-
-                                                            <span className="text-xs font-bold text-muted-foreground">
-                                                                Soal {qIdx + 1} dari {questionsCount}
-                                                            </span>
-
-                                                            {qIdx < questionsCount - 1 ? (
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => setExpandedQuestionIndex(qIdx + 1)}
-                                                                    className="inline-flex items-center gap-1 px-3 py-2 rounded-xl bg-primary text-primary-foreground font-bold transition cursor-pointer hover:bg-primary/90 min-h-[40px]"
-                                                                >
-                                                                    <span>Soal Berikutnya</span>
-                                                                    <ArrowRight className="h-3.5 w-3.5" />
-                                                                </button>
-                                                            ) : (
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={handleAddQuestion}
-                                                                    className="inline-flex items-center gap-1 px-3 py-2 rounded-xl bg-emerald-600 text-white font-bold transition cursor-pointer hover:bg-emerald-700 min-h-[40px]"
-                                                                >
-                                                                    <Plus className="h-3.5 w-3.5" />
-                                                                    <span>+ Buat Soal Baru</span>
-                                                                </button>
-                                                            )}
                                                         </div>
                                                     </div>
-                                                );
-                                            })}
+
+                                                    {/* Question Text */}
+                                                    <textarea
+                                                        rows={2}
+                                                        placeholder="Tuliskan pertanyaan soal di sini..."
+                                                        value={q.question || q.text || ''}
+                                                        onChange={(e) => handleQuestionTextChange(qIdx, e.target.value)}
+                                                        className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground outline-none focus:border-primary"
+                                                    />
+
+                                                    {/* Multiple Choice Options */}
+                                                    {q.type === 'multiple_choice' && (
+                                                        <div className="space-y-2 pt-1">
+                                                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                                                                Pilihan Jawaban & Kunci:
+                                                            </p>
+                                                            <div className="space-y-1.5">
+                                                                {(q.options || []).map((opt: any, optIdx: number) => {
+                                                                    const optLabel = String.fromCharCode(65 + optIdx);
+                                                                    const isCorrect = Boolean(opt.is_correct);
+                                                                    return (
+                                                                        <div key={opt.id || optIdx} className="flex items-center gap-2">
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => handleSetCorrectOption(qIdx, optIdx)}
+                                                                                className={`flex h-7 w-7 items-center justify-center rounded-lg text-xs font-black transition cursor-pointer shrink-0 ${
+                                                                                    isCorrect
+                                                                                        ? 'bg-emerald-600 text-white shadow-xs'
+                                                                                        : 'bg-muted text-muted-foreground hover:bg-emerald-500/20 hover:text-emerald-700'
+                                                                                }`}
+                                                                                title={isCorrect ? 'Kunci Jawaban Benar' : 'Klik untuk jadikan kunci jawaban benar'}
+                                                                            >
+                                                                                {optLabel}
+                                                                            </button>
+                                                                            <input
+                                                                                type="text"
+                                                                                placeholder={`Pilihan ${optLabel}...`}
+                                                                                value={opt.text}
+                                                                                onChange={(e) => handleOptionTextChange(qIdx, optIdx, e.target.value)}
+                                                                                className={`flex-1 rounded-lg border px-2.5 py-1 text-xs text-foreground outline-none focus:border-primary ${
+                                                                                    isCorrect ? 'border-emerald-500 bg-emerald-500/5 font-semibold' : 'border-border bg-card'
+                                                                                }`}
+                                                                            />
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => handleRemoveOption(qIdx, optIdx)}
+                                                                                className="p-1 text-muted-foreground hover:text-destructive rounded transition"
+                                                                                title="Hapus Opsi"
+                                                                            >
+                                                                                <X className="h-3 w-3" />
+                                                                            </button>
+                                                                        </div>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleAddOption(qIdx)}
+                                                                className="inline-flex items-center gap-1 text-[11px] font-bold text-primary hover:underline pt-1 cursor-pointer"
+                                                            >
+                                                                <Plus className="h-3 w-3" /> Tambah Pilihan Opsi
+                                                            </button>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Essay / Short Answer: Rubric & Answer Key Guide */}
+                                                    {q.type !== 'multiple_choice' && (
+                                                        <div className="space-y-1 pt-1 p-2.5 rounded-xl bg-muted/30 border border-border/70">
+                                                            <label className="text-[10px] font-bold text-foreground flex items-center gap-1">
+                                                                <CheckSquare className="h-3 w-3 text-primary" />
+                                                                <span>Pedoman Kunci Jawaban & Rubrik Penilaian Guru</span>
+                                                            </label>
+                                                            <textarea
+                                                                rows={2}
+                                                                placeholder="Tuliskan kata kunci, indikator jawaban ideal, atau kriteria penilaian untuk memudahkan koreksi..."
+                                                                value={q.answer_guide || ''}
+                                                                onChange={(e) => handleQuestionGuideChange(qIdx, e.target.value)}
+                                                                className="w-full rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs text-foreground outline-none focus:border-primary"
+                                                            />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ))}
                                         </div>
                                     )}
                                 </div>
