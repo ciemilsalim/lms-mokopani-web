@@ -850,60 +850,64 @@ export default function GradeSplitPage({
                 </div>
             </div>
 
-            {/* ⑤ Sticky Bottom Action Footer (Safe-Area Guarded & Compact on Mobile) */}
-            <div className="fixed bottom-0 left-0 right-0 z-40 bg-card/95 backdrop-blur-md border-t border-border shadow-lg py-3 px-2.5 sm:px-8 w-full">
-                <div className="max-w-6xl mx-auto flex items-center justify-between gap-3 w-full">
-                    {/* Left Status Message */}
-                    <div className="flex items-center gap-1.5 text-xs min-w-0">
+            {/* ⑤ Sticky Bottom Action Footer (Safe-Area Guarded & Responsive) */}
+            <div className="fixed bottom-0 left-0 right-0 z-40 bg-card/95 backdrop-blur-md border-t border-border shadow-lg py-2.5 px-3 sm:px-8 w-full">
+                <div className="max-w-6xl mx-auto flex items-center justify-between gap-2 sm:gap-4 w-full">
+                    {/* Left Status Message (Hidden on small mobile screens to prevent overlap) */}
+                    <div className="hidden sm:flex items-center gap-1.5 text-xs min-w-0 flex-1">
                         {saveStatus === 'saving' ? (
-                            <span className="inline-flex items-center gap-1.5 text-primary font-bold animate-pulse text-[10px] sm:text-xs">
-                                <Loader2 className="h-3 w-3 animate-spin shrink-0" />
-                                <span>Menyimpan nilai...</span>
+                            <span className="inline-flex items-center gap-1.5 text-primary font-bold animate-pulse text-xs truncate">
+                                <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
+                                <span className="truncate">Menyimpan nilai...</span>
                             </span>
                         ) : saveStatus === 'saved' ? (
-                            <span className="inline-flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-bold text-[10px] sm:text-xs">
+                            <span className="inline-flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-bold text-xs truncate">
                                 <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-                                <span>Nilai Berhasil Disimpan</span>
+                                <span className="truncate">Nilai Berhasil Disimpan</span>
                             </span>
                         ) : (
-                            <span className="text-muted-foreground font-semibold text-[10px] sm:text-xs">
+                            <span className="text-muted-foreground font-medium text-xs truncate">
                                 Klik Simpan untuk memperbarui nilai
                             </span>
                         )}
                     </div>
 
-                    {/* Right Action buttons */}
-                    <div className="flex items-center gap-2 shrink-0">
+                    {/* Action Buttons (Full width and well-spaced on mobile) */}
+                    <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
                         <button
                             type="button"
                             disabled={currentStudentIndex === 0}
                             onClick={() => setCurrentStudentIndex(prev => prev - 1)}
-                            className="inline-flex items-center justify-center h-9 px-3 rounded-xl border border-border bg-background text-xs font-bold text-foreground hover:bg-muted transition cursor-pointer disabled:opacity-30 disabled:pointer-events-none"
+                            className="inline-flex items-center justify-center h-9 px-3 sm:px-3.5 rounded-xl border border-border bg-background text-xs font-bold text-foreground hover:bg-muted transition cursor-pointer disabled:opacity-30 disabled:pointer-events-none shrink-0"
                             title="Siswa Sebelumnya"
                         >
-                            <ChevronLeft className="w-4 h-4 mr-0.5" />
-                            <span>Sebelumnya</span>
+                            <ChevronLeft className="w-4 h-4" />
+                            <span className="hidden xs:inline sm:inline ml-1">Sebelumnya</span>
                         </button>
 
                         <button
                             type="button"
                             disabled={isSaving}
                             onClick={() => handleSave(false)}
-                            className="inline-flex items-center justify-center gap-1.5 h-9 px-5 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 font-bold text-xs shadow-xs transition active:scale-98 cursor-pointer disabled:opacity-50"
+                            className="inline-flex items-center justify-center gap-1.5 h-9 px-4 sm:px-6 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition active:scale-98 cursor-pointer disabled:opacity-50 flex-1 sm:flex-none"
                         >
-                            <Save className="w-3.5 h-3.5" />
-                            <span>Simpan Nilai</span>
+                            {isSaving ? (
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                                <Save className="w-3.5 h-3.5" />
+                            )}
+                            <span className="whitespace-nowrap">Simpan Nilai</span>
                         </button>
 
                         <button
                             type="button"
                             disabled={currentStudentIndex === students.length - 1}
                             onClick={() => setCurrentStudentIndex(prev => prev + 1)}
-                            className="inline-flex items-center justify-center h-9 px-3 rounded-xl border border-border bg-background text-xs font-bold text-foreground hover:bg-muted transition cursor-pointer disabled:opacity-30 disabled:pointer-events-none"
+                            className="inline-flex items-center justify-center h-9 px-3 sm:px-3.5 rounded-xl border border-border bg-background text-xs font-bold text-foreground hover:bg-muted transition cursor-pointer disabled:opacity-30 disabled:pointer-events-none shrink-0"
                             title="Siswa Berikutnya"
                         >
-                            <span>Berikutnya</span>
-                            <ChevronRight className="w-4 h-4 ml-0.5" />
+                            <span className="hidden xs:inline sm:inline mr-1">Berikutnya</span>
+                            <ChevronRight className="w-4 h-4" />
                         </button>
                     </div>
                 </div>

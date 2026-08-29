@@ -1425,21 +1425,27 @@ export default function ShowAssignment({
         let initialData = {
             score: 0,
             notes: '',
-            question_responses: {} as Record<string, string>
+            question_responses: {} as Record<string, string>,
+            kktp_details: {} as Record<string, string>
         };
 
-        if (sub?.content) {
-            try {
-                const parsed = JSON.parse(sub.content);
-                if (parsed.type === 'oral_test') {
-                    initialData = {
-                        score: sub.score || 0,
-                        notes: sub.feedback || '',
-                        question_responses: parsed.question_responses || {},
-                        kktp_details: sub.kktp_details || {}
-                    };
-                }
-            } catch(e) {}
+        if (sub) {
+            initialData.score = sub.score || 0;
+            initialData.notes = sub.feedback || '';
+            initialData.kktp_details = sub.kktp_details || {};
+
+            if (sub.content) {
+                try {
+                    const parsed = JSON.parse(sub.content);
+                    if (parsed.type === 'oral_test') {
+                        const parsedKktp = parsed.kktp_details || parsed.question_responses || {};
+                        if (Object.keys(initialData.kktp_details).length === 0) {
+                            initialData.kktp_details = parsedKktp;
+                        }
+                        initialData.question_responses = parsed.question_responses || {};
+                    }
+                } catch(e) {}
+            }
         }
 
         setOralTestData(initialData);
@@ -1455,7 +1461,8 @@ export default function ShowAssignment({
     const handleSaveOralTest = () => {
         const content = JSON.stringify({
             type: 'oral_test',
-            question_responses: oralTestData.question_responses,
+            question_responses: oralTestData.kktp_details || {},
+            kktp_details: oralTestData.kktp_details || {}
         });
 
         router.post(route('assignments.grade'), {
@@ -1468,7 +1475,7 @@ export default function ShowAssignment({
         }, {
             preserveScroll: true,
             onSuccess: () => {
-                // Keep selected for live flow
+                showNotification('Nilai tes lisan berhasil disimpan!', 'success');
             }
         });
     };
