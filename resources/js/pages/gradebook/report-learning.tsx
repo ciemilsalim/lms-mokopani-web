@@ -5,7 +5,7 @@ import { ChevronLeft, GraduationCap, CheckCircle2, XCircle } from 'lucide-react'
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: '/dashboard' },
-    { title: 'Penilaian', href: '/gradebook' },
+    { title: 'Rapor', href: '/gradebook' },
     { title: 'Laporan CP', href: '#' },
 ];
 
@@ -40,7 +40,7 @@ export default function ReportLearning({ subject, class: cls, tps, reportData, p
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`Laporan CP ${subject.name} – LMS Mokopani`} />
 
-            <div className="flex h-full flex-1 flex-col gap-6 min-w-0">
+            <div className="space-y-4 sm:space-y-5 fade-in pb-24 sm:pb-8 max-w-7xl mx-auto w-full min-w-0">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <Link
                         href={route('gradebook.index')}

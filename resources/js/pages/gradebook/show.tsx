@@ -18,7 +18,7 @@ import { StudentGradeCard, GradeSummary } from '@/components/gradebook';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: '/dashboard' },
-    { title: 'Penilaian', href: '/gradebook' },
+    { title: 'Rapor', href: '/gradebook' },
     { title: 'Alur Asesmen Detail', href: '#' },
 ];
 

@@ -28,7 +28,7 @@ export function ReportActions({
                 className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground hover:text-foreground transition active:scale-95 min-h-[44px]"
             >
                 <ChevronLeft className="h-4 w-4" />
-                <span>Kembali ke Gradebook</span>
+                <span>Kembali</span>
             </button>
 
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
