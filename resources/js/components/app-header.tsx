@@ -70,12 +70,12 @@ export function AppHeader({ breadcrumbs = [] }: AppHeaderProps) {
     return (
         <>
             <div className="border-sidebar-border/80 border-b">
-                <div className="mx-auto flex h-16 items-center px-6 md:max-w-7xl">
+                <div className="mx-auto flex h-14 sm:h-16 items-center px-3 sm:px-6 md:max-w-7xl">
                     {/* Mobile Menu */}
                     <div className="lg:hidden">
                         <Sheet>
                             <SheetTrigger asChild>
-                                <Button variant="ghost" size="icon" className="mr-2 h-11 w-11 rounded-xl">
+                                <Button variant="ghost" size="icon" className="mr-1 h-11 w-11 rounded-xl">
                                     <Menu className="h-5 w-5" />
                                 </Button>
                             </SheetTrigger>

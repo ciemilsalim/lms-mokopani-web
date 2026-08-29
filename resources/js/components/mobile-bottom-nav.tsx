@@ -101,7 +101,7 @@ export function MobileBottomNav() {
                                 <div className={`flex items-center justify-center h-7 w-12 rounded-full transition-all duration-200 ${
                                     isActive ? 'bg-primary/15 text-primary shadow-xs' : 'bg-transparent'
                                 }`}>
-                                    <item.icon className={`h-4 w-4 transition-transform ${isActive ? 'stroke-[2.5]' : 'stroke-2'}`} />
+                                    <item.icon className={`h-5 w-5 transition-transform ${isActive ? 'stroke-[2.5]' : 'stroke-2'}`} />
                                 </div>
                                 <span className={`text-[10px] tracking-tight truncate max-w-[64px] text-center mt-0.5 ${
                                     isActive ? 'font-black text-primary' : 'font-semibold text-muted-foreground'
@@ -124,7 +124,7 @@ export function MobileBottomNav() {
                             <div className={`flex items-center justify-center h-7 w-12 rounded-full transition-all duration-200 ${
                                 isActive ? 'bg-primary/15 text-primary shadow-xs' : 'bg-transparent'
                             }`}>
-                                <item.icon className={`h-4 w-4 transition-transform ${isActive ? 'stroke-[2.5]' : 'stroke-2'}`} />
+                                <item.icon className={`h-5 w-5 transition-transform ${isActive ? 'stroke-[2.5]' : 'stroke-2'}`} />
                             </div>
                             <span className={`text-[10px] tracking-tight truncate max-w-[64px] text-center mt-0.5 ${
                                 isActive ? 'font-black text-primary' : 'font-semibold text-muted-foreground'
@@ -144,7 +144,7 @@ export function MobileBottomNav() {
                             aria-label="Buka Semua Menu"
                         >
                             <div className="flex items-center justify-center h-7 w-12 rounded-full bg-muted/40 group-hover:bg-muted/80 transition-colors">
-                                <Menu className="h-4 w-4" />
+                                <Menu className="h-5 w-5" />
                             </div>
                             <span className="text-[10px] font-semibold tracking-tight text-center mt-0.5">
                                 Lainnya

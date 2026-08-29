@@ -29,8 +29,7 @@ const roleLabelMap: Record<string, string> = {
 
 /**
  * WelcomeCard
- * Reusable Mobile-First welcome and profile identity header banner.
- * Features calm gradient visual, responsive hierarchy, and clean typography.
+ * Pixel-perfect Mobile-First welcome card matching the exact specification (~148px height, 20px radius, 16px padding).
  */
 export function WelcomeCard({
     identity,
@@ -48,27 +47,36 @@ export function WelcomeCard({
     const hour = new Date().getHours();
     const greetingTime = hour < 11 ? 'pagi' : hour < 15 ? 'siang' : hour < 18 ? 'sore' : 'malam';
 
+    // Format Academic Year & Semester e.g., "2026/2027 · Ganjil"
+    const periodText = [
+        identity?.tahunAjaran,
+        identity?.semester ? (identity.semester.toLowerCase().includes('ganjil') ? 'Ganjil' : identity.semester.toLowerCase().includes('genap') ? 'Genap' : identity.semester) : null
+    ].filter(Boolean).join(' · ');
+
     return (
-        <div className={`relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-primary/95 to-indigo-700 p-4 sm:p-5 text-primary-foreground shadow-sm ${className}`}>
-            <div className="relative z-10 flex items-start justify-between">
-                <div className="min-w-0 flex-1 pr-0 sm:pr-36">
-                    <p className="text-xs font-semibold text-white/80 flex items-center gap-1.5">
+        <div className={`relative overflow-hidden rounded-[20px] bg-gradient-to-br from-primary via-primary/95 to-indigo-700 p-4 text-primary-foreground shadow-xs min-h-[140px] sm:min-h-[148px] flex flex-col justify-between w-full min-w-0 box-border ${className}`}>
+            <div className="relative z-10 flex items-start justify-between w-full min-w-0">
+                <div className="min-w-0 flex-1 pr-0 sm:pr-36 space-y-1">
+                    {/* Greeting: 11-12px / 500 */}
+                    <p className="text-xs font-medium text-white/80 flex items-center gap-1.5 leading-none">
                         <span>Selamat {greetingTime}, {firstName}</span>
                         <span className="inline-block animate-wave origin-[70%_70%]">👋</span>
                     </p>
 
-                    <div className="mt-1 flex flex-wrap items-center gap-2">
-                        <h1 className="text-lg sm:text-xl font-black tracking-tight text-white leading-tight">
+                    {/* Name: 20px / 700 + Badge Guru: 11px / 700 */}
+                    <div className="pt-0.5 flex flex-wrap items-center gap-2 min-w-0">
+                        <h1 className="text-lg sm:text-[20px] font-bold tracking-tight text-white leading-tight truncate max-w-full">
                             {identity?.name ?? 'Pengguna'}
                         </h1>
-                        <span className="inline-flex items-center rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-bold tracking-wide backdrop-blur-xs text-white">
+                        <span className="inline-flex items-center rounded-full bg-white/20 px-2 py-0.5 text-[11px] font-bold tracking-wide backdrop-blur-xs text-white shrink-0">
                             {roleLabelMap[userRole] ?? userRole}
                         </span>
                     </div>
 
-                    <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-white/90">
+                    {/* Mapel & Sekolah: 12px / 600 & 500 */}
+                    <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-white/90 leading-tight">
                         {cleanSubject && (
-                            <span className="font-semibold text-white">
+                            <span className="font-semibold text-white truncate max-w-[180px]">
                                 {cleanSubject}
                             </span>
                         )}
@@ -76,17 +84,16 @@ export function WelcomeCard({
                             <span className="text-white/40">•</span>
                         )}
                         {identity?.sekolah && (
-                            <span className="text-white/80">{identity.sekolah}</span>
-                        )}
-                        {identity?.tahunAjaran && (
-                            <>
-                                <span className="text-white/40">•</span>
-                                <span className="text-white/70 text-[11px]">
-                                    {identity.tahunAjaran} {identity.semester ? `(${identity.semester})` : ''}
-                                </span>
-                            </>
+                            <span className="text-white/80 font-medium truncate max-w-[200px]">{identity.sekolah}</span>
                         )}
                     </div>
+
+                    {/* Tahun ajaran & Semester: 11-12px / 500 */}
+                    {periodText && (
+                        <p className="text-[11px] sm:text-xs font-medium text-white/70 pt-0.5 leading-tight truncate">
+                            {periodText}
+                        </p>
+                    )}
                 </div>
             </div>
 

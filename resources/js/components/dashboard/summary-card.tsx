@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 export type SemanticVariant = 'primary' | 'success' | 'warning' | 'destructive' | 'info';
 
 export interface SummaryCardProps {
-    /** Label text (e.g., "Siswa", "Materi") */
+    /** Label text (e.g., "SISWA", "MATERI", "ASESMEN", "PERLU DINILAI") */
     label: string;
     /** Numeric or text value to display prominently */
     value: number | string;
@@ -52,8 +52,8 @@ const variantStyles: Record<SemanticVariant, { bg: string; text: string; border:
 
 /**
  * SummaryCard (Stat Card)
- * Reusable Mobile-First summary statistic card.
- * Complies with 48px touch target guidelines when wrapped in a link.
+ * Exact spec:
+ * Height: ~100px, padding: 14px (p-3.5), label: 11px/700, number: 28px/700.
  */
 export function SummaryCard({
     label,
@@ -67,23 +67,23 @@ export function SummaryCard({
     const style = variantStyles[variant] || variantStyles.primary;
 
     const cardNode = (
-        <Card className={`rounded-2xl border border-border/70 shadow-xs hover:shadow-md transition-all duration-200 bg-card overflow-hidden h-full w-full min-w-0 ${className}`}>
-            <CardContent className="p-3.5 sm:p-5 flex flex-col justify-between h-full min-h-[96px] w-full min-w-0">
-                <div className="flex items-center justify-between gap-2">
+        <Card className={`rounded-2xl border border-border/80 shadow-xs hover:shadow-md transition-all duration-200 bg-card overflow-hidden h-[98px] sm:h-[104px] w-full min-w-0 box-border ${className}`}>
+            <CardContent className="p-3.5 flex flex-col justify-between h-full w-full min-w-0 box-border">
+                <div className="flex items-center justify-between gap-1.5 w-full min-w-0">
                     <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider truncate">
                         {label}
                     </p>
-                    <div className={`flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-xl ${style.bg} shrink-0 shadow-2xs`}>
-                        <Icon className={`h-4 w-4 sm:h-5 sm:w-5 ${style.text}`} strokeWidth={2.5} />
+                    <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${style.bg} shrink-0 shadow-2xs`}>
+                        <Icon className={`h-4 w-4 ${style.text}`} strokeWidth={2.5} />
                     </div>
                 </div>
 
-                <div className="mt-2">
-                    <div className="text-2xl sm:text-3xl font-black text-foreground leading-none tracking-tight">
+                <div className="mt-1">
+                    <div className="text-[26px] sm:text-[28px] font-bold text-foreground leading-none tracking-tight">
                         {value}
                     </div>
                     {description && (
-                        <p className="text-[11px] text-muted-foreground mt-1 truncate">
+                        <p className="text-[10px] text-muted-foreground mt-0.5 truncate leading-tight">
                             {description}
                         </p>
                     )}
@@ -94,7 +94,7 @@ export function SummaryCard({
 
     if (href) {
         return (
-            <Link href={href} className="block h-full min-w-0 min-h-[48px] active:scale-97 transition-transform focus:outline-none focus:ring-2 focus:ring-primary/30 rounded-2xl">
+            <Link href={href} className="block h-full min-w-0 focus:outline-none focus:ring-2 focus:ring-primary/30 rounded-2xl active:scale-97 transition-transform">
                 {cardNode}
             </Link>
         );
