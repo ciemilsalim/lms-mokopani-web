@@ -5225,15 +5225,43 @@ export default function ShowAssignment({
                                                 
                                                 return (
                                                     <div key={q.id} className="p-6 rounded-xl bg-slate-50/50 dark:bg-slate-800/20 border border-border space-y-4">
-                                                        <div className="flex items-start justify-between gap-4">
-                                                            <div className="flex-1 space-y-1">
-                                                                <span className="text-[9px] font-black text-indigo-500 uppercase tracking-widest">Pertanyaan 0{idx + 1}</span>
-                                                                <p className="text-xs font-black text-slate-800 dark:text-slate-100 leading-relaxed whitespace-pre-wrap">{q.question || q.text}</p>
+                                                        <div className="space-y-3">
+                                                            {/* Header Nomor & Bobot */}
+                                                            <div className="flex items-center justify-between gap-2">
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-wider border border-indigo-100/50 dark:border-indigo-900/30">
+                                                                        Pertanyaan 0{idx + 1}
+                                                                    </span>
+                                                                    {q.difficulty && (
+                                                                        <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-muted text-muted-foreground">
+                                                                            {q.difficulty}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                                <span className="text-[10px] font-black px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                                                                    Bobot: {qPoints} pt
+                                                                </span>
                                                             </div>
-                                                            <div className="px-4 py-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30 max-w-[240px]">
-                                                                <span className="text-[8px] font-black text-emerald-600 uppercase tracking-widest block mb-1">Panduan Kunci</span>
-                                                                <p className="text-[10px] text-slate-600 dark:text-muted-foreground italic leading-snug">{q.answer_guide || 'Tidak ada panduan khusus.'}</p>
+
+                                                            {/* Teks Pertanyaan Lebar Penuh */}
+                                                            <div className="py-1">
+                                                                <p className="text-sm font-black text-slate-800 dark:text-slate-100 leading-relaxed">
+                                                                    {q.question || q.text}
+                                                                </p>
                                                             </div>
+
+                                                            {/* Kotak Panduan Kunci / Jawaban Ideal */}
+                                                            {(q.answer_guide || q.answer) && (
+                                                                <div className="p-3 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/20 border border-emerald-100/80 dark:border-emerald-900/30 space-y-1">
+                                                                    <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+                                                                        <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                                                                        <span className="text-[9px] font-black uppercase tracking-wider">Panduan Kunci / Respon Ideal</span>
+                                                                    </div>
+                                                                    <p className="text-xs text-slate-600 dark:text-slate-300 font-medium leading-relaxed italic pl-5">
+                                                                        {q.answer_guide || q.answer}
+                                                                    </p>
+                                                                </div>
+                                                            )}
                                                         </div>
                                                         
                                                         {/* Pemahaman Konsep Rubric Selector */}

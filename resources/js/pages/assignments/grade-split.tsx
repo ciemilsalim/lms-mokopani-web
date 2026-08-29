@@ -356,32 +356,39 @@ export default function GradeSplitPage({
                                 
                                 return (
                                     <div key={q.id || idx} className="p-4 rounded-xl bg-card border border-border shadow-2xs space-y-3">
-                                        <div className="flex items-start justify-between gap-3">
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-xs font-black text-foreground leading-relaxed whitespace-pre-wrap">
-                                                    {idx + 1}. {q.question || q.text}
-                                                </p>
-                                            </div>
-                                            <div className="flex items-center gap-1.5 shrink-0">
-                                                {q.difficulty && (
-                                                    <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
-                                                        {q.difficulty}
+                                        <div className="space-y-2.5">
+                                            {/* Header Nomor & Bobot */}
+                                            <div className="flex items-center justify-between gap-2">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="px-2 py-0.5 rounded-md bg-primary/10 text-[10px] font-black text-primary uppercase tracking-wider">
+                                                        Pertanyaan 0{idx + 1}
                                                     </span>
-                                                )}
-                                                <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-primary/10 text-primary">
+                                                    {q.difficulty && (
+                                                        <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                                                            {q.difficulty}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <span className="text-[10px] font-black px-2 py-0.5 rounded bg-muted/60 text-muted-foreground">
                                                     {qPoints} pt
                                                 </span>
                                             </div>
+
+                                            {/* Teks Pertanyaan Lebar Penuh */}
+                                            <p className="text-xs sm:text-sm font-bold text-foreground leading-relaxed">
+                                                {q.question || q.text}
+                                            </p>
+
+                                            {/* Panduan Jawaban Ideal */}
+                                            {(q.answer_guide || q.answer) && (
+                                                <div className="p-2.5 rounded-lg bg-emerald-500/5 border border-emerald-500/15 text-[11px] space-y-0.5">
+                                                    <span className="text-[9px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block">Panduan Kunci / Jawaban Ideal:</span>
+                                                    <p className="text-foreground leading-relaxed font-medium pl-1">
+                                                        {q.answer_guide || q.answer}
+                                                    </p>
+                                                </div>
+                                            )}
                                         </div>
-                                        
-                                        {(q.answer_guide || q.answer) && (
-                                            <div className="p-2.5 rounded-lg bg-emerald-500/5 border border-emerald-500/10 text-[10.5px]">
-                                                <span className="text-[9px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block mb-0.5">Panduan Jawaban:</span>
-                                                <p className="text-slate-600 dark:text-slate-350 leading-relaxed font-medium">
-                                                    {q.answer_guide || q.answer}
-                                                </p>
-                                            </div>
-                                        )}
                                         
                                         {/* Pemahaman Konsep Rubric Selector */}
                                         <div className="pt-3 border-t border-border/60 space-y-2">
