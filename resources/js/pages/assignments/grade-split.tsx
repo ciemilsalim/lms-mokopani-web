@@ -427,9 +427,9 @@ export default function GradeSplitPage({
                                                                 });
                                                                 setScore(Math.min(assignment.max_points, Math.round(totalScore)));
                                                             }}
-                                                            className={`py-1.5 rounded-lg border text-center text-[10px] font-black transition cursor-pointer leading-tight ${
+                                                            className={`py-2 rounded-lg border text-center text-xs font-black transition cursor-pointer leading-tight ${
                                                                 isSelected
-                                                                    ? 'bg-primary text-primary-foreground border-primary shadow-2xs'
+                                                                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm font-black'
                                                                     : 'bg-background border-border text-muted-foreground hover:text-foreground hover:bg-muted/50'
                                                             }`}
                                                         >

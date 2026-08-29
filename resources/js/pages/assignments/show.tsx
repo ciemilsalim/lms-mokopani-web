@@ -4944,6 +4944,82 @@ export default function ShowAssignment({
                                                 })()}
                                             </div>
                                         )}
+                                        {assignment.instrument_type === 'oral_test' && (
+                                            <div className="pt-6 border-t border-slate-50 dark:border-slate-800 animate-in slide-in-from-top-4 space-y-4">
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center gap-2">
+                                                        <Mic className="h-4 w-4 text-emerald-500" />
+                                                        <h3 className="text-xs font-black text-foreground uppercase tracking-widest">Hasil Capaian Tes Lisan</h3>
+                                                    </div>
+                                                    <span className="text-[10px] font-black text-muted-foreground uppercase tracking-wider">
+                                                        Status Penguasaan per Butir
+                                                    </span>
+                                                </div>
+
+                                                {(() => {
+                                                    const kktp = my_submission.kktp_details || {};
+                                                    const questions = assignment.instrument_config?.questions || [];
+                                                    const levelNames: Record<string, string> = {
+                                                        BB: 'Baru Berkembang',
+                                                        LY: 'Layak',
+                                                        CK: 'Cakap',
+                                                        MH: 'Mahir'
+                                                    };
+                                                    
+                                                    return (
+                                                        <div className="space-y-3">
+                                                            <div className="grid gap-2.5">
+                                                                {questions.map((q: any, idx: number) => {
+                                                                    const levelCode = kktp[q.id];
+                                                                    const isMastered = levelCode === 'MH' || levelCode === 'CK';
+                                                                    
+                                                                    return (
+                                                                        <div key={q.id || idx} className={`p-3.5 rounded-xl border transition-all ${
+                                                                            levelCode 
+                                                                                ? (isMastered ? 'bg-emerald-50/40 dark:bg-emerald-950/15 border-emerald-200 dark:border-emerald-900/40' : 'bg-rose-50/40 dark:bg-rose-950/15 border-rose-200 dark:border-rose-900/40') 
+                                                                                : 'bg-white dark:bg-slate-900 border-border'
+                                                                        }`}>
+                                                                            <div className="flex items-start justify-between gap-3">
+                                                                                <div className="flex-1 min-w-0 space-y-1">
+                                                                                    <div className="flex items-center gap-2">
+                                                                                        <span className="text-[9px] font-black text-indigo-500 uppercase tracking-widest">
+                                                                                            Pertanyaan 0{idx + 1}
+                                                                                        </span>
+                                                                                        {levelCode ? (
+                                                                                            <span className={`text-[9px] font-black px-2 py-0.5 rounded-md ${
+                                                                                                isMastered 
+                                                                                                    ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300' 
+                                                                                                    : 'bg-rose-100 dark:bg-rose-900/50 text-rose-700 dark:text-rose-300'
+                                                                                            }`}>
+                                                                                                {levelNames[levelCode] || levelCode} ({isMastered ? 'Tuntas' : 'Perlu Diulang'})
+                                                                                            </span>
+                                                                                        ) : (
+                                                                                            <span className="text-[9px] font-black px-2 py-0.5 rounded-md bg-muted text-muted-foreground">
+                                                                                                Belum Diuji
+                                                                                            </span>
+                                                                                        )}
+                                                                                    </div>
+                                                                                    <p className="text-xs font-bold text-slate-800 dark:text-slate-200 leading-relaxed">
+                                                                                        {q.question || q.text}
+                                                                                    </p>
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    );
+                                                                })}
+                                                            </div>
+
+                                                            {my_submission.feedback && (
+                                                                <div className="p-4 rounded-xl bg-muted/40 border border-border mt-3">
+                                                                    <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mb-1.5">Catatan Umpan Balik Guru:</p>
+                                                                    <p className="text-xs text-slate-700 dark:text-slate-300 font-medium leading-relaxed italic">"{my_submission.feedback}"</p>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })()}
+                                            </div>
+                                        )}
                                         {assignment.instrument_type === 'performance_observation' && (
                                             <div className="pt-6 border-t border-slate-50 dark:border-slate-800 animate-in slide-in-from-top-4">
                                                 <div className="flex items-center gap-2 mb-6">
@@ -4994,16 +5070,18 @@ export default function ShowAssignment({
                                     </>
                                 ) : (
                                     <div className="flex flex-col items-center py-10 text-center space-y-4">
-                                        {['observation_checklist', 'anecdotal_notes', 'performance_observation'].includes(assignment.instrument_type) ? (
+                                        {['observation_checklist', 'anecdotal_notes', 'performance_observation', 'oral_test'].includes(assignment.instrument_type) ? (
                                             <>
                                                 <div className={`h-16 w-16 rounded-xl ${assignment.instrument_type === 'anecdotal_notes' ? 'bg-indigo-50 dark:bg-indigo-950/20 text-indigo-500' : 'bg-sky-50 dark:bg-sky-950/20 text-primary'} flex items-center justify-center`}>
                                                     {assignment.instrument_type === 'anecdotal_notes' ? <FileText className="h-8 w-8 opacity-50" /> : <Activity className="h-8 w-8 opacity-50" />}
                                                 </div>
                                                 <div>
                                                     <p className="text-sm font-black text-foreground uppercase tracking-widest">
-                                                        {assignment.instrument_type === 'anecdotal_notes' ? 'Menunggu Catatan Anekdotal' : 'Menunggu Observasi'}
+                                                        {assignment.instrument_type === 'anecdotal_notes' ? 'Menunggu Catatan Anekdotal' : assignment.instrument_type === 'oral_test' ? 'Menunggu Ujian Lisan' : 'Menunggu Observasi'}
                                                     </p>
-                                                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Guru akan mencatat perkembangan Anda di kelas.</p>
+                                                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">
+                                                        {assignment.instrument_type === 'oral_test' ? 'Guru akan melakukan pengujian lisan langsung di kelas.' : 'Guru akan mencatat perkembangan Anda di kelas.'}
+                                                    </p>
                                                 </div>
                                             </>
                                         ) : (
@@ -5308,7 +5386,7 @@ export default function ShowAssignment({
                                                                             }}
                                                                             className={`p-2.5 rounded-xl border text-center text-xs font-black transition cursor-pointer leading-tight truncate ${
                                                                                 isSelected
-                                                                                    ? 'bg-indigo-650 text-white border-indigo-600 shadow-xs'
+                                                                                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm font-black'
                                                                                     : 'bg-white dark:bg-slate-900 border-border text-muted-foreground hover:text-foreground hover:bg-muted/50'
                                                                             }`}
                                                                         >
