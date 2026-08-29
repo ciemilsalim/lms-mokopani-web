@@ -840,19 +840,37 @@ export function AssessmentForm({
     };
 
     const steps = [
-        { id: 1, label: 'Konteks' },
-        { id: 2, label: 'Instrumen & Soal' },
-        { id: 3, label: 'Detail' },
+        { id: 1, label: '1. Konteks' },
+        { id: 2, label: '2. Instrumen' },
+        { id: 3, label: '3. Pengaturan' },
     ];
 
     const questionsCount = data.instrument_config.questions?.length || 0;
     const currentKktpApproach = data.instrument_config.kktp?.approach || 'score_interval';
 
     return (
-        <div className="w-full space-y-3.5 pb-24">
-            {/* Header Stepper Navigation (33% Equal Width, Compact 46px Height) */}
-            <div className="w-full bg-card rounded-2xl border border-border p-1.5 shadow-xs">
-                <div className="grid grid-cols-3 gap-1 w-full">
+        <div className="w-full space-y-4 pb-28 sm:pb-32">
+            {/* Header Stepper Navigation (Compact 48-56px Stepper with Progress Bar) */}
+            <div className="w-full bg-card rounded-2xl border border-border/80 p-2 sm:p-2.5 shadow-xs space-y-2">
+                <div className="flex items-center justify-between px-1">
+                    <span className="text-xs font-bold text-foreground">
+                        Langkah {currentStep} dari 3
+                    </span>
+                    <span className="text-xs font-bold text-primary">
+                        {currentStep === 1 ? 'Konteks Pembelajaran' : currentStep === 2 ? 'Tipe & Instrumen' : 'Pengaturan Asesmen'}
+                    </span>
+                </div>
+
+                {/* Progress Bar Line */}
+                <div className="w-full h-1.5 rounded-full bg-muted/60 overflow-hidden">
+                    <div 
+                        className="h-full bg-primary rounded-full transition-all duration-300"
+                        style={{ width: `${(currentStep / 3) * 100}%` }}
+                    />
+                </div>
+
+                {/* Stepper Buttons (Short Labels: 1. Konteks, 2. Instrumen, 3. Pengaturan) */}
+                <div className="grid grid-cols-3 gap-1.5 w-full pt-0.5">
                     {steps.map((step) => {
                         const isCurrent = currentStep === step.id;
                         const isCompleted = currentStep > step.id;
@@ -861,24 +879,19 @@ export function AssessmentForm({
                             <button
                                 key={step.id}
                                 type="button"
-                                onClick={() => setCurrentStep(step.id)}
-                                className={`flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl text-xs font-bold transition cursor-pointer min-h-[40px] truncate ${
+                                onClick={() => {
+                                    if (step.id <= currentStep || (step.id === 2 && data.subject_id) || (step.id === 3 && data.subject_id && data.instrument_type)) {
+                                        setCurrentStep(step.id);
+                                    }
+                                }}
+                                className={`flex items-center justify-center py-2 px-1.5 rounded-xl text-xs font-bold transition cursor-pointer min-h-[40px] truncate ${
                                     isCurrent
                                         ? 'bg-primary text-primary-foreground shadow-xs font-black'
                                         : isCompleted
                                             ? 'bg-primary/10 text-primary hover:bg-primary/20'
-                                            : 'text-muted-foreground hover:bg-muted'
+                                            : 'text-muted-foreground hover:bg-muted/40'
                                 }`}
                             >
-                                <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-black shrink-0 ${
-                                    isCurrent
-                                        ? 'bg-primary-foreground text-primary'
-                                        : isCompleted
-                                            ? 'bg-primary text-primary-foreground'
-                                            : 'bg-muted-foreground/20 text-muted-foreground'
-                                }`}>
-                                    {isCompleted ? <Check className="h-3 w-3 stroke-[3]" /> : step.id}
-                                </span>
                                 <span className="truncate">{step.label}</span>
                             </button>
                         );
@@ -890,22 +903,19 @@ export function AssessmentForm({
             <form onSubmit={handleSubmit} className="w-full space-y-4">
                 {/* ── STEP 1: KONTEKS PEMBELAJARAN ── */}
                 {currentStep === 1 && (
-                    <div className="w-full rounded-2xl border border-border bg-card p-4 sm:p-5 space-y-4 shadow-xs fade-in">
-                        <div className="flex items-center gap-2 border-b border-border/50 pb-2.5">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary shrink-0">
-                                <BookOpen className="h-4 w-4" />
-                            </div>
-                            <div className="min-w-0">
-                                <h2 className="text-sm sm:text-base font-black text-foreground leading-tight">
-                                    Konteks Pembelajaran
-                                </h2>
-                                <p className="text-[11px] text-muted-foreground">Langkah 1 dari 3: Pilih Mata Pelajaran & Tujuan Pembelajaran (TP)</p>
-                            </div>
+                    <div className="w-full rounded-2xl border border-border/80 bg-card p-4 sm:p-5 space-y-4 shadow-xs fade-in">
+                        <div className="border-b border-border/60 pb-3">
+                            <h2 className="text-base sm:text-lg font-bold text-foreground leading-tight">
+                                Konteks Pembelajaran
+                            </h2>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                                Pilih mata pelajaran, kelas, dan Tujuan Pembelajaran (TP).
+                            </p>
                         </div>
 
                         {/* Subject Selector */}
                         <div className="space-y-1.5">
-                            <label className="text-xs font-bold text-foreground">
+                            <label className="text-sm font-bold text-foreground">
                                 Mata Pelajaran <span className="text-destructive">*</span>
                             </label>
                             <select
@@ -918,7 +928,7 @@ export function AssessmentForm({
                                         learning_objective_id: '',
                                     }));
                                 }}
-                                className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-xs sm:text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition min-h-[46px] cursor-pointer"
+                                className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition h-12 cursor-pointer"
                             >
                                 <option value="">Pilih mata pelajaran</option>
                                 {availableSubjects.map(s => (
@@ -931,14 +941,14 @@ export function AssessmentForm({
                         {/* Target Class Multi-Selector */}
                         <div className="space-y-1.5">
                             <div className="flex items-center justify-between">
-                                <label className="text-xs font-bold text-foreground">
+                                <label className="text-sm font-bold text-foreground">
                                     Target Kelas <span className="text-destructive">*</span>
                                 </label>
                                 {availableClasses.length > 1 && (
                                     <button
                                         type="button"
                                         onClick={toggleSelectAllClasses}
-                                        className="text-[11px] font-bold text-primary hover:underline cursor-pointer"
+                                        className="text-xs font-bold text-primary hover:underline cursor-pointer"
                                     >
                                         {data.school_classes.length === availableClasses.length ? 'Batal Pilih Semua' : 'Pilih Semua Kelas'}
                                     </button>
@@ -946,9 +956,8 @@ export function AssessmentForm({
                             </div>
 
                             {!data.subject_id ? (
-                                <div className="flex items-center gap-2 p-3 rounded-xl bg-muted/40 border border-border/80 text-muted-foreground text-xs">
-                                    <Lock className="h-4 w-4 shrink-0 text-muted-foreground/60" />
-                                    <span>Pilih mata pelajaran terlebih dahulu untuk memilih kelas</span>
+                                <div className="p-3 rounded-xl bg-muted/30 border border-border text-muted-foreground text-xs">
+                                    Pilih mata pelajaran terlebih dahulu.
                                 </div>
                             ) : availableClasses.length === 0 ? (
                                 <p className="text-xs text-muted-foreground italic p-2">Tidak ada kelas yang terhubung dengan mata pelajaran ini.</p>
@@ -961,7 +970,7 @@ export function AssessmentForm({
                                                 key={c.id}
                                                 type="button"
                                                 onClick={() => toggleClass(c.id)}
-                                                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition active:scale-95 min-h-[40px] cursor-pointer ${
+                                                className={`px-4 py-2.5 rounded-xl text-xs font-bold transition active:scale-95 min-h-[44px] cursor-pointer ${
                                                     isSelected
                                                         ? 'bg-primary text-primary-foreground shadow-xs font-black'
                                                         : 'bg-background border border-border text-muted-foreground hover:text-foreground'
@@ -978,14 +987,14 @@ export function AssessmentForm({
 
                         {/* Objective / TP Selector */}
                         <div className="space-y-1.5">
-                            <label className="text-xs font-bold text-foreground">
+                            <label className="text-sm font-bold text-foreground">
                                 Tujuan Pembelajaran (TP) <span className="text-destructive">*</span>
                             </label>
                             <select
                                 value={data.learning_objective_id}
                                 disabled={!data.subject_id}
                                 onChange={(e) => setData('learning_objective_id', e.target.value)}
-                                className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-xs sm:text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition min-h-[46px] cursor-pointer disabled:opacity-50"
+                                className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition h-12 cursor-pointer disabled:opacity-50"
                             >
                                 <option value="">Pilih tujuan pembelajaran</option>
                                 {availableObjectives.map(o => (
@@ -1000,22 +1009,19 @@ export function AssessmentForm({
                 {currentStep === 2 && (
                     <div className="w-full space-y-4 fade-in">
                         {/* 1. Instrument Type Selector */}
-                        <div className="rounded-2xl border border-border bg-card p-4 sm:p-5 space-y-4 shadow-xs">
-                            <div className="flex items-center gap-2 border-b border-border/50 pb-2.5">
-                                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary shrink-0">
-                                    <Target className="h-4 w-4" />
-                                </div>
-                                <div className="min-w-0">
-                                    <h2 className="text-sm sm:text-base font-black text-foreground leading-tight">
-                                        Pilih Tipe & Instrumen Asesmen
-                                    </h2>
-                                    <p className="text-[11px] text-muted-foreground">Langkah 2 dari 3</p>
-                                </div>
+                        <div className="rounded-2xl border border-border/80 bg-card p-4 sm:p-5 space-y-4 shadow-xs">
+                            <div className="border-b border-border/60 pb-3">
+                                <h2 className="text-base sm:text-lg font-bold text-foreground leading-tight">
+                                    Tipe & Instrumen
+                                </h2>
+                                <p className="text-xs text-muted-foreground mt-0.5">
+                                    Langkah 2 dari 3: Tentukan jenis asesmen dan format instrumen penilaian.
+                                </p>
                             </div>
 
-                            {/* Assessment Type 3-Button Grid */}
+                            {/* Assessment Type 3-Card Grid (Target 80-88px height) */}
                             <div className="space-y-1.5">
-                                <label className="text-xs font-bold text-foreground">
+                                <label className="text-sm font-bold text-foreground">
                                     Tipe Asesmen <span className="text-destructive">*</span>
                                 </label>
                                 <div className="grid grid-cols-3 gap-2">
@@ -1057,23 +1063,23 @@ export function AssessmentForm({
                                                         }
                                                     }));
                                                 }}
-                                                className={`flex flex-col items-center justify-center p-2.5 sm:p-3 rounded-xl border text-center transition min-h-[60px] cursor-pointer ${
+                                                className={`flex flex-col items-center justify-center p-3 rounded-2xl border text-center transition h-20 sm:h-22 cursor-pointer ${
                                                     isSelected
-                                                        ? 'bg-primary text-primary-foreground border-primary shadow-xs font-black ring-1 ring-primary/40'
+                                                        ? 'bg-primary text-primary-foreground border-primary shadow-xs font-black ring-2 ring-primary/30'
                                                         : 'bg-background hover:bg-muted/40 border-border text-foreground'
                                                 }`}
                                             >
-                                                <Icon className="h-4 w-4 mb-1" />
-                                                <span className="text-xs font-bold leading-tight">{t.name}</span>
+                                                <Icon className="h-5 w-5 mb-1.5 shrink-0" />
+                                                <span className="text-xs sm:text-sm font-bold leading-tight">{t.name}</span>
                                             </button>
                                         );
                                     })}
                                 </div>
                             </div>
 
-                            {/* Instrument Selection Grid */}
+                            {/* Instrument Selection Grid (Min height 72px, line-clamp-2 desc) */}
                             <div className="space-y-1.5 pt-1">
-                                <label className="text-xs font-bold text-foreground">
+                                <label className="text-sm font-bold text-foreground">
                                     Instrumen Penilaian <span className="text-destructive">*</span>
                                 </label>
                                 <div className="grid gap-2 sm:grid-cols-2">
@@ -1105,18 +1111,18 @@ export function AssessmentForm({
                                                         }
                                                     }));
                                                 }}
-                                                className={`flex items-start gap-2.5 p-3 rounded-xl border text-left transition min-h-[54px] cursor-pointer ${
+                                                className={`flex items-center gap-3 p-3.5 rounded-2xl border text-left transition min-h-[72px] cursor-pointer ${
                                                     isSelected
-                                                        ? 'bg-primary/10 border-primary text-foreground shadow-2xs font-bold ring-1 ring-primary/40'
+                                                        ? 'bg-primary/10 border-primary text-foreground shadow-xs font-bold ring-1 ring-primary/40'
                                                         : 'bg-background hover:bg-muted/40 border-border text-foreground'
                                                 }`}
                                             >
-                                                <div className={`p-1.5 rounded-lg shrink-0 ${isSelected ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
-                                                    <Icon className="h-3.5 w-3.5" />
+                                                <div className={`p-2 rounded-xl shrink-0 ${isSelected ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
+                                                    <Icon className="h-4 w-4" />
                                                 </div>
-                                                <div className="min-w-0">
-                                                    <p className="text-xs font-bold truncate leading-tight">{inst.name}</p>
-                                                    <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-1">{inst.desc}</p>
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="text-xs sm:text-sm font-bold truncate leading-tight">{inst.name}</p>
+                                                    <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2 leading-relaxed">{inst.desc}</p>
                                                 </div>
                                             </button>
                                         );
@@ -1124,26 +1130,27 @@ export function AssessmentForm({
                                 </div>
                             </div>
 
-                            {/* Context-Aware AI Assistant Generator Card */}
+                            {/* Secondary AI Assistant Generator Card (96-120px height target) */}
                             {data.instrument_type && (
-                                <div className="p-3.5 rounded-2xl bg-gradient-to-r from-primary/10 via-primary/5 to-purple-500/10 border border-primary/25 space-y-2.5 transition-all">
-                                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                                <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-primary/10 via-primary/5 to-purple-500/10 border border-primary/25 space-y-2.5 transition-all">
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                                         <div className="space-y-1 min-w-0">
                                             <div className="flex items-center gap-2">
                                                 <Sparkles className="h-4 w-4 text-primary shrink-0 animate-pulse" />
-                                                <h4 className="text-xs font-bold text-foreground">
-                                                    ✨ Asisten AI Asesmen ({aiContext.name})
+                                                <h4 className="text-xs sm:text-sm font-bold text-foreground">
+                                                    Asisten AI
                                                 </h4>
                                             </div>
-                                            <p className="text-[11px] text-muted-foreground leading-relaxed">
-                                                {aiContext.desc}
+                                            <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">
+                                                Bantu membuat soal otomatis dan rubrik berdasarkan Capaian Pembelajaran.
                                             </p>
 
-                                            <div className="flex flex-wrap gap-1.5 pt-1">
-                                                {aiContext.capabilities.map((cap, idx) => (
+                                            {/* Max 2 chips on mobile */}
+                                            <div className="flex flex-wrap gap-1.5 pt-0.5">
+                                                {aiContext.capabilities.slice(0, 2).map((cap, idx) => (
                                                     <span
                                                         key={idx}
-                                                        className="inline-flex items-center gap-1 text-[10px] font-bold bg-background/80 border border-border/80 px-2 py-0.5 rounded-md text-foreground"
+                                                        className="inline-flex items-center gap-1 text-[10px] font-bold bg-background/80 border border-border px-2 py-0.5 rounded-md text-foreground"
                                                     >
                                                         <Check className="h-2.5 w-2.5 text-primary stroke-[3]" />
                                                         <span>{cap}</span>
@@ -1152,41 +1159,31 @@ export function AssessmentForm({
                                             </div>
                                         </div>
 
-                                        <div className="flex flex-wrap items-center gap-2 shrink-0 self-end sm:self-center pt-1 sm:pt-0">
+                                        <div className="flex items-center gap-2 shrink-0 pt-1 sm:pt-0">
                                             <button
                                                 type="button"
                                                 disabled={aiLoading || !data.learning_objective_id}
                                                 onClick={handleAiGenerate}
-                                                className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-black shadow-xs hover:bg-primary/90 transition active:scale-95 cursor-pointer disabled:opacity-50"
+                                                className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-xs font-bold shadow-xs hover:bg-primary/90 transition active:scale-95 cursor-pointer disabled:opacity-50 min-h-[44px]"
                                             >
                                                 {aiLoading ? (
                                                     <>
-                                                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                                        <span>{aiContext.loadingLabel}</span>
+                                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                                        <span>Menyusun...</span>
                                                     </>
                                                 ) : (
                                                     <>
-                                                        <Sparkles className="h-3.5 w-3.5" />
-                                                        <span>{aiContext.ctaLabel}</span>
+                                                        <Sparkles className="h-4 w-4" />
+                                                        <span>Gunakan AI</span>
                                                     </>
                                                 )}
                                             </button>
-                                            {!isDraftVisible && (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setIsDraftVisible(true)}
-                                                    className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-background border border-border text-foreground text-xs font-bold hover:bg-muted transition cursor-pointer"
-                                                >
-                                                    <Edit3 className="h-3.5 w-3.5 text-muted-foreground" />
-                                                    <span>Tulis Manual</span>
-                                                </button>
-                                            )}
                                         </div>
                                     </div>
 
                                     {!data.learning_objective_id && (
-                                        <p className="text-[10px] text-amber-700 dark:text-amber-300 font-medium">
-                                            💡 Tips: Pilih Tujuan Pembelajaran (TP) pada Langkah 1 untuk mengaktifkan perumusan otomatis dari AI.
+                                        <p className="text-[11px] text-amber-700 dark:text-amber-300 font-medium">
+                                            💡 Tips: Pilih Tujuan Pembelajaran (TP) pada Langkah 1 untuk mengaktifkan AI.
                                         </p>
                                     )}
 
@@ -1924,121 +1921,136 @@ export function AssessmentForm({
 
                 {/* ── STEP 3: DETAIL TENGGAT WAKTU & PUBLIKASI ── */}
                 {currentStep === 3 && (
-                    <div className="w-full rounded-2xl border border-border bg-card p-4 sm:p-5 space-y-4 shadow-xs fade-in">
-                        <div className="flex items-center gap-2 border-b border-border/50 pb-2.5">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary shrink-0">
-                                <FileText className="h-4 w-4" />
+                    <div className="w-full rounded-2xl border border-border/80 bg-card p-4 sm:p-5 space-y-4 shadow-xs fade-in">
+                        <div className="border-b border-border/60 pb-3">
+                            <h2 className="text-base sm:text-lg font-bold text-foreground leading-tight">
+                                Pengaturan Asesmen
+                            </h2>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                                Langkah 3 dari 3: Konfirmasi ringkasan dan tentukan tenggat waktu serta bobot nilai.
+                            </p>
+                        </div>
+
+                        {/* Compact 2-Column Summary Metadata Grid (120-160px target) */}
+                        <div className="p-3.5 sm:p-4 rounded-2xl bg-muted/20 border border-border/80 space-y-2.5">
+                            <div className="border-b border-border/50 pb-2">
+                                <h4 className="text-xs sm:text-sm font-bold text-foreground truncate">{data.title || 'Asesmen Tanpa Judul'}</h4>
+                                <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{data.description || 'Tidak ada petunjuk pengerjaan khusus.'}</p>
                             </div>
-                            <div className="min-w-0">
-                                <h2 className="text-sm sm:text-base font-black text-foreground leading-tight">
-                                    Pengaturan Nilai & Tenggat Waktu
-                                </h2>
-                                <p className="text-[11px] text-muted-foreground">Langkah 3 dari 3: Konfirmasi akhir sebelum mempublikasikan asesmen</p>
+
+                            <div className="grid grid-cols-2 gap-2 text-xs">
+                                <div className="p-2.5 rounded-xl bg-background border border-border/60">
+                                    <span className="text-[10px] text-muted-foreground block font-bold uppercase tracking-wider">Tipe</span>
+                                    <span className="font-bold text-foreground truncate block mt-0.5">
+                                        {data.assessment_type === 'initial' ? 'Asesmen Awal' : data.assessment_type === 'summative' ? 'Asesmen Sumatif' : 'Asesmen Formatif'}
+                                    </span>
+                                </div>
+
+                                <div className="p-2.5 rounded-xl bg-background border border-border/60">
+                                    <span className="text-[10px] text-muted-foreground block font-bold uppercase tracking-wider">Soal / Instrumen</span>
+                                    <span className="font-bold text-primary truncate block mt-0.5">
+                                        {isTestInstrument ? `${questionsCount} Butir Soal` : (data.instrument_type === 'oral_test' ? 'Tes Lisan' : 'Observasi / Kinerja')}
+                                    </span>
+                                </div>
+
+                                <div className="p-2.5 rounded-xl bg-background border border-border/60">
+                                    <span className="text-[10px] text-muted-foreground block font-bold uppercase tracking-wider">Kelas</span>
+                                    <span className="font-bold text-foreground truncate block mt-0.5">
+                                        {data.school_classes.length > 0 ? `${data.school_classes.length} Kelas Terpilih` : 'Belum dipilih'}
+                                    </span>
+                                </div>
+
+                                <div className="p-2.5 rounded-xl bg-background border border-border/60">
+                                    <span className="text-[10px] text-muted-foreground block font-bold uppercase tracking-wider">KKTP</span>
+                                    <span className="font-bold text-foreground truncate block mt-0.5">
+                                        {currentKktpApproach === 'score_interval' ? `Interval (${data.passing_grade || 75})` : 'Deskripsi Kriteria'}
+                                    </span>
+                                </div>
                             </div>
                         </div>
 
-                        {/* Summary of Draft */}
-                        <div className="p-3.5 rounded-xl bg-muted/30 border border-border/80 space-y-2">
-                            <h4 className="text-xs font-black text-foreground">{data.title || 'Asesmen Tanpa Judul'}</h4>
-                            <p className="text-xs text-muted-foreground line-clamp-2">{data.description || 'Tidak ada petunjuk pengerjaan.'}</p>
-                            <div className="flex flex-wrap gap-2 pt-1">
-                                <Badge variant="outline" className="text-[10px] font-bold">
-                                    {data.assessment_type === 'initial' ? 'Asesmen Awal' : data.assessment_type === 'summative' ? 'Asesmen Sumatif' : 'Asesmen Formatif'}
-                                </Badge>
-                                <Badge variant="outline" className="text-[10px] font-bold text-primary">
-                                    {questionsCount} Soal ({totalAccumulatedScore} Poin)
-                                </Badge>
-                                <Badge variant="outline" className="text-[10px] font-bold">
-                                    {data.school_classes.length} Kelas Target
-                                </Badge>
-                                <Badge variant="outline" className="text-[10px] font-bold">
-                                    KKTP: {currentKktpApproach === 'score_interval' ? 'Interval Nilai (PPA 2025)' : 'Rubrik Kualitatif'}
-                                </Badge>
-                            </div>
-                        </div>
-
-                        {/* Due Date Input */}
+                        {/* Due Date Input (48px height) */}
                         <div className="space-y-1.5">
-                            <label className="text-xs font-bold text-foreground">
+                            <label className="text-sm font-bold text-foreground">
                                 Tenggat Waktu Pengumpulan (Opsional)
                             </label>
                             <input
                                 type="datetime-local"
                                 value={data.due_date}
                                 onChange={(e) => setData('due_date', e.target.value)}
-                                className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-xs sm:text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition min-h-[46px] cursor-pointer"
+                                className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition h-12 cursor-pointer"
                             />
                             {holidayWarning && (
-                                <p className="text-[11px] font-bold text-amber-600 dark:text-amber-400 mt-1 flex items-center gap-1">
+                                <p className="text-xs font-bold text-amber-600 dark:text-amber-400 mt-1 flex items-center gap-1">
                                     <AlertCircle className="h-3.5 w-3.5 shrink-0" /> {holidayWarning}
                                 </p>
                             )}
                             {errors.due_date && <p className="text-xs font-bold text-destructive mt-1">{errors.due_date}</p>}
                         </div>
 
-                        {/* Points & KKTP Grid */}
-                        <div className="grid grid-cols-2 gap-3">
+                        {/* Points & KKTP Grid (Responsive: stacked on <= 359px, 2-cols on >= 360px) */}
+                        <div className="grid grid-cols-1 xs:grid-cols-2 gap-3">
                             <div className="space-y-1.5">
-                                <label className="text-xs font-bold text-foreground">Poin Maksimal (Akumulasi Soal)</label>
+                                <label className="text-sm font-bold text-foreground">Poin Maksimal</label>
                                 <input
                                     type="number"
                                     min={0}
                                     value={data.max_points}
                                     onChange={(e) => setData('max_points', Number(e.target.value))}
-                                    className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-xs sm:text-sm text-foreground outline-none focus:border-primary min-h-[44px]"
+                                    className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm text-foreground outline-none focus:border-primary h-12"
                                 />
                             </div>
                             <div className="space-y-1.5">
-                                <label className="text-xs font-bold text-foreground">Batas Ketuntasan (KKTP)</label>
+                                <label className="text-sm font-bold text-foreground">Batas Ketuntasan (KKTP)</label>
                                 <input
                                     type="number"
                                     min={0}
                                     value={data.passing_grade}
                                     onChange={(e) => setData('passing_grade', Number(e.target.value))}
-                                    className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-xs sm:text-sm text-foreground outline-none focus:border-primary min-h-[44px]"
+                                    className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm text-foreground outline-none focus:border-primary h-12"
                                 />
                             </div>
                         </div>
                     </div>
                 )}
 
-                {/* ── STICKY BOTTOM ACTION BAR (Clean & Protected) ── */}
-                <div className="fixed bottom-0 left-0 right-0 z-40 bg-card/95 backdrop-blur-md border-t border-border shadow-lg py-2.5 px-3.5 sm:px-6">
-                    <div className="max-w-4xl mx-auto flex items-center justify-between gap-3">
+                {/* ── STICKY BOTTOM ACTION BAR (64px + safe area) ── */}
+                <div className="fixed bottom-0 left-0 right-0 z-40 bg-card/95 backdrop-blur-md border-t border-border shadow-xl py-3 px-3 sm:px-8 w-full">
+                    <div className="max-w-3xl mx-auto flex items-center justify-between gap-2.5 w-full">
                         {currentStep > 1 ? (
                             <button
                                 type="button"
                                 onClick={() => setCurrentStep(prev => Math.max(1, prev - 1))}
-                                className="inline-flex items-center gap-1 px-3.5 py-2 rounded-xl border border-border bg-background text-xs font-bold text-foreground hover:bg-muted transition min-h-[42px] cursor-pointer"
+                                className="inline-flex items-center justify-center h-12 px-4 rounded-2xl border border-border bg-background text-xs font-bold text-foreground hover:bg-muted transition cursor-pointer shrink-0"
                             >
-                                <ChevronLeft className="h-4 w-4" />
+                                <ChevronLeft className="h-4 w-4 mr-1" />
                                 <span>Sebelumnya</span>
                             </button>
                         ) : (
                             <button
                                 type="button"
                                 onClick={() => router.visit(route('assignments.index'))}
-                                className="inline-flex items-center gap-1 px-3.5 py-2 rounded-xl border border-border bg-background text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-muted transition min-h-[42px] cursor-pointer"
+                                className="inline-flex items-center justify-center h-12 px-4 rounded-2xl border border-border bg-background text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-muted transition cursor-pointer shrink-0"
                             >
                                 <span>Batal</span>
                             </button>
                         )}
 
-                        <div className="flex items-center gap-2">
+                        <div className="flex-1 flex justify-end">
                             {currentStep < 3 ? (
                                 <button
                                     type="button"
                                     onClick={() => setCurrentStep(prev => Math.min(3, prev + 1))}
-                                    className="inline-flex items-center gap-1.5 px-4 sm:px-5 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-black shadow-xs hover:bg-primary/90 active:scale-98 transition min-h-[42px] cursor-pointer"
+                                    className="inline-flex items-center justify-center gap-1.5 h-12 px-6 rounded-2xl bg-primary text-primary-foreground text-sm font-bold shadow-xs hover:bg-primary/90 active:scale-98 transition cursor-pointer flex-1 sm:flex-none sm:min-w-[180px]"
                                 >
-                                    <span>{currentStep === 1 ? 'Lanjut ke Instrumen & Soal' : 'Lanjut ke Pengaturan Nilai'}</span>
+                                    <span>Lanjut</span>
                                     <ArrowRight className="h-4 w-4" />
                                 </button>
                             ) : (
                                 <button
                                     type="submit"
                                     disabled={processing}
-                                    className="inline-flex items-center gap-1.5 px-5 sm:px-6 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-black shadow-md hover:bg-primary/90 active:scale-98 transition min-h-[42px] cursor-pointer disabled:opacity-50"
+                                    className="inline-flex items-center justify-center gap-1.5 h-12 px-6 rounded-2xl bg-primary text-primary-foreground text-sm font-bold shadow-md hover:bg-primary/90 active:scale-98 transition cursor-pointer disabled:opacity-50 flex-1 sm:flex-none sm:min-w-[200px]"
                                 >
                                     <CheckCircle2 className="h-4 w-4" />
                                     <span>{processing ? 'Menyimpan...' : mode === 'create' ? 'Publikasikan Asesmen' : 'Simpan Perubahan'}</span>
