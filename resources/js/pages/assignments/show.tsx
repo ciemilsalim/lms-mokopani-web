@@ -4968,7 +4968,7 @@ export default function ShowAssignment({
                                                                             const isChecked = val === true || val === 'konsisten' || val === 'mulai';
                                                                             return (
                                                                                 <div key={indKey} className="flex items-center justify-between p-4 rounded-xl bg-white dark:bg-slate-900 border border-border shadow-sm">
-                                                                                    <span className="text-xs font-bold text-slate-700 dark:text-slate-200">{indicator.text || indicator.name}</span>
+                                                                                    <span className="text-xs font-bold text-slate-700 dark:text-slate-200">{typeof indicator === 'string' ? indicator : (indicator.text || indicator.name || indicator.description || '')}</span>
                                                                                     {isChecked ? (
                                                                                         <span className="px-3 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 border border-emerald-100 dark:border-emerald-900/30 flex items-center gap-1">
                                                                                             <CheckCircle2 className="h-3 w-3" /> Terlihat
@@ -5323,7 +5323,7 @@ export default function ShowAssignment({
                                                                     <div className="flex items-center gap-2">
                                                                         <span className="text-[10px] font-black text-slate-350 dark:text-slate-650">0{idx + 1}</span>
                                                                         <p className={`text-xs font-bold leading-none ${ isChecked ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-700 dark:text-slate-200' }`}>
-                                                                            {indicator.text || indicator.name}
+                                                                            {typeof indicator === 'string' ? indicator : (indicator.text || indicator.name || indicator.description || '')}
                                                                         </p>
                                                                     </div>
                                                                 </div>
@@ -5914,7 +5914,7 @@ export default function ShowAssignment({
                                                 <div key={indicatorKey} className="flex items-center justify-between p-4 rounded-xl border border-slate-50 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20 hover:bg-white transition-all">
                                                     <div className="flex items-center gap-3">
                                                         <span className="text-[10px] font-black text-slate-300">0{idx + 1}</span>
-                                                        <span className="text-xs font-bold text-slate-700 dark:text-slate-200">{indicator.text || indicator.name}</span>
+                                                        <span className="text-xs font-bold text-slate-700 dark:text-slate-200">{typeof indicator === 'string' ? indicator : (indicator.text || indicator.name || indicator.description || '')}</span>
                                                     </div>
                                                     <div className="flex items-center gap-2">
                                                         <button 
@@ -6060,7 +6060,7 @@ export default function ShowAssignment({
                                                         <div className="flex items-center gap-2">
                                                             <span className="text-[10px] font-black text-slate-350 dark:text-slate-650">0{idx + 1}</span>
                                                             <p className={`text-xs font-bold leading-none ${ isChecked ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-700 dark:text-slate-200' }`}>
-                                                                {indicator.text || indicator.name}
+                                                                {typeof indicator === 'string' ? indicator : (indicator.text || indicator.name || indicator.description || '')}
                                                             </p>
                                                         </div>
                                                     </div>

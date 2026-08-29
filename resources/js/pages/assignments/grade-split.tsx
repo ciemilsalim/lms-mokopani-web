@@ -5,7 +5,7 @@ import {
     ChevronLeft, ChevronRight, Save, CheckCircle2, FileText,
     Camera, AlertCircle, Target, Info, CheckSquare, Square, Users, ArrowRight,
     Upload, Eye, Check, Loader2, Sparkles, RefreshCw, Maximize2, X, ChevronDown, ChevronUp,
-    PenTool, Image as ImageIcon
+    PenTool, Image as ImageIcon, Mic
 } from 'lucide-react';
 import { KktpModal } from '@/components/assignments/KktpModal';
 import { StudentSwitcher } from '@/components/assignments/student-switcher';
@@ -219,6 +219,7 @@ export default function GradeSplitPage({
     };
 
     const isSummative = assignment.assessment_type === 'summative';
+    const isOralTest = assignment.instrument_type === 'oral_test' || assignment.instrument_type === 'oral';
     const assessmentTypeLabel = assignment.assessment_type === 'initial' 
         ? 'Asesmen Awal' 
         : isSummative 
@@ -318,6 +319,83 @@ export default function GradeSplitPage({
     const renderSubmissionContent = () => {
         const isImage = submission?.file_path && /\.(jpeg|jpg|gif|png|webp)$/i.test(submission.file_path);
         const isPdf = submission?.file_path && /\.pdf$/i.test(submission.file_path);
+
+        if (isOralTest) {
+            const oralQuestions = assignment?.instrument_config?.questions || assignment?.questions || [];
+            return (
+                <div className="flex flex-col h-full space-y-2.5 w-full min-w-0">
+                    <div className="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-xl bg-muted/30 border border-border text-xs w-full">
+                        <span className="font-bold text-foreground text-[11px] flex items-center gap-1.5 min-w-0 truncate">
+                            <Mic className="h-3.5 w-3.5 text-primary shrink-0" />
+                            <span className="truncate">Pedoman Pertanyaan Lisan Guru</span>
+                        </span>
+                        <button
+                            type="button"
+                            onClick={() => setShowInfoBanner(!showInfoBanner)}
+                            className="text-[10px] font-bold text-primary hover:underline cursor-pointer flex items-center gap-0.5 shrink-0"
+                        >
+                            <span>{showInfoBanner ? 'Tutup Info' : 'Panduan'}</span>
+                            <Info className="h-3 w-3" />
+                        </button>
+                    </div>
+
+                    {showInfoBanner && (
+                        <div className="p-2.5 rounded-xl bg-primary/5 border border-primary/15 text-[11px] text-muted-foreground leading-relaxed animate-in fade-in duration-150">
+                            Gunakan daftar pertanyaan di bawah ini sebagai panduan saat melakukan ujian lisan atau tanya jawab langsung dengan siswa di kelas. Masukkan nilai dan catatan umpan balik pada panel sebelah kanan.
+                        </div>
+                    )}
+
+                    {oralQuestions.length > 0 ? (
+                        <div className="flex-1 overflow-y-auto space-y-2.5 min-h-[180px] w-full min-w-0 pr-1">
+                            {oralQuestions.map((q: any, idx: number) => (
+                                <div key={q.id || idx} className="p-3 rounded-xl bg-card border border-border shadow-2xs space-y-2">
+                                    <div className="flex items-start justify-between gap-2">
+                                        <p className="text-xs font-bold text-foreground leading-snug flex-1">
+                                            {idx + 1}. {q.question || q.text}
+                                        </p>
+                                        <div className="flex items-center gap-1 shrink-0">
+                                            {q.difficulty && (
+                                                <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                                                    {q.difficulty}
+                                                </span>
+                                            )}
+                                            {q.points !== undefined && (
+                                                <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-primary/10 text-primary">
+                                                    {q.points} pt
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                    {(q.answer_guide || q.answer) && (
+                                        <div className="p-2 rounded-lg bg-emerald-500/5 border border-emerald-500/20 text-[11px] space-y-0.5">
+                                            <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block">Panduan Jawaban Ideal:</span>
+                                            <p className="text-foreground leading-relaxed font-medium">
+                                                {q.answer_guide || q.answer}
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="flex-1 flex flex-col items-center justify-center p-4 text-center bg-muted/15 rounded-xl border border-dashed border-border min-h-[180px] space-y-2 w-full">
+                            <Mic className="w-8 h-8 text-primary/60 animate-pulse" />
+                            <p className="text-xs font-bold text-foreground">Pengujian Lisan Langsung di Kelas</p>
+                            <p className="text-[11px] text-muted-foreground max-w-xs leading-tight">
+                                Lakukan tanya jawab lisan langsung dengan siswa, lalu berikan skor dan umpan balik pada panel penilaian.
+                            </p>
+                        </div>
+                    )}
+
+                    <div className="pt-2 border-t border-border/60 shrink-0 w-full">
+                        <div className="p-2.5 rounded-xl bg-primary/5 border border-primary/15 text-center text-xs font-bold text-primary flex items-center justify-center gap-2">
+                            <Mic className="w-4 h-4 shrink-0 animate-pulse" />
+                            <span>Ujian Lisan — Penilaian Langsung Tanpa Berkas Upload</span>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
 
         return (
             <div className="flex flex-col h-full space-y-2.5 w-full min-w-0">
@@ -648,8 +726,17 @@ export default function GradeSplitPage({
                                 : 'text-muted-foreground hover:text-foreground'
                         }`}
                     >
-                        <FileText className="w-3.5 h-3.5 shrink-0" />
-                        <span className="truncate">Karya Siswa</span>
+                        {isOralTest ? (
+                            <>
+                                <Mic className="w-3.5 h-3.5 shrink-0" />
+                                <span className="truncate">Panduan Soal</span>
+                            </>
+                        ) : (
+                            <>
+                                <FileText className="w-3.5 h-3.5 shrink-0" />
+                                <span className="truncate">Karya Siswa</span>
+                            </>
+                        )}
                     </button>
                     <button
                         type="button"
