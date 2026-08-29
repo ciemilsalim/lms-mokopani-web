@@ -79,7 +79,7 @@ export function SummaryCard({
                 </div>
 
                 <div className="mt-1">
-                    <div className="text-[26px] sm:text-[28px] font-bold text-foreground leading-none tracking-tight">
+                    <div className="text-2xl sm:text-[28px] font-bold text-foreground leading-none tracking-tight">
                         {value}
                     </div>
                     {description && (

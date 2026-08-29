@@ -74,7 +74,7 @@
   * `MATERI`
   * `ASESMEN`
   * `PERLU DINILAI`
-* **Metric Numbers**: `28px / 700` (`text-[26px] sm:text-[28px] font-bold text-foreground leading-none`).
+* **Metric Numbers**: `24px` on mobile (`text-2xl`), scaling to `28px` on tablet/desktop (`sm:text-[28px] font-bold text-foreground leading-none`).
 
 ---
 
