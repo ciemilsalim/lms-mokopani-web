@@ -182,7 +182,25 @@ function TeacherGroupedView({
 }) {
     const [expandedClasses, setExpandedClasses] = useState<Record<number, boolean>>({});
 
-    const toggleClass = (id: number) => setExpandedClasses(prev => ({ ...prev, [id]: !prev[id] }));
+    // Reset accordion overrides when switching filter tabs so it starts cleanly
+    useEffect(() => {
+        setExpandedClasses({});
+    }, [filterType]);
+
+    // Check if class is expanded: defaults to true unless explicitly toggled
+    const getClassExpanded = (classId: number) => {
+        if (expandedClasses[classId] !== undefined) {
+            return expandedClasses[classId];
+        }
+        return true;
+    };
+
+    const toggleClass = (id: number) => {
+        setExpandedClasses(prev => {
+            const current = prev[id] !== undefined ? prev[id] : true;
+            return { ...prev, [id]: !current };
+        });
+    };
 
     const visible = useMemo(() => {
         return groups
@@ -212,18 +230,22 @@ function TeacherGroupedView({
     // Check if all are currently expanded
     const areAllExpanded = useMemo(() => {
         if (visible.length === 0) return false;
-        return visible.every(cls => expandedClasses[cls.class_id]);
+        return visible.every(cls => getClassExpanded(cls.class_id));
     }, [visible, expandedClasses]);
 
     const handleToggleAll = () => {
         if (areAllExpanded) {
-            setExpandedClasses({});
-        } else {
-            const all: Record<number, boolean> = {};
+            const allClosed: Record<number, boolean> = {};
             visible.forEach(cls => {
-                all[cls.class_id] = true;
+                allClosed[cls.class_id] = false;
             });
-            setExpandedClasses(all);
+            setExpandedClasses(allClosed);
+        } else {
+            const allOpen: Record<number, boolean> = {};
+            visible.forEach(cls => {
+                allOpen[cls.class_id] = true;
+            });
+            setExpandedClasses(allOpen);
         }
     };
 
@@ -262,7 +284,7 @@ function TeacherGroupedView({
             {/* Class Cards with Status */}
             <div className="flex flex-col gap-3">
                 {visible.map((cls) => {
-                    const isClassExpanded = Boolean(search) || filterType !== 'all' || Boolean(expandedClasses[cls.class_id]);
+                    const isClassExpanded = getClassExpanded(cls.class_id);
                     const totalAsgnInClass = cls.subjects.reduce((acc, sub) => acc + sub.objectives.reduce((oAcc, obj) => oAcc + obj.assignments.length, 0), 0);
                     
                     // Aggregate stats across all assignments in this class
