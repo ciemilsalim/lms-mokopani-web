@@ -144,7 +144,11 @@ export default function GradeSplitPage({
                 student_id: currentStudent.id,
                 score: numScore,
                 feedback: feedback,
-                kktp_details: kktpDetails
+                kktp_details: kktpDetails,
+                content: isOralTest ? JSON.stringify({
+                    type: 'oral_test',
+                    question_responses: kktpDetails
+                }) : submission?.content
             });
 
             setSaveStatus('saved');
@@ -164,12 +168,8 @@ export default function GradeSplitPage({
         }
     };
 
-    // Auto save on blur from score / feedback input
-    const handleAutosaveOnBlur = () => {
-        if (currentStudent && (score !== '' || feedback !== '')) {
-            handleSave(false);
-        }
-    };
+    // Disabled autosave on blur
+    const handleAutosaveOnBlur = () => {};
 
     const handleUploadProof = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -346,36 +346,107 @@ export default function GradeSplitPage({
                     )}
 
                     {oralQuestions.length > 0 ? (
-                        <div className="flex-1 overflow-y-auto space-y-2.5 min-h-[180px] w-full min-w-0 pr-1">
-                            {oralQuestions.map((q: any, idx: number) => (
-                                <div key={q.id || idx} className="p-3 rounded-xl bg-card border border-border shadow-2xs space-y-2">
-                                    <div className="flex items-start justify-between gap-2">
-                                        <p className="text-xs font-bold text-foreground leading-snug flex-1">
-                                            {idx + 1}. {q.question || q.text}
-                                        </p>
-                                        <div className="flex items-center gap-1 shrink-0">
-                                            {q.difficulty && (
-                                                <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
-                                                    {q.difficulty}
-                                                </span>
-                                            )}
-                                            {q.points !== undefined && (
+                        <div className="flex-1 overflow-y-auto space-y-3.5 min-h-[180px] w-full min-w-0 pr-1">
+                            {oralQuestions.map((q: any, idx: number) => {
+                                const selectedLevel = kktpDetails[q.id] || '';
+                                const qPoints = Number(q.points) || (assignment.max_points / oralQuestions.length) || 10;
+                                const scoresMap = { BB: 25, LY: 50, CK: 75, MH: 100 };
+                                const pct = scoresMap[selectedLevel] || 0;
+                                const qScore = selectedLevel ? Math.round((pct / 100) * qPoints) : 0;
+                                
+                                return (
+                                    <div key={q.id || idx} className="p-4 rounded-xl bg-card border border-border shadow-2xs space-y-3">
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-xs font-black text-foreground leading-relaxed whitespace-pre-wrap">
+                                                    {idx + 1}. {q.question || q.text}
+                                                </p>
+                                            </div>
+                                            <div className="flex items-center gap-1.5 shrink-0">
+                                                {q.difficulty && (
+                                                    <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                                                        {q.difficulty}
+                                                    </span>
+                                                )}
                                                 <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-primary/10 text-primary">
-                                                    {q.points} pt
+                                                    {qPoints} pt
                                                 </span>
+                                            </div>
+                                        </div>
+                                        
+                                        {(q.answer_guide || q.answer) && (
+                                            <div className="p-2.5 rounded-lg bg-emerald-500/5 border border-emerald-500/10 text-[10.5px]">
+                                                <span className="text-[9px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block mb-0.5">Panduan Jawaban:</span>
+                                                <p className="text-slate-600 dark:text-slate-350 leading-relaxed font-medium">
+                                                    {q.answer_guide || q.answer}
+                                                </p>
+                                            </div>
+                                        )}
+                                        
+                                        {/* Pemahaman Konsep Rubric Selector */}
+                                        <div className="pt-3 border-t border-border/60 space-y-2">
+                                            <div className="flex items-center justify-between text-xs">
+                                                <span className="font-black text-muted-foreground uppercase tracking-widest">Pemahaman Konsep</span>
+                                                <span className="font-black text-primary bg-primary/5 px-2 py-0.5 rounded border border-primary/10">
+                                                    Skor: {qScore} / {qPoints}
+                                                </span>
+                                            </div>
+                                            
+                                            <div className="grid grid-cols-4 gap-1.5">
+                                                {[
+                                                    { code: 'BB', name: 'Baru Berkembang', desc: 'Belum mampu menjelaskan konsep dasar meskipun sudah dipancing.' },
+                                                    { code: 'LY', name: 'Layak', desc: 'Mampu menjelaskan konsep dasar, namun masih ada kekeliruan kecil.' },
+                                                    { code: 'CK', name: 'Cakap', desc: 'Mampu menjelaskan sebagian besar konsep materi dengan benar.' },
+                                                    { code: 'MH', name: 'Mahir', desc: 'Mampu menjelaskan seluruh konsep secara mendalam dan akurat.' }
+                                                ].map((lvl) => {
+                                                    const isSelected = selectedLevel === lvl.code;
+                                                    return (
+                                                        <button
+                                                            key={lvl.code}
+                                                            type="button"
+                                                            title={lvl.desc}
+                                                            onClick={() => {
+                                                                const newDetails = { ...kktpDetails, [q.id]: lvl.code };
+                                                                setKktpDetails(newDetails);
+                                                                
+                                                                let totalScore = 0;
+                                                                oralQuestions.forEach((oq: any) => {
+                                                                    const oqPoints = Number(oq.points) || (assignment.max_points / oralQuestions.length) || 10;
+                                                                    const levelCode = newDetails[oq.id];
+                                                                    if (levelCode) {
+                                                                        const pctVal = scoresMap[levelCode] || 0;
+                                                                        totalScore += (pctVal / 100) * oqPoints;
+                                                                    }
+                                                                });
+                                                                setScore(Math.min(assignment.max_points, Math.round(totalScore)));
+                                                            }}
+                                                            className={`py-1.5 rounded-lg border text-center text-[10px] font-black transition cursor-pointer leading-tight ${
+                                                                isSelected
+                                                                    ? 'bg-primary text-primary-foreground border-primary shadow-2xs'
+                                                                    : 'bg-background border-border text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                                                            }`}
+                                                        >
+                                                            {lvl.code}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                            {selectedLevel && (
+                                                <p className="text-[10px] text-muted-foreground leading-normal mt-1 italic p-2 bg-background/50 border border-border/40 rounded-lg">
+                                                    {
+                                                        [
+                                                            { code: 'BB', desc: 'Belum mampu menjelaskan konsep dasar meskipun sudah dipancing.' },
+                                                            { code: 'LY', desc: 'Mampu menjelaskan konsep dasar, namun masih ada kekeliruan kecil.' },
+                                                            { code: 'CK', desc: 'Mampu menjelaskan sebagian besar konsep materi dengan benar.' },
+                                                            { code: 'MH', desc: 'Mampu menjelaskan seluruh konsep secara mendalam dan akurat.' }
+                                                        ].find(l => l.code === selectedLevel)?.desc
+                                                    }
+                                                </p>
                                             )}
                                         </div>
                                     </div>
-                                    {(q.answer_guide || q.answer) && (
-                                        <div className="p-2 rounded-lg bg-emerald-500/5 border border-emerald-500/20 text-[11px] space-y-0.5">
-                                            <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block">Panduan Jawaban Ideal:</span>
-                                            <p className="text-foreground leading-relaxed font-medium">
-                                                {q.answer_guide || q.answer}
-                                            </p>
-                                        </div>
-                                    )}
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     ) : (
                         <div className="flex-1 flex flex-col items-center justify-center p-4 text-center bg-muted/15 rounded-xl border border-dashed border-border min-h-[180px] space-y-2 w-full">
@@ -557,109 +628,7 @@ export default function GradeSplitPage({
                     </div>
                 </div>
 
-                {/* ② Interactive Rubric Accordion (if configured) */}
-                {isOralTest && (
-                    <div className="space-y-3 w-full">
-                        <div className="flex items-center justify-between gap-2">
-                            <h4 className="text-xs font-black text-foreground flex items-center gap-1.5 min-w-0 truncate uppercase tracking-widest">
-                                <Target className="w-3.5 h-3.5 text-primary shrink-0 animate-pulse" />
-                                <span className="truncate">Rubrik Tes Lisan (Model PPA)</span>
-                            </h4>
-                        </div>
 
-                        <div className="space-y-3 w-full animate-in fade-in duration-150">
-                            {[
-                                {
-                                    id: 'pemahaman_konsep',
-                                    name: 'Pemahaman Konsep',
-                                    levels: [
-                                        { code: 'BB', name: 'Baru Berkembang', desc: 'Belum mampu menjelaskan konsep dasar meskipun sudah dipancing pertanyaan kelanjutan.' },
-                                        { code: 'LY', name: 'Layak', desc: 'Mampu menjelaskan konsep dasar, namun masih ada kekeliruan kecil pada bagian detail materi.' },
-                                        { code: 'CK', name: 'Cakap', desc: 'Mampu menjelaskan sebagian besar konsep materi dengan benar dan runtut.' },
-                                        { code: 'MH', name: 'Mahir', desc: 'Mampu menjelaskan seluruh konsep secara mendalam, akurat, serta memberikan contoh kasus nyata.' }
-                                    ]
-                                },
-                                {
-                                    id: 'kelancaran_artikulasi',
-                                    name: 'Kelancaran & Artikulasi',
-                                    levels: [
-                                        { code: 'BB', name: 'Baru Berkembang', desc: 'Berbicara terbata-bata, sering berhenti lama, dan suara sangat pelan/tidak jelas.' },
-                                        { code: 'LY', name: 'Layak', desc: 'Berbicara cukup lancar, namun artikulasi di beberapa kalimat masih kurang jelas terdengar.' },
-                                        { code: 'CK', name: 'Cakap', desc: 'Berbicara dengan lancar, intonasi tepat, dan kalimat mudah dipahami oleh penguji.' },
-                                        { code: 'MH', name: 'Mahir', desc: 'Berbicara sangat lancar, penuh percaya diri, artikulasi jelas, dan penyampaiannya sangat persuasif.' }
-                                    ]
-                                },
-                                {
-                                    id: 'kemampuan_berargumen',
-                                    name: 'Kemampuan Berargumen',
-                                    levels: [
-                                        { code: 'BB', name: 'Baru Berkembang', desc: 'Hanya bisa menjawab "ya" atau "tidak" tanpa disertai alasan/bukti pendukung.' },
-                                        { code: 'LY', name: 'Layak', desc: 'Mampu memberikan alasan, namun argumen yang disampaikan kurang logis atau kurang relevan.' },
-                                        { code: 'CK', name: 'Cakap', desc: 'Mampu memberikan argumen yang logis dan didukung oleh fakta/materi yang dipelajari.' },
-                                        { code: 'MH', name: 'Mahir', desc: 'Mampu mempertahankan argumen secara kritis, logis, sistematis, serta terbuka terhadap sudut pandang lain.' }
-                                    ]
-                                }
-                            ].map((aspect) => (
-                                <div key={aspect.id} className="p-3 rounded-xl border border-border bg-muted/10 space-y-2 w-full overflow-hidden">
-                                    <div className="flex items-center justify-between text-xs gap-2">
-                                        <span className="font-black text-foreground truncate">{aspect.name}</span>
-                                        {kktpDetails[aspect.id] && (
-                                            <span className="text-[10px] font-black text-primary px-2 py-0.5 rounded bg-primary/10 shrink-0">
-                                                {aspect.levels.find(l => l.code === kktpDetails[aspect.id])?.name || kktpDetails[aspect.id]}
-                                            </span>
-                                        )}
-                                    </div>
-
-                                    <div className="grid grid-cols-4 gap-1 text-[10px] sm:text-[11px] w-full">
-                                        {aspect.levels.map((lvl) => {
-                                            const isSelected = kktpDetails[aspect.id] === lvl.code;
-                                            return (
-                                                <button
-                                                    key={lvl.code}
-                                                    type="button"
-                                                    title={lvl.desc}
-                                                    onClick={() => {
-                                                        const newDetails = { ...kktpDetails, [aspect.id]: lvl.code };
-                                                        setKktpDetails(newDetails);
-
-                                                        // Calculate auto score: BB=25%, LY=50%, CK=75%, MH=100%
-                                                        const scoresMap: Record<string, number> = { BB: 25, LY: 50, CK: 75, MH: 100 };
-                                                        let totalVal = 0;
-                                                        let count = 0;
-                                                        ['pemahaman_konsep', 'kelancaran_artikulasi', 'kemampuan_berargumen'].forEach(k => {
-                                                            const code = newDetails[k];
-                                                            if (code) {
-                                                                totalVal += scoresMap[code] || 0;
-                                                                count++;
-                                                            }
-                                                        });
-                                                        if (count > 0) {
-                                                            const averagePct = totalVal / count;
-                                                            const calculatedScore = Math.round((averagePct / 100) * (assignment.max_points || 100));
-                                                            setScore(calculatedScore);
-                                                        }
-                                                    }}
-                                                    className={`p-2 rounded-lg border text-center font-bold transition cursor-pointer leading-tight truncate ${
-                                                        isSelected
-                                                            ? 'bg-primary text-primary-foreground border-primary shadow-2xs font-black'
-                                                            : 'bg-background border-border text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                                                    }`}
-                                                >
-                                                    {lvl.code}
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
-                                    {kktpDetails[aspect.id] && (
-                                        <p className="text-[10px] text-muted-foreground leading-normal mt-1 italic p-2 bg-background/50 border border-border/40 rounded-lg">
-                                            {aspect.levels.find(l => l.code === kktpDetails[aspect.id])?.desc}
-                                        </p>
-                                    )}
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
 
                 {/* ② Interactive Rubric Accordion (if configured) */}
                 {hasRubric && !isOralTest && (
@@ -875,58 +844,59 @@ export default function GradeSplitPage({
             </div>
 
             {/* ⑤ Sticky Bottom Action Footer (Safe-Area Guarded & Compact on Mobile) */}
-            <div className="fixed bottom-0 left-0 right-0 z-40 bg-card/95 backdrop-blur-md border-t border-border shadow-lg py-2 px-2.5 sm:px-8 w-full">
-                <div className="max-w-6xl mx-auto flex items-center justify-between gap-2 w-full">
-                    {/* Left: Autosave Indicator */}
-                    <div className="flex items-center gap-1.5 text-xs min-w-0 flex-1">
+            <div className="fixed bottom-0 left-0 right-0 z-40 bg-card/95 backdrop-blur-md border-t border-border shadow-lg py-3 px-2.5 sm:px-8 w-full">
+                <div className="max-w-6xl mx-auto flex items-center justify-between gap-3 w-full">
+                    {/* Left Status Message */}
+                    <div className="flex items-center gap-1.5 text-xs min-w-0">
                         {saveStatus === 'saving' ? (
-                            <span className="inline-flex items-center gap-1 text-primary font-bold animate-pulse text-[10px] sm:text-xs truncate">
+                            <span className="inline-flex items-center gap-1.5 text-primary font-bold animate-pulse text-[10px] sm:text-xs">
                                 <Loader2 className="h-3 w-3 animate-spin shrink-0" />
-                                <span className="truncate">Menyimpan...</span>
+                                <span>Menyimpan nilai...</span>
+                            </span>
+                        ) : saveStatus === 'saved' ? (
+                            <span className="inline-flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-bold text-[10px] sm:text-xs">
+                                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                                <span>Nilai Berhasil Disimpan</span>
                             </span>
                         ) : (
-                            <span className="inline-flex items-center gap-1 text-muted-foreground font-medium text-[10px] sm:text-xs truncate">
-                                <Check className="h-3 w-3 text-emerald-500 shrink-0" />
-                                <span className="truncate">Tersimpan {lastSavedTime && `(${lastSavedTime})`}</span>
+                            <span className="text-muted-foreground font-semibold text-[10px] sm:text-xs">
+                                Klik Simpan untuk memperbarui nilai
                             </span>
                         )}
                     </div>
 
-                    {/* Right: Previous & Save/Next Actions */}
-                    <div className="flex items-center gap-1.5 shrink-0">
+                    {/* Right Action buttons */}
+                    <div className="flex items-center gap-2 shrink-0">
                         <button
                             type="button"
                             disabled={currentStudentIndex === 0}
                             onClick={() => setCurrentStudentIndex(prev => prev - 1)}
-                            className="inline-flex items-center justify-center h-8 sm:h-9 px-2 sm:px-3 rounded-xl border border-border bg-background text-xs font-bold text-foreground hover:bg-muted transition cursor-pointer disabled:opacity-30 disabled:pointer-events-none"
+                            className="inline-flex items-center justify-center h-9 px-3 rounded-xl border border-border bg-background text-xs font-bold text-foreground hover:bg-muted transition cursor-pointer disabled:opacity-30 disabled:pointer-events-none"
                             title="Siswa Sebelumnya"
                         >
-                            <ChevronLeft className="w-4 h-4" />
-                            <span className="hidden sm:inline ml-0.5">Sebelumnya</span>
+                            <ChevronLeft className="w-4 h-4 mr-0.5" />
+                            <span>Sebelumnya</span>
                         </button>
 
                         <button
                             type="button"
                             disabled={isSaving}
-                            onClick={() => handleSave(true)}
-                            className="inline-flex items-center justify-center gap-1 h-8 sm:h-9 px-3 sm:px-4 rounded-xl bg-primary text-primary-foreground font-bold text-xs shadow-xs hover:bg-primary/90 active:scale-98 transition cursor-pointer disabled:opacity-50"
+                            onClick={() => handleSave(false)}
+                            className="inline-flex items-center justify-center gap-1.5 h-9 px-5 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 font-bold text-xs shadow-xs transition active:scale-98 cursor-pointer disabled:opacity-50"
                         >
-                            {isSaving ? (
-                                <>
-                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                    <span>Menyimpan</span>
-                                </>
-                            ) : currentStudentIndex === students.length - 1 ? (
-                                <>
-                                    <CheckCircle2 className="w-3.5 h-3.5" />
-                                    <span>Selesai</span>
-                                </>
-                            ) : (
-                                <>
-                                    <span>Berikutnya</span>
-                                    <ArrowRight className="w-3.5 h-3.5" />
-                                </>
-                            )}
+                            <Save className="w-3.5 h-3.5" />
+                            <span>Simpan Nilai</span>
+                        </button>
+
+                        <button
+                            type="button"
+                            disabled={currentStudentIndex === students.length - 1}
+                            onClick={() => setCurrentStudentIndex(prev => prev + 1)}
+                            className="inline-flex items-center justify-center h-9 px-3 rounded-xl border border-border bg-background text-xs font-bold text-foreground hover:bg-muted transition cursor-pointer disabled:opacity-30 disabled:pointer-events-none"
+                            title="Siswa Berikutnya"
+                        >
+                            <span>Berikutnya</span>
+                            <ChevronRight className="w-4 h-4 ml-0.5" />
                         </button>
                     </div>
                 </div>

@@ -1473,15 +1473,7 @@ export default function ShowAssignment({
         });
     };
 
-    // Auto-save for Oral Test every 5 seconds if data changed
-    useEffect(() => {
-        if (assignment.instrument_type === 'oral_test' && selectedStudent) {
-            const timer = setTimeout(() => {
-                handleSaveOralTest();
-            }, 5000);
-            return () => clearTimeout(timer);
-        }
-    }, [oralTestData, selectedStudent]);
+
 
     const openPerformanceGrading = (student: any) => {
         const sub = submissionMap[student.id];
@@ -5216,149 +5208,109 @@ export default function ShowAssignment({
                                         </div>
                                     </div>
 
-                                    {/* Rubrik Tes Lisan (Model PPA) */}
-                                    <div className="space-y-4 pt-6 border-t border-border">
-                                        <h4 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-                                            <Target className="h-4 w-4 text-emerald-500" /> Rubrik Penilaian Tes Lisan (Model PPA)
-                                        </h4>
-                                        <div className="grid gap-4">
-                                            {[
-                                                {
-                                                    id: 'pemahaman_konsep',
-                                                    name: 'Pemahaman Konsep',
-                                                    levels: [
-                                                        { code: 'BB', name: 'Baru Berkembang', desc: 'Belum mampu menjelaskan konsep dasar meskipun sudah dipancing pertanyaan kelanjutan.' },
-                                                        { code: 'LY', name: 'Layak', desc: 'Mampu menjelaskan konsep dasar, namun masih ada kekeliruan kecil pada bagian detail materi.' },
-                                                        { code: 'CK', name: 'Cakap', desc: 'Mampu menjelaskan sebagian besar konsep materi dengan benar dan runtut.' },
-                                                        { code: 'MH', name: 'Mahir', desc: 'Mampu menjelaskan seluruh konsep secara mendalam, akurat, serta memberikan contoh kasus nyata.' }
-                                                    ]
-                                                },
-                                                {
-                                                    id: 'kelancaran_artikulasi',
-                                                    name: 'Kelancaran & Artikulasi',
-                                                    levels: [
-                                                        { code: 'BB', name: 'Baru Berkembang', desc: 'Berbicara terbata-bata, sering berhenti lama, dan suara sangat pelan/tidak jelas.' },
-                                                        { code: 'LY', name: 'Layak', desc: 'Berbicara cukup lancar, namun artikulasi di beberapa kalimat masih kurang jelas terdengar.' },
-                                                        { code: 'CK', name: 'Cakap', desc: 'Berbicara dengan lancar, intonasi tepat, dan kalimat mudah dipahami oleh penguji.' },
-                                                        { code: 'MH', name: 'Mahir', desc: 'Berbicara sangat lancar, penuh percaya diri, artikulasi jelas, dan penyampaiannya sangat persuasif.' }
-                                                    ]
-                                                },
-                                                {
-                                                    id: 'kemampuan_berargumen',
-                                                    name: 'Kemampuan Berargumen',
-                                                    levels: [
-                                                        { code: 'BB', name: 'Baru Berkembang', desc: 'Hanya bisa menjawab "ya" atau "tidak" tanpa disertai alasan/bukti pendukung.' },
-                                                        { code: 'LY', name: 'Layak', desc: 'Mampu memberikan alasan, namun argumen yang disampaikan kurang logis atau kurang relevan.' },
-                                                        { code: 'CK', name: 'Cakap', desc: 'Mampu memberikan argumen yang logis dan didukung oleh fakta/materi yang dipelajari.' },
-                                                        { code: 'MH', name: 'Mahir', desc: 'Mampu mempertahankan argumen secara kritis, logis, sistematis, serta terbuka terhadap sudut pandang lain.' }
-                                                    ]
-                                                }
-                                            ].map((aspect) => (
-                                                <div key={aspect.id} className="p-4 rounded-xl border border-border bg-slate-50/50 dark:bg-slate-800/10 space-y-2.5">
-                                                    <div className="flex items-center justify-between text-xs gap-2">
-                                                        <span className="font-bold text-foreground">{aspect.name}</span>
-                                                        {oralTestData.kktp_details?.[aspect.id] && (
-                                                            <span className="text-[10px] font-black text-primary px-2 py-0.5 rounded bg-primary/10">
-                                                                {aspect.levels.find(l => l.code === oralTestData.kktp_details[aspect.id])?.name || oralTestData.kktp_details[aspect.id]}
-                                                            </span>
-                                                        )}
-                                                    </div>
 
-                                                    <div className="grid grid-cols-4 gap-2">
-                                                        {aspect.levels.map((lvl) => {
-                                                            const isSelected = oralTestData.kktp_details?.[aspect.id] === lvl.code;
-                                                            return (
-                                                                <button
-                                                                    key={lvl.code}
-                                                                    type="button"
-                                                                    title={lvl.desc}
-                                                                    onClick={() => {
-                                                                        const newKktp = { ...(oralTestData.kktp_details || {}), [aspect.id]: lvl.code };
-                                                                        
-                                                                        // Calculate auto score: BB=25%, LY=50%, CK=75%, MH=100%
-                                                                        const scoresMap: Record<string, number> = { BB: 25, LY: 50, CK: 75, MH: 100 };
-                                                                        let totalVal = 0;
-                                                                        let count = 0;
-                                                                        ['pemahaman_konsep', 'kelancaran_artikulasi', 'kemampuan_berargumen'].forEach(k => {
-                                                                            const code = newKktp[k];
-                                                                            if (code) {
-                                                                                totalVal += scoresMap[code] || 0;
-                                                                                count++;
-                                                                            }
-                                                                        });
-                                                                        
-                                                                        let nextScore = oralTestData.score;
-                                                                        if (count > 0) {
-                                                                            const averagePct = totalVal / count;
-                                                                            nextScore = Math.round((averagePct / 100) * (assignment.max_points || 100));
-                                                                        }
-
-                                                                        setOralTestData({
-                                                                            ...oralTestData,
-                                                                            kktp_details: newKktp,
-                                                                            score: nextScore
-                                                                        });
-                                                                    }}
-                                                                    className={`p-2.5 rounded-xl border text-center text-xs font-bold transition cursor-pointer leading-tight truncate ${
-                                                                        isSelected
-                                                                            ? 'bg-primary text-primary-foreground border-primary shadow-xs font-black'
-                                                                            : 'bg-white dark:bg-slate-900 border-border text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                                                                    }`}
-                                                                >
-                                                                    {lvl.code}
-                                                                </button>
-                                                            );
-                                                        })}
-                                                    </div>
-                                                    
-                                                    {oralTestData.kktp_details?.[aspect.id] && (
-                                                        <p className="text-[10.5px] text-muted-foreground leading-normal italic p-2.5 bg-white dark:bg-slate-900 border border-border/40 rounded-lg">
-                                                            {aspect.levels.find(l => l.code === oralTestData.kktp_details[aspect.id])?.desc}
-                                                        </p>
-                                                    )}
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
 
                                     <div className="space-y-6 pt-6 border-t border-border">
                                         <h4 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2">
                                             <Mic className="h-4 w-4" /> Panduan Pertanyaan & Respon Siswa
                                         </h4>
                                         <div className="grid gap-6">
-                                            {(assignment.instrument_config?.questions || []).map((q: any, idx: number) => (
-                                                <div key={q.id} className="p-6 rounded-xl bg-slate-50/50 dark:bg-slate-800/20 border border-border space-y-4">
-                                                    <div className="flex items-start justify-between gap-4">
-                                                        <div className="flex-1 space-y-1">
-                                                            <span className="text-[9px] font-black text-indigo-500 uppercase tracking-widest">Pertanyaan 0{idx + 1}</span>
-                                                            <p className="text-xs font-black text-slate-800 dark:text-slate-100 leading-relaxed whitespace-pre-wrap">{q.question || q.text}</p>
+                                            {(assignment.instrument_config?.questions || []).map((q: any, idx: number) => {
+                                                const selectedLevel = oralTestData.kktp_details?.[q.id] || '';
+                                                const totalQuestions = (assignment.instrument_config?.questions || []).length || 1;
+                                                const qPoints = Number(q.points) || (assignment.max_points / totalQuestions) || 10;
+                                                const scoresMap = { BB: 25, LY: 50, CK: 75, MH: 100 };
+                                                const pct = scoresMap[selectedLevel] || 0;
+                                                const qScore = selectedLevel ? Math.round((pct / 100) * qPoints) : 0;
+                                                
+                                                return (
+                                                    <div key={q.id} className="p-6 rounded-xl bg-slate-50/50 dark:bg-slate-800/20 border border-border space-y-4">
+                                                        <div className="flex items-start justify-between gap-4">
+                                                            <div className="flex-1 space-y-1">
+                                                                <span className="text-[9px] font-black text-indigo-500 uppercase tracking-widest">Pertanyaan 0{idx + 1}</span>
+                                                                <p className="text-xs font-black text-slate-800 dark:text-slate-100 leading-relaxed whitespace-pre-wrap">{q.question || q.text}</p>
+                                                            </div>
+                                                            <div className="px-4 py-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30 max-w-[240px]">
+                                                                <span className="text-[8px] font-black text-emerald-600 uppercase tracking-widest block mb-1">Panduan Kunci</span>
+                                                                <p className="text-[10px] text-slate-600 dark:text-muted-foreground italic leading-snug">{q.answer_guide || 'Tidak ada panduan khusus.'}</p>
+                                                            </div>
                                                         </div>
-                                                        <div className="px-4 py-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30 max-w-[240px]">
-                                                            <span className="text-[8px] font-black text-emerald-600 uppercase tracking-widest block mb-1">Panduan Kunci</span>
-                                                            <p className="text-[10px] text-slate-600 dark:text-muted-foreground italic leading-snug">{q.answer_guide || 'Tidak ada panduan khusus.'}</p>
+                                                        
+                                                        {/* Pemahaman Konsep Rubric Selector */}
+                                                        <div className="pt-4 border-t border-border/60 space-y-3">
+                                                            <div className="flex items-center justify-between text-xs">
+                                                                <span className="font-black text-muted-foreground uppercase tracking-widest">Pemahaman Konsep</span>
+                                                                <span className="font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/20 px-3 py-1 rounded-lg border border-indigo-100/30">
+                                                                    Skor: {qScore} / {qPoints}
+                                                                </span>
+                                                            </div>
+                                                            
+                                                            <div className="grid grid-cols-4 gap-2">
+                                                                {[
+                                                                    { code: 'BB', name: 'Baru Berkembang', desc: 'Belum mampu menjelaskan konsep dasar meskipun sudah dipancing.' },
+                                                                    { code: 'LY', name: 'Layak', desc: 'Mampu menjelaskan konsep dasar, namun masih ada kekeliruan kecil.' },
+                                                                    { code: 'CK', name: 'Cakap', desc: 'Mampu menjelaskan sebagian besar konsep materi dengan benar.' },
+                                                                    { code: 'MH', name: 'Mahir', desc: 'Mampu menjelaskan seluruh konsep secara mendalam dan akurat.' }
+                                                                ].map((lvl) => {
+                                                                    const isSelected = selectedLevel === lvl.code;
+                                                                    return (
+                                                                        <button
+                                                                            key={lvl.code}
+                                                                            type="button"
+                                                                            title={lvl.desc}
+                                                                            onClick={() => {
+                                                                                const newKktp = { ...(oralTestData.kktp_details || {}), [q.id]: lvl.code };
+                                                                                
+                                                                                let totalScore = 0;
+                                                                                const oralQuestions = assignment.instrument_config?.questions || [];
+                                                                                oralQuestions.forEach((oq: any) => {
+                                                                                    const oqPoints = Number(oq.points) || (assignment.max_points / oralQuestions.length) || 10;
+                                                                                    const lvlCode = newKktp[oq.id];
+                                                                                    if (lvlCode) {
+                                                                                        const pctVal = scoresMap[lvlCode] || 0;
+                                                                                        totalScore += (pctVal / 100) * oqPoints;
+                                                                                    }
+                                                                                });
+                                                                                
+                                                                                setOralTestData({
+                                                                                    ...oralTestData,
+                                                                                    kktp_details: newKktp,
+                                                                                    score: Math.min(assignment.max_points, Math.round(totalScore))
+                                                                                });
+                                                                            }}
+                                                                            className={`p-2.5 rounded-xl border text-center text-xs font-black transition cursor-pointer leading-tight truncate ${
+                                                                                isSelected
+                                                                                    ? 'bg-indigo-650 text-white border-indigo-600 shadow-xs'
+                                                                                    : 'bg-white dark:bg-slate-900 border-border text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                                                                            }`}
+                                                                        >
+                                                                            {lvl.code}
+                                                                        </button>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                            {selectedLevel && (
+                                                                <p className="text-[10px] text-muted-foreground leading-normal italic p-2.5 bg-white dark:bg-slate-900 border border-border/40 rounded-lg">
+                                                                    {
+                                                                        [
+                                                                            { code: 'BB', desc: 'Belum mampu menjelaskan konsep dasar meskipun sudah dipancing.' },
+                                                                            { code: 'LY', desc: 'Mampu menjelaskan konsep dasar, namun masih ada kekeliruan kecil.' },
+                                                                            { code: 'CK', desc: 'Mampu menjelaskan sebagian besar konsep materi dengan benar.' },
+                                                                            { code: 'MH', desc: 'Mampu menjelaskan seluruh konsep secara mendalam dan akurat.' }
+                                                                        ].find(l => l.code === selectedLevel)?.desc
+                                                                    }
+                                                                </p>
+                                                            )}
                                                         </div>
                                                     </div>
-                                                    <textarea 
-                                                        rows={2}
-                                                        value={oralTestData.question_responses[q.id] || ''}
-                                                        onChange={(e) => setOralTestData({ 
-                                                            ...oralTestData, 
-                                                            question_responses: { ...oralTestData.question_responses, [q.id]: e.target.value } 
-                                                        })}
-                                                        placeholder="Ringkasan jawaban siswa untuk soal ini..."
-                                                        className="w-full rounded-xl border border-border bg-white dark:bg-slate-900 px-5 py-3 text-[11px] font-medium outline-none focus:ring-1 focus:ring-indigo-500 transition-all resize-none"
-                                                    />
-                                                </div>
-                                            ))}
+                                                );
+                                            })}
                                         </div>
                                     </div>
                                 </div>
 
                                 <div className="flex items-center justify-between pt-6 border-t border-slate-50 dark:border-slate-800">
-                                    <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-muted/50">
-                                        <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                                        <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Auto-saving session enabled</span>
-                                    </div>
+                                    <div />
                                     <div className="flex gap-4">
                                         <button 
                                             type="button"
