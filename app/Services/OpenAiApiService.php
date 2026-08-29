@@ -277,4 +277,81 @@ class OpenAiApiService implements AiProviderInterface
             default                   => $type,
         };
     }
+
+    public function suggestDirectTp(string $cpDescription, bool $regenerate = false): array
+    {
+        $hash = md5('tp_direct_' . $cpDescription);
+        if (!$regenerate) {
+            $cached = \App\Models\LmsAiCache::getCache($hash);
+            if ($cached) return json_decode($cached, true) ?? [];
+        }
+        $template = LmsAiPrompt::getPromptFor('tp_direct', Auth::user()?->teacher?->id);
+        $prompt = str_replace('{cp_desc}', $cpDescription, $template);
+        $response = $this->generateContent($prompt);
+        $result = $response ? $this->parseJsonResponse($response) : [];
+        \App\Models\LmsAiCache::setCache($hash, 'tp_direct', ['cp_desc' => $cpDescription], json_encode($result));
+        return $result;
+    }
+
+    public function analyzeCompetenceAndContent(string $cpDescription, bool $regenerate = false): array
+    {
+        $hash = md5('tp_analysis_' . $cpDescription);
+        if (!$regenerate) {
+            $cached = \App\Models\LmsAiCache::getCache($hash);
+            if ($cached) return json_decode($cached, true) ?? [];
+        }
+        $template = LmsAiPrompt::getPromptFor('tp_analysis', Auth::user()?->teacher?->id);
+        $prompt = str_replace('{cp_desc}', $cpDescription, $template);
+        $response = $this->generateContent($prompt);
+        $result = $response ? $this->parseJsonResponse($response) : [];
+        \App\Models\LmsAiCache::setCache($hash, 'tp_analysis', ['cp_desc' => $cpDescription], json_encode($result));
+        return $result;
+    }
+
+    public function suggestCrossElementTp(array $cpDescriptions, bool $regenerate = false): string
+    {
+        $cpsText = '';
+        foreach ($cpDescriptions as $index => $desc) $cpsText .= ($index + 1) . ". " . $desc . "\n";
+        $hash = md5('tp_cross_' . $cpsText);
+        if (!$regenerate) {
+            $cached = \App\Models\LmsAiCache::getCache($hash);
+            if ($cached !== null) return $cached;
+        }
+        $template = LmsAiPrompt::getPromptFor('tp_cross_element', Auth::user()?->teacher?->id);
+        $prompt = str_replace('{cps_desc}', $cpsText, $template);
+        $response = $this->generateContent($prompt);
+        $result = $response ? trim($response) : '';
+        \App\Models\LmsAiCache::setCache($hash, 'tp_cross', ['cps_desc' => $cpsText], $result);
+        return $result;
+    }
+
+    public function breakdownTp(string $tpDescription, bool $regenerate = false): array
+    {
+        $hash = md5('breakdown_' . $tpDescription);
+        if (!$regenerate) {
+            $cached = \App\Models\LmsAiCache::getCache($hash);
+            if ($cached) return json_decode($cached, true) ?? [];
+        }
+        $prompt = "Tujuan Pembelajaran utama: \"{$tpDescription}\".\n\nTolong pecah menjadi 2 hingga 5 Sub-Tujuan Pembelajaran spesifik. Keluarkan HANYA array JSON (tanpa markdown), format: [\"Sub-TP 1\", \"Sub-TP 2\", ...].";
+        $response = $this->generateContent($prompt);
+        $result = $response ? $this->parseJsonResponse($response) : [];
+        if (!empty($result)) \App\Models\LmsAiCache::setCache($hash, 'breakdown_tp', ['tp' => $tpDescription], json_encode($result));
+        return is_array($result) ? $result : [];
+    }
+
+    public function suggestSequence(array $tps, string $method, bool $regenerate = false): array
+    {
+        $hash = md5('sequence_' . json_encode($tps) . '_' . $method);
+        if (!$regenerate) {
+            $cached = \App\Models\LmsAiCache::getCache($hash);
+            if ($cached) return json_decode($cached, true) ?? [];
+        }
+        $list = "";
+        foreach ($tps as $tp) $list .= "- ID: " . $tp['id'] . " | " . $tp['description'] . "\n";
+        $prompt = "Berikut adalah daftar Tujuan Pembelajaran (TP):\n" . $list . "\nUrutkan TP tersebut menggunakan metode '{$method}'. Keluarkan HANYA array JSON: [5, 2, 8, 1].";
+        $response = $this->generateContent($prompt);
+        $result = $response ? $this->parseJsonResponse($response) : [];
+        if (!empty($result)) \App\Models\LmsAiCache::setCache($hash, 'sequence_tp', ['method' => $method], json_encode($result));
+        return is_array($result) ? $result : [];
+    }
 }

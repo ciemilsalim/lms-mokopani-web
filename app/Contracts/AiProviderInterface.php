@@ -58,4 +58,29 @@ interface AiProviderInterface
      * Generate content dynamically from a raw prompt.
      */
     public function generateContent(string $prompt): ?string;
+
+    /**
+     * Generate suggested TPs directly from CP description.
+     */
+    public function suggestDirectTp(string $cpDescription, bool $regenerate = false): array;
+
+    /**
+     * Analyze CP to extract Competences and Content, and formulate a TP statement.
+     */
+    public function analyzeCompetenceAndContent(string $cpDescription, bool $regenerate = false): array;
+
+    /**
+     * Synthesize multiple CPs into a combined TP.
+     */
+    public function suggestCrossElementTp(array $cpDescriptions, bool $regenerate = false): string;
+
+    /**
+     * Break down a general TP into specific Sub-TPs.
+     */
+    public function breakdownTp(string $tpDescription, bool $regenerate = false): array;
+
+    /**
+     * Suggest logical sequence order for TPs.
+     */
+    public function suggestSequence(array $tps, string $method, bool $regenerate = false): array;
 }

@@ -327,4 +327,153 @@ class OpenRouterApiService implements AiProviderInterface
             default                   => $type,
         };
     }
+
+    /**
+     * Generate suggested TPs directly from CP description.
+     */
+    public function suggestDirectTp(string $cpDescription, bool $regenerate = false): array
+    {
+        $hash = md5('tp_direct_' . $cpDescription);
+
+        if (!$regenerate) {
+            $cached = \App\Models\LmsAiCache::getCache($hash);
+            if ($cached) {
+                return json_decode($cached, true) ?? [];
+            }
+        }
+
+        $teacherId = Auth::user()?->teacher?->id;
+        $template = LmsAiPrompt::getPromptFor('tp_direct', $teacherId);
+
+        $prompt = str_replace('{cp_desc}', $cpDescription, $template);
+        $response = $this->generateContent($prompt);
+
+        $result = $response ? $this->parseJsonResponse($response) : [];
+
+        \App\Models\LmsAiCache::setCache($hash, 'tp_direct', [
+            'cp_desc' => $cpDescription
+        ], json_encode($result));
+
+        return $result;
+    }
+
+    /**
+     * Analyze CP to extract Competences and Content, and formulate a TP statement.
+     */
+    public function analyzeCompetenceAndContent(string $cpDescription, bool $regenerate = false): array
+    {
+        $hash = md5('tp_analysis_' . $cpDescription);
+
+        if (!$regenerate) {
+            $cached = \App\Models\LmsAiCache::getCache($hash);
+            if ($cached) {
+                return json_decode($cached, true) ?? [];
+            }
+        }
+
+        $teacherId = Auth::user()?->teacher?->id;
+        $template = LmsAiPrompt::getPromptFor('tp_analysis', $teacherId);
+
+        $prompt = str_replace('{cp_desc}', $cpDescription, $template);
+        $response = $this->generateContent($prompt);
+
+        $result = $response ? $this->parseJsonResponse($response) : [];
+
+        \App\Models\LmsAiCache::setCache($hash, 'tp_analysis', [
+            'cp_desc' => $cpDescription
+        ], json_encode($result));
+
+        return $result;
+    }
+
+    /**
+     * Synthesize multiple CPs into a combined TP.
+     */
+    public function suggestCrossElementTp(array $cpDescriptions, bool $regenerate = false): string
+    {
+        $cpsText = '';
+        foreach ($cpDescriptions as $index => $desc) {
+            $cpsText .= ($index + 1) . ". " . $desc . "\n";
+        }
+        
+        $hash = md5('tp_cross_' . $cpsText);
+
+        if (!$regenerate) {
+            $cached = \App\Models\LmsAiCache::getCache($hash);
+            if ($cached !== null) {
+                return $cached;
+            }
+        }
+
+        $teacherId = Auth::user()?->teacher?->id;
+        $template = LmsAiPrompt::getPromptFor('tp_cross_element', $teacherId);
+
+        $prompt = str_replace('{cps_desc}', $cpsText, $template);
+        $response = $this->generateContent($prompt);
+
+        $result = $response ? trim($response) : '';
+
+        \App\Models\LmsAiCache::setCache($hash, 'tp_cross', [
+            'cps_desc' => $cpsText
+        ], $result);
+
+        return $result;
+    }
+
+    /**
+     * Break down a general TP into specific Sub-TPs.
+     */
+    public function breakdownTp(string $tpDescription, bool $regenerate = false): array
+    {
+        $hash = md5('breakdown_' . $tpDescription);
+
+        if (!$regenerate) {
+            $cached = \App\Models\LmsAiCache::getCache($hash);
+            if ($cached) {
+                return json_decode($cached, true) ?? [];
+            }
+        }
+
+        $prompt = "Tujuan Pembelajaran utama: \"{$tpDescription}\".\n\nTujuan ini masih terlalu umum. Tolong pecah menjadi 2 hingga 5 Sub-Tujuan Pembelajaran (Alur Tujuan Pembelajaran) yang lebih spesifik, logis, dan berurutan dari yang paling dasar hingga paling kompleks (taksonomi Bloom).\nKeluarkan HANYA array JSON (tanpa markdown), format: [\"Sub-TP 1\", \"Sub-TP 2\", ...]. Pastikan setiap kalimat jelas dan operasional.";
+
+        $response = $this->generateContent($prompt);
+        $result = $response ? $this->parseJsonResponse($response) : [];
+
+        if (!empty($result)) {
+            \App\Models\LmsAiCache::setCache($hash, 'breakdown_tp', ['tp' => $tpDescription], json_encode($result));
+        }
+
+        return is_array($result) ? $result : [];
+    }
+
+    /**
+     * Suggest logical sequence order for TPs.
+     */
+    public function suggestSequence(array $tps, string $method, bool $regenerate = false): array
+    {
+        $hash = md5('sequence_' . json_encode($tps) . '_' . $method);
+
+        if (!$regenerate) {
+            $cached = \App\Models\LmsAiCache::getCache($hash);
+            if ($cached) {
+                return json_decode($cached, true) ?? [];
+            }
+        }
+
+        $list = "";
+        foreach ($tps as $tp) {
+            $list .= "- ID: " . $tp['id'] . " | " . $tp['description'] . "\n";
+        }
+
+        $prompt = "Berikut adalah daftar Tujuan Pembelajaran (TP):\n" . $list . "\nUrutkan TP tersebut menggunakan metode '{$method}'. Keluarkan HANYA array JSON (tanpa markdown) berisi urutan ID saja, contoh: [5, 2, 8, 1].";
+
+        $response = $this->generateContent($prompt);
+        $result = $response ? $this->parseJsonResponse($response) : [];
+
+        if (!empty($result)) {
+            \App\Models\LmsAiCache::setCache($hash, 'sequence_tp', ['method' => $method], json_encode($result));
+        }
+
+        return is_array($result) ? $result : [];
+    }
 }

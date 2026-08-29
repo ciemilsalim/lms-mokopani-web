@@ -19,25 +19,24 @@ class AiManager
     ) {
         $user = Auth::user();
         
-        // Ambil provider utama dari .env atau pusat data SIPADA
-        $envProvider = env('ACTIVE_AI_PROVIDER');
-        $globalProvider = $envProvider ?: 'gemini';
+        // Ambil provider utama langsung dari pusat data pengaturan SIPADA (Master AI)
+        $globalProvider = 'openrouter';
         try {
             $dbProvider = \Illuminate\Support\Facades\DB::table('settings')->where('key', 'global_ai_provider')->value('value');
-            if (!empty($dbProvider) && empty($envProvider)) {
+            if (!empty($dbProvider)) {
                 $globalProvider = $dbProvider;
             }
         } catch (\Exception $e) {
-            // Silently ignore if table doesn't exist
+            $globalProvider = env('ACTIVE_AI_PROVIDER', 'openrouter');
         }
         
         $activeProvider = $globalProvider;
         $customApiKey = null;
 
-        // Jika user sedang login dan memiliki preferensi AI Provider (jika masih digunakan di LMS)
-        if ($user && isset($user->ai_provider) && !empty($user->ai_provider)) {
+        // Hanya gunakan personal provider jika user secara spesifik mengisikan personal API key
+        if ($user && !empty($user->ai_api_key) && !empty($user->ai_provider)) {
             $activeProvider = $user->ai_provider;
-            $customApiKey = $user->ai_api_key ?? null;
+            $customApiKey = $user->ai_api_key;
         }
 
         // Resolusi provider
