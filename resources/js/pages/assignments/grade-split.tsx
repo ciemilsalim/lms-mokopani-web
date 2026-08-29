@@ -532,7 +532,24 @@ export default function GradeSplitPage({
                                         </div>
                                     </div>
                                 ) : isPdf ? (
-                                    <iframe src={`/storage/${submission.file_path}`} className="w-full h-[300px] border-0" title="PDF Viewer" />
+                                    <div className="p-5 text-center text-xs space-y-3 w-full">
+                                        <div className="h-12 w-12 rounded-2xl bg-rose-500/10 text-rose-500 flex items-center justify-center mx-auto">
+                                            <FileText className="h-6 w-6" />
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-bold text-foreground">Dokumen PDF Terlampir</p>
+                                            <p className="text-[11px] text-muted-foreground truncate max-w-xs mx-auto">{submission.file_path.split('/').pop()}</p>
+                                        </div>
+                                        <a
+                                            href={`/storage/${submission.file_path}`}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-bold shadow-xs hover:bg-primary/90 transition"
+                                        >
+                                            <ExternalLink className="h-3.5 w-3.5" />
+                                            <span>Buka Dokumen PDF</span>
+                                        </a>
+                                    </div>
                                 ) : (
                                     <div className="p-5 text-center text-xs space-y-2">
                                         <FileText className="w-8 h-8 mx-auto text-muted-foreground/50" />
