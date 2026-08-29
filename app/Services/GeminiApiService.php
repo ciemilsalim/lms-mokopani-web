@@ -260,15 +260,21 @@ class GeminiApiService implements AiProviderInterface
         if (empty($this->apiKeys)) return null;
 
         $attempts = 0;
-        $maxAttempts = count($this->apiKeys);
+        $maxAttempts = count($this->apiKeys) * 2;
+        $candidateModels = array_unique(array_filter([
+            $this->model,
+            'gemini-2.0-flash',
+            'gemini-1.5-flash',
+        ]));
 
         while ($attempts < $maxAttempts) {
             $currentKey = $this->apiKeys[$this->currentKeyIndex];
+            $currentModel = $candidateModels[$attempts % count($candidateModels)];
             
             try {
-                $url = "{$this->baseUrl}/models/{$this->model}:generateContent?key={$currentKey}";
+                $url = "{$this->baseUrl}/models/{$currentModel}:generateContent?key={$currentKey}";
 
-                $response = Http::timeout(60)->post($url, [
+                $response = Http::timeout(120)->connectTimeout(15)->post($url, [
                     'contents' => [
                         [
                             'parts' => [
@@ -292,38 +298,39 @@ class GeminiApiService implements AiProviderInterface
                 $errBody = $response->json();
                 $errMsg = $errBody['error']['message'] ?? ('HTTP ' . $response->status());
 
-                // If rate limited (429) or forbidden/quota (403), rotate key
-                if ($response->status() === 429 || $response->status() === 403) {
-                    Log::warning('Gemini API rate limit/quota reached on key index ' . $this->currentKeyIndex);
-                    $this->lastError = "Batas kuota / rate limit API tercapai ({$errMsg}). Mencoba rotasi kunci...";
-                    $this->currentKeyIndex = ($this->currentKeyIndex + 1) % $maxAttempts;
+                // If rate limited (429), forbidden/quota (403), or model not found (404), rotate key / model
+                if ($response->status() === 429 || $response->status() === 403 || $response->status() === 404 || $response->status() === 503) {
+                    Log::warning("Gemini API issue ({$response->status()}) on model {$currentModel} with key index {$this->currentKeyIndex}");
+                    $this->currentKeyIndex = ($this->currentKeyIndex + 1) % count($this->apiKeys);
                     $attempts++;
-                    continue; // Coba key berikutnya
+                    continue; // Coba model / key berikutnya
                 }
 
-                if ($response->status() === 503) {
-                    $this->lastError = "Layanan AI Gemini sedang mengalami lonjakan beban tinggi (503 Unavailable). Silakan klik tombol generate kembali.";
-                } else {
-                    $this->lastError = "Gemini API Error ({$errMsg})";
-                }
-
+                $this->lastError = "Gemini API Error ({$errMsg})";
                 Log::warning('Gemini API request failed', [
+                    'model'  => $currentModel,
                     'status' => $response->status(),
                     'body'   => $response->body(),
                 ]);
-                return null;
+                
+                $this->currentKeyIndex = ($this->currentKeyIndex + 1) % count($this->apiKeys);
+                $attempts++;
+                continue;
 
             } catch (\Exception $e) {
-                $this->lastError = "Koneksi ke Gemini API terputus: " . $e->getMessage();
-                Log::error('Gemini API error', [
-                    'message' => $e->getMessage(),
-                ]);
-                return null;
+                Log::warning("Gemini API exception on model {$currentModel}: " . $e->getMessage());
+                $this->currentKeyIndex = ($this->currentKeyIndex + 1) % count($this->apiKeys);
+                $attempts++;
+                if ($attempts >= $maxAttempts) {
+                    $this->lastError = "Koneksi ke Gemini API terputus. Silakan klik tombol generate kembali.";
+                    return null;
+                }
+                continue;
             }
         }
         
-        $this->lastError = "Semua API Key Gemini telah mencapai batas limit kuota.";
-        Log::error('Gemini API all keys exhausted or rate limited.');
+        $this->lastError = "Semua percobaan ke Gemini API telah mencapai batas atau mengalami kendala koneksi.";
+        Log::error('Gemini API all keys or candidate models exhausted.');
         return null;
     }
 

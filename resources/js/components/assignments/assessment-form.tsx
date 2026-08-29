@@ -2016,7 +2016,7 @@ export function AssessmentForm({
 
                 {/* ── STICKY BOTTOM ACTION BAR (64px + safe area) ── */}
                 <div className="fixed bottom-0 left-0 right-0 z-40 bg-card/95 backdrop-blur-md border-t border-border shadow-xl py-3 px-3 sm:px-8 w-full">
-                    <div className="max-w-3xl mx-auto flex items-center justify-between gap-2.5 w-full">
+                    <div className="max-w-7xl mx-auto flex items-center justify-between gap-2.5 w-full">
                         {currentStep > 1 ? (
                             <button
                                 type="button"
