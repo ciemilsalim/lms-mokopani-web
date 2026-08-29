@@ -1132,7 +1132,8 @@ export default function ShowAssignment({
     const [oralTestData, setOralTestData] = useState({
         score: 0,
         notes: '',
-        question_responses: {} as Record<string, string>
+        question_responses: {} as Record<string, string>,
+        kktp_details: {} as Record<string, string>
     });
 
     // Performance Assessment State (Teacher - Summative)
@@ -1434,7 +1435,8 @@ export default function ShowAssignment({
                     initialData = {
                         score: sub.score || 0,
                         notes: sub.feedback || '',
-                        question_responses: parsed.question_responses || {}
+                        question_responses: parsed.question_responses || {},
+                        kktp_details: sub.kktp_details || {}
                     };
                 }
             } catch(e) {}
@@ -1461,7 +1463,8 @@ export default function ShowAssignment({
             student_id: teacherForm.data.student_id,
             score: oralTestData.score,
             feedback: oralTestData.notes,
-            content: content
+            content: content,
+            kktp_details: oralTestData.kktp_details
         }, {
             preserveScroll: true,
             onSuccess: () => {
@@ -5210,6 +5213,111 @@ export default function ShowAssignment({
                                                 placeholder="Ketik catatan di sini saat siswa berbicara..."
                                                 className="w-full h-full rounded-xl border border-border bg-slate-50/50 dark:bg-slate-800/50 px-6 py-5 text-xs font-medium focus:ring-2 focus:ring-indigo-500 outline-none transition-all resize-none"
                                             />
+                                        </div>
+                                    </div>
+
+                                    {/* Rubrik Tes Lisan (Model PPA) */}
+                                    <div className="space-y-4 pt-6 border-t border-border">
+                                        <h4 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+                                            <Target className="h-4 w-4 text-emerald-500" /> Rubrik Penilaian Tes Lisan (Model PPA)
+                                        </h4>
+                                        <div className="grid gap-4">
+                                            {[
+                                                {
+                                                    id: 'pemahaman_konsep',
+                                                    name: 'Pemahaman Konsep',
+                                                    levels: [
+                                                        { code: 'BB', name: 'Baru Berkembang', desc: 'Belum mampu menjelaskan konsep dasar meskipun sudah dipancing pertanyaan kelanjutan.' },
+                                                        { code: 'LY', name: 'Layak', desc: 'Mampu menjelaskan konsep dasar, namun masih ada kekeliruan kecil pada bagian detail materi.' },
+                                                        { code: 'CK', name: 'Cakap', desc: 'Mampu menjelaskan sebagian besar konsep materi dengan benar dan runtut.' },
+                                                        { code: 'MH', name: 'Mahir', desc: 'Mampu menjelaskan seluruh konsep secara mendalam, akurat, serta memberikan contoh kasus nyata.' }
+                                                    ]
+                                                },
+                                                {
+                                                    id: 'kelancaran_artikulasi',
+                                                    name: 'Kelancaran & Artikulasi',
+                                                    levels: [
+                                                        { code: 'BB', name: 'Baru Berkembang', desc: 'Berbicara terbata-bata, sering berhenti lama, dan suara sangat pelan/tidak jelas.' },
+                                                        { code: 'LY', name: 'Layak', desc: 'Berbicara cukup lancar, namun artikulasi di beberapa kalimat masih kurang jelas terdengar.' },
+                                                        { code: 'CK', name: 'Cakap', desc: 'Berbicara dengan lancar, intonasi tepat, dan kalimat mudah dipahami oleh penguji.' },
+                                                        { code: 'MH', name: 'Mahir', desc: 'Berbicara sangat lancar, penuh percaya diri, artikulasi jelas, dan penyampaiannya sangat persuasif.' }
+                                                    ]
+                                                },
+                                                {
+                                                    id: 'kemampuan_berargumen',
+                                                    name: 'Kemampuan Berargumen',
+                                                    levels: [
+                                                        { code: 'BB', name: 'Baru Berkembang', desc: 'Hanya bisa menjawab "ya" atau "tidak" tanpa disertai alasan/bukti pendukung.' },
+                                                        { code: 'LY', name: 'Layak', desc: 'Mampu memberikan alasan, namun argumen yang disampaikan kurang logis atau kurang relevan.' },
+                                                        { code: 'CK', name: 'Cakap', desc: 'Mampu memberikan argumen yang logis dan didukung oleh fakta/materi yang dipelajari.' },
+                                                        { code: 'MH', name: 'Mahir', desc: 'Mampu mempertahankan argumen secara kritis, logis, sistematis, serta terbuka terhadap sudut pandang lain.' }
+                                                    ]
+                                                }
+                                            ].map((aspect) => (
+                                                <div key={aspect.id} className="p-4 rounded-xl border border-border bg-slate-50/50 dark:bg-slate-800/10 space-y-2.5">
+                                                    <div className="flex items-center justify-between text-xs gap-2">
+                                                        <span className="font-bold text-foreground">{aspect.name}</span>
+                                                        {oralTestData.kktp_details?.[aspect.id] && (
+                                                            <span className="text-[10px] font-black text-primary px-2 py-0.5 rounded bg-primary/10">
+                                                                {aspect.levels.find(l => l.code === oralTestData.kktp_details[aspect.id])?.name || oralTestData.kktp_details[aspect.id]}
+                                                            </span>
+                                                        )}
+                                                    </div>
+
+                                                    <div className="grid grid-cols-4 gap-2">
+                                                        {aspect.levels.map((lvl) => {
+                                                            const isSelected = oralTestData.kktp_details?.[aspect.id] === lvl.code;
+                                                            return (
+                                                                <button
+                                                                    key={lvl.code}
+                                                                    type="button"
+                                                                    title={lvl.desc}
+                                                                    onClick={() => {
+                                                                        const newKktp = { ...(oralTestData.kktp_details || {}), [aspect.id]: lvl.code };
+                                                                        
+                                                                        // Calculate auto score: BB=25%, LY=50%, CK=75%, MH=100%
+                                                                        const scoresMap: Record<string, number> = { BB: 25, LY: 50, CK: 75, MH: 100 };
+                                                                        let totalVal = 0;
+                                                                        let count = 0;
+                                                                        ['pemahaman_konsep', 'kelancaran_artikulasi', 'kemampuan_berargumen'].forEach(k => {
+                                                                            const code = newKktp[k];
+                                                                            if (code) {
+                                                                                totalVal += scoresMap[code] || 0;
+                                                                                count++;
+                                                                            }
+                                                                        });
+                                                                        
+                                                                        let nextScore = oralTestData.score;
+                                                                        if (count > 0) {
+                                                                            const averagePct = totalVal / count;
+                                                                            nextScore = Math.round((averagePct / 100) * (assignment.max_points || 100));
+                                                                        }
+
+                                                                        setOralTestData({
+                                                                            ...oralTestData,
+                                                                            kktp_details: newKktp,
+                                                                            score: nextScore
+                                                                        });
+                                                                    }}
+                                                                    className={`p-2.5 rounded-xl border text-center text-xs font-bold transition cursor-pointer leading-tight truncate ${
+                                                                        isSelected
+                                                                            ? 'bg-primary text-primary-foreground border-primary shadow-xs font-black'
+                                                                            : 'bg-white dark:bg-slate-900 border-border text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                                                                    }`}
+                                                                >
+                                                                    {lvl.code}
+                                                                </button>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                    
+                                                    {oralTestData.kktp_details?.[aspect.id] && (
+                                                        <p className="text-[10.5px] text-muted-foreground leading-normal italic p-2.5 bg-white dark:bg-slate-900 border border-border/40 rounded-lg">
+                                                            {aspect.levels.find(l => l.code === oralTestData.kktp_details[aspect.id])?.desc}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            ))}
                                         </div>
                                     </div>
 

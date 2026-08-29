@@ -558,7 +558,111 @@ export default function GradeSplitPage({
                 </div>
 
                 {/* ② Interactive Rubric Accordion (if configured) */}
-                {hasRubric && (
+                {isOralTest && (
+                    <div className="space-y-3 w-full">
+                        <div className="flex items-center justify-between gap-2">
+                            <h4 className="text-xs font-black text-foreground flex items-center gap-1.5 min-w-0 truncate uppercase tracking-widest">
+                                <Target className="w-3.5 h-3.5 text-primary shrink-0 animate-pulse" />
+                                <span className="truncate">Rubrik Tes Lisan (Model PPA)</span>
+                            </h4>
+                        </div>
+
+                        <div className="space-y-3 w-full animate-in fade-in duration-150">
+                            {[
+                                {
+                                    id: 'pemahaman_konsep',
+                                    name: 'Pemahaman Konsep',
+                                    levels: [
+                                        { code: 'BB', name: 'Baru Berkembang', desc: 'Belum mampu menjelaskan konsep dasar meskipun sudah dipancing pertanyaan kelanjutan.' },
+                                        { code: 'LY', name: 'Layak', desc: 'Mampu menjelaskan konsep dasar, namun masih ada kekeliruan kecil pada bagian detail materi.' },
+                                        { code: 'CK', name: 'Cakap', desc: 'Mampu menjelaskan sebagian besar konsep materi dengan benar dan runtut.' },
+                                        { code: 'MH', name: 'Mahir', desc: 'Mampu menjelaskan seluruh konsep secara mendalam, akurat, serta memberikan contoh kasus nyata.' }
+                                    ]
+                                },
+                                {
+                                    id: 'kelancaran_artikulasi',
+                                    name: 'Kelancaran & Artikulasi',
+                                    levels: [
+                                        { code: 'BB', name: 'Baru Berkembang', desc: 'Berbicara terbata-bata, sering berhenti lama, dan suara sangat pelan/tidak jelas.' },
+                                        { code: 'LY', name: 'Layak', desc: 'Berbicara cukup lancar, namun artikulasi di beberapa kalimat masih kurang jelas terdengar.' },
+                                        { code: 'CK', name: 'Cakap', desc: 'Berbicara dengan lancar, intonasi tepat, dan kalimat mudah dipahami oleh penguji.' },
+                                        { code: 'MH', name: 'Mahir', desc: 'Berbicara sangat lancar, penuh percaya diri, artikulasi jelas, dan penyampaiannya sangat persuasif.' }
+                                    ]
+                                },
+                                {
+                                    id: 'kemampuan_berargumen',
+                                    name: 'Kemampuan Berargumen',
+                                    levels: [
+                                        { code: 'BB', name: 'Baru Berkembang', desc: 'Hanya bisa menjawab "ya" atau "tidak" tanpa disertai alasan/bukti pendukung.' },
+                                        { code: 'LY', name: 'Layak', desc: 'Mampu memberikan alasan, namun argumen yang disampaikan kurang logis atau kurang relevan.' },
+                                        { code: 'CK', name: 'Cakap', desc: 'Mampu memberikan argumen yang logis dan didukung oleh fakta/materi yang dipelajari.' },
+                                        { code: 'MH', name: 'Mahir', desc: 'Mampu mempertahankan argumen secara kritis, logis, sistematis, serta terbuka terhadap sudut pandang lain.' }
+                                    ]
+                                }
+                            ].map((aspect) => (
+                                <div key={aspect.id} className="p-3 rounded-xl border border-border bg-muted/10 space-y-2 w-full overflow-hidden">
+                                    <div className="flex items-center justify-between text-xs gap-2">
+                                        <span className="font-black text-foreground truncate">{aspect.name}</span>
+                                        {kktpDetails[aspect.id] && (
+                                            <span className="text-[10px] font-black text-primary px-2 py-0.5 rounded bg-primary/10 shrink-0">
+                                                {aspect.levels.find(l => l.code === kktpDetails[aspect.id])?.name || kktpDetails[aspect.id]}
+                                            </span>
+                                        )}
+                                    </div>
+
+                                    <div className="grid grid-cols-4 gap-1 text-[10px] sm:text-[11px] w-full">
+                                        {aspect.levels.map((lvl) => {
+                                            const isSelected = kktpDetails[aspect.id] === lvl.code;
+                                            return (
+                                                <button
+                                                    key={lvl.code}
+                                                    type="button"
+                                                    title={lvl.desc}
+                                                    onClick={() => {
+                                                        const newDetails = { ...kktpDetails, [aspect.id]: lvl.code };
+                                                        setKktpDetails(newDetails);
+
+                                                        // Calculate auto score: BB=25%, LY=50%, CK=75%, MH=100%
+                                                        const scoresMap: Record<string, number> = { BB: 25, LY: 50, CK: 75, MH: 100 };
+                                                        let totalVal = 0;
+                                                        let count = 0;
+                                                        ['pemahaman_konsep', 'kelancaran_artikulasi', 'kemampuan_berargumen'].forEach(k => {
+                                                            const code = newDetails[k];
+                                                            if (code) {
+                                                                totalVal += scoresMap[code] || 0;
+                                                                count++;
+                                                            }
+                                                        });
+                                                        if (count > 0) {
+                                                            const averagePct = totalVal / count;
+                                                            const calculatedScore = Math.round((averagePct / 100) * (assignment.max_points || 100));
+                                                            setScore(calculatedScore);
+                                                        }
+                                                    }}
+                                                    className={`p-2 rounded-lg border text-center font-bold transition cursor-pointer leading-tight truncate ${
+                                                        isSelected
+                                                            ? 'bg-primary text-primary-foreground border-primary shadow-2xs font-black'
+                                                            : 'bg-background border-border text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                                                    }`}
+                                                >
+                                                    {lvl.code}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                    {kktpDetails[aspect.id] && (
+                                        <p className="text-[10px] text-muted-foreground leading-normal mt-1 italic p-2 bg-background/50 border border-border/40 rounded-lg">
+                                            {aspect.levels.find(l => l.code === kktpDetails[aspect.id])?.desc}
+                                        </p>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* ② Interactive Rubric Accordion (if configured) */}
+                {hasRubric && !isOralTest && (
                     <div className="space-y-2 w-full">
                         <div className="flex items-center justify-between gap-2">
                             <h4 className="text-xs font-bold text-foreground flex items-center gap-1.5 min-w-0 truncate">
