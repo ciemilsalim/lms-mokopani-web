@@ -20,6 +20,12 @@ class Semester extends Model
 
     public static function getActive()
     {
+        if (session()->has('active_semester_id')) {
+            $sem = self::find(session('active_semester_id'));
+            if ($sem) {
+                return $sem;
+            }
+        }
         return self::where('is_active', true)->first();
     }
 }

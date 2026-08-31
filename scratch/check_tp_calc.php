@@ -6,25 +6,52 @@ $kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
 $kernel->bootstrap();
 
 use App\Models\TeachingAssignment;
-use App\Models\LmsAssignment;
-use App\Models\LmsLearningObjective;
-use App\Models\LmsSubmission;
-use App\Models\Student;
+use App\Models\SchoolClass;
+use App\Models\Teacher;
+use App\Models\User;
+use App\Models\AcademicYear;
+use App\Models\Semester;
 
-$teachings = TeachingAssignment::with(['teacher', 'subject', 'schoolClass'])->get();
-foreach ($teachings as $t) {
-    echo "Teacher: " . ($t->teacher ? $t->teacher->name : 'None') . " (ID: {$t->teacher_id}) | Subject: " . ($t->subject ? $t->subject->name : 'None') . " ({$t->subject_id}) | Class: " . ($t->schoolClass ? $t->schoolClass->name : 'None') . " ({$t->school_class_id})\n";
-    $tps = LmsLearningObjective::where('subject_id', $t->subject_id)->get();
-    echo "  Total TPs for subject {$t->subject_id}: " . $tps->count() . "\n";
-    foreach ($tps as $tp) {
-        echo "    TP: {$tp->code} (ID: {$tp->id}, teacher_id: " . var_export($tp->teacher_id, true) . ", parent_id: " . var_export($tp->parent_id, true) . ")\n";
-    }
-    $assignments = LmsAssignment::where('subject_id', $t->subject_id)
-        ->whereHas('schoolClasses', fn($q) => $q->where('school_classes.id', $t->school_class_id))
-        ->get();
-    echo "  Assignments for class {$t->school_class_id}: " . $assignments->count() . "\n";
-    foreach ($assignments as $a) {
-        $subs = LmsSubmission::where('assignment_id', $a->id)->get();
-        echo "    Assignment [{$a->id}]: {$a->title} | Type: {$a->assessment_type} | TP ID: {$a->learning_objective_id} | Submissions: {$subs->count()}\n";
+$activeYear = AcademicYear::getActive();
+$activeSem = Semester::getActive();
+
+echo "Active Year: " . ($activeYear?->name ?? 'None') . " (ID: " . ($activeYear?->id ?? '-') . ")\n";
+echo "Active Semester: " . ($activeSem?->name ?? 'None') . " (ID: " . ($activeSem?->id ?? '-') . ")\n\n";
+
+$users = User::with('teacher')->get();
+foreach ($users as $u) {
+    if ($u->teacher) {
+        $query = TeachingAssignment::with(['subject', 'schoolClass'])
+            ->where('teacher_id', $u->teacher->id);
+
+        if ($activeYear && $activeSem) {
+            $query->where(function ($q) use ($activeYear, $activeSem) {
+                $q->where(function ($sub) use ($activeYear, $activeSem) {
+                    $sub->where('academic_year_id', $activeYear->id)
+                        ->where('semester_id', $activeSem->id);
+                })->orWhere(function ($sub) {
+                    $sub->whereNull('academic_year_id')
+                        ->whereNull('semester_id');
+                });
+            });
+        }
+
+        $teachings = $query->get()
+            ->unique(fn ($t) => $t->subject_id . '-' . $t->school_class_id)
+            ->sortBy(function ($t) {
+                $className = $t->schoolClass?->name ?? '';
+                $subjectName = $t->subject?->name ?? '';
+                return sprintf('%-50s %-50s', $className, $subjectName);
+            }, SORT_NATURAL)
+            ->values();
+
+        echo "User: {$u->name} | Resulting Gradebook Cards: " . $teachings->count() . "\n";
+        foreach ($teachings as $t) {
+            echo "   -> Card: [{$t->schoolClass?->name}] - {$t->subject?->name} (TA ID: {$t->id})\n";
+        }
     }
 }
+
+
+
+

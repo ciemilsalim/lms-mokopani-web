@@ -23,13 +23,34 @@ class GradebookController extends Controller
     public function index()
     {
         $user = Auth::user();
+        $activeYear = AcademicYear::getActive();
+        $activeSemester = Semester::getActive();
 
         if ($user->teacher || $user->role === 'admin') {
             $query = TeachingAssignment::with(['subject', 'schoolClass']);
             if ($user->teacher && $user->role !== 'admin') {
                 $query->where('teacher_id', $user->teacher->id);
             }
+
+            if ($activeYear && $activeSemester) {
+                $query->where(function ($q) use ($activeYear, $activeSemester) {
+                    $q->where(function ($sub) use ($activeYear, $activeSemester) {
+                        $sub->where('academic_year_id', $activeYear->id)
+                            ->where('semester_id', $activeSemester->id);
+                    })->orWhere(function ($sub) {
+                        $sub->whereNull('academic_year_id')
+                            ->whereNull('semester_id');
+                    });
+                });
+            } elseif ($activeYear) {
+                $query->where(function ($q) use ($activeYear) {
+                    $q->where('academic_year_id', $activeYear->id)
+                        ->orWhereNull('academic_year_id');
+                });
+            }
+
             $teachings = $query->get()
+                ->unique(fn ($t) => $t->subject_id . '-' . $t->school_class_id)
                 ->sortBy(function ($t) {
                     $className = $t->schoolClass?->name ?? '';
                     $subjectName = $t->subject?->name ?? '';

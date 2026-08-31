@@ -20,6 +20,18 @@ class AcademicYear extends Model
 
     public static function getActive()
     {
+        if (session()->has('active_academic_year_id')) {
+            $ay = self::find(session('active_academic_year_id'));
+            if ($ay) {
+                return $ay;
+            }
+        }
+        if (session()->has('active_semester_id')) {
+            $sem = Semester::find(session('active_semester_id'));
+            if ($sem && $sem->academicYear) {
+                return $sem->academicYear;
+            }
+        }
         return self::where('is_active', true)->first();
     }
 }
