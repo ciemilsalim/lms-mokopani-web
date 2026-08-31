@@ -46,8 +46,9 @@ class RaporController extends Controller
 
     private function buildReportData(Request $request): array
     {
-        $teacher = Auth::user()->teacher;
-        if (!$teacher) abort(403);
+        $user = Auth::user();
+        $teacher = $user->teacher;
+        if (!$teacher && $user->role !== 'admin') abort(403);
 
         $classId = $request->query('class_id');
         $subjectId = $request->query('subject_id');
@@ -56,17 +57,29 @@ class RaporController extends Controller
             return ['redirect' => redirect()->route('gradebook.index')];
         }
 
+        if ($teacher && $user->role !== 'admin') {
+            $isAssigned = TeachingAssignment::where('teacher_id', $teacher->id)
+                ->where('subject_id', $subjectId)
+                ->where('school_class_id', $classId)
+                ->exists();
+            if (!$isAssigned) {
+                abort(403, 'Anda tidak memiliki penugasan mengajar untuk mata pelajaran dan kelas ini.');
+            }
+        }
+
         $activeYear = AcademicYear::getActive();
         $activeSemester = Semester::getActive();
 
         $subject = Subject::find($subjectId);
         $schoolClass = SchoolClass::find($classId);
-        $teacherAssignment = TeachingAssignment::where('teacher_id', $teacher->id)
-            ->where('subject_id', $subjectId)
+        $teacherAssignment = TeachingAssignment::where('subject_id', $subjectId)
             ->where('school_class_id', $classId)
             ->first();
 
-        $tps = LmsLearningObjective::where('subject_id', $subjectId)->orderBy('code')->get();
+        $tps = LmsLearningObjective::where('subject_id', $subjectId)
+            ->doesntHave('subObjectives')
+            ->orderBy('code')
+            ->get();
 
         $assignments = LmsAssignment::whereHas('schoolClasses', function ($q) use ($classId) { $q->where('school_classes.id', $classId); })
             ->where('subject_id', $subjectId)
@@ -76,7 +89,9 @@ class RaporController extends Controller
             ->get();
 
         $students = Student::where('school_class_id', $classId)->orderBy('name', 'asc')->get();
-        $submissions = LmsSubmission::whereIn('assignment_id', $assignments->pluck('id'))->get();
+        $submissions = LmsSubmission::whereIn('assignment_id', $assignments->pluck('id'))
+            ->whereIn('student_id', $students->pluck('id'))
+            ->get();
 
         $finalScores = GradebookFinalScore::where('subject_id', $subjectId)
             ->where('school_class_id', $classId)
@@ -113,42 +128,69 @@ class RaporController extends Controller
             ->get()
             ->groupBy('student_id');
 
-        $reportData = $students->map(function ($student) use ($assignments, $submissions, $tps, $finalScores, $attendances, $subjectId, $allP5Scores) {
+        $kktp = get_kktp($subjectId);
+
+        $reportData = $students->map(function ($student) use ($assignments, $submissions, $tps, $finalScores, $attendances, $subjectId, $allP5Scores, $kktp) {
             $studentSubmissions = $submissions->where('student_id', $student->id);
 
             $tpScores = $tps->map(function ($tp) use ($assignments, $studentSubmissions) {
                 $tpAssignments = $assignments->where('learning_objective_id', $tp->id);
-                $tpSubmissions = $studentSubmissions->whereIn('assignment_id', $tpAssignments->pluck('id'));
-                $score = $tpSubmissions->count() > 0 ? round($tpSubmissions->avg('score')) : 0;
-                return ['code' => $tp->code, 'score' => $score];
+                $tpSubs = $studentSubmissions->whereIn('assignment_id', $tpAssignments->pluck('id'))
+                    ->filter(fn($s) => $s->score !== null && $s->score !== '');
+
+                $hasAssignment = $tpAssignments->count() > 0;
+                $score = null;
+                if ($tpSubs->count() > 0) {
+                    $score = round((float) $tpSubs->avg('score'), 1);
+                } elseif ($hasAssignment) {
+                    $score = 0;
+                }
+
+                return [
+                    'code' => $tp->code ?: 'TP',
+                    'score' => $score,
+                    'has_assignment' => $hasAssignment,
+                    'description' => $tp->description,
+                ];
             });
 
-            $totalScore = $tpScores->sum('score');
-            $count = $tpScores->count();
-            $average = $count > 0 ? round($totalScore / $count) : 0;
-            $finalScore = $finalScores->get($student->id)?->score ?? $average;
+            $assessedTps = $tpScores->filter(fn($tp) => $tp['has_assignment'] && $tp['score'] !== null);
+            $allSummativeSubs = $studentSubmissions->filter(fn($s) => $s->score !== null && $s->score !== '');
 
-            $tpPerformances = $tps->map(function ($tp) use ($assignments, $studentSubmissions) {
-                $tpAssignments = $assignments->where('learning_objective_id', $tp->id);
-                $tpSubmissions = $studentSubmissions->whereIn('assignment_id', $tpAssignments->pluck('id'));
-                return [
-                    'code' => $tp->code, 'description' => $tp->description,
-                    'avg' => $tpSubmissions->count() > 0 ? $tpSubmissions->avg('score') : 0,
-                    'count' => $tpSubmissions->count(),
-                ];
-            })->filter(fn($tp) => $tp['count'] > 0);
+            $finalScore = 0;
+            if ($assessedTps->count() > 0) {
+                $avgTp = $assessedTps->avg('score');
+                $sasScore = $finalScores->get($student->id)?->score;
+                if ($sasScore !== null && $sasScore !== '') {
+                    $finalScore = round(((float) $avgTp + (float) $sasScore) / 2);
+                } else {
+                    $finalScore = round((float) $avgTp);
+                }
+            } elseif ($allSummativeSubs->count() > 0) {
+                $finalScore = round((float) $allSummativeSubs->avg('score'));
+            } elseif ($finalScores->get($student->id)?->score !== null) {
+                $finalScore = round((float) $finalScores->get($student->id)->score);
+            }
 
-            $kktp = get_kktp($subjectId);
             $description = '';
-            if ($tpPerformances->count() > 0) {
-                $highest = $tpPerformances->sortByDesc('avg')->first();
-                $lowest = $tpPerformances->sortBy('avg')->first();
-                $description = "Menunjukkan penguasaan yang sangat baik dalam {$highest['description']}.";
-                if ($lowest && $lowest['avg'] < $kktp && $highest['code'] !== $lowest['code']) {
-                    $description .= " Perlu bimbingan lebih lanjut dalam {$lowest['description']}.";
+            if ($assessedTps->count() > 0 && $allSummativeSubs->count() > 0) {
+                $highest = $assessedTps->sortByDesc('score')->first();
+                $lowest = $assessedTps->sortBy('score')->first();
+
+                $highDesc = $highest['description'] ?: $highest['code'];
+                $lowDesc = $lowest['description'] ?: $lowest['code'];
+
+                if ($highest['score'] >= $kktp) {
+                    $description = "Menunjukkan penguasaan yang sangat baik dalam hal {$highDesc}.";
+                } else {
+                    $description = "Menunjukkan penguasaan yang cukup dalam hal {$highDesc}.";
+                }
+
+                if ($lowest && $lowest['score'] < $kktp && $highest['code'] !== $lowest['code']) {
+                    $description .= " Perlu bimbingan lebih lanjut dalam hal {$lowDesc}.";
                 }
             } else {
-                $description = 'Data penilaian belum mencukupi.';
+                $description = "Siswa belum memiliki data penilaian sumatif yang mencukupi untuk membuat deskripsi capaian.";
             }
 
             $studentAttendances = $attendances->get($student->id, collect());
@@ -159,9 +201,14 @@ class RaporController extends Controller
             $studentP5Scores = ($allP5Scores->get($student->id) ?? collect())
                 ->keyBy(fn($s) => $s->project_id . '-' . $s->sub_element_id);
 
+            $avgTp = $assessedTps->count() > 0 ? round((float) $assessedTps->avg('score'), 1) : 0;
+            $sasScore = $finalScores->get($student->id)?->score;
+
             return [
                 'nis' => $student->nis, 'name' => $student->name,
-                'tp_scores' => $tpScores, 'average' => $average,
+                'tp_scores' => $tpScores,
+                'average' => $avgTp,
+                'sas_score' => $sasScore,
                 'final_score' => $finalScore, 'description' => $description,
                 'total_meetings' => $subjectAttendances->count(),
                 'sick' => $subjectAttendances->where('status', 'Sakit')->count(),

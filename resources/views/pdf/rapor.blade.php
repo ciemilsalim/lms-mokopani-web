@@ -326,19 +326,19 @@
         <tbody>
             @foreach($student['tp_scores'] as $i => $tp)
             @php
-                $passed = $tp['score'] >= $kktp;
-                $tpDesc = \App\Models\LmsLearningObjective::where('code', $tp['code'])->first();
-                $descText = $tpDesc?->description ?? '-';
+                $scoreVal = $tp['score'];
+                $passed = ($scoreVal !== null && $scoreVal !== '') ? ($scoreVal >= $kktp) : false;
+                $descText = $tp['description'] ?? '-';
             @endphp
             <tr>
                 <td>{{ $i + 1 }}</td>
                 <td><strong>{{ $tp['code'] }}</strong></td>
                 <td class="left">{{ $descText }}</td>
-                <td class="{{ $passed ? 'score-pass' : 'score-fail' }}">{{ $tp['score'] }}</td>
+                <td class="{{ $scoreVal !== null ? ($passed ? 'score-pass' : 'score-fail') : '' }}">{{ $scoreVal !== null ? $scoreVal : '-' }}</td>
                 <td>{{ $kktp }}</td>
                 <td>
-                    <span style="font-size:6.5px; text-transform:uppercase; font-weight:bold; color:{{ $passed ? '#059669' : '#dc2626' }};">
-                        {{ $passed ? 'Tuntas' : 'Blm Tuntas' }}
+                    <span style="font-size:6.5px; text-transform:uppercase; font-weight:bold; color:{{ $scoreVal !== null ? ($passed ? '#059669' : '#dc2626') : '#666' }};">
+                        {{ $scoreVal !== null ? ($passed ? 'Tuntas' : 'Blm Tuntas') : 'Belum Diuji' }}
                     </span>
                 </td>
             </tr>
@@ -346,17 +346,31 @@
         </tbody>
         <tfoot>
             <tr>
-                <td colspan="3" class="label-cell">Rata-rata Nilai Sumatif</td>
-                <td class="{{ $student['average'] >= $kktp ? 'score-pass' : 'score-fail' }}" style="text-align:center; background:#eef2ff;">
-                    {{ $student['average'] }}
+                <td colspan="3" class="label-cell">Rata-rata Nilai Sumatif (TP)</td>
+                <td class="{{ ($student['average'] ?? $student['final_score']) >= $kktp ? 'score-pass' : 'score-fail' }}" style="text-align:center; background:#eef2ff;">
+                    {{ $student['average'] ?? $student['final_score'] }}
                 </td>
                 <td style="text-align:center; background:#eef2ff;">{{ $kktp }}</td>
                 <td style="text-align:center; background:#eef2ff;">
-                    <span style="font-size:6.5px; text-transform:uppercase; font-weight:bold; color:{{ $student['average'] >= $kktp ? '#059669' : '#dc2626' }};">
-                        {{ $student['average'] >= $kktp ? 'Tuntas' : 'Blm Tuntas' }}
+                    <span style="font-size:6.5px; text-transform:uppercase; font-weight:bold; color:{{ ($student['average'] ?? $student['final_score']) >= $kktp ? '#059669' : '#dc2626' }};">
+                        {{ ($student['average'] ?? $student['final_score']) >= $kktp ? 'Tuntas' : 'Blm Tuntas' }}
                     </span>
                 </td>
             </tr>
+            @if(isset($student['sas_score']) && $student['sas_score'] !== null && $student['sas_score'] !== '')
+            <tr>
+                <td colspan="3" class="label-cell">Nilai Sumatif Akhir Semester (SAS)</td>
+                <td class="{{ $student['sas_score'] >= $kktp ? 'score-pass' : 'score-fail' }}" style="text-align:center; background:#f1f5f9;">
+                    {{ $student['sas_score'] }}
+                </td>
+                <td style="text-align:center; background:#f1f5f9;">{{ $kktp }}</td>
+                <td style="text-align:center; background:#f1f5f9;">
+                    <span style="font-size:6.5px; text-transform:uppercase; font-weight:bold; color:{{ $student['sas_score'] >= $kktp ? '#059669' : '#dc2626' }};">
+                        {{ $student['sas_score'] >= $kktp ? 'Tuntas' : 'Blm Tuntas' }}
+                    </span>
+                </td>
+            </tr>
+            @endif
             <tr>
                 <td colspan="3" class="label-cell">Nilai Akhir (Rapor)</td>
                 <td class="{{ $student['final_score'] >= $kktp ? 'score-pass' : 'score-fail' }}" style="text-align:center; background:#fef3c7;">

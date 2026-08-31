@@ -1,7 +1,7 @@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link } from '@inertiajs/react';
-import { ChevronLeft, GraduationCap, CheckCircle2, XCircle } from 'lucide-react';
+import { ChevronLeft, GraduationCap, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: '/dashboard' },
@@ -111,8 +111,9 @@ export default function ReportLearning({ subject, class: cls, tps, reportData, p
                                     </td>
                                     <td className="px-4 py-3 text-center">
                                         {row.needs_remedial ? (
-                                            <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-3 py-1 text-xs font-bold text-red-700 dark:bg-red-900/30 dark:text-red-400">
-但 Perlu Remedial
+                                            <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2.5 py-1 text-xs font-bold text-rose-700 dark:bg-rose-900/30 dark:text-rose-400">
+                                                <AlertTriangle className="h-3 w-3" />
+                                                <span>Perlu Remedial</span>
                                             </span>
                                         ) : (
                                             <span className="text-xs text-muted-foreground">-</span>

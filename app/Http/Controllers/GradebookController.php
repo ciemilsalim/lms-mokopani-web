@@ -194,7 +194,8 @@ class GradebookController extends Controller
 
     public function finalReport(Request $request)
     {
-        $teacher = Auth::user()->teacher;
+        $user = Auth::user();
+        $teacher = $user->teacher;
         $classId = $request->query('class_id');
         $subjectId = $request->query('subject_id');
         $activeYear = AcademicYear::getActive();
@@ -204,104 +205,160 @@ class GradebookController extends Controller
             return redirect()->route('gradebook.index');
         }
 
-        // Ambil TP untuk mapel ini yang TIDAK punya sub-TP (leaf TPs)
+        // 1. Authorize: Ensure logged-in teacher is assigned to this subject & class (or user is admin)
+        if (!$teacher && $user->role !== 'admin') {
+            abort(403, 'Akses khusus guru mata pelajaran.');
+        }
+
+        if ($teacher && $user->role !== 'admin') {
+            $isAssigned = TeachingAssignment::where('teacher_id', $teacher->id)
+                ->where('subject_id', $subjectId)
+                ->where('school_class_id', $classId)
+                ->exists();
+            if (!$isAssigned) {
+                abort(403, 'Anda tidak memiliki penugasan mengajar untuk mata pelajaran dan kelas ini.');
+            }
+        }
+
+        $subject = Subject::find($subjectId);
+        $schoolClass = SchoolClass::find($classId);
+        if (!$subject || !$schoolClass) {
+            return redirect()->route('gradebook.index');
+        }
+
+        $teachingAssignment = TeachingAssignment::with('teacher')
+            ->where('subject_id', $subjectId)
+            ->where('school_class_id', $classId)
+            ->first();
+        $teacherName = $teacher ? $teacher->name : ($teachingAssignment?->teacher?->name ?? '-');
+
+        // 2. Ambil TP leaf (top-level) untuk mapel ini
         $objectives = LmsLearningObjective::where('subject_id', $subjectId)
-            ->where('teacher_id', $teacher->id)
             ->doesntHave('subObjectives')
             ->orderBy('code')
             ->get();
 
-        // Ambil semua tugas sumatif
-        $assignments = LmsAssignment::whereHas('schoolClasses', function ($q) use ($classId) { $q->where('school_classes.id', $classId); })
-            ->where('subject_id', $subjectId)
+        // 3. Ambil semua tugas sumatif untuk kelas & mapel ini pada periode aktif
+        $assignments = LmsAssignment::where('subject_id', $subjectId)
+            ->whereHas('schoolClasses', function ($q) use ($classId) {
+                $q->where('school_classes.id', $classId);
+            })
             ->where('assessment_type', 'summative')
             ->where('academic_year_id', $activeYear?->id)
             ->where('semester_id', $activeSemester?->id)
             ->get();
 
-        // Ambil semua siswa & nilai
+        // 4. Ambil semua siswa & nilai pada kelas ini
         $students = Student::where('school_class_id', $classId)->orderBy('name', 'asc')->get();
-        $submissions = LmsSubmission::whereIn('assignment_id', $assignments->pluck('id'))->get();
+        $submissions = LmsSubmission::whereIn('assignment_id', $assignments->pluck('id'))
+            ->whereIn('student_id', $students->pluck('id'))
+            ->get();
 
-        $reportData = $students->map(function ($student) use ($assignments, $submissions, $objectives, $subjectId) {
+        $finalScores = GradebookFinalScore::where('subject_id', $subjectId)
+            ->where('school_class_id', $classId)
+            ->where('academic_year_id', $activeYear?->id)
+            ->where('semester_id', $activeSemester?->id)
+            ->get()
+            ->keyBy('student_id');
+
+        $kktp = get_kktp($subjectId);
+
+        // 5. Perhitungan Akurat TP & Rapor Akhir per Siswa
+        $reportData = $students->map(function ($student) use ($assignments, $submissions, $objectives, $finalScores, $kktp) {
             $studentSubmissions = $submissions->where('student_id', $student->id);
 
-            // Analisis per TP untuk deskripsi dan perhitungan
-            $tpDirectPerformances = $objectives->mapWithKeys(function ($tp) use ($assignments, $studentSubmissions) {
+            // Hitung skor per Tujuan Pembelajaran (TP)
+            $tpScoresList = $objectives->map(function ($tp) use ($assignments, $studentSubmissions) {
                 $tpAssignments = $assignments->where('learning_objective_id', $tp->id);
-                $tpSubmissions = $studentSubmissions->whereIn('assignment_id', $tpAssignments->pluck('id'));
-                
-                $score = 0; // Asumsi 0
-                if ($tpSubmissions->count() > 0) {
-                    $score = $tpSubmissions->avg('score');
-                }
-                
-                return [$tp->id => [
-                    'score' => $score,
-                    'has_assignment' => $tpAssignments->count() > 0
-                ]];
-            });
+                $tpSubs = $studentSubmissions->whereIn('assignment_id', $tpAssignments->pluck('id'))
+                    ->filter(fn($s) => $s->score !== null && $s->score !== '');
 
-            // Calculate accumulated scores for all TPs (hanya menggunakan Leaf TPs)
-            $accumulatedTPs = $objectives->map(function ($tp) use ($tpDirectPerformances) {
-                $dir = $tpDirectPerformances[$tp->id];
-                $score = $dir['score'];
-                $hasAssignment = $dir['has_assignment'];
+                $hasAssignment = $tpAssignments->count() > 0;
+                $score = null;
+                if ($tpSubs->count() > 0) {
+                    $score = round((float) $tpSubs->avg('score'), 1);
+                } elseif ($hasAssignment) {
+                    $score = 0;
+                }
 
                 return [
-                    'code'        => $tp->code,
+                    'tp_id' => $tp->id,
+                    'code' => $tp->code ?: 'TP',
                     'description' => $tp->description,
-                    'avg'         => $score,
-                    'is_top_level'=> true, // Anggap semua leaf TPs valid untuk dihitung rata-rata akhir
-                    'has_assignment' => $hasAssignment
+                    'score' => $score,
+                    'has_assignment' => $hasAssignment,
                 ];
             });
 
-            $tpPerformances = $accumulatedTPs->filter(fn($tp) => $tp['is_top_level']);
+            // Filter TP yang sudah diujikan (memiliki penugasan aktif)
+            $assessedTps = $tpScoresList->filter(fn($item) => $item['has_assignment'] && $item['score'] !== null);
+            $allSummativeSubs = $studentSubmissions->filter(fn($s) => $s->score !== null && $s->score !== '');
 
-            // Hitung rata-rata nilai sumatif HANYA dari Top Level TPs
             $finalScore = 0;
-            if ($tpPerformances->count() > 0) {
-                $finalScore = round($tpPerformances->avg('avg'));
+            if ($assessedTps->count() > 0) {
+                $avgTp = $assessedTps->avg('score');
+                $sasScore = $finalScores->get($student->id)?->score;
+                if ($sasScore !== null && $sasScore !== '') {
+                    $finalScore = round(((float) $avgTp + (float) $sasScore) / 2);
+                } else {
+                    $finalScore = round((float) $avgTp);
+                }
+            } elseif ($allSummativeSubs->count() > 0) {
+                $finalScore = round((float) $allSummativeSubs->avg('score'));
+            } elseif ($finalScores->get($student->id)?->score !== null) {
+                $finalScore = round((float) $finalScores->get($student->id)->score);
             }
 
-            // Hanya gunakan TP yang SUDAH ADA TUGAS untuk membuat deskripsi!
-            $tpPerformancesForDesc = $tpPerformances->filter(fn($tp) => $tp['has_assignment']);
-            $hasAnySummativeSubmission = $studentSubmissions->count() > 0;
-
-            // Generate Deskripsi
+            // Generate Deskripsi Capaian Rapor Akurat
             $description = "";
-            if ($hasAnySummativeSubmission && $tpPerformancesForDesc->count() > 0) {
-                $highest = $tpPerformancesForDesc->sortByDesc('avg')->first();
-                $lowest = $tpPerformancesForDesc->sortBy('avg')->first();
+            if ($assessedTps->count() > 0 && $allSummativeSubs->count() > 0) {
+                $highest = $assessedTps->sortByDesc('score')->first();
+                $lowest = $assessedTps->sortBy('score')->first();
 
-                $description = "Menunjukkan penguasaan yang sangat baik dalam hal {$highest['description']}.";
-                
-                $kktp = get_kktp($subjectId);
-                if ($lowest && $lowest['avg'] < $kktp && $highest['code'] !== $lowest['code']) {
-                    $description .= " Perlu bimbingan lebih lanjut dalam hal {$lowest['description']}.";
+                $highDesc = $highest['description'] ?: $highest['code'];
+                $lowDesc = $lowest['description'] ?: $lowest['code'];
+
+                if ($highest['score'] >= $kktp) {
+                    $description = "Menunjukkan penguasaan yang sangat baik dalam hal {$highDesc}.";
+                } else {
+                    $description = "Menunjukkan penguasaan yang cukup dalam hal {$highDesc}.";
+                }
+
+                if ($lowest && $lowest['score'] < $kktp && $highest['tp_id'] !== $lowest['tp_id']) {
+                    $description .= " Perlu bimbingan lebih lanjut dalam hal {$lowDesc}.";
                 }
             } else {
-                $description = "Siswa belum memiliki data penilaian yang mencukupi untuk membuat deskripsi capaian.";
+                $description = "Siswa belum memiliki data penilaian sumatif yang mencukupi untuk membuat deskripsi capaian.";
             }
 
+            $avgTp = $assessedTps->count() > 0 ? round((float) $assessedTps->avg('score'), 1) : null;
+            $sasScore = $finalScores->get($student->id)?->score;
+
             return [
-                'nis'         => $student->nis,
+                'nis'         => $student->nis ?? '-',
                 'name'        => $student->name,
                 'final_score' => $finalScore,
+                'tp_average'  => $avgTp,
+                'sas_score'   => $sasScore,
                 'description' => $description,
+                'tp_scores'   => $tpScoresList->map(fn($t) => [
+                    'code' => $t['code'],
+                    'description' => $t['description'],
+                    'score' => $t['score'],
+                    'has_assignment' => $t['has_assignment'],
+                ])->values()->all(),
             ];
         });
 
         return Inertia::render('gradebook/final-report', [
             'reportData'     => $reportData,
-            'subject_name'   => \App\Models\Subject::find($subjectId)?->name,
-            'class_name'     => \App\Models\SchoolClass::find($classId)?->name,
-            'teacher_name'   => $teacher->name,
+            'subject_name'   => $subject->name,
+            'class_name'     => $schoolClass->name,
+            'teacher_name'   => $teacherName,
             'period'         => $activeYear?->name . ' - ' . $activeSemester?->name,
             'subject_id'     => (int) $subjectId,
             'class_id'       => (int) $classId,
-            'kktp'           => get_kktp($subjectId),
+            'kktp'           => $kktp,
             'school_name'    => school_setting('school_name', config('app.name')),
             'school_address' => school_setting('school_address', ''),
             'headmaster_name' => school_setting('school_headmaster_name', ''),
@@ -343,7 +400,14 @@ class GradebookController extends Controller
         $allTpIds = $assignments->pluck('learning_objective_id')->unique()->filter()->values();
         $allTps = \App\Models\LmsLearningObjective::with('capaianPembelajaran')->whereIn('id', $allTpIds)->get()->keyBy('id');
 
-        $report = $assignments->groupBy('subject_id')->map(function ($subjectAssignments) use ($submissions, $remedialRecords, $attendances, $student, $allTps) {
+        // Pre-fetch Final Scores (SAS/ASAT) untuk siswa ini
+        $finalScores = GradebookFinalScore::where('student_id', $student->id)
+            ->where('academic_year_id', $activeYear?->id)
+            ->where('semester_id', $activeSemester?->id)
+            ->get()
+            ->keyBy('subject_id');
+
+        $report = $assignments->groupBy('subject_id')->map(function ($subjectAssignments) use ($submissions, $remedialRecords, $attendances, $student, $allTps, $finalScores) {
             $subjectId = $subjectAssignments->first()->subject_id;
             $subjectName = $subjectAssignments->first()->subject->name;
             $subjectKktp = get_kktp($subjectId);
@@ -385,6 +449,13 @@ class GradebookController extends Controller
             $totalScore = $summativeItems->sum('score');
             $count = $summativeItems->count();
             $average = $count > 0 ? round($totalScore / $count) : 0;
+
+            // Hitung Nilai Akhir Rapor resmi (gabungan TP + SAS jika ada)
+            $sasScore = $finalScores->get($subjectId)?->score;
+            $finalScore = $average;
+            if ($sasScore !== null && $sasScore !== '') {
+                $finalScore = $count > 0 ? round(((float)$average + (float)$sasScore) / 2) : (int)$sasScore;
+            }
 
             // Generate Deskripsi Capaian Kompetensi
             $description = "Menunjukkan penguasaan yang baik dalam materi pembelajaran.";
@@ -458,9 +529,12 @@ class GradebookController extends Controller
             $hasRemedial = $items->contains('is_remedial', true);
 
             return [
+                'subject_id'            => $subjectId,
                 'subject_name'          => $subjectName,
                 'cps'                   => $cpGroups,
-                'average'               => $average,
+                'average'               => $finalScore,
+                'tp_average'            => $average,
+                'sas_score'             => $sasScore,
                 'description'           => $description,
                 'attendance_percentage' => $attendancePercentage,
                 'total_meetings'        => $totalMeetings,
@@ -504,8 +578,8 @@ class GradebookController extends Controller
                                 ->map(fn($se) => [
                                     'id'      => $se->id,
                                     'nama'    => $se->nama,
-                                    'nilai'   => $studentScores->get($se->id)?->score ?? '-',
-                                    'catatan' => $studentScores->get($se->id)?->notes ?? '',
+                                    'nilai'   => $studentScores->get($se->id)?->nilai ?? '-',
+                                    'catatan' => $studentScores->get($se->id)?->catatan ?? '',
                                 ])->values()->all(),
                         ])->values()->all(),
                 ])->values()->all();

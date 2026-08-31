@@ -27,8 +27,10 @@ interface ReportRow {
     nis: string;
     name: string;
     final_score: number;
+    tp_average?: number | null;
+    sas_score?: number | null;
     description: string;
-    tp_scores?: { code: string; description: string; score: number }[];
+    tp_scores?: { code: string; description: string; score: number | null; has_assignment?: boolean }[];
 }
 
 interface FinalReportProps {
@@ -333,6 +335,59 @@ export default function FinalReport({
                                                     </span>
                                                 )}
                                             </div>
+
+                                            {/* Sumatif Akhir Semester (SAS) jika ada */}
+                                            {row.sas_score !== undefined && row.sas_score !== null && (
+                                                <div className="flex items-center justify-between p-2.5 rounded-xl border border-indigo-500/20 bg-indigo-500/5 text-xs">
+                                                    <span className="font-bold text-foreground flex items-center gap-1.5">
+                                                        <GraduationCap className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                                                        <span>Nilai Sumatif Akhir Semester (SAS / ASAT):</span>
+                                                    </span>
+                                                    <span className={`font-black px-2.5 py-0.5 rounded-md text-xs ${
+                                                        Number(row.sas_score) >= kktp
+                                                            ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20'
+                                                            : 'bg-rose-500/15 text-rose-700 dark:text-rose-300 border border-rose-500/20'
+                                                    }`}>
+                                                        {row.sas_score}
+                                                    </span>
+                                                </div>
+                                            )}
+
+                                            {/* Capaian per Tujuan Pembelajaran (TP) */}
+                                            {row.tp_scores && row.tp_scores.length > 0 && (
+                                                <div className="space-y-1.5 pt-1">
+                                                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+                                                        <Target className="h-3.5 w-3.5 text-primary" />
+                                                        <span>Capaian per Tujuan Pembelajaran (TP):</span>
+                                                    </p>
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                        {row.tp_scores.map((tp, tpIdx) => (
+                                                            <div 
+                                                                key={tpIdx} 
+                                                                className="p-2.5 rounded-xl border border-border/70 bg-muted/20 flex items-center justify-between gap-2 text-xs"
+                                                            >
+                                                                <div className="min-w-0 flex-1">
+                                                                    <span className="font-extrabold text-primary bg-primary/10 px-1.5 py-0.5 rounded text-[10px] mr-1.5 inline-block">
+                                                                        {tp.code}
+                                                                    </span>
+                                                                    <span className="text-foreground font-medium text-xs truncate inline-block max-w-[calc(100%-55px)] align-bottom" title={tp.description}>
+                                                                        {tp.description}
+                                                                    </span>
+                                                                </div>
+                                                                <span className={`font-black text-xs px-2 py-0.5 rounded-md shrink-0 ${
+                                                                    tp.score !== null 
+                                                                        ? (Number(tp.score) >= kktp 
+                                                                            ? 'text-emerald-700 bg-emerald-500/15 dark:text-emerald-300 border border-emerald-500/20' 
+                                                                            : 'text-rose-700 bg-rose-500/15 dark:text-rose-300 border border-rose-500/20')
+                                                                        : 'text-muted-foreground bg-muted border border-border/50'
+                                                                }`}>
+                                                                    {tp.score !== null ? tp.score : 'Belum diuji'}
+                                                                </span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
 
                                             {/* Description Card */}
                                             <div className="p-3.5 rounded-xl bg-muted/30 border border-border/60 text-xs space-y-1">

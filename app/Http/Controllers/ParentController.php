@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\AcademicYear;
+use App\Models\GradebookFinalScore;
 use App\Models\LmsAssignment;
 use App\Models\LmsSubmission;
 use App\Models\Semester;
@@ -115,7 +116,13 @@ class ParentController extends Controller
             ->where('semester_id', $activeSemester?->id)
             ->get();
 
-        $report = $assignments->groupBy('subject_id')->map(function ($subjectAssignments) use ($submissions, $attendances, $student) {
+        $finalScores = GradebookFinalScore::where('student_id', $student->id)
+            ->where('academic_year_id', $activeYear?->id)
+            ->where('semester_id', $activeSemester?->id)
+            ->get()
+            ->keyBy('subject_id');
+
+        $report = $assignments->groupBy('subject_id')->map(function ($subjectAssignments) use ($submissions, $attendances, $student, $finalScores) {
             $subjectId = $subjectAssignments->first()->subject_id;
             $subjectKktp = get_kktp($subjectId);
             $subjectName = $subjectAssignments->first()->subject->name;
@@ -146,6 +153,12 @@ class ParentController extends Controller
             $count = $summativeItems->count();
             $average = $count > 0 ? round($totalScore / $count) : 0;
 
+            $sasScore = $finalScores->get($subjectId)?->score;
+            $finalScore = $average;
+            if ($sasScore !== null && $sasScore !== '') {
+                $finalScore = $count > 0 ? round(((float)$average + (float)$sasScore) / 2) : (int)$sasScore;
+            }
+
             $description = 'Menunjukkan penguasaan yang baik dalam materi pembelajaran.';
             if ($count > 0) {
                 $highest = $summativeItems->sortByDesc('score')->first();
@@ -166,7 +179,9 @@ class ParentController extends Controller
             return [
                 'subject_name'          => $subjectName,
                 'assignments'           => $items->values(),
-                'average'               => $average,
+                'average'               => $finalScore,
+                'tp_average'            => $average,
+                'sas_score'             => $sasScore,
                 'description'           => $description,
                 'attendance_percentage' => $attendancePercentage,
                 'total_meetings'        => $totalMeetings,
