@@ -144,10 +144,10 @@ export default function CreateRemedial({ teachings }: CreateRemedialProps) {
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Buat Remedial/Pengayaan – LMS Mokopani" />
 
-            <div className="flex h-full flex-1 flex-col gap-6 min-w-0">
+            <div className="space-y-4 sm:space-y-6 min-w-0 fade-in pb-24 sm:pb-8 max-w-7xl mx-auto w-full px-1 sm:px-0">
                 <button
                     onClick={() => step === 1 ? window.history.back() : setStep(1)}
-                    className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary transition w-fit"
+                    className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary transition w-fit min-h-[44px]"
                 >
                     <ChevronLeft className="h-4 w-4" />
                     {step === 1 ? 'Kembali' : 'Ubah Pilihan'}
@@ -155,7 +155,7 @@ export default function CreateRemedial({ teachings }: CreateRemedialProps) {
 
                 <div className="grid gap-6">
                     {step === 1 && (
-                        <div className="rounded-3xl border border-border bg-card p-8 shadow-xl shadow-border/30">
+                        <div className="rounded-2xl sm:rounded-3xl border border-border bg-card p-4 sm:p-8 shadow-sm">
                             <h2 className="text-xl font-bold text-foreground mb-6">Pilih Kelas & Tipe</h2>
 
                             <div className="grid gap-6 md:grid-cols-2">

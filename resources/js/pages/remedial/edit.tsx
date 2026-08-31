@@ -89,10 +89,10 @@ export default function EditRemedial({ record }: EditRemedialProps) {
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`Detail ${record.type === 'remedial' ? 'Remedial' : 'Pengayaan'} – LMS Mokopani`} />
 
-            <div className="flex h-full flex-1 flex-col gap-6 min-w-0">
+            <div className="space-y-4 sm:space-y-6 min-w-0 fade-in pb-24 sm:pb-8 max-w-7xl mx-auto w-full px-1 sm:px-0">
                 <button
                     onClick={() => window.history.back()}
-                    className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary transition w-fit"
+                    className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary transition w-fit min-h-[44px]"
                 >
                     <ChevronLeft className="h-4 w-4" />
                     Kembali
@@ -100,7 +100,7 @@ export default function EditRemedial({ record }: EditRemedialProps) {
 
                 <div className="grid gap-6 lg:grid-cols-3">
                     <div className="lg:col-span-2 space-y-6">
-                        <form onSubmit={handleSubmit} className="rounded-3xl border border-border bg-card p-8 shadow-xl shadow-border/30">
+                        <form onSubmit={handleSubmit} className="rounded-2xl sm:rounded-3xl border border-border bg-card p-4 sm:p-8 shadow-sm">
                             <h2 className="text-xl font-bold text-foreground mb-6">
                                 Edit Record {record.type === 'remedial' ? 'Remedial' : 'Pengayaan'}
                             </h2>
