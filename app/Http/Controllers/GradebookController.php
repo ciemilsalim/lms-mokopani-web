@@ -24,16 +24,24 @@ class GradebookController extends Controller
     {
         $user = Auth::user();
 
-        if ($user->teacher) {
-            $teachings = TeachingAssignment::with(['subject', 'schoolClass'])
-                ->where('teacher_id', $user->teacher->id)
-                ->get()
+        if ($user->teacher || $user->role === 'admin') {
+            $query = TeachingAssignment::with(['subject', 'schoolClass']);
+            if ($user->teacher && $user->role !== 'admin') {
+                $query->where('teacher_id', $user->teacher->id);
+            }
+            $teachings = $query->get()
+                ->sortBy(function ($t) {
+                    $className = $t->schoolClass?->name ?? '';
+                    $subjectName = $t->subject?->name ?? '';
+                    return sprintf('%-50s %-50s', $className, $subjectName);
+                }, SORT_NATURAL)
+                ->values()
                 ->map(fn ($t) => [
                     'id'           => $t->id,
                     'subject_id'   => $t->subject_id,
-                    'subject_name' => $t->subject->name,
+                    'subject_name' => $t->subject?->name ?? '-',
                     'class_id'     => $t->school_class_id,
-                    'class_name'   => $t->schoolClass->name,
+                    'class_name'   => $t->schoolClass?->name ?? '-',
                 ]);
 
             return Inertia::render('gradebook/index', [
