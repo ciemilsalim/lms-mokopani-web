@@ -30,8 +30,7 @@ const teacherGuide: GuideSection[] = [
         { label: 'Diagnostik Adaptif', desc: 'Rekomendasi belajar adaptif per siswa.', route: '/adaptive-learning' },
     ]},
     { icon: BarChart3, title: '4. Analitik & Monitoring', colorClass: 'bg-[#ff9f43]', steps: [
-        { label: 'Analitik Pembelajaran', desc: 'Pantau performa kelas dan analisis butir soal.', route: '/analytics' },
-        { label: 'Early Warning System', desc: 'Deteksi siswa berisiko tidak tuntas.', route: '/early-warning' },
+        { label: 'Analitik & Early Warning', desc: 'Pantau performa kelas, analisis butir soal, dan deteksi dini siswa berisiko.', route: '/analytics' },
     ]},
     { icon: MessageSquare, title: '5. Komunikasi', colorClass: 'bg-[#ea5455]', steps: [
         { label: 'Feedback & Revisi', desc: 'Umpan balik hasil kerja siswa.', route: '/feedback-revisions' },

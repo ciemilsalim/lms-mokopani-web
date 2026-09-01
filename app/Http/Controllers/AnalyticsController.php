@@ -56,19 +56,41 @@ class AnalyticsController extends Controller
         $allAssignments = $assignmentsQuery->count();
 
         $totalAtRisk = 0;
-        foreach ($teachings as $t) {
+        $totalHighRisk = 0;
+        $totalMediumRisk = 0;
+
+        $teachingsWithRisk = $teachings->map(function ($t) use ($earlyWarning, &$totalAtRisk, &$totalHighRisk, &$totalMediumRisk) {
             $risk = $earlyWarning->getClassRiskSummary($t['class_id'], $t['subject_id']);
             $totalAtRisk += $risk['at_risk_count'];
-        }
+            $totalHighRisk += $risk['high_risk_count'];
+            $totalMediumRisk += $risk['medium_risk_count'];
+
+            return array_merge($t, [
+                'at_risk_count'     => $risk['at_risk_count'],
+                'high_risk_count'   => $risk['high_risk_count'],
+                'medium_risk_count' => $risk['medium_risk_count'],
+                'total_students'    => $risk['total_students'],
+            ]);
+        })->sort(function ($a, $b) {
+            $classCmp = strnatcasecmp($a['class_name'] ?? '', $b['class_name'] ?? '');
+            if ($classCmp !== 0) return $classCmp;
+            return strnatcasecmp($a['subject_name'] ?? '', $b['subject_name'] ?? '');
+        })->values();
 
         return Inertia::render('analytics/index', [
-            'teachings'      => $teachings,
+            'teachings'      => $teachingsWithRisk,
             'overview_stats' => [
-                'total_students'  => $allStudents,
-                'total_subjects'  => $teachings->pluck('subject_id')->unique()->count(),
-                'total_classes'   => $teachings->pluck('class_id')->unique()->count(),
+                'total_students'    => $allStudents,
+                'total_subjects'    => $teachings->pluck('subject_id')->unique()->count(),
+                'total_classes'     => $teachings->pluck('class_id')->unique()->count(),
                 'total_assignments' => $allAssignments,
-                'total_at_risk'   => $totalAtRisk,
+                'total_at_risk'     => $totalAtRisk,
+                'total_high_risk'   => $totalHighRisk,
+                'total_medium_risk' => $totalMediumRisk,
+            ],
+            'active_period' => [
+                'academic_year' => $activeYear?->name,
+                'semester'      => $activeSemester?->name,
             ],
         ]);
     }

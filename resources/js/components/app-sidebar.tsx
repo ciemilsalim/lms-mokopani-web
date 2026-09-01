@@ -5,7 +5,7 @@ import { type NavItem, type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
 import {
     Book, BookOpen, ClipboardList, GraduationCap, LayoutDashboard, Library, Target, FileBarChart, Bell, Compass,
-    Heart, FileWarning, MessageSquare, BarChart3, Brain, Users, ExternalLink, FileText,
+    Heart, MessageSquare, BarChart3, Brain, Users, ExternalLink, FileText,
 } from 'lucide-react';
 import AppLogo from './app-logo';
 
@@ -48,7 +48,6 @@ const teacherNavSections: NavSection[] = [
         label: 'Tahap 4: Refleksi',
         items: [
             { title: 'Remedial & Pengayaan',  url: '/remedial',               icon: GraduationCap },
-            { title: 'Early Warning System',  url: '/early-warning',          icon: FileWarning },
             { title: 'Analitik Pembelajaran', url: '/analytics',              icon: BarChart3 },
         ],
     },
@@ -93,7 +92,6 @@ const adminNavSections: NavSection[] = [
         label: 'Monitoring & Analitik',
         items: [
             { title: 'Analitik Pembelajaran', url: '/analytics',      icon: BarChart3 },
-            { title: 'Early Warning System',  url: '/early-warning',  icon: FileWarning },
         ],
     },
     {

@@ -301,14 +301,22 @@ Route::middleware(['auth'])->group(function () {
         Route::post('feedback-revisions/{feedbackRevision}', [\App\Http\Controllers\FeedbackRevisionController::class, 'update'])->name('feedback-revisions.update');
         Route::delete('feedback-revisions/{feedbackRevision}', [\App\Http\Controllers\FeedbackRevisionController::class, 'destroy'])->name('feedback-revisions.destroy');
 
-        // Early Warning System
-        Route::get('early-warning', [\App\Http\Controllers\EarlyWarningController::class, 'index'])->name('early-warning.index');
-        Route::get('early-warning/{subject}/{class}', [\App\Http\Controllers\EarlyWarningController::class, 'show'])->name('early-warning.show');
-        Route::get('early-warning/{subject}/student/{student}', [\App\Http\Controllers\EarlyWarningController::class, 'student'])->name('early-warning.student');
-
-        // Analitik Pembelajaran
+        // Analitik Pembelajaran (Pusat Analitik & Early Warning Terpadu)
         Route::get('analytics', [AnalyticsController::class, 'index'])->name('analytics.index');
         Route::get('analytics/{subjectId}/{classId}', [AnalyticsController::class, 'show'])->name('analytics.show');
+
+        // Redirects untuk rute legacy Early Warning System
+        Route::redirect('early-warning', '/analytics')->name('early-warning.index');
+        Route::get('early-warning/{subject}/{class}', function ($subject, $class) {
+            return redirect()->route('analytics.show', [$subject, $class]);
+        })->name('early-warning.show');
+        Route::get('early-warning/{subject}/student/{student}', function ($subject, $student) {
+            $studentModel = \App\Models\Student::find($student);
+            if ($studentModel && $studentModel->school_class_id) {
+                return redirect()->route('analytics.show', [$subject, $studentModel->school_class_id]);
+            }
+            return redirect()->route('analytics.index');
+        })->name('early-warning.student');
 
         // Rapor Processing (PPA 2025 Summative Calculation)
         Route::get('rapor/wizard', [\App\Http\Controllers\RaporReportController::class, 'wizard'])->name('rapor.wizard');
