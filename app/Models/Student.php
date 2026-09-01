@@ -23,6 +23,10 @@ class Student extends Model
         'face_descriptor'
     ];
 
+    protected $attributes = [
+        'religion' => 'islam',
+    ];
+
     protected $appends = ['photo_url'];
 
     /**
