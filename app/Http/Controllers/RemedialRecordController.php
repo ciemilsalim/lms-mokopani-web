@@ -18,14 +18,35 @@ class RemedialRecordController extends Controller
     protected function getTeacherTeachings()
     {
         $teacher = Auth::user()->teacher;
+        if (!$teacher) {
+            return collect();
+        }
+
         $activeYear = AcademicYear::getActive();
         $activeSemester = Semester::getActive();
         
-        return TeachingAssignment::with(['subject', 'schoolClass'])
-            ->where('teacher_id', $teacher->id)
-            ->where('academic_year_id', $activeYear?->id)
-            ->where('semester_id', $activeSemester?->id)
-            ->get()
+        $query = TeachingAssignment::with(['subject', 'schoolClass'])
+            ->where('teacher_id', $teacher->id);
+
+        if ($activeYear && $activeSemester) {
+            $query->where(function ($q) use ($activeYear, $activeSemester) {
+                $q->where(function ($sub) use ($activeYear, $activeSemester) {
+                    $sub->where('academic_year_id', $activeYear->id)
+                        ->where('semester_id', $activeSemester->id);
+                })->orWhere(function ($sub) {
+                    $sub->whereNull('academic_year_id')
+                        ->whereNull('semester_id');
+                });
+            });
+        } elseif ($activeYear) {
+            $query->where(function ($q) use ($activeYear) {
+                $q->where('academic_year_id', $activeYear->id)
+                    ->orWhereNull('academic_year_id');
+            });
+        }
+
+        return $query->get()
+            ->filter(fn ($t) => $t->subject && $t->schoolClass)
             ->map(fn ($t) => [
                 'subject_id'   => $t->subject_id,
                 'subject_name' => $t->subject->name,
@@ -39,8 +60,10 @@ class RemedialRecordController extends Controller
     public function index(Request $request)
     {
         $teacher = Auth::user()->teacher;
+        $teacherId = $teacher ? $teacher->id : 0;
+        
         $query = LmsRemedialRecord::with(['student', 'assignment', 'subject', 'teacher'])
-            ->where('teacher_id', $teacher->id);
+            ->where('teacher_id', $teacherId);
 
         if ($request->filled('subject_id')) {
             $query->where('subject_id', $request->subject_id);
@@ -87,14 +110,31 @@ class RemedialRecordController extends Controller
         $activeYear = AcademicYear::getActive();
         $activeSemester = Semester::getActive();
 
-        $assignments = LmsAssignment::where('subject_id', $subjectId)
+        $assignmentsQuery = LmsAssignment::where('subject_id', $subjectId)
             ->whereHas('schoolClasses', function ($q) use ($classId) {
                 $q->where('school_classes.id', $classId);
-            })
-            ->where('assessment_type', 'summative')
-            ->where('academic_year_id', $activeYear?->id)
-            ->where('semester_id', $activeSemester?->id)
-            ->get(['id', 'title', 'learning_objective_id', 'max_points']);
+            });
+
+        if ($activeYear && $activeSemester) {
+            $assignmentsQuery->where(function ($q) use ($activeYear, $activeSemester) {
+                $q->where(function ($sub) use ($activeYear, $activeSemester) {
+                    $sub->where('academic_year_id', $activeYear->id)
+                        ->where('semester_id', $activeSemester->id);
+                })->orWhere(function ($sub) {
+                    $sub->whereNull('academic_year_id')
+                        ->whereNull('semester_id');
+                });
+            });
+        } elseif ($activeYear) {
+            $assignmentsQuery->where(function ($q) use ($activeYear) {
+                $q->where('academic_year_id', $activeYear->id)
+                    ->orWhereNull('academic_year_id');
+            });
+        }
+
+        $allAssignments = $assignmentsQuery->get(['id', 'title', 'assessment_type', 'learning_objective_id', 'max_points']);
+        $summativeAssignments = $allAssignments->where('assessment_type', 'summative')->values();
+        $assignments = $summativeAssignments->isNotEmpty() ? $summativeAssignments : $allAssignments->values();
 
         $students = Student::where('school_class_id', $classId)
             ->orderBy('name')
@@ -104,10 +144,13 @@ class RemedialRecordController extends Controller
             ->whereIn('student_id', $students->pluck('id'))
             ->get();
 
+        $teacher = Auth::user()->teacher;
+        $teacherId = $teacher ? $teacher->id : 0;
+
         $existingRecords = LmsRemedialRecord::where('subject_id', $subjectId)
             ->whereIn('assignment_id', $assignments->pluck('id'))
             ->whereIn('student_id', $students->pluck('id'))
-            ->where('teacher_id', Auth::user()->teacher->id)
+            ->where('teacher_id', $teacherId)
             ->whereIn('status', ['assigned', 'in_progress'])
             ->get()
             ->groupBy('student_id');
@@ -119,7 +162,7 @@ class RemedialRecordController extends Controller
                     ->where('assignment_id', $assignment->id)
                     ->first();
 
-                $score = $sub?->score ?? null;
+                $score = $sub?->score !== null ? (float) $sub->score : null;
                 $passed = $score !== null && $score >= $kktp;
                 $hasActiveRecord = $existingRecords->has($student->id);
 
@@ -156,6 +199,9 @@ class RemedialRecordController extends Controller
     public function store(Request $request)
     {
         $teacher = Auth::user()->teacher;
+        if (!$teacher) {
+            abort(403, 'Anda tidak memiliki akses sebagai guru.');
+        }
 
         $validated = $request->validate([
             'records'           => 'required|array|min:1',
@@ -163,7 +209,7 @@ class RemedialRecordController extends Controller
             'records.*.assignment_id'  => 'required|exists:lms_assignments,id',
             'records.*.subject_id'     => 'required|exists:mysql_absensi.subjects,id',
             'records.*.type'           => 'required|in:remedial,pengayaan',
-            'records.*.initial_score'  => 'nullable|integer|min:0',
+            'records.*.initial_score'  => 'nullable|numeric|min:0',
             'records.*.remedial_strategy' => 'nullable|string|max:255',
             'records.*.remedial_focus' => 'nullable|string|max:255',
             'records.*.description'    => 'nullable|string|max:500',
