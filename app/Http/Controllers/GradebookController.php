@@ -490,11 +490,27 @@ class GradebookController extends Controller
             ->keyBy('assignment_id');
 
         // Ambil data absensi mata pelajaran dari db_absen
-        $attendances = \App\Models\SubjectAttendance::with(['schedule.teachingAssignment'])
-            ->where('student_id', $student->id)
-            ->where('academic_year_id', $activeYear?->id)
-            ->where('semester_id', $activeSemester?->id)
-            ->get();
+        $attendancesQuery = \App\Models\SubjectAttendance::with(['schedule.teachingAssignment'])
+            ->where('student_id', $student->id);
+
+        if ($activeYear && $activeSemester) {
+            $attendancesQuery->where(function ($q) use ($activeYear, $activeSemester) {
+                $q->where(function ($sub) use ($activeYear, $activeSemester) {
+                    $sub->where('academic_year_id', $activeYear->id)
+                        ->where('semester_id', $activeSemester->id);
+                })->orWhere(function ($sub) {
+                    $sub->whereNull('academic_year_id')
+                        ->whereNull('semester_id');
+                });
+            });
+        } elseif ($activeYear) {
+            $attendancesQuery->where(function ($q) use ($activeYear) {
+                $q->where('academic_year_id', $activeYear->id)
+                    ->orWhereNull('academic_year_id');
+            });
+        }
+
+        $attendances = $attendancesQuery->get();
 
         // Pre-fetch semua Learning Objectives yang dibutuhkan (menghindari N+1 query)
         $allTpIds = $assignments->pluck('learning_objective_id')->unique()->filter()->values();
@@ -518,7 +534,7 @@ class GradebookController extends Controller
             });
 
             $totalMeetings = $subjectAttendances->count();
-            $presentCount = $subjectAttendances->where('status', 'Hadir')->count();
+            $presentCount = $subjectAttendances->filter(fn($a) => in_array(strtolower(trim($a->status ?? '')), ['hadir', 'present', 'h']))->count();
             $attendancePercentage = $totalMeetings > 0 ? round(($presentCount / $totalMeetings) * 100) : 100;
 
             $items = $subjectAssignments->map(function ($assignment) use ($submissions, $remedialRecords) {

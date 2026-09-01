@@ -106,7 +106,7 @@ class EarlyWarningService
             ->whereHas('schedule.teachingAssignment', fn($q) => $q->where('subject_id', $subjectId));
 
         $totalAttendance = (clone $attendances)->count();
-        $hadir = (clone $attendances)->where('status', 'Hadir')->count();
+        $hadir = (clone $attendances)->whereIn('status', ['hadir', 'Hadir', 'present', 'h'])->count();
 
         if ($totalAttendance > 0) {
             $attendancePct = round(($hadir / $totalAttendance) * 100);

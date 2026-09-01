@@ -37,13 +37,32 @@ class ParentController extends Controller
             $submitted = $submissions->count();
             $avgScore = $submissions->whereNotNull('score')->avg('score');
 
-            $attendances = SubjectAttendance::where('student_id', $child->id)
-                ->where('academic_year_id', $activeYear?->id)
-                ->where('semester_id', $activeSemester?->id)
-                ->get();
+            $attendancesQuery = SubjectAttendance::where('student_id', $child->id);
+
+            if ($activeYear && $activeSemester) {
+                $attendancesQuery->where(function ($q) use ($activeYear, $activeSemester) {
+                    $q->where(function ($sub) use ($activeYear, $activeSemester) {
+                        $sub->where('academic_year_id', $activeYear->id)
+                            ->where('semester_id', $activeSemester->id);
+                    })->orWhere(function ($sub) {
+                        $sub->whereNull('academic_year_id')
+                            ->whereNull('semester_id');
+                    });
+                });
+            } elseif ($activeYear) {
+                $attendancesQuery->where(function ($q) use ($activeYear) {
+                    $q->where('academic_year_id', $activeYear->id)
+                        ->orWhereNull('academic_year_id');
+                });
+            }
+
+            $attendances = $attendancesQuery->get();
 
             $totalAttendance = $attendances->count();
-            $present = $attendances->where('status', 'Hadir')->count();
+            $present = $attendances->filter(fn($a) => in_array(strtolower(trim($a->status ?? '')), ['hadir', 'present', 'h']))->count();
+            $sick = $attendances->filter(fn($a) => in_array(strtolower(trim($a->status ?? '')), ['sakit', 'sick', 's']))->count();
+            $permit = $attendances->filter(fn($a) => in_array(strtolower(trim($a->status ?? '')), ['izin', 'permit', 'dispensasi', 'i']))->count();
+            $absent = $attendances->filter(fn($a) => in_array(strtolower(trim($a->status ?? '')), ['alpa', 'alpha', 'absen', 'bolos', 'a']))->count();
             $attendancePct = $totalAttendance > 0 ? round(($present / $totalAttendance) * 100) : null;
 
             $gradeTrend = $submissions->whereNotNull('score')
@@ -57,9 +76,9 @@ class ParentController extends Controller
 
             $attendanceBreakdownRaw = [
                 ['name' => 'Hadir', 'value' => $present, 'fill' => '#10B981'], // emerald
-                ['name' => 'Izin', 'value' => $attendances->where('status', 'Izin')->count(), 'fill' => '#F59E0B'], // amber
-                ['name' => 'Sakit', 'value' => $attendances->where('status', 'Sakit')->count(), 'fill' => '#0EA5E9'], // sky
-                ['name' => 'Alpa', 'value' => $attendances->where('status', 'Alpa')->count(), 'fill' => '#F43F5E'], // rose
+                ['name' => 'Izin', 'value' => $permit, 'fill' => '#F59E0B'], // amber
+                ['name' => 'Sakit', 'value' => $sick, 'fill' => '#0EA5E9'], // sky
+                ['name' => 'Alpa', 'value' => $absent, 'fill' => '#F43F5E'], // rose
             ];
             $attendanceBreakdown = array_values(array_filter($attendanceBreakdownRaw, fn($item) => $item['value'] > 0));
             if (empty($attendanceBreakdown)) {
@@ -110,11 +129,27 @@ class ParentController extends Controller
             ->where('student_id', $student->id)
             ->get();
 
-        $attendances = SubjectAttendance::with(['schedule.teachingAssignment'])
-            ->where('student_id', $student->id)
-            ->where('academic_year_id', $activeYear?->id)
-            ->where('semester_id', $activeSemester?->id)
-            ->get();
+        $attendancesQuery = SubjectAttendance::with(['schedule.teachingAssignment'])
+            ->where('student_id', $student->id);
+
+        if ($activeYear && $activeSemester) {
+            $attendancesQuery->where(function ($q) use ($activeYear, $activeSemester) {
+                $q->where(function ($sub) use ($activeYear, $activeSemester) {
+                    $sub->where('academic_year_id', $activeYear->id)
+                        ->where('semester_id', $activeSemester->id);
+                })->orWhere(function ($sub) {
+                    $sub->whereNull('academic_year_id')
+                        ->whereNull('semester_id');
+                });
+            });
+        } elseif ($activeYear) {
+            $attendancesQuery->where(function ($q) use ($activeYear) {
+                $q->where('academic_year_id', $activeYear->id)
+                    ->orWhereNull('academic_year_id');
+            });
+        }
+
+        $attendances = $attendancesQuery->get();
 
         $finalScores = GradebookFinalScore::where('student_id', $student->id)
             ->where('academic_year_id', $activeYear?->id)
@@ -132,7 +167,7 @@ class ParentController extends Controller
             });
 
             $totalMeetings = $subjectAttendances->count();
-            $presentCount = $subjectAttendances->where('status', 'Hadir')->count();
+            $presentCount = $subjectAttendances->filter(fn($a) => in_array(strtolower(trim($a->status ?? '')), ['hadir', 'present', 'h']))->count();
             $attendancePercentage = $totalMeetings > 0 ? round(($presentCount / $totalMeetings) * 100) : 100;
 
             $items = $subjectAssignments->map(function ($assignment) use ($submissions) {

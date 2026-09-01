@@ -163,12 +163,27 @@ class RaporController extends Controller
             ->get()
             ->keyBy('student_id');
 
-        $attendances = SubjectAttendance::with(['schedule.teachingAssignment'])
-            ->whereIn('student_id', $students->pluck('id'))
-            ->where('academic_year_id', $activeYear?->id)
-            ->where('semester_id', $activeSemester?->id)
-            ->get()
-            ->groupBy('student_id');
+        $attendancesQuery = SubjectAttendance::with(['schedule.teachingAssignment'])
+            ->whereIn('student_id', $students->pluck('id'));
+
+        if ($activeYear && $activeSemester) {
+            $attendancesQuery->where(function ($q) use ($activeYear, $activeSemester) {
+                $q->where(function ($sub) use ($activeYear, $activeSemester) {
+                    $sub->where('academic_year_id', $activeYear->id)
+                        ->where('semester_id', $activeSemester->id);
+                })->orWhere(function ($sub) {
+                    $sub->whereNull('academic_year_id')
+                        ->whereNull('semester_id');
+                });
+            });
+        } elseif ($activeYear) {
+            $attendancesQuery->where(function ($q) use ($activeYear) {
+                $q->where('academic_year_id', $activeYear->id)
+                    ->orWhereNull('academic_year_id');
+            });
+        }
+
+        $attendances = $attendancesQuery->get()->groupBy('student_id');
 
         // ── P5 Data ────────────────────────────────────────────────────
         $p5Projects = LmsP5Project::with(['scores'])
@@ -193,7 +208,7 @@ class RaporController extends Controller
 
         $kktp = get_kktp($subjectId);
 
-        $reportData = $students->map(function ($student) use ($assignments, $submissions, $tps, $finalScores, $attendances, $subjectId, $allP5Scores, $kktp) {
+        $reportData = $students->map(function ($student) use ($assignments, $submissions, $tps, $finalScores, $attendances, $subjectId, $classId, $allP5Scores, $kktp) {
             $studentSubmissions = $submissions->where('student_id', $student->id);
 
             $tpScores = $tps->map(function ($tp) use ($assignments, $studentSubmissions) {
@@ -264,9 +279,19 @@ class RaporController extends Controller
             }
 
             $studentAttendances = $attendances->get($student->id, collect());
-            $subjectAttendances = $studentAttendances->filter(function ($a) use ($subjectId) {
-                return $a->schedule?->teachingAssignment?->subject_id == $subjectId;
+            $subjectAttendances = $studentAttendances->filter(function ($a) use ($subjectId, $classId) {
+                $ta = $a->schedule?->teachingAssignment;
+                if ($ta) {
+                    return $ta->subject_id == $subjectId && (!$classId || $ta->school_class_id == $classId);
+                }
+                return false;
             });
+
+            $hadirCount = $subjectAttendances->filter(fn($a) => in_array(strtolower(trim($a->status ?? '')), ['hadir', 'present', 'h']))->count();
+            $sakitCount = $subjectAttendances->filter(fn($a) => in_array(strtolower(trim($a->status ?? '')), ['sakit', 'sick', 's']))->count();
+            $izinCount = $subjectAttendances->filter(fn($a) => in_array(strtolower(trim($a->status ?? '')), ['izin', 'permit', 'dispensasi', 'i']))->count();
+            $alpaCount = $subjectAttendances->filter(fn($a) => in_array(strtolower(trim($a->status ?? '')), ['alpa', 'alpha', 'absen', 'bolos', 'a']))->count();
+            $totalMeetings = $subjectAttendances->count();
 
             $studentP5Scores = ($allP5Scores->get($student->id) ?? collect())
                 ->keyBy(fn($s) => $s->project_id . '-' . $s->sub_element_id);
@@ -280,10 +305,11 @@ class RaporController extends Controller
                 'average' => $avgTp,
                 'sas_score' => $sasScore,
                 'final_score' => $finalScore, 'description' => $description,
-                'total_meetings' => $subjectAttendances->count(),
-                'sick' => $subjectAttendances->where('status', 'Sakit')->count(),
-                'permit' => $subjectAttendances->where('status', 'Izin')->count(),
-                'absent' => $subjectAttendances->where('status', 'Alpa')->count(),
+                'total_meetings' => $totalMeetings,
+                'present' => $hadirCount,
+                'sick' => $sakitCount,
+                'permit' => $izinCount,
+                'absent' => $alpaCount,
                 'p5_scores' => $studentP5Scores,
             ];
         });

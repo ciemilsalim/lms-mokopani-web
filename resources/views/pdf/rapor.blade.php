@@ -413,7 +413,7 @@
                 <td style="width:25%; text-align:center;">
                     <div class="label-sm">Presensi</div>
                     <div class="value" style="font-size:9px;">
-                        H: {{ $student['total_meetings'] - $student['sick'] - $student['permit'] - $student['absent'] }}x
+                        H: {{ $student['present'] ?? ($student['total_meetings'] - $student['sick'] - $student['permit'] - $student['absent']) }}x
                     </div>
                 </td>
             </tr>
@@ -424,7 +424,7 @@
     <div class="attendance-row">
         <span class="att-label">Rincian Kehadiran:</span>
         <span>Total: {{ $student['total_meetings'] }} pertemuan</span>
-        <span style="color:#059669;">Hadir: {{ $student['total_meetings'] - $student['sick'] - $student['permit'] - $student['absent'] }}x</span>
+        <span style="color:#059669;">Hadir: {{ $student['present'] ?? ($student['total_meetings'] - $student['sick'] - $student['permit'] - $student['absent']) }}x</span>
         <span style="color:#0369a1;">Sakit: {{ $student['sick'] }}x</span>
         <span style="color:#d97706;">Izin: {{ $student['permit'] }}x</span>
         <span style="color:#dc2626;">Alpa: {{ $student['absent'] }}x</span>
