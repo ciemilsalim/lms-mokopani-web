@@ -76,10 +76,73 @@ class RaporController extends Controller
             ->where('school_class_id', $classId)
             ->first();
 
-        $tps = LmsLearningObjective::where('subject_id', $subjectId)
-            ->doesntHave('subObjectives')
-            ->orderBy('code')
-            ->get();
+        // 1. Ambil TP yang terfilter sesuai kelas siswa & mapel (dengan fallback jika global)
+        $tpQuery = LmsLearningObjective::with('subObjectives')
+            ->where('subject_id', $subjectId)
+            ->where(function ($q) use ($classId) {
+                $q->where('school_class_id', $classId)
+                  ->orWhereNull('school_class_id');
+            });
+
+        if ($activeYear && $activeSemester) {
+            $tpQuery->where(function ($q) use ($activeYear, $activeSemester) {
+                $q->where(function ($sub) use ($activeYear, $activeSemester) {
+                    $sub->where('academic_year_id', $activeYear->id)
+                        ->where('semester_id', $activeSemester->id);
+                })->orWhere(function ($sub) {
+                    $sub->whereNull('academic_year_id')
+                        ->whereNull('semester_id');
+                });
+            });
+        } elseif ($activeYear) {
+            $tpQuery->where(function ($q) use ($activeYear) {
+                $q->where('academic_year_id', $activeYear->id)
+                    ->orWhereNull('academic_year_id');
+            });
+        }
+
+        $allTps = $tpQuery->get();
+
+        // Jika terdapat TP yang khusus dibuat untuk kelas ini, prioritaskan TP kelas tersebut
+        $classSpecificTps = $allTps->where('school_class_id', $classId);
+        if ($classSpecificTps->isNotEmpty()) {
+            $allTps = $classSpecificTps;
+        }
+
+        // 2. Jika TP memiliki sub-TP, masukkan sub-TP tersebut ke dalam rapor; jika tidak, masukkan TP utama
+        $leafTps = collect();
+        $topLevelTps = $allTps->whereNull('parent_id');
+
+        if ($topLevelTps->isNotEmpty()) {
+            foreach ($topLevelTps as $parentTp) {
+                $subObjectives = $allTps->where('parent_id', $parentTp->id);
+                if ($subObjectives->isNotEmpty()) {
+                    foreach ($subObjectives as $subTp) {
+                        $leafTps->push($subTp);
+                    }
+                } else {
+                    $leafTps->push($parentTp);
+                }
+            }
+        } else {
+            $leafTps = $allTps->filter(fn($tp) => $tp->subObjectives->isEmpty());
+        }
+
+        // Tangkap sub-TP yatim jika ada
+        $unprocessedSubTps = $allTps->whereNotNull('parent_id')->whereNotIn('id', $leafTps->pluck('id'));
+        foreach ($unprocessedSubTps as $orphan) {
+            if (!$leafTps->contains('id', $orphan->id) && $orphan->subObjectives->isEmpty()) {
+                $leafTps->push($orphan);
+            }
+        }
+
+        // Urutkan TP secara natural berdasarkan order dan kode TP
+        $tps = $leafTps->sort(function ($a, $b) {
+            if ($a->order !== null && $b->order !== null && $a->order !== $b->order) {
+                return $a->order <=> $b->order;
+            }
+            return strnatcasecmp($a->code ?? '', $b->code ?? '');
+        })->values();
 
         $assignments = LmsAssignment::whereHas('schoolClasses', function ($q) use ($classId) { $q->where('school_classes.id', $classId); })
             ->where('subject_id', $subjectId)
@@ -135,6 +198,13 @@ class RaporController extends Controller
 
             $tpScores = $tps->map(function ($tp) use ($assignments, $studentSubmissions) {
                 $tpAssignments = $assignments->where('learning_objective_id', $tp->id);
+                if ($tpAssignments->isEmpty() && $tp->parent_id) {
+                    $parentAssignments = $assignments->where('learning_objective_id', $tp->parent_id);
+                    if ($parentAssignments->isNotEmpty()) {
+                        $tpAssignments = $parentAssignments;
+                    }
+                }
+
                 $tpSubs = $studentSubmissions->whereIn('assignment_id', $tpAssignments->pluck('id'))
                     ->filter(fn($s) => $s->score !== null && $s->score !== '');
 

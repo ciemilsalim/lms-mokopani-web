@@ -77,6 +77,72 @@ class GradebookController extends Controller
         abort(403);
     }
 
+    protected function getEvaluatedTpsForClass($subjectId, $classId, $activeYear, $activeSemester)
+    {
+        $tpQuery = LmsLearningObjective::with('subObjectives')
+            ->where('subject_id', $subjectId)
+            ->where(function ($q) use ($classId) {
+                $q->where('school_class_id', $classId)
+                  ->orWhereNull('school_class_id');
+            });
+
+        if ($activeYear && $activeSemester) {
+            $tpQuery->where(function ($q) use ($activeYear, $activeSemester) {
+                $q->where(function ($sub) use ($activeYear, $activeSemester) {
+                    $sub->where('academic_year_id', $activeYear->id)
+                        ->where('semester_id', $activeSemester->id);
+                })->orWhere(function ($sub) {
+                    $sub->whereNull('academic_year_id')
+                        ->whereNull('semester_id');
+                });
+            });
+        } elseif ($activeYear) {
+            $tpQuery->where(function ($q) use ($activeYear) {
+                $q->where('academic_year_id', $activeYear->id)
+                    ->orWhereNull('academic_year_id');
+            });
+        }
+
+        $allTps = $tpQuery->get();
+
+        $classSpecificTps = $allTps->where('school_class_id', $classId);
+        if ($classSpecificTps->isNotEmpty()) {
+            $allTps = $classSpecificTps;
+        }
+
+        $leafTps = collect();
+        $topLevelTps = $allTps->whereNull('parent_id');
+
+        if ($topLevelTps->isNotEmpty()) {
+            foreach ($topLevelTps as $parentTp) {
+                $subObjectives = $allTps->where('parent_id', $parentTp->id);
+                if ($subObjectives->isNotEmpty()) {
+                    foreach ($subObjectives as $subTp) {
+                        $leafTps->push($subTp);
+                    }
+                } else {
+                    $leafTps->push($parentTp);
+                }
+            }
+        } else {
+            $leafTps = $allTps->filter(fn($tp) => $tp->subObjectives->isEmpty());
+        }
+
+        $unprocessedSubTps = $allTps->whereNotNull('parent_id')->whereNotIn('id', $leafTps->pluck('id'));
+        foreach ($unprocessedSubTps as $orphan) {
+            if (!$leafTps->contains('id', $orphan->id) && $orphan->subObjectives->isEmpty()) {
+                $leafTps->push($orphan);
+            }
+        }
+
+        return $leafTps->sort(function ($a, $b) {
+            if ($a->order !== null && $b->order !== null && $a->order !== $b->order) {
+                return $a->order <=> $b->order;
+            }
+            return strnatcasecmp($a->code ?? '', $b->code ?? '');
+        })->values();
+    }
+
     public function show(Request $request)
     {
         $teacher = Auth::user()->teacher;
@@ -89,11 +155,8 @@ class GradebookController extends Controller
             return redirect()->route('gradebook.index');
         }
 
-        // 1. Get all TPs for this subject (Primary Headers)
-        $tps = LmsLearningObjective::where('subject_id', $subjectId)
-            ->doesntHave('subObjectives')
-            ->orderBy('code')
-            ->get();
+        // 1. Get evaluated TPs (sub-TPs if present, else parent TPs) specifically for this class
+        $tps = $this->getEvaluatedTpsForClass($subjectId, $classId, $activeYear, $activeSemester);
 
         // 2. Ambil semua tugas untuk kelas & mapel ini
         $allAssignments = LmsAssignment::with('learningObjective')
@@ -126,6 +189,10 @@ class GradebookController extends Controller
             // Map scores to TPs - Step 1: Direct Scores
             $directScores = $tps->mapWithKeys(function ($tp) use ($student, $summativeAssignments, $submissions) {
                 $assignment = $summativeAssignments->where('learning_objective_id', $tp->id)->first();
+                if (!$assignment && $tp->parent_id) {
+                    $assignment = $summativeAssignments->where('learning_objective_id', $tp->parent_id)->first();
+                }
+
                 $score = 0; // Asumsi 0 untuk semua TP
                 if ($assignment) {
                     $sub = $submissions->where('student_id', $student->id)->where('assignment_id', $assignment->id)->first();
@@ -261,11 +328,8 @@ class GradebookController extends Controller
             ->first();
         $teacherName = $teacher ? $teacher->name : ($teachingAssignment?->teacher?->name ?? '-');
 
-        // 2. Ambil TP leaf (top-level) untuk mapel ini
-        $objectives = LmsLearningObjective::where('subject_id', $subjectId)
-            ->doesntHave('subObjectives')
-            ->orderBy('code')
-            ->get();
+        // 2. Ambil TP yang terfilter spesifik untuk kelas ini (sub-TP jika ada, atau parent TP jika standalone)
+        $objectives = $this->getEvaluatedTpsForClass($subjectId, $classId, $activeYear, $activeSemester);
 
         // 3. Ambil semua tugas sumatif untuk kelas & mapel ini pada periode aktif
         $assignments = LmsAssignment::where('subject_id', $subjectId)
@@ -299,6 +363,13 @@ class GradebookController extends Controller
             // Hitung skor per Tujuan Pembelajaran (TP)
             $tpScoresList = $objectives->map(function ($tp) use ($assignments, $studentSubmissions) {
                 $tpAssignments = $assignments->where('learning_objective_id', $tp->id);
+                if ($tpAssignments->isEmpty() && $tp->parent_id) {
+                    $parentAssignments = $assignments->where('learning_objective_id', $tp->parent_id);
+                    if ($parentAssignments->isNotEmpty()) {
+                        $tpAssignments = $parentAssignments;
+                    }
+                }
+
                 $tpSubs = $studentSubmissions->whereIn('assignment_id', $tpAssignments->pluck('id'))
                     ->filter(fn($s) => $s->score !== null && $s->score !== '');
 
@@ -642,15 +713,12 @@ class GradebookController extends Controller
         $activeSemester = Semester::getActive();
         $kktp = get_kktp($subject_id);
 
-        $tps = LmsLearningObjective::where('subject_id', $subject_id)
-            ->orderBy('code')
-            ->get();
+        $tps = $this->getEvaluatedTpsForClass($subject_id, $class_id, $activeYear, $activeSemester);
 
         $students = $class->students()->orderBy('name')->get();
         $assignments = LmsAssignment::where('subject_id', $subject_id)
             ->whereHas('schoolClasses', function ($q) use ($class_id) { $q->where('school_classes.id', $class_id); })
             ->where('assessment_type', 'summative')
-            ->whereIn('learning_objective_id', $tps->pluck('id'))
             ->get();
 
         $submissions = LmsSubmission::whereIn('assignment_id', $assignments->pluck('id'))
@@ -665,6 +733,9 @@ class GradebookController extends Controller
 
             foreach ($tps as $tp) {
                 $tpAssignment = $assignments->where('learning_objective_id', $tp->id)->first();
+                if (!$tpAssignment && $tp->parent_id) {
+                    $tpAssignment = $assignments->where('learning_objective_id', $tp->parent_id)->first();
+                }
                 $score = 0;
 
                 if ($tpAssignment) {
