@@ -14,11 +14,25 @@ class SubjectController extends Controller
         $query = Subject::query();
 
         if ($user && $user->role === 'student' && $user->student) {
-            $classId = $user->student->school_class_id;
+            $student = $user->student;
+            $classId = $student->school_class_id;
             $query->whereIn('id', function($q) use ($classId) {
                 $q->select('subject_id')
                   ->from('teaching_assignments')
                   ->where('school_class_id', $classId);
+            });
+
+            // Filter mapel agama: jika mapel berkategori agama, hanya tampilkan yang sesuai dengan agama siswa
+            $query->where(function($q) use ($student) {
+                $q->where(function($subQ) {
+                    $subQ->where('category', '!=', 'religion')
+                         ->orWhereNull('category');
+                })->orWhere(function($subQ) use ($student) {
+                    $subQ->where('category', 'religion');
+                    if (!empty($student->religion)) {
+                        $subQ->whereRaw('LOWER(religion_key) = ?', [strtolower(trim($student->religion))]);
+                    }
+                });
             });
         }
 

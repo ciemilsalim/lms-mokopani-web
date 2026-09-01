@@ -11,7 +11,12 @@ class Subject extends Model
 
     protected $table = 'subjects';
 
-    protected $fillable = ['name', 'code', 'description', 'fase', 'kktp'];
+    protected $fillable = ['name', 'code', 'description', 'fase', 'kktp', 'category', 'religion_key'];
+
+    public function isReligion(): bool
+    {
+        return $this->category === 'religion';
+    }
 
     public function materials()
     {

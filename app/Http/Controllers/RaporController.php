@@ -151,7 +151,9 @@ class RaporController extends Controller
             ->where('assessment_type', 'summative')
             ->get();
 
-        $students = Student::where('school_class_id', $classId)->orderBy('name', 'asc')->get();
+        $students = $teacherAssignment 
+            ? $teacherAssignment->getEnrolledStudents() 
+            : Student::where('school_class_id', $classId)->orderBy('name', 'asc')->get();
         $submissions = LmsSubmission::whereIn('assignment_id', $assignments->pluck('id'))
             ->whereIn('student_id', $students->pluck('id'))
             ->get();
