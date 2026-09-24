@@ -32,12 +32,18 @@ const iconMap: Record<string, any> = {
 };
 
 const levelConfig: Record<string, { label: string; class: string }> = {
-    high:   { label: 'Tinggi', class: 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400 border-l-4 border-l-red-500' },
-    medium: { label: 'Sedang', class: 'bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400 border-l-4 border-l-amber-500' },
-    low:    { label: 'Rendah', class: 'bg-sky-50 text-sky-700 dark:bg-sky-900/20 dark:text-sky-400 border-l-4 border-l-sky-500' },
+    high:   { label: 'Tinggi', class: 'bg-red-50 text-red-700 border-l-4 border-l-red-500' },
+    medium: { label: 'Sedang', class: 'bg-amber-50 text-amber-700 border-l-4 border-l-amber-500' },
+    low:    { label: 'Rendah', class: 'bg-sky-50 text-sky-700 border-l-4 border-l-sky-500' },
 };
 
 export default function EarlyWarningStudent({ student, subject, flags }: EarlyWarningStudentProps) {
+    const breadcrumbs: BreadcrumbItem[] = [
+        { title: 'Dashboard', href: '/dashboard' },
+        { title: 'Early Warning', href: '/early-warning' },
+        { title: student.name, href: '#' },
+    ];
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`Early Warning – ${student.name} – LMS Mokopani`} />

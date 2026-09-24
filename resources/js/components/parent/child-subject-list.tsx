@@ -59,7 +59,7 @@ export function ChildSubjectList({ reports = [], className = '' }: ChildSubjectL
                                 <div className="min-w-0">
                                     <h3 className="text-xs sm:text-sm font-bold text-foreground truncate">{subject.subject_name}</h3>
                                     <p className="text-[11px] text-muted-foreground font-medium flex items-center gap-1.5 mt-0.5">
-                                        <Calendar className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400" />
+                                        <Calendar className="h-3.5 w-3.5 text-sky-600" />
                                         <span>Kehadiran: {subject.attendance_percentage}%</span>
                                         <span className="text-border">•</span>
                                         <span>{subject.total_meetings} Pertemuan</span>
@@ -107,7 +107,7 @@ export function ChildSubjectList({ reports = [], className = '' }: ChildSubjectL
                                             {subject.assignments.map((item) => (
                                                 <div key={item.id} className="p-3 rounded-xl bg-card border border-border/60 space-y-2">
                                                     <div className="flex items-center justify-between gap-2">
-                                                        <span className={cn('px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider border', item.status === 'Selesai' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20')}>
+                                                        <span className={cn('px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider border', item.status === 'Selesai' ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' : 'bg-amber-500/10 text-amber-600 border-amber-500/20')}>
                                                             {item.status}
                                                         </span>
                                                         <span className="text-[10px] font-bold text-muted-foreground uppercase">{item.type}</span>

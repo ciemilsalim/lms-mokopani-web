@@ -38,8 +38,7 @@ interface ParentChildProps {
 
 export default function ParentChild({ student, report = [], period }: ParentChildProps) {
     const breadcrumbs: BreadcrumbItem[] = [
-        { title: 'Dashboard', href: '/dashboard' },
-        { title: 'Anak Saya', href: '/parent/dashboard' },
+        { title: 'Portal Orang Tua', href: '/parent/dashboard' },
         { title: student.name, href: `/parent/child/${student.id}` },
     ];
 

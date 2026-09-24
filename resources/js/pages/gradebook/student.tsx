@@ -86,10 +86,10 @@ interface StudentGradeProps {
 }
 
 const nilaiColors: Record<string, string> = {
-    'BB': 'bg-rose-500/10 text-rose-600 border-rose-500/20 dark:text-rose-400',
-    'MB': 'bg-amber-500/10 text-amber-600 border-amber-500/20 dark:text-amber-400',
-    'BSH': 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20 dark:text-emerald-400',
-    'SB': 'bg-sky-500/10 text-sky-600 border-sky-500/20 dark:text-sky-400',
+    'BB': 'bg-rose-500/10 text-rose-600 border-rose-500/20',
+    'MB': 'bg-amber-500/10 text-amber-600 border-amber-500/20',
+    'BSH': 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20',
+    'SB': 'bg-sky-500/10 text-sky-600 border-sky-500/20',
 };
 
 const nilaiLabels: Record<string, string> = {
@@ -187,7 +187,7 @@ export default function StudentGrade({ report = [], p5_projects = [], period }: 
                             p5_projects.map((project) => (
                                 <div key={project.id} className="rounded-2xl border border-border/70 bg-card p-4 sm:p-5 shadow-xs space-y-4">
                                     <div className="space-y-1">
-                                        <span className="inline-block px-2.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">
+                                        <span className="inline-block px-2.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-rose-500/10 text-rose-600 border border-rose-500/20">
                                             {project.tema || 'P5 Kurikulum Merdeka'}
                                         </span>
                                         <h3 className="text-sm sm:text-base font-bold text-foreground">{project.judul}</h3>

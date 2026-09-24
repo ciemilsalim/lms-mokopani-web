@@ -88,7 +88,7 @@ export default function CommentSection({ assignmentId, materialId, comments, aut
                     </div>
                 ) : (
                     comments.map((comment) => (
-                        <div key={comment.id} className="flex gap-3 p-3.5 rounded-2xl bg-card border border-border/70 shadow-2xs transition-all">
+                        <div key={comment.id} className="flex gap-3 p-3.5 rounded-2xl bg-card border border-border/70 shadow-2xs transition-all overflow-hidden max-w-full">
                             <div className="h-9 w-9 shrink-0 rounded-xl overflow-hidden bg-primary/10 flex items-center justify-center font-bold text-xs text-primary border border-primary/20">
                                 {comment.user_avatar ? (
                                     <img
@@ -103,30 +103,31 @@ export default function CommentSection({ assignmentId, materialId, comments, aut
                                     <span>{comment.user_name ? comment.user_name.charAt(0).toUpperCase() : '?'}</span>
                                 )}
                             </div>
-                            <div className="flex-1 min-w-0">
-                                <div className="flex items-center justify-between mb-1">
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-sm font-bold text-[#1B1B25] dark:text-[#F1F1F4]">{comment.user_name}</span>
-                                        <span className={`rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-tight ${comment.user_role === 'teacher' ? 'bg-[#5E6AD2]/10 text-[#5E6AD2]' : 'bg-[#5E6AD2]/5 text-[#5E6AD2]/80'}`}>
-                                            {comment.user_role}
+                            <div className="flex-1 min-w-0 max-w-full overflow-hidden">
+                                <div className="flex items-center justify-between gap-2 mb-1">
+                                    <div className="flex items-center gap-2 min-w-0">
+                                        <span className="text-xs sm:text-sm font-bold text-foreground truncate max-w-[120px] xs:max-w-[180px] sm:max-w-none">{comment.user_name}</span>
+                                        <span className={`shrink-0 rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-tight ${comment.user_role === 'teacher' ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
+                                            {comment.user_role === 'teacher' ? 'Guru' : 'Siswa'}
                                         </span>
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                        <span className="flex items-center gap-1 text-[10px] text-[#8A8F98]">
+                                    <div className="flex items-center gap-1.5 shrink-0">
+                                        <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
                                             <Clock className="h-3 w-3" />
                                             {comment.created_at}
                                         </span>
                                         {(authId === comment.user_id || userRole === 'teacher') && (
                                             <button 
                                                 onClick={() => handleDelete(comment.id)}
-                                                className="p-1 text-[#8A8F98]/40 hover:text-[#EB5757] transition"
+                                                className="p-1 text-muted-foreground/60 hover:text-destructive transition"
+                                                title="Hapus komentar"
                                             >
                                                 <Trash2 className="h-3.5 w-3.5" />
                                             </button>
                                         )}
                                     </div>
                                 </div>
-                                <p className="text-sm text-[#8A8F98] dark:text-[#8A8F98] whitespace-pre-wrap">{comment.body}</p>
+                                <p className="text-xs sm:text-sm text-foreground/90 whitespace-pre-wrap break-words [overflow-wrap:anywhere] leading-relaxed mt-1">{comment.body}</p>
                             </div>
                         </div>
                     ))

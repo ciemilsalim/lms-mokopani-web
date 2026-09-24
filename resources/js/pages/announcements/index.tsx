@@ -141,8 +141,8 @@ export default function Announcements({ announcements, classes, user_role }: Ann
                                                 Untuk: {a.class_name}
                                             </span>
                                         </div>
-                                        <h2 className="text-lg font-bold leading-tight text-foreground">{a.title}</h2>
-                                        <p className="text-sm text-foreground/80 whitespace-pre-wrap">{a.content}</p>
+                                        <h2 className="text-lg font-bold leading-tight text-foreground break-words">{a.title}</h2>
+                                        <p className="text-sm text-foreground/80 whitespace-pre-wrap break-words [overflow-wrap:anywhere] leading-relaxed">{a.content}</p>
                                         <div className="flex items-center gap-4 pt-2 text-[10px] font-bold text-muted-foreground">
                                             <span className="flex items-center gap-1">
                                                 <User className="h-3 w-3 text-primary" />

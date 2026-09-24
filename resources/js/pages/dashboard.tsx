@@ -254,13 +254,13 @@ function StudentDashboard({
                     {/* Pilar 1: Materi Belajar */}
                     <Link
                         href="/materials"
-                        className="group relative flex flex-col justify-between overflow-hidden rounded-3xl border border-indigo-100 dark:border-indigo-950/50 bg-gradient-to-br from-indigo-50/80 via-card to-card p-6 shadow-sm transition-all duration-300 hover:shadow-xl hover:shadow-indigo-500/10 hover:-translate-y-1 active:scale-98"
+                        className="group relative flex flex-col justify-between overflow-hidden rounded-3xl border border-indigo-100 bg-gradient-to-br from-indigo-50/80 via-card to-card p-6 shadow-sm transition-all duration-300 hover:shadow-xl hover:shadow-indigo-500/10 hover:-translate-y-1 active:scale-98"
                     >
                         <div className="flex items-center justify-between">
                             <div className="flex h-13 w-13 items-center justify-center rounded-2xl bg-indigo-500 text-white shadow-md shadow-indigo-500/30 group-hover:scale-110 transition-transform">
                                 <BookOpen className="h-6 w-6" />
                             </div>
-                            <span className="flex items-center gap-1 text-xs font-bold text-indigo-600 dark:text-indigo-400 group-hover:translate-x-1 transition-transform">
+                            <span className="flex items-center gap-1 text-xs font-bold text-indigo-600 group-hover:translate-x-1 transition-transform">
                                 Buka Materi <ChevronRight className="h-4 w-4" />
                             </span>
                         </div>
@@ -280,8 +280,8 @@ function StudentDashboard({
                         href="/assignments"
                         className={`group relative flex flex-col justify-between overflow-hidden rounded-3xl border p-6 shadow-sm transition-all duration-300 hover:shadow-xl hover:-translate-y-1 active:scale-98 ${
                             pendingTasks > 0
-                                ? 'border-amber-200 dark:border-amber-950/50 bg-gradient-to-br from-amber-50/80 via-card to-card hover:shadow-amber-500/10'
-                                : 'border-emerald-100 dark:border-emerald-950/50 bg-gradient-to-br from-emerald-50/80 via-card to-card hover:shadow-emerald-500/10'
+                                ? 'border-amber-200 bg-gradient-to-br from-amber-50/80 via-card to-card hover:shadow-amber-500/10'
+                                : 'border-emerald-100 bg-gradient-to-br from-emerald-50/80 via-card to-card hover:shadow-emerald-500/10'
                         }`}
                     >
                         <div className="flex items-center justify-between">
@@ -291,7 +291,7 @@ function StudentDashboard({
                                 <ClipboardList className="h-6 w-6" />
                             </div>
                             <span className={`flex items-center gap-1 text-xs font-bold group-hover:translate-x-1 transition-transform ${
-                                pendingTasks > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'
+                                pendingTasks > 0 ? 'text-amber-600' : 'text-emerald-600'
                             }`}>
                                 Kerjakan Tugas <ChevronRight className="h-4 w-4" />
                             </span>
@@ -302,11 +302,11 @@ function StudentDashboard({
                                     {pendingTasks}
                                 </p>
                                 {pendingTasks > 0 ? (
-                                    <span className="rounded-full bg-amber-500/15 px-2.5 py-0.5 text-[10px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-wider">
+                                    <span className="rounded-full bg-amber-500/15 px-2.5 py-0.5 text-[10px] font-black text-amber-600 uppercase tracking-wider">
                                         Perlu Dikerjakan
                                     </span>
                                 ) : (
-                                    <span className="rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
+                                    <span className="rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[10px] font-black text-emerald-600 uppercase tracking-wider">
                                         Tuntas
                                     </span>
                                 )}
@@ -321,13 +321,13 @@ function StudentDashboard({
                     {/* Pilar 3: Hasil Belajar & Nilai */}
                     <Link
                         href="/gradebook"
-                        className="group relative flex flex-col justify-between overflow-hidden rounded-3xl border border-emerald-100 dark:border-emerald-950/50 bg-gradient-to-br from-emerald-50/80 via-card to-card p-6 shadow-sm transition-all duration-300 hover:shadow-xl hover:shadow-emerald-500/10 hover:-translate-y-1 active:scale-98"
+                        className="group relative flex flex-col justify-between overflow-hidden rounded-3xl border border-emerald-100 bg-gradient-to-br from-emerald-50/80 via-card to-card p-6 shadow-sm transition-all duration-300 hover:shadow-xl hover:shadow-emerald-500/10 hover:-translate-y-1 active:scale-98"
                     >
                         <div className="flex items-center justify-between">
                             <div className="flex h-13 w-13 items-center justify-center rounded-2xl bg-emerald-500 text-white shadow-md shadow-emerald-500/30 group-hover:scale-110 transition-transform">
                                 <Award className="h-6 w-6" />
                             </div>
-                            <span className="flex items-center gap-1 text-xs font-bold text-emerald-600 dark:text-emerald-400 group-hover:translate-x-1 transition-transform">
+                            <span className="flex items-center gap-1 text-xs font-bold text-emerald-600 group-hover:translate-x-1 transition-transform">
                                 Lihat Laporan <ChevronRight className="h-4 w-4" />
                             </span>
                         </div>
@@ -351,7 +351,7 @@ function StudentDashboard({
                         <Card className="rounded-3xl border border-border/70 shadow-sm overflow-hidden bg-card">
                             <div className="flex items-center justify-between border-b border-border/50 px-6 py-4.5 bg-muted/20">
                                 <div className="flex items-center gap-2.5">
-                                    <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400">
+                                    <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-500/15 text-amber-600">
                                         <Clock className="h-4 w-4" />
                                     </div>
                                     <div>
@@ -378,10 +378,10 @@ function StudentDashboard({
                                                 <div className="space-y-1 min-w-0 flex-1">
                                                     <div className="flex items-center gap-2 flex-wrap">
                                                         <span className="inline-flex rounded-lg bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
-                                                            {task.subject}
+                                                             {task.subject}
                                                         </span>
                                                         {task.is_urgent && (
-                                                            <span className="inline-flex rounded-lg bg-rose-500/15 px-2 py-0.5 text-[10px] font-bold text-rose-600 dark:text-rose-400">
+                                                            <span className="inline-flex rounded-lg bg-rose-500/15 px-2 py-0.5 text-[10px] font-bold text-rose-600">
                                                                 Mendesak
                                                             </span>
                                                         )}
@@ -422,7 +422,7 @@ function StudentDashboard({
                         <Card className="rounded-3xl border border-border/70 shadow-sm overflow-hidden bg-card">
                             <div className="flex items-center justify-between border-b border-border/50 px-6 py-4.5 bg-muted/20">
                                 <div className="flex items-center gap-2.5">
-                                    <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-indigo-500/15 text-indigo-600 dark:text-indigo-400">
+                                    <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-indigo-500/15 text-indigo-600">
                                         <Calendar className="h-4 w-4" />
                                     </div>
                                     <div>
@@ -480,7 +480,7 @@ function StudentDashboard({
                         <Card className="rounded-3xl border border-border/70 shadow-sm overflow-hidden bg-card">
                             <div className="flex items-center justify-between border-b border-border/50 px-6 py-4.5 bg-muted/20">
                                 <div className="flex items-center gap-2.5">
-                                    <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-rose-500/15 text-rose-600 dark:text-rose-400">
+                                    <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-rose-500/15 text-rose-600">
                                         <Bell className="h-4 w-4" />
                                     </div>
                                     <h2 className="font-bold text-foreground text-sm sm:text-base">Pengumuman</h2>
@@ -527,7 +527,7 @@ function StudentDashboard({
                         <Card className="rounded-3xl border border-border/70 shadow-sm overflow-hidden bg-card">
                             <div className="flex items-center justify-between border-b border-border/50 px-6 py-4.5 bg-muted/20">
                                 <div className="flex items-center gap-2.5">
-                                    <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-indigo-500/15 text-indigo-600 dark:text-indigo-400">
+                                    <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-indigo-500/15 text-indigo-600">
                                         <Activity className="h-4 w-4" />
                                     </div>
                                     <h2 className="font-bold text-foreground text-sm sm:text-base">Aktivitas Terkini</h2>

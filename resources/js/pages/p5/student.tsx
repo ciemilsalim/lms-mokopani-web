@@ -63,7 +63,7 @@ export default function StudentP5({ projects, period }: StudentP5Props) {
             <Head title="Projek P5 Saya – LMS Mokopani" />
 
             <div className="flex h-full flex-1 flex-col gap-6 max-w-5xl mx-auto w-full min-w-0">
-                <div className="rounded-2xl bg-gradient-to-br from-rose-600 via-rose-500 to-pink-500 p-8 text-white shadow-xl shadow-rose-200 dark:shadow-none">
+                <div className="rounded-2xl bg-gradient-to-br from-rose-600 via-rose-500 to-pink-500 p-8 text-white shadow-xl shadow-rose-200">
                     <div className="flex items-center gap-4">
                         <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-md">
                             <Heart className="h-10 w-10" />
@@ -87,18 +87,18 @@ export default function StudentP5({ projects, period }: StudentP5Props) {
                     <div className="space-y-8">
                         {((Array.isArray(projects) ? projects : Object.values(projects || {})) as Project[]).map((project) => (
                             <div key={project.id} className="rounded-3xl border border-border bg-card shadow-sm overflow-hidden">
-                                <div className="border-b border-border bg-gradient-to-r from-rose-50 to-pink-50 dark:from-rose-950/20 dark:to-pink-950/20 px-8 py-6">
+                                <div className="border-b border-border bg-gradient-to-r from-rose-50 to-pink-50 px-8 py-6">
                                     <div className="flex items-start justify-between">
                                         <div className="space-y-2">
                                             <div className="flex items-center gap-3">
-                                                <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-100 dark:bg-rose-950/40 px-3 py-1 text-[10px] font-black text-rose-600 dark:text-rose-400 uppercase tracking-widest border border-rose-200 dark:border-rose-900/30">
+                                                <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-100 px-3 py-1 text-[10px] font-black text-rose-600 uppercase tracking-widest border border-rose-200">
                                                     <Heart className="h-3 w-3" />
                                                     P5
                                                 </span>
                                                 <span className={`inline-flex rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest border ${
-                                                    project.status === 'selesai' ? 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400' :
-                                                    project.status === 'active' ? 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-400' :
-                                                    'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400'
+                                                    project.status === 'selesai' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' :
+                                                    project.status === 'active' ? 'bg-blue-100 text-blue-700 border-blue-200' :
+                                                    'bg-slate-100 text-slate-600 border-slate-200'
                                                 }`}>
                                                     {project.status === 'selesai' ? 'Selesai' : project.status === 'active' ? 'Aktif' : 'Draft'}
                                                 </span>
@@ -129,7 +129,7 @@ export default function StudentP5({ projects, period }: StudentP5Props) {
                                     {((Array.isArray(project.dimensi) ? project.dimensi : Object.values(project.dimensi || {})) as DimensiData[]).map((dimensi) => (
                                         <div key={dimensi.id} className="space-y-4">
                                             <div className="flex items-center gap-3">
-                                                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-rose-100 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400">
+                                                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-rose-100 text-rose-600">
                                                     <Target className="h-4 w-4" />
                                                 </div>
                                                 <div>

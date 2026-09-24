@@ -104,16 +104,10 @@ const adminNavSections: NavSection[] = [
 
 const parentNavSections: NavSection[] = [
     {
-        label: 'Utama',
+        label: 'Portal Orang Tua',
         items: [
-            { title: 'Dashboard',           url: '/dashboard',       icon: LayoutDashboard },
-            { title: 'Pengumuman',          url: '/announcements',   icon: Bell },
-        ],
-    },
-    {
-        label: 'Pantau Anak',
-        items: [
-            { title: 'Perkembangan Belajar',url: '/parent/dashboard', icon: Heart },
+            { title: 'Perkembangan Belajar', url: '/parent/dashboard', icon: GraduationCap },
+            { title: 'Pengumuman Sekolah',   url: '/announcements',   icon: Bell },
         ],
     },
     {

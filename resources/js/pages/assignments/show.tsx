@@ -3695,7 +3695,7 @@ export default function ShowAssignment({
                                             {assignment.instrument_config?.teacher_notes && (
                                                 <div className="p-5 rounded-xl border border-slate-200 dark:border-slate-800 border-slate-100 bg-white dark:bg-[#0b0f19]/30 bg-white/70 backdrop-blur-md shadow-none">
                                                     <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-2">Alur & Instruksi:</p>
-                                                    <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium whitespace-pre-wrap">{assignment.instrument_config.teacher_notes}</p>
+                                                    <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{assignment.instrument_config.teacher_notes}</p>
                                                 </div>
                                             )}
 
@@ -4784,9 +4784,9 @@ export default function ShowAssignment({
                                                         return (
                                                             <div className="space-y-4">
                                                                 {p.answer_text && (
-                                                                    <div className="p-5 rounded-xl bg-slate-50 dark:bg-slate-950/40 bg-slate-50 border border-slate-200 dark:border-slate-800 border-slate-100">
+                                                                    <div className="p-5 rounded-xl bg-slate-50 dark:bg-slate-950/40 bg-slate-50 border border-slate-200 dark:border-slate-800 border-slate-100 overflow-hidden">
                                                                         <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-2">Jawaban Teks:</p>
-                                                                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium whitespace-pre-wrap">{p.answer_text}</p>
+                                                                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{p.answer_text}</p>
                                                                     </div>
                                                                 )}
                                                                 {my_submission.file_path && (
@@ -4832,7 +4832,7 @@ export default function ShowAssignment({
                                                                      {(parsed.answers || []).map((ans: any, idx: number) => (
                                                                          <div key={idx} className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950/40 bg-slate-50 border border-slate-200 dark:border-slate-800 border-slate-100 space-y-1">
                                                                              <p className="text-[10px] font-black text-primary uppercase tracking-widest">{ans.text || `Pertanyaan ${idx + 1}`}</p>
-                                                                             <p className="text-sm font-semibold text-foreground whitespace-pre-wrap">{ans.answer || '-'}</p>
+                                                                             <p className="text-sm font-semibold text-foreground whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{ans.answer || '-'}</p>
                                                                          </div>
                                                                      ))}
                                                                  </div>
@@ -4860,7 +4860,7 @@ export default function ShowAssignment({
                                                                          {parsed.answers.reflection_answers.map((ans: any, idx: number) => (
                                                                              <div key={idx} className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950/40 bg-slate-50 border border-slate-200 dark:border-slate-800 border-slate-100 space-y-1">
                                                                                  <p className="text-[10px] font-black text-primary uppercase tracking-widest">{ans.question || `Pertanyaan ${idx + 1}`}</p>
-                                                                                 <p className="text-sm font-semibold text-foreground whitespace-pre-wrap">{ans.answer || '-'}</p>
+                                                                                 <p className="text-sm font-semibold text-foreground whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{ans.answer || '-'}</p>
                                                                              </div>
                                                                          ))}
                                                                      </div>
@@ -4895,7 +4895,7 @@ export default function ShowAssignment({
                                                                         <p className="text-xs font-bold text-slate-700 dark:text-slate-200">{a.question}</p>
                                                                         <div className="pt-2 border-t border-slate-200 dark:border-slate-800 border-slate-100">
                                                                             <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">Jawaban:</p>
-                                                                            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium italic whitespace-pre-wrap">{a.answer || '-'}</p>
+                                                                            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium italic whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{a.answer || '-'}</p>
                                                                         </div>
                                                                     </div>
                                                                 ))}
@@ -4921,13 +4921,13 @@ export default function ShowAssignment({
                                                                 {p.report_text && (
                                                                     <div className="p-5 rounded-xl bg-slate-50 dark:bg-slate-950/40 bg-slate-50 border border-slate-200 dark:border-slate-800 border-slate-100">
                                                                         <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-2">Laporan / Analisis:</p>
-                                                                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium whitespace-pre-wrap">{p.report_text}</p>
+                                                                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{p.report_text}</p>
                                                                     </div>
                                                                 )}
                                                                 {p.analysis_notes && (
                                                                     <div className="p-5 rounded-xl bg-slate-50 dark:bg-slate-950/40 bg-slate-50 border border-slate-200 dark:border-slate-800 border-slate-100">
                                                                         <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-2">Catatan Proses Analisis:</p>
-                                                                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium whitespace-pre-wrap">{p.analysis_notes}</p>
+                                                                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{p.analysis_notes}</p>
                                                                     </div>
                                                                 )}
                                                                 {my_submission.file_path && (
@@ -5300,7 +5300,7 @@ export default function ShowAssignment({
                                             <Info className="h-4 w-4" />
                                             <h4 className="text-[10px] font-black uppercase tracking-widest">Stimulus / Konteks Observasi</h4>
                                         </div>
-                                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: assignment.instrument_config?.stimulus || assignment.description || '' }} />
+                                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium whitespace-pre-wrap break-words [overflow-wrap:anywhere]" dangerouslySetInnerHTML={{ __html: assignment.instrument_config?.stimulus || assignment.description || '' }} />
                                     </div>
                                 )}
                                 <div className="grid grid-cols-2 gap-4">
@@ -5395,7 +5395,7 @@ export default function ShowAssignment({
                                                 <Info className="h-4 w-4" />
                                                 <h4 className="text-[10px] font-black uppercase tracking-widest">Stimulus / Konteks Tes Lisan</h4>
                                             </div>
-                                            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: assignment.instrument_config?.stimulus || assignment.description || '' }} />
+                                            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium whitespace-pre-wrap break-words [overflow-wrap:anywhere]" dangerouslySetInnerHTML={{ __html: assignment.instrument_config?.stimulus || assignment.description || '' }} />
                                         </div>
                                     )}
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -5587,7 +5587,7 @@ export default function ShowAssignment({
                                                 <Info className="h-4 w-4" />
                                                 <h4 className="text-[10px] font-black uppercase tracking-widest">Stimulus / Konteks Kinerja</h4>
                                             </div>
-                                            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: assignment.instrument_config?.stimulus || assignment.description || '' }} />
+                                            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium whitespace-pre-wrap break-words [overflow-wrap:anywhere]" dangerouslySetInnerHTML={{ __html: assignment.instrument_config?.stimulus || assignment.description || '' }} />
                                         </div>
                                     )}
                                     {/* Score Header */}
@@ -5856,13 +5856,13 @@ export default function ShowAssignment({
                                                                     {parsed.description && (
                                                                         <div>
                                                                             <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mb-1">Deskripsi Proyek:</p>
-                                                                            <p className="text-xs font-medium text-slate-600 dark:text-muted-foreground italic leading-relaxed whitespace-pre-wrap">{parsed.description}</p>
+                                                                            <p className="text-xs font-medium text-slate-600 dark:text-muted-foreground italic leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{parsed.description}</p>
                                                                         </div>
                                                                     )}
                                                                     {parsed.process_notes && (
                                                                         <div>
                                                                             <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mb-1">Catatan Proses:</p>
-                                                                            <p className="text-xs font-medium text-slate-600 dark:text-muted-foreground italic leading-relaxed whitespace-pre-wrap">{parsed.process_notes}</p>
+                                                                            <p className="text-xs font-medium text-slate-600 dark:text-muted-foreground italic leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{parsed.process_notes}</p>
                                                                         </div>
                                                                     )}
                                                                     {!parsed.description && !parsed.process_notes && (
@@ -6026,7 +6026,7 @@ export default function ShowAssignment({
                                             <Info className="h-4 w-4" />
                                             <h4 className="text-[10px] font-black uppercase tracking-widest">Stimulus / Konteks Portofolio</h4>
                                         </div>
-                                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: assignment.instrument_config?.stimulus || assignment.description || '' }} />
+                                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium whitespace-pre-wrap break-words [overflow-wrap:anywhere]" dangerouslySetInnerHTML={{ __html: assignment.instrument_config?.stimulus || assignment.description || '' }} />
                                     </div>
                                 )}
                                 {/* Portfolio Header */}
@@ -6152,7 +6152,7 @@ export default function ShowAssignment({
                                                 <Info className="h-4 w-4" />
                                                 <h4 className="text-[10px] font-black uppercase tracking-widest">Stimulus / Konteks Penilaian Rubrik</h4>
                                             </div>
-                                            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: assignment.instrument_config?.stimulus || assignment.description || '' }} />
+                                            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium whitespace-pre-wrap break-words [overflow-wrap:anywhere]" dangerouslySetInnerHTML={{ __html: assignment.instrument_config?.stimulus || assignment.description || '' }} />
                                         </div>
                                     )}
                                     {(assignment.instrument_config?.criteria || []).map((criterion: any) => (
@@ -6225,7 +6225,7 @@ export default function ShowAssignment({
                                             <Info className="h-4 w-4" />
                                             <h4 className="text-[10px] font-black uppercase tracking-widest">Stimulus / Konteks Observasi</h4>
                                         </div>
-                                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: assignment.instrument_config?.stimulus || assignment.description || '' }} />
+                                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium whitespace-pre-wrap break-words [overflow-wrap:anywhere]" dangerouslySetInnerHTML={{ __html: assignment.instrument_config?.stimulus || assignment.description || '' }} />
                                     </div>
                                 )}
                                 {/* Checklist Indicators */}
@@ -6379,7 +6379,7 @@ export default function ShowAssignment({
                                             <Info className="h-4 w-4" />
                                             <h4 className="text-[10px] font-black uppercase tracking-widest">Stimulus / Konteks Observasi</h4>
                                         </div>
-                                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: assignment.instrument_config?.stimulus || assignment.description || '' }} />
+                                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium whitespace-pre-wrap break-words [overflow-wrap:anywhere]" dangerouslySetInnerHTML={{ __html: assignment.instrument_config?.stimulus || assignment.description || '' }} />
                                     </div>
                                 )}
                                 <div className="space-y-4">
@@ -6569,7 +6569,7 @@ export default function ShowAssignment({
                                         <Info className="h-4 w-4" />
                                         <h4 className="text-[10px] font-black uppercase tracking-widest">Stimulus / Konteks Asesmen</h4>
                                     </div>
-                                    <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: assignment.instrument_config?.stimulus || assignment.description || '' }} />
+                                    <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium whitespace-pre-wrap break-words [overflow-wrap:anywhere]" dangerouslySetInnerHTML={{ __html: assignment.instrument_config?.stimulus || assignment.description || '' }} />
                                 </div>
                             )}
                             
@@ -6832,7 +6832,7 @@ export default function ShowAssignment({
                                             <div className="space-y-6 animate-in fade-in duration-300">
                                                 <div className="p-6 rounded-xl bg-white dark:bg-slate-900 border border-border shadow-sm space-y-4">
                                                     <p className="text-[10px] font-black text-primary uppercase tracking-widest leading-none">Jawaban LKPD Murid</p>
-                                                    <p className="text-sm font-semibold text-foreground whitespace-pre-wrap leading-relaxed">
+                                                    <p className="text-sm font-semibold text-foreground whitespace-pre-wrap break-words [overflow-wrap:anywhere] leading-relaxed">
                                                         {parsed.answer_text || '(Tidak ada jawaban teks)'}
                                                     </p>
                                                 </div>
@@ -6857,12 +6857,12 @@ export default function ShowAssignment({
                                             <div className="space-y-6 animate-in fade-in duration-300">
                                                 <div className="p-6 rounded-xl bg-white dark:bg-slate-900 border border-border shadow-sm space-y-4">
                                                     <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest leading-none">Deskripsi Proyek</p>
-                                                    <p className="text-sm font-semibold text-foreground whitespace-pre-wrap leading-relaxed mb-4">
+                                                    <p className="text-sm font-semibold text-foreground whitespace-pre-wrap break-words [overflow-wrap:anywhere] leading-relaxed mb-4">
                                                         {parsed.description || '(Tidak ada deskripsi)'}
                                                     </p>
                                                     
                                                     <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest leading-none">Catatan Proses</p>
-                                                    <p className="text-sm font-semibold text-muted-foreground whitespace-pre-wrap leading-relaxed">
+                                                    <p className="text-sm font-semibold text-muted-foreground whitespace-pre-wrap break-words [overflow-wrap:anywhere] leading-relaxed">
                                                         {parsed.process_notes || '(Tidak ada catatan proses)'}
                                                     </p>
                                                 </div>
@@ -6887,12 +6887,12 @@ export default function ShowAssignment({
                                             <div className="space-y-6 animate-in fade-in duration-300">
                                                 <div className="p-6 rounded-xl bg-white dark:bg-slate-900 border border-border shadow-sm space-y-4">
                                                     <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest leading-none">Laporan / Teks Jawaban</p>
-                                                    <p className="text-sm font-semibold text-foreground whitespace-pre-wrap leading-relaxed mb-4">
+                                                    <p className="text-sm font-semibold text-foreground whitespace-pre-wrap break-words [overflow-wrap:anywhere] leading-relaxed mb-4">
                                                         {parsed.report_text || '(Tidak ada laporan)'}
                                                     </p>
                                                     
                                                     <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest leading-none">Catatan Proses Analisis</p>
-                                                    <p className="text-sm font-semibold text-muted-foreground whitespace-pre-wrap leading-relaxed">
+                                                    <p className="text-sm font-semibold text-muted-foreground whitespace-pre-wrap break-words [overflow-wrap:anywhere] leading-relaxed">
                                                         {parsed.analysis_notes || '(Tidak ada catatan analisis)'}
                                                     </p>
                                                 </div>
@@ -6920,7 +6920,7 @@ export default function ShowAssignment({
                                                     {(parsed.reflections || []).map((ref: any, idx: number) => (
                                                         <div key={idx} className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950/40 bg-slate-50 border border-slate-200 dark:border-slate-800 border-slate-100 space-y-1">
                                                             <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Refleksi {idx + 1}</p>
-                                                            <p className="text-sm font-semibold text-foreground whitespace-pre-wrap">{ref.answer || '-'}</p>
+                                                            <p className="text-sm font-semibold text-foreground whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{ref.answer || '-'}</p>
                                                         </div>
                                                     ))}
                                                 </div>
@@ -6948,7 +6948,7 @@ export default function ShowAssignment({
                                                     {(parsed.answers || []).map((ans: any, idx: number) => (
                                                         <div key={idx} className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950/40 bg-slate-50 border border-slate-200 dark:border-slate-800 border-slate-100 space-y-1">
                                                             <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">{ans.question || `Pertanyaan ${idx + 1}`}</p>
-                                                            <p className="text-sm font-semibold text-foreground whitespace-pre-wrap">{ans.answer || '-'}</p>
+                                                            <p className="text-sm font-semibold text-foreground whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{ans.answer || '-'}</p>
                                                         </div>
                                                     ))}
                                                 </div>
@@ -7068,7 +7068,7 @@ export default function ShowAssignment({
                                                     {(parsed.answers || []).map((ans: any, idx: number) => (
                                                         <div key={idx} className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950/40 bg-slate-50 border border-slate-200 dark:border-slate-800 border-slate-100 space-y-1 animate-in fade-in duration-300">
                                                             <p className="text-[10px] font-black text-primary uppercase tracking-widest">{ans.text || `Pertanyaan ${idx + 1}`}</p>
-                                                            <p className="text-sm font-semibold text-foreground whitespace-pre-wrap">{ans.answer || '-'}</p>
+                                                            <p className="text-sm font-semibold text-foreground whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{ans.answer || '-'}</p>
                                                         </div>
                                                     ))}
                                                 </div>
@@ -7096,7 +7096,7 @@ export default function ShowAssignment({
                                                         {parsed.answers.reflection_answers.map((ans: any, idx: number) => (
                                                             <div key={idx} className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950/40 bg-slate-50 border border-slate-200 dark:border-slate-800 border-slate-100 space-y-1">
                                                                 <p className="text-[10px] font-black text-primary uppercase tracking-widest">{ans.question || `Pertanyaan ${idx + 1}`}</p>
-                                                                <p className="text-sm font-semibold text-foreground whitespace-pre-wrap">{ans.answer || '-'}</p>
+                                                                <p className="text-sm font-semibold text-foreground whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{ans.answer || '-'}</p>
                                                             </div>
                                                         ))}
                                                     </div>
@@ -7132,7 +7132,7 @@ export default function ShowAssignment({
                                                                     return (
                                                                         <div key={key} className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-border shadow-sm space-y-1">
                                                                             <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">{qText}</p>
-                                                                            <p className="text-sm font-bold text-foreground whitespace-pre-wrap">{aText}</p>
+                                                                            <p className="text-sm font-bold text-foreground whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{aText}</p>
                                                                         </div>
                                                                     );
                                                                 })}
@@ -7148,7 +7148,7 @@ export default function ShowAssignment({
                                                 } catch (e) {}
 
                                                 return (
-                                                    <p className="text-sm text-muted-foreground whitespace-pre-wrap font-medium leading-relaxed italic">
+                                                    <p className="text-sm text-muted-foreground whitespace-pre-wrap break-words [overflow-wrap:anywhere] font-medium leading-relaxed italic">
                                                         {selectedSubmission.content ? `"${selectedSubmission.content}"` : "Siswa tidak mengirimkan jawaban teks atau file lampiran."}
                                                     </p>
                                                 );
