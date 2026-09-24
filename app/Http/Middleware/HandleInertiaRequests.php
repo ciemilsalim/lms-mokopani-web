@@ -40,7 +40,7 @@ class HandleInertiaRequests extends Middleware
 
         $user = $request->user();
         if ($user) {
-            $user->loadMissing(['teacher', 'student']);
+            $user->loadMissing(['teacher', 'student.schoolClass']);
         }
 
         return array_merge(parent::share($request), [
