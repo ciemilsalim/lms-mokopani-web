@@ -152,12 +152,12 @@ export function MaterialResourcesSection({
                     </div>
                     <div 
                         onClick={() => setPreviewImage({ src: mainFileUrl, title: 'Gambar Utama Pembelajaran' })}
-                        className="rounded-2xl overflow-hidden border border-border/60 bg-muted/20 cursor-pointer group relative flex items-center justify-center max-h-[420px]"
+                        className="rounded-2xl overflow-hidden border border-border/60 bg-muted/20 cursor-pointer group relative flex items-center justify-center w-full min-w-0"
                     >
                         <img
                             src={mainFileUrl}
                             alt="Berkas Utama Pembelajaran"
-                            className="w-full h-auto max-h-[420px] object-contain group-hover:scale-[1.01] transition-transform duration-200"
+                            className="w-full h-auto max-h-[85vh] object-contain group-hover:scale-[1.01] transition-transform duration-200"
                         />
                         <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                             <span className="px-3 py-1.5 rounded-full bg-black/70 text-white text-xs font-bold flex items-center gap-1.5">
@@ -185,8 +185,8 @@ export function MaterialResourcesSection({
                             <span>Unduh Video</span>
                         </a>
                     </div>
-                    <div className="relative w-full aspect-video rounded-2xl overflow-hidden bg-black/95 shadow-inner">
-                        <video controls className="w-full h-full object-contain">
+                    <div className="w-full rounded-2xl overflow-hidden bg-black/95 shadow-inner flex items-center justify-center">
+                        <video controls className="w-full h-auto max-h-[85vh] object-contain">
                             <source src={mainFileUrl} type={mainFileType || 'video/mp4'} />
                             Browser Anda tidak mendukung tag video HTML5.
                         </video>
@@ -287,7 +287,7 @@ export function MaterialResourcesSection({
 
                     if (isImg) {
                         return (
-                            <div key={res.id} className="p-3.5 rounded-2xl bg-card border border-border/70 shadow-2xs space-y-2.5">
+                            <div key={res.id} className="sm:col-span-2 p-4 sm:p-5 rounded-3xl bg-card border border-border/70 shadow-xs space-y-3 w-full min-w-0 max-w-full overflow-hidden">
                                 <div className="flex items-center justify-between gap-2">
                                     <div className="flex items-center gap-2 min-w-0">
                                         <ImageIcon className="h-4 w-4 text-amber-600 shrink-0" />
@@ -295,26 +295,40 @@ export function MaterialResourcesSection({
                                             {res.title || 'Gambar Lampiran'}
                                         </h4>
                                     </div>
-                                    <a
-                                        href={resUrl}
-                                        download
-                                        className="text-muted-foreground hover:text-foreground p-1"
-                                        title="Unduh"
-                                    >
-                                        <Download className="h-3.5 w-3.5" />
-                                    </a>
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => setPreviewImage({ src: resUrl, title: res.title || 'Gambar Lampiran' })}
+                                            className="inline-flex items-center gap-1 text-[11px] font-bold text-primary hover:underline cursor-pointer"
+                                        >
+                                            <Maximize2 className="h-3 w-3" />
+                                            <span>Perbesar</span>
+                                        </button>
+                                        <a
+                                            href={resUrl}
+                                            download
+                                            className="inline-flex items-center gap-1 text-[11px] font-bold text-muted-foreground hover:text-foreground"
+                                            title="Unduh"
+                                        >
+                                            <Download className="h-3.5 w-3.5" />
+                                            <span>Unduh</span>
+                                        </a>
+                                    </div>
                                 </div>
                                 <div
                                     onClick={() => setPreviewImage({ src: resUrl, title: res.title || 'Gambar Lampiran' })}
-                                    className="relative rounded-xl overflow-hidden bg-muted/30 border border-border/40 cursor-pointer group aspect-video flex items-center justify-center"
+                                    className="relative rounded-2xl overflow-hidden bg-muted/20 border border-border/40 cursor-pointer group flex items-center justify-center w-full min-w-0"
                                 >
                                     <img
                                         src={resUrl}
-                                        alt={res.title || 'Gambar'}
-                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                                        alt={res.title || 'Gambar Lampiran'}
+                                        className="w-full h-auto max-h-[85vh] object-contain group-hover:scale-[1.01] transition-transform duration-200"
                                     />
-                                    <div className="absolute inset-0 bg-black/25 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                        <Maximize2 className="h-4 w-4 text-white" />
+                                    <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                        <span className="px-3 py-1.5 rounded-full bg-black/70 text-white text-xs font-bold flex items-center gap-1.5">
+                                            <Maximize2 className="h-3.5 w-3.5" />
+                                            Klik untuk Memperbesar
+                                        </span>
                                     </div>
                                 </div>
                             </div>
@@ -323,7 +337,7 @@ export function MaterialResourcesSection({
 
                     if (isVid) {
                         return (
-                            <div key={res.id} className="sm:col-span-2 space-y-2 p-4 rounded-2xl bg-card border border-border/70 shadow-2xs">
+                            <div key={res.id} className="sm:col-span-2 space-y-2 p-4 sm:p-5 rounded-3xl bg-card border border-border/70 shadow-xs w-full min-w-0 max-w-full overflow-hidden">
                                 <div className="flex items-center justify-between gap-2 text-xs font-bold text-foreground mb-1">
                                     <div className="flex items-center gap-2 min-w-0">
                                         <Video className="h-4 w-4 text-sky-600 shrink-0" />
@@ -335,12 +349,13 @@ export function MaterialResourcesSection({
                                         className="inline-flex items-center gap-1 text-[11px] font-bold text-muted-foreground hover:text-foreground shrink-0"
                                     >
                                         <Download className="h-3 w-3" />
-                                        <span>Unduh</span>
+                                        <span>Unduh Video</span>
                                     </a>
                                 </div>
-                                <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-black/90">
-                                    <video controls className="w-full h-full object-contain">
+                                <div className="w-full rounded-2xl overflow-hidden bg-black/95 shadow-inner flex items-center justify-center">
+                                    <video controls className="w-full h-auto max-h-[85vh] object-contain">
                                         <source src={resUrl} type={res.file_type || 'video/mp4'} />
+                                        Browser Anda tidak mendukung tag video HTML5.
                                     </video>
                                 </div>
                             </div>

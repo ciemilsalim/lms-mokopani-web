@@ -1046,7 +1046,7 @@ export default function ShowAssignment({
 
     // Form for Student (Submitting)
     const studentForm = useForm({
-        content: my_submission?.content ?? '',
+        content: (my_submission?.content && !my_submission.content.trim().startsWith('{')) ? my_submission.content : '',
         answers: {} as Record<string, string>,
         file: null as File | null,
         is_offline_submission: (my_submission?.content && my_submission.content.includes('"submitted_offline":true')) ? true : false,
@@ -1141,6 +1141,7 @@ export default function ShowAssignment({
         'oral_test',
         'oral_qa',
         'oral',
+        'performance',
         'performance_observation',
         'observation_checklist',
         'anecdotal_notes',
@@ -2526,7 +2527,7 @@ export default function ShowAssignment({
                         <div className="grid gap-8 lg:grid-cols-3">
                         {/* Submission Form / Observation / Oral Assessment View */}
                         <div className="lg:col-span-2 space-y-4">
-                            {(is_teacher_only || ['performance_observation', 'observation', 'observation_checklist', 'oral_test', 'oral_qa', 'guided_discussion'].includes(assignment.instrument_type)) ? (
+                            {(is_teacher_only || ['performance', 'performance_observation', 'observation', 'observation_checklist', 'oral_test', 'oral_qa', 'guided_discussion'].includes(assignment.instrument_type)) ? (
                                 <div className="rounded-2xl border border-border bg-card p-5 sm:p-7 shadow-xs space-y-6 animate-in fade-in duration-500">
                                     <div className="flex items-center justify-between flex-wrap gap-3 pb-4 border-b border-border/60">
                                         <div className="flex items-center gap-3">
@@ -2535,16 +2536,20 @@ export default function ShowAssignment({
                                             </div>
                                             <div>
                                                 <h2 className="text-base sm:text-lg font-black text-foreground tracking-tight">
-                                                    {['oral_test', 'oral_qa'].includes(assignment.instrument_type)
-                                                        ? 'Lembar Penilaian Lisan'
-                                                        : assignment.instrument_type === 'guided_discussion'
-                                                            ? 'Lembar Diskusi Terpandu'
-                                                            : 'Lembar Hasil Observasi Guru'}
+                                                    {assignment.instrument_type === 'performance'
+                                                        ? 'Lembar Penilaian Kinerja / Praktik'
+                                                        : ['oral_test', 'oral_qa'].includes(assignment.instrument_type)
+                                                            ? 'Lembar Penilaian Lisan'
+                                                            : assignment.instrument_type === 'guided_discussion'
+                                                                ? 'Lembar Diskusi Terpandu'
+                                                                : 'Lembar Hasil Observasi Guru'}
                                                 </h2>
                                                 <p className="text-xs text-muted-foreground mt-0.5 font-medium">
-                                                    {['oral_test', 'oral_qa'].includes(assignment.instrument_type)
-                                                        ? 'Penilaian lisan dan tanya jawab langsung oleh Guru di kelas (tidak perlu kirim berkas)'
-                                                        : 'Penilaian proses belajar & keaktifan langsung oleh Guru di kelas (tidak perlu kirim berkas)'}
+                                                    {assignment.instrument_type === 'performance'
+                                                        ? 'Penilaian unjuk kerja & langkah-langkah praktik dinilai langsung oleh Guru di kelas'
+                                                        : ['oral_test', 'oral_qa'].includes(assignment.instrument_type)
+                                                            ? 'Penilaian lisan dan tanya jawab langsung oleh Guru di kelas (tidak perlu kirim berkas)'
+                                                            : 'Penilaian proses belajar & keaktifan langsung oleh Guru di kelas (tidak perlu kirim berkas)'}
                                                 </p>
                                             </div>
                                         </div>
@@ -2556,7 +2561,7 @@ export default function ShowAssignment({
                                             ) : (
                                                 <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-black bg-amber-500/10 text-amber-600 border border-amber-500/20 shadow-2xs">
                                                     <Clock className="h-3.5 w-3.5 animate-pulse" />
-                                                    {['oral_test', 'oral_qa'].includes(assignment.instrument_type) ? 'Menunggu Penilaian Guru' : 'Menunggu Observasi'}
+                                                    {assignment.instrument_type === 'performance' ? 'Menunggu Penilaian Kinerja Guru' : ['oral_test', 'oral_qa'].includes(assignment.instrument_type) ? 'Menunggu Penilaian Guru' : 'Menunggu Observasi'}
                                                 </span>
                                             )}
                                         </div>
@@ -2594,12 +2599,20 @@ export default function ShowAssignment({
                                             ? my_submission.kktp_details
                                             : (parsedContent?.observations || parsedContent?.checklist || parsedContent?.scores || {});
 
+                                        const rawIndicators = (assignment.instrument_config?.indicators && assignment.instrument_config.indicators.length > 0)
+                                            ? assignment.instrument_config.indicators
+                                            : (assignment.instrument_config?.criteria && Array.isArray(assignment.instrument_config.criteria) && assignment.instrument_config.criteria.length > 0)
+                                                ? assignment.instrument_config.criteria
+                                                : [];
+
                                         return (
                                             <div className="space-y-6">
                                                 {/* Ringkasan Skor & Level KKTP */}
                                                 <div className="grid gap-3 sm:grid-cols-3">
                                                     <div className="p-4 rounded-xl bg-primary/5 border border-primary/20 space-y-1">
-                                                        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-wider">Skor Observasi</p>
+                                                        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-wider">
+                                                            {assignment.instrument_type === 'performance' ? 'Skor Uji Kinerja' : 'Skor Observasi'}
+                                                        </p>
                                                         <div className="flex items-baseline gap-1">
                                                             <span className="text-2xl sm:text-3xl font-black text-foreground">{my_submission.score}</span>
                                                             <span className="text-xs text-muted-foreground font-bold">/ {assignment.max_points || 100}</span>
@@ -2638,24 +2651,44 @@ export default function ShowAssignment({
                                                     </div>
                                                 )}
 
+                                                {/* Bukti Dokumentasi Kinerja jika ada */}
+                                                {parsedContent?.evidence_url && (
+                                                    <div className="p-3.5 rounded-xl bg-muted/20 border border-border flex items-center justify-between gap-3">
+                                                        <div className="flex items-center gap-2.5 min-w-0">
+                                                            <div className="h-8 w-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                                                                <ExternalLink className="h-4 w-4" />
+                                                            </div>
+                                                            <div className="min-w-0">
+                                                                <p className="text-[10px] font-black text-muted-foreground uppercase tracking-wider leading-none mb-1">Bukti / Dokumentasi Kinerja</p>
+                                                                <a href={parsedContent.evidence_url} target="_blank" rel="noreferrer" className="text-xs font-semibold text-primary hover:underline truncate block">
+                                                                    {parsedContent.evidence_url}
+                                                                </a>
+                                                            </div>
+                                                        </div>
+                                                        <a href={parsedContent.evidence_url} target="_blank" rel="noreferrer" className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-[10px] font-bold uppercase tracking-wider hover:bg-primary/90 transition shrink-0">
+                                                            Buka Bukti
+                                                        </a>
+                                                    </div>
+                                                )}
+
                                                 {/* Rincian Indikator & Bagian Belum Tuntas */}
                                                 <div className="space-y-3 pt-2">
                                                     <div className="flex items-center justify-between">
                                                         <h4 className="text-xs font-black text-foreground uppercase tracking-wider">
-                                                            Rincian Capaian Indikator Pengamatan
+                                                            {assignment.instrument_type === 'performance' ? 'Langkah Kerja & Kriteria yang Dinilai' : 'Rincian Capaian Indikator Pengamatan'}
                                                         </h4>
                                                         <span className="text-[10px] text-muted-foreground font-bold">
-                                                            {(assignment.instrument_config?.indicators || []).length} Indikator
+                                                            {rawIndicators.length} {assignment.instrument_type === 'performance' ? 'Langkah Kerja' : 'Indikator'}
                                                         </span>
                                                     </div>
 
                                                     <div className="space-y-2.5">
-                                                        {(assignment.instrument_config?.indicators || []).map((ind: any, idx: number) => {
-                                                            const indName = typeof ind === 'string' ? ind : (ind.name || `Indikator ${idx + 1}`);
+                                                        {rawIndicators.map((ind: any, idx: number) => {
+                                                            const indName = typeof ind === 'string' ? ind : (ind.name || ind.text || ind.criteria || `Langkah ${idx + 1}`);
                                                             const indDetail = ind.description || ind.criteria || '';
                                                             
                                                             // Evaluasi data hasil penilaian guru
-                                                            const rawVal = kktpData[indName] ?? kktpData[idx] ?? kktpData[idx.toString()] ?? kktpData[`ind_${idx}`];
+                                                            const rawVal = kktpData[indName] ?? kktpData[idx] ?? kktpData[idx.toString()] ?? kktpData[`ind_${idx}`] ?? (ind.id ? kktpData[ind.id] : undefined);
                                                             const isChecked = rawVal === true || rawVal === 'checked' || rawVal === 1;
                                                             const isStringLevel = typeof rawVal === 'string' ? rawVal : null;
                                                             
@@ -2712,22 +2745,29 @@ export default function ShowAssignment({
                                                 </div>
                                                 <div className="space-y-1">
                                                     <h4 className="text-xs font-bold text-amber-700 dark:text-amber-300">
-                                                        Penilaian Langsung di Kelas
+                                                        {assignment.instrument_type === 'performance' ? 'Penilaian Uji Kinerja di Kelas' : 'Penilaian Langsung di Kelas'}
                                                     </h4>
                                                     <p className="text-xs text-muted-foreground leading-relaxed">
-                                                        Penilaian ini dilakukan secara langsung oleh Guru Mapel melalui pengamatan keaktifan dan unjuk kerja di kelas. Anda tidak perlu mengunggah berkas atau formulir jawaban. Nilai dan catatan guru akan otomatis muncul di sini setelah observasi selesai dinilai.
+                                                        {assignment.instrument_type === 'performance'
+                                                            ? 'Penilaian uji kinerja / unjuk kerja dilakukan secara langsung oleh Guru di kelas berdasarkan langkah-langkah kerja yang ditentukan. Anda tidak perlu mengunggah berkas atau jawaban teks. Hasil penilaian dan skor perolehan akan otomatis tampil di sini setelah dinilai oleh Guru.'
+                                                            : 'Penilaian ini dilakukan secara langsung oleh Guru Mapel melalui pengamatan keaktifan dan unjuk kerja di kelas. Anda tidak perlu mengunggah berkas atau formulir jawaban. Nilai dan catatan guru akan otomatis muncul di sini setelah observasi selesai dinilai.'}
                                                     </p>
                                                 </div>
                                             </div>
 
-                                            {/* Panduan Indikator Pengamatan */}
+                                            {/* Panduan Indikator Pengamatan / Langkah Kerja */}
                                             <div className="space-y-3">
                                                 <h4 className="text-xs font-black text-foreground uppercase tracking-wider">
-                                                    Aspek & Indikator yang Diamati Guru
+                                                    {assignment.instrument_type === 'performance' ? 'Tugas & Langkah-Langkah Kerja yang Dinilai' : 'Aspek & Indikator yang Diamati Guru'}
                                                 </h4>
                                                 <div className="space-y-2">
-                                                    {(assignment.instrument_config?.indicators || []).map((ind: any, idx: number) => {
-                                                        const indName = typeof ind === 'string' ? ind : (ind.name || `Indikator ${idx + 1}`);
+                                                    {((assignment.instrument_config?.indicators && assignment.instrument_config.indicators.length > 0)
+                                                        ? assignment.instrument_config.indicators
+                                                        : (assignment.instrument_config?.criteria && Array.isArray(assignment.instrument_config.criteria) && assignment.instrument_config.criteria.length > 0)
+                                                            ? assignment.instrument_config.criteria
+                                                            : []
+                                                    ).map((ind: any, idx: number) => {
+                                                        const indName = typeof ind === 'string' ? ind : (ind.name || ind.text || ind.criteria || `Langkah ${idx + 1}`);
                                                         const indDetail = ind.description || ind.criteria || '';
                                                         return (
                                                             <div key={idx} className="p-3.5 rounded-xl border border-border bg-muted/20 flex items-start gap-3">
