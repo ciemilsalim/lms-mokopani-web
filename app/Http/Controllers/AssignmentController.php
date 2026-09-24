@@ -40,6 +40,8 @@ class AssignmentController extends Controller
                     $q->where('school_classes.id', $user->student->school_class_id);
                 });
             }
+            // Asesmen yang hanya dikelola guru (lisan, observasi, dll.) tidak perlu ditampilkan di daftar tugas siswa
+            $query->whereNotIn('instrument_type', LmsAssignment::teacherOnlyInstruments());
         }
 
         $models = $query->latest()->get();
@@ -415,9 +417,27 @@ class AssignmentController extends Controller
             ];
         }
 
-        // Ambil komentar untuk tugas ini
-        $comments = \App\Models\LmsComment::with(['user.teacher', 'user.student'])
-            ->where('assignment_id', $assignment->id)
+        // Ambil komentar untuk tugas ini (filter kelas untuk siswa / kelas terpilih)
+        $commentsQuery = \App\Models\LmsComment::with(['user.teacher', 'user.student.schoolClass'])
+            ->where('assignment_id', $assignment->id);
+
+        if ($user && $user->student) {
+            $studentClassId = $user->student->school_class_id;
+            $commentsQuery->where(function ($q) use ($studentClassId) {
+                $q->whereHas('user.student', function ($sq) use ($studentClassId) {
+                    $sq->where('school_class_id', $studentClassId);
+                })->orWhereDoesntHave('user.student');
+            });
+        } elseif ($request->filled('class_id')) {
+            $targetClassId = (int) $request->class_id;
+            $commentsQuery->where(function ($q) use ($targetClassId) {
+                $q->whereHas('user.student', function ($sq) use ($targetClassId) {
+                    $sq->where('school_class_id', $targetClassId);
+                })->orWhereDoesntHave('user.student');
+            });
+        }
+
+        $comments = $commentsQuery
             ->latest()
             ->get()
             ->map(fn($c) => [
@@ -426,6 +446,7 @@ class AssignmentController extends Controller
                 'user_name'   => $c->user->name,
                 'user_avatar' => $c->user?->avatar_url,
                 'user_role'   => $c->user->role ?? ($c->user->teacher ? 'teacher' : 'student'),
+                'class_name'  => $c->user?->student?->schoolClass?->name,
                 'body'        => $c->body,
                 'created_at'  => $c->created_at->diffForHumans(),
             ]);
@@ -655,6 +676,7 @@ class AssignmentController extends Controller
             'my_reflection'     => $myReflection,
             'user_role'         => $user->role ?? ($user->teacher ? 'teacher' : 'student'),
             'auth_id'           => $user->id,
+            'is_teacher_only'   => $assignment->isTeacherOnly(),
             'available_peers'   => $availablePeers,
             'readiness_status'  => $readinessStatus,
             'selected_class_id' => $selectedClassId,

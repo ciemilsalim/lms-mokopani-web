@@ -617,6 +617,7 @@ interface ShowAssignmentProps {
     comments: any[];
     user_role: string;
     auth_id: number;
+    is_teacher_only?: boolean;
     available_peers?: Student[];
     selected_class_id?: number | 'all';
     selected_subject_id?: number | null;
@@ -631,6 +632,7 @@ export default function ShowAssignment({
     comments,
     user_role,
     auth_id,
+    is_teacher_only = false,
     available_peers = [],
     selected_class_id,
     selected_subject_id,
@@ -2481,9 +2483,9 @@ export default function ShowAssignment({
                 ) : (
                     <div className="space-y-12 animate-in fade-in duration-700">
                         <div className="grid gap-8 lg:grid-cols-3">
-                        {/* Submission Form / Observation View */}
+                        {/* Submission Form / Observation / Oral Assessment View */}
                         <div className="lg:col-span-2 space-y-4">
-                            {['performance_observation', 'observation', 'observation_checklist'].includes(assignment.instrument_type) ? (
+                            {(is_teacher_only || ['performance_observation', 'observation', 'observation_checklist', 'oral_test', 'oral_qa', 'guided_discussion'].includes(assignment.instrument_type)) ? (
                                 <div className="rounded-2xl border border-border bg-card p-5 sm:p-7 shadow-xs space-y-6 animate-in fade-in duration-500">
                                     <div className="flex items-center justify-between flex-wrap gap-3 pb-4 border-b border-border/60">
                                         <div className="flex items-center gap-3">
@@ -2492,10 +2494,16 @@ export default function ShowAssignment({
                                             </div>
                                             <div>
                                                 <h2 className="text-base sm:text-lg font-black text-foreground tracking-tight">
-                                                    Lembar Hasil Observasi Guru
+                                                    {['oral_test', 'oral_qa'].includes(assignment.instrument_type)
+                                                        ? 'Lembar Penilaian Lisan'
+                                                        : assignment.instrument_type === 'guided_discussion'
+                                                            ? 'Lembar Diskusi Terpandu'
+                                                            : 'Lembar Hasil Observasi Guru'}
                                                 </h2>
                                                 <p className="text-xs text-muted-foreground mt-0.5 font-medium">
-                                                    Penilaian proses belajar & keaktifan langsung oleh Guru di kelas
+                                                    {['oral_test', 'oral_qa'].includes(assignment.instrument_type)
+                                                        ? 'Penilaian lisan dan tanya jawab langsung oleh Guru di kelas (tidak perlu kirim berkas)'
+                                                        : 'Penilaian proses belajar & keaktifan langsung oleh Guru di kelas (tidak perlu kirim berkas)'}
                                                 </p>
                                             </div>
                                         </div>
@@ -2506,7 +2514,8 @@ export default function ShowAssignment({
                                                 </span>
                                             ) : (
                                                 <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-black bg-amber-500/10 text-amber-600 border border-amber-500/20 shadow-2xs">
-                                                    <Clock className="h-3.5 w-3.5 animate-pulse" /> Menunggu Observasi
+                                                    <Clock className="h-3.5 w-3.5 animate-pulse" />
+                                                    {['oral_test', 'oral_qa'].includes(assignment.instrument_type) ? 'Menunggu Penilaian Guru' : 'Menunggu Observasi'}
                                                 </span>
                                             )}
                                         </div>
@@ -2697,6 +2706,16 @@ export default function ShowAssignment({
                                             </div>
                                         </div>
                                     )}
+
+                                    <div className="pt-2 flex justify-center border-t border-border/50">
+                                        <Link
+                                            href="/gradebook"
+                                            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground font-bold text-xs shadow-xs hover:bg-primary/90 transition active:scale-95 min-h-[42px]"
+                                        >
+                                            <FileBarChart className="h-4 w-4" />
+                                            <span>Lihat Capaian di Menu Hasil Belajar</span>
+                                        </Link>
+                                    </div>
                                 </div>
                             ) : (
                             <div className="rounded-xl border border-border bg-card p-6 md:p-8 shadow-sm">

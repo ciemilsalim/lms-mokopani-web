@@ -47,16 +47,19 @@ export function SubjectResultCard({
 
     return (
         <div className={cn('rounded-2xl border border-border/70 bg-card shadow-xs overflow-hidden transition-all', className)}>
-            {/* Header info */}
-            <div className="p-4 sm:p-4.5 flex items-center justify-between gap-3">
+            {/* Header info - fully clickable for mobile ergonomics */}
+            <div 
+                onClick={() => setExpanded(!expanded)}
+                className="p-4 sm:p-5 flex items-center justify-between gap-3 cursor-pointer hover:bg-muted/30 transition select-none"
+            >
                 <div className="flex items-center gap-3 min-w-0">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary border border-primary/20">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary border border-primary/20">
                         <BookOpen className="h-5 w-5" />
                     </div>
                     <div className="min-w-0">
-                        <h3 className="text-xs sm:text-sm font-bold text-foreground truncate">{subjectName}</h3>
+                        <h3 className="text-sm sm:text-base font-bold text-foreground truncate">{subjectName}</h3>
                         <p className="text-[11px] text-muted-foreground font-medium flex items-center gap-1.5 mt-0.5">
-                            <Clock className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                            <Clock className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
                             <span>Kehadiran: {attendancePercentage}%</span>
                             <span className="text-border">•</span>
                             <span>{totalMeetings} Pertemuan</span>
@@ -65,18 +68,15 @@ export function SubjectResultCard({
                 </div>
 
                 {/* Score & Predicate */}
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-2.5 shrink-0">
                     <div className="text-right">
-                        <span className="text-xs sm:text-sm font-black text-foreground block">{average}</span>
+                        <span className="text-sm sm:text-base font-black text-foreground block">{average}</span>
                         <PredicateBadge score={average} />
                     </div>
 
-                    <button
-                        onClick={() => setExpanded(!expanded)}
-                        className="flex h-9 w-9 items-center justify-center rounded-xl border border-border/70 bg-muted/30 hover:bg-muted/60 text-muted-foreground transition active:scale-95 min-h-[44px] min-w-[44px]"
-                    >
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-border/70 bg-muted/40 text-muted-foreground">
                         {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                    </button>
+                    </div>
                 </div>
             </div>
 

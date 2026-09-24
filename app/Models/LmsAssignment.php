@@ -36,6 +36,25 @@ class LmsAssignment extends Model
         'scoring_tool_config'  => 'array',
     ];
 
+    /**
+     * Tipe instrumen asesmen yang dikelola langsung oleh guru (tanpa pengumpulan online oleh siswa).
+     */
+    public static function teacherOnlyInstruments(): array
+    {
+        return [
+            'oral_test',
+            'oral_qa',
+            'performance_observation',
+            'observation_checklist',
+            'guided_discussion',
+        ];
+    }
+
+    public function isTeacherOnly(): bool
+    {
+        return in_array($this->instrument_type, self::teacherOnlyInstruments(), true);
+    }
+
     public function subject()
     {
         return $this->belongsTo(Subject::class);

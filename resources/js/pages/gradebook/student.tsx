@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/react';
@@ -9,13 +9,14 @@ import {
     Info, 
     Award,
     Sparkles,
-    CheckCircle2
+    CheckCircle2,
+    Search
 } from 'lucide-react';
 import { StudentResultSummary, SubjectResultCard } from '@/components/results';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: '/dashboard' },
-    { title: 'Hasil Belajar Saya', href: '/gradebook' },
+    { title: 'Hasil Belajar', href: '/gradebook' },
 ];
 
 interface Assignment {
@@ -101,50 +102,83 @@ const nilaiLabels: Record<string, string> = {
 
 export default function StudentGrade({ report = [], p5_projects = [], period }: StudentGradeProps) {
     const [activeTab, setActiveTab] = useState<'academic' | 'p5'>('academic');
+    const [searchQuery, setSearchQuery] = useState('');
 
     const averageOverall = report.length > 0
         ? Math.round(report.reduce((acc, curr) => acc + (Number(curr.average) || 0), 0) / report.length)
         : 0;
 
+    const filteredReports = useMemo(() => {
+        if (!searchQuery.trim()) return report;
+        const q = searchQuery.toLowerCase();
+        return report.filter(r => r.subject_name.toLowerCase().includes(q));
+    }, [report, searchQuery]);
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Hasil Belajar Saya – LMS Mokopani" />
+            <Head title="Hasil Belajar – LMS Mokopani" />
 
-            <div className="space-y-5 sm:space-y-6 fade-in pb-16 md:pb-6 max-w-5xl mx-auto px-4 sm:px-6">
-                {/* Header Summary Banner */}
+            <div className="space-y-4 sm:space-y-5 fade-in pb-24 sm:pb-8 max-w-7xl mx-auto w-full min-w-0">
+                {/* 1. Standardized Page Header (Title: 24-30px, Subtitle: 13-14px) */}
+                <div className="w-full min-w-0 space-y-1">
+                    <h1 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight leading-tight">
+                        Hasil Belajar
+                    </h1>
+                    <p className="text-xs sm:text-sm text-muted-foreground font-medium leading-relaxed">
+                        Pantau rekap capaian akademik mata pelajaran dan perkembangan Projek Profil Pelajar Pancasila (P5).
+                    </p>
+                </div>
+
+                {/* 2. Header Summary Banner */}
                 <StudentResultSummary
                     overallAverage={averageOverall}
                     totalSubjects={report.length}
                     periodStr={period}
-                    className="pt-2"
                 />
 
-                {/* Tab Switcher: Nilai Mata Pelajaran vs Projek P5 */}
-                <div className="flex p-1 bg-muted/80 rounded-2xl border border-border/60 max-w-md">
-                    <button
-                        type="button"
-                        onClick={() => setActiveTab('academic')}
-                        className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition active:scale-95 cursor-pointer min-h-[44px] ${
-                            activeTab === 'academic'
-                                ? 'bg-card text-primary shadow-xs'
-                                : 'text-muted-foreground hover:text-foreground'
-                        }`}
-                    >
-                        <FileBarChart className="h-4 w-4" />
-                        <span>Mata Pelajaran ({report.length})</span>
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => setActiveTab('p5')}
-                        className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition active:scale-95 cursor-pointer min-h-[44px] ${
-                            activeTab === 'p5'
-                                ? 'bg-card text-primary shadow-xs'
-                                : 'text-muted-foreground hover:text-foreground'
-                        }`}
-                    >
-                        <Heart className="h-4 w-4 text-rose-500" />
-                        <span>Projek P5 ({p5_projects.length})</span>
-                    </button>
+                {/* 3. Tab Switcher & Search Bar */}
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-1">
+                    {/* Tab Switcher: Nilai Mata Pelajaran vs Projek P5 */}
+                    <div className="flex p-1 bg-muted/80 rounded-2xl border border-border/60 max-w-md w-full sm:w-auto">
+                        <button
+                            type="button"
+                            onClick={() => setActiveTab('academic')}
+                            className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition active:scale-95 cursor-pointer min-h-[42px] ${
+                                activeTab === 'academic'
+                                    ? 'bg-card text-primary shadow-xs'
+                                    : 'text-muted-foreground hover:text-foreground'
+                            }`}
+                        >
+                            <FileBarChart className="h-4 w-4" />
+                            <span>Mata Pelajaran ({report.length})</span>
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setActiveTab('p5')}
+                            className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition active:scale-95 cursor-pointer min-h-[42px] ${
+                                activeTab === 'p5'
+                                    ? 'bg-card text-primary shadow-xs'
+                                    : 'text-muted-foreground hover:text-foreground'
+                            }`}
+                        >
+                            <Heart className="h-4 w-4 text-rose-500" />
+                            <span>Projek P5 ({p5_projects.length})</span>
+                        </button>
+                    </div>
+
+                    {/* Quick Search when on Academic tab */}
+                    {activeTab === 'academic' && report.length > 0 && (
+                        <div className="relative w-full sm:w-72">
+                            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <input
+                                type="text"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                placeholder="Cari mata pelajaran..."
+                                className="w-full pl-9 pr-4 py-2 rounded-xl border border-border/70 bg-card text-xs sm:text-sm text-foreground placeholder:text-muted-foreground/60 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 min-h-[42px] shadow-2xs"
+                            />
+                        </div>
+                    )}
                 </div>
 
                 {/* TAB 1: NILAI MATA PELAJARAN (MOBILE STUDENT RESULT CARDS) */}
@@ -156,9 +190,21 @@ export default function StudentGrade({ report = [], p5_projects = [], period }: 
                                 <p className="text-sm font-bold text-foreground">Belum ada data nilai tersedia</p>
                                 <p className="text-xs text-muted-foreground mt-1">Nilai akan muncul setelah bapak/ibu guru memberikan penilaian.</p>
                             </div>
+                        ) : filteredReports.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground bg-card rounded-2xl border border-border p-6 text-center">
+                                <Search className="h-10 w-10 mb-2 opacity-20" />
+                                <p className="text-sm font-bold text-foreground">Tidak ditemukan mata pelajaran "{searchQuery}"</p>
+                                <button
+                                    type="button"
+                                    onClick={() => setSearchQuery('')}
+                                    className="mt-2 text-xs font-bold text-primary hover:underline"
+                                >
+                                    Reset Pencarian
+                                </button>
+                            </div>
                         ) : (
                             <div className="space-y-3">
-                                {report.map((subject, idx) => (
+                                {filteredReports.map((subject, idx) => (
                                     <SubjectResultCard
                                         key={idx}
                                         subjectName={subject.subject_name}

@@ -13,6 +13,7 @@ interface Comment {
     user_name: string;
     user_avatar?: string | null;
     user_role: string;
+    class_name?: string | null;
     body: string;
     created_at: string;
 }
@@ -110,6 +111,11 @@ export default function CommentSection({ assignmentId, materialId, comments, aut
                                         <span className={`shrink-0 rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-tight ${comment.user_role === 'teacher' ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
                                             {comment.user_role === 'teacher' ? 'Guru' : 'Siswa'}
                                         </span>
+                                        {comment.class_name && (
+                                            <span className="shrink-0 rounded-md px-1.5 py-0.5 text-[9px] font-bold bg-muted/60 text-muted-foreground border border-border/50">
+                                                {comment.class_name}
+                                            </span>
+                                        )}
                                     </div>
                                     <div className="flex items-center gap-1.5 shrink-0">
                                         <span className="flex items-center gap-1 text-[10px] text-muted-foreground">

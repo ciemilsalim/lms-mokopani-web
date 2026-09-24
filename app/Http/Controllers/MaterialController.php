@@ -394,8 +394,26 @@ class MaterialController extends Controller
             }
         }
 
-        $comments = \App\Models\LmsComment::with(['user.teacher', 'user.student'])
-            ->where('material_id', $material->id)
+        $commentsQuery = \App\Models\LmsComment::with(['user.teacher', 'user.student.schoolClass'])
+            ->where('material_id', $material->id);
+
+        if ($user && $user->student) {
+            $studentClassId = $user->student->school_class_id;
+            $commentsQuery->where(function ($q) use ($studentClassId) {
+                $q->whereHas('user.student', function ($sq) use ($studentClassId) {
+                    $sq->where('school_class_id', $studentClassId);
+                })->orWhereDoesntHave('user.student');
+            });
+        } elseif ($request->filled('class_id')) {
+            $targetClassId = (int) $request->class_id;
+            $commentsQuery->where(function ($q) use ($targetClassId) {
+                $q->whereHas('user.student', function ($sq) use ($targetClassId) {
+                    $sq->where('school_class_id', $targetClassId);
+                })->orWhereDoesntHave('user.student');
+            });
+        }
+
+        $comments = $commentsQuery
             ->latest()
             ->get()
             ->map(fn($c) => [
@@ -404,6 +422,7 @@ class MaterialController extends Controller
                 'user_name'   => $c->user->name ?? 'User Terhapus',
                 'user_avatar' => $c->user?->avatar_url,
                 'user_role'   => $c->user ? ($c->user->role ?? ($c->user->teacher ? 'teacher' : 'student')) : 'student',
+                'class_name'  => $c->user?->student?->schoolClass?->name,
                 'body'        => $c->body,
                 'created_at'  => $c->created_at->diffForHumans(),
             ]);
