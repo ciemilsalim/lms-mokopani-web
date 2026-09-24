@@ -2203,7 +2203,11 @@ export default function ShowAssignment({
         ? assigned_classes.find(c => c.id === selected_class_id) || assignment.school_classes?.find((c: any) => c.id === selected_class_id)
         : null;
 
-    const breadcrumbs: BreadcrumbItem[] = (selected_class_id && selected_class_id !== 'all') ? [
+    const breadcrumbs: BreadcrumbItem[] = user_role === 'student' ? [
+        { title: 'Beranda', href: '/dashboard' },
+        { title: 'Asesmen & Tugas', href: '/assignments' },
+        { title: assignment.title, href: '#' },
+    ] : (selected_class_id && selected_class_id !== 'all') ? [
         { title: 'Daftar Kelas', href: '/classes' },
         { title: selectedClassObj?.name || 'Detail Kelas', href: `/classes/${selected_class_id}?tab=assignments` },
         { title: assignment.title, href: '#' },
@@ -2236,11 +2240,13 @@ export default function ShowAssignment({
                             assessmentType={assignment.assessment_type}
                             isTeacher={false}
                             onDelete={handleDelete}
-                            backUrl={(selected_class_id && selected_class_id !== 'all') 
-                                ? `/classes/${selected_class_id}?tab=assignments` 
-                                : selected_subject_id 
-                                    ? `/subjects/${selected_subject_id}` 
-                                    : undefined}
+                            backUrl={user_role === 'student'
+                                ? '/assignments'
+                                : (selected_class_id && selected_class_id !== 'all') 
+                                    ? `/classes/${selected_class_id}?tab=assignments` 
+                                    : selected_subject_id 
+                                        ? `/subjects/${selected_subject_id}` 
+                                        : undefined}
                         />
 
                         <AssessmentInstructions

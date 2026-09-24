@@ -96,13 +96,19 @@ export default function MaterialShow({
     const targetClass = class_id && (material as any).school_classes?.find((c: any) => c.id === class_id);
     const targetClassName = targetClass ? targetClass.name : (material.school_class_name || 'Detail Kelas');
 
-    const backUrl = class_id 
-        ? `/classes/${class_id}?tab=materials` 
-        : subject_id
-            ? `/subjects/${subject_id}`
-            : '/materials';
+    const backUrl = isStudent
+        ? '/materials'
+        : class_id 
+            ? `/classes/${class_id}?tab=materials` 
+            : subject_id
+                ? `/subjects/${subject_id}`
+                : '/materials';
 
-    const breadcrumbs: BreadcrumbItem[] = class_id ? [
+    const breadcrumbs: BreadcrumbItem[] = isStudent ? [
+        { title: 'Beranda', href: '/dashboard' },
+        { title: 'Bahan Materi', href: '/materials' },
+        { title: material.title, href: `/materials/${material.id}` },
+    ] : class_id ? [
         { title: 'Daftar Kelas', href: '/classes' },
         { title: targetClassName, href: `/classes/${class_id}?tab=materials` },
         { title: material.title, href: `/materials/${material.id}?class_id=${class_id}` },
