@@ -60,14 +60,14 @@ export function LearningStepsSection({
     if (!activeTrack) return null;
 
     return (
-        <div className="space-y-3 fade-in w-full min-w-0">
+        <div className="space-y-3 fade-in w-full min-w-0 max-w-full overflow-hidden">
             <div className="flex items-center gap-2 text-xs font-bold text-foreground uppercase tracking-wider">
                 <Sparkles className="h-4 w-4 text-primary" />
                 <span>🎯 Pilih Jalur Belajarmu (Diferensiasi)</span>
             </div>
 
             {/* Segmented Track Pills */}
-            <div className="grid grid-cols-3 gap-1.5 p-1 bg-muted/60 rounded-2xl border border-border/50 w-full min-w-0">
+            <div className="grid grid-cols-3 gap-1.5 p-1 bg-muted/60 rounded-2xl border border-border/50 w-full min-w-0 max-w-full overflow-hidden">
                 {tracks.map((track) => {
                     const isSelected = activeKey === track.key;
                     return (
@@ -89,7 +89,7 @@ export function LearningStepsSection({
             </div>
 
             {/* Active Track Content Card */}
-            <div className="p-4 sm:p-5 rounded-2xl bg-card border border-border/70 shadow-xs space-y-2 fade-in">
+            <div className="p-4 sm:p-5 rounded-2xl bg-card border border-border/70 shadow-xs space-y-2 fade-in w-full min-w-0 max-w-full overflow-hidden">
                 <div className="flex items-center gap-2 pb-1 border-b border-border/40">
                     <span className="text-lg">{activeTrack.emoji}</span>
                     <div className="min-w-0 flex-1">
@@ -99,7 +99,7 @@ export function LearningStepsSection({
                         <p className="text-[11px] text-muted-foreground truncate">{activeTrack.subtitle}</p>
                     </div>
                 </div>
-                <p className="text-xs sm:text-sm text-foreground/90 leading-relaxed pt-1 whitespace-pre-line">
+                <p className="text-xs sm:text-sm text-foreground/90 leading-relaxed pt-1 whitespace-pre-line break-words [overflow-wrap:anywhere]">
                     {activeTrack.desc}
                 </p>
             </div>

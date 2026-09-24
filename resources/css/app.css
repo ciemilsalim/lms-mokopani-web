@@ -306,3 +306,196 @@
     box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08);
 }
 
+/* ==========================================================================
+   Responsive Prose & Rich Text Editor Content Containment
+   Guarantees that all paragraphs, headings, tables, code blocks, images,
+   and Quill/RichText HTML elements wrap within boundaries and never 
+   overflow card margins or viewport edges.
+   ========================================================================== */
+.prose,
+.material-content {
+    max-width: 100% !important;
+    min-width: 0 !important;
+    word-break: break-word !important;
+    overflow-wrap: anywhere !important;
+    box-sizing: border-box !important;
+}
+
+.prose *,
+.material-content * {
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+.prose p,
+.prose h1,
+.prose h2,
+.prose h3,
+.prose h4,
+.prose h5,
+.prose h6,
+.prose li,
+.prose blockquote,
+.material-content p,
+.material-content h1,
+.material-content h2,
+.material-content h3,
+.material-content h4,
+.material-content h5,
+.material-content h6,
+.material-content li,
+.material-content blockquote {
+    word-break: break-word !important;
+    overflow-wrap: anywhere !important;
+    max-width: 100% !important;
+}
+
+.prose p {
+    margin-top: 0.75em;
+    margin-bottom: 0.75em;
+    line-height: 1.7;
+}
+
+.prose h1, .material-content h1 {
+    font-size: 1.5rem;
+    font-weight: 800;
+    margin-top: 1.25em;
+    margin-bottom: 0.5em;
+    line-height: 1.3;
+}
+
+.prose h2, .material-content h2 {
+    font-size: 1.25rem;
+    font-weight: 800;
+    margin-top: 1.15em;
+    margin-bottom: 0.5em;
+    line-height: 1.35;
+}
+
+.prose h3, .material-content h3 {
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-top: 1em;
+    margin-bottom: 0.4em;
+    line-height: 1.4;
+}
+
+.prose ul, .material-content ul {
+    list-style-type: disc;
+    padding-left: 1.5rem;
+    margin-top: 0.5em;
+    margin-bottom: 0.5em;
+}
+
+.prose ol, .material-content ol {
+    list-style-type: decimal;
+    padding-left: 1.5rem;
+    margin-top: 0.5em;
+    margin-bottom: 0.5em;
+}
+
+.prose blockquote, .material-content blockquote {
+    border-left: 3px solid var(--primary);
+    padding-left: 1rem;
+    margin: 1rem 0;
+    font-style: italic;
+    color: var(--muted-foreground);
+    background: rgba(94, 106, 210, 0.04);
+    border-radius: 0 0.5rem 0.5rem 0;
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+}
+
+/* Ensure code blocks stay bounded and wrap or scroll cleanly */
+.prose pre,
+.prose .ql-syntax,
+.material-content pre {
+    white-space: pre-wrap !important;
+    word-break: break-all !important;
+    overflow-x: auto !important;
+    max-width: 100% !important;
+    border-radius: 0.75rem;
+    padding: 0.75rem 1rem;
+    background-color: var(--muted);
+    color: var(--foreground);
+    border: 1px solid var(--border);
+}
+
+.prose code,
+.material-content code {
+    word-break: break-all !important;
+    white-space: normal !important;
+    font-size: 0.875em;
+    background-color: var(--muted);
+    padding: 0.15rem 0.35rem;
+    border-radius: 0.375rem;
+}
+
+/* Ensure tables stay within card boundaries and scroll cleanly if wide */
+.prose table,
+.material-content table {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    border-collapse: collapse;
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+}
+
+.prose table td,
+.prose table th,
+.material-content table td,
+.material-content table th {
+    min-width: 80px;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--border);
+    word-break: normal !important;
+}
+
+/* Ensure images and media never overflow container */
+.prose img,
+.material-content img {
+    max-width: 100% !important;
+    height: auto !important;
+    border-radius: 0.75rem;
+    display: block;
+    margin: 0.75rem auto;
+}
+
+.prose iframe,
+.prose .ql-video,
+.material-content iframe {
+    max-width: 100% !important;
+    width: 100% !important;
+    aspect-ratio: 16 / 9;
+    height: auto !important;
+    border-radius: 0.75rem;
+    border: none;
+}
+
+/* Quill Indent Rules with Safe Mobile Scale */
+.prose .ql-indent-1, .material-content .ql-indent-1 { padding-left: 1.25rem !important; }
+.prose .ql-indent-2, .material-content .ql-indent-2 { padding-left: 2.25rem !important; }
+.prose .ql-indent-3, .material-content .ql-indent-3 { padding-left: 3.25rem !important; }
+.prose .ql-indent-4, .material-content .ql-indent-4 { padding-left: 4.25rem !important; }
+.prose .ql-indent-5, .material-content .ql-indent-5 { padding-left: 5.25rem !important; }
+.prose .ql-indent-6, .material-content .ql-indent-6 { padding-left: 6.25rem !important; }
+.prose .ql-indent-7, .material-content .ql-indent-7 { padding-left: 7.25rem !important; }
+.prose .ql-indent-8, .material-content .ql-indent-8 { padding-left: 8.25rem !important; }
+
+@media (max-width: 640px) {
+    .prose .ql-indent-1, .material-content .ql-indent-1,
+    .prose .ql-indent-2, .material-content .ql-indent-2,
+    .prose .ql-indent-3, .material-content .ql-indent-3,
+    .prose .ql-indent-4, .material-content .ql-indent-4,
+    .prose .ql-indent-5, .material-content .ql-indent-5,
+    .prose .ql-indent-6, .material-content .ql-indent-6,
+    .prose .ql-indent-7, .material-content .ql-indent-7,
+    .prose .ql-indent-8, .material-content .ql-indent-8 {
+        padding-left: 0.75rem !important;
+    }
+}
+
+

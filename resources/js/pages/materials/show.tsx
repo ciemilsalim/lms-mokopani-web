@@ -132,7 +132,7 @@ export default function MaterialShow({
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`${material.title} - LMS Mokopani`} />
 
-            <div className="space-y-4 sm:space-y-5 fade-in pb-16 md:pb-6 max-w-4xl mx-auto w-full min-w-0">
+            <div className="space-y-4 sm:space-y-5 fade-in pb-16 md:pb-6 max-w-4xl mx-auto w-full min-w-0 max-w-full">
                 {/* 1. Contextual Header Banner */}
                 <MaterialDetailHeader
                     id={material.id}
@@ -195,12 +195,12 @@ export default function MaterialShow({
 
                 {/* 2. Tujuan Pembelajaran (Explicit Goal Card) */}
                 {material.tp_desc && (
-                    <div className="p-3.5 sm:p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-foreground space-y-1 fade-in">
-                        <div className="flex items-center gap-2 text-xs font-bold text-amber-700 dark:text-amber-300">
-                            <Sparkles className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                    <div className="p-3.5 sm:p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-foreground space-y-1 fade-in w-full min-w-0 max-w-full overflow-hidden">
+                        <div className="flex items-center gap-2 text-xs font-bold text-amber-700">
+                            <Sparkles className="h-3.5 w-3.5 text-amber-600" />
                             <span>Tujuan Pembelajaran {material.tp_code ? `(TP: ${material.tp_code})` : ''}</span>
                         </div>
-                        <p className="text-xs sm:text-sm text-foreground/90 font-medium leading-relaxed pl-5.5">
+                        <p className="text-xs sm:text-sm text-foreground/90 font-medium leading-relaxed pl-5.5 break-words [overflow-wrap:anywhere]">
                             {material.tp_desc}
                         </p>
                     </div>
@@ -208,15 +208,17 @@ export default function MaterialShow({
 
                 {/* 3. Main Content Area */}
                 {material.content && (
-                    <div className="p-4 sm:p-6 rounded-3xl bg-card border border-border/70 shadow-xs space-y-3 w-full min-w-0">
+                    <div className="p-4 sm:p-6 rounded-3xl bg-card border border-border/70 shadow-xs space-y-3 w-full min-w-0 max-w-full overflow-hidden">
                         <div className="flex items-center gap-2 text-xs font-bold text-primary uppercase tracking-wider pb-1 border-b border-border/40">
                             <BookOpen className="h-4 w-4" />
                             <span>Isi Pembelajaran Utama</span>
                         </div>
-                        <div
-                            className="prose prose-sm sm:prose-base dark:prose-invert max-w-none text-foreground leading-relaxed overflow-x-auto"
-                            dangerouslySetInnerHTML={{ __html: material.content }}
-                        />
+                        <div className="w-full min-w-0 max-w-full overflow-x-auto">
+                            <div
+                                className="prose prose-sm sm:prose-base max-w-none text-foreground leading-relaxed break-words [overflow-wrap:anywhere] [word-break:break-word] material-content"
+                                dangerouslySetInnerHTML={{ __html: material.content }}
+                            />
+                        </div>
                     </div>
                 )}
 
@@ -341,15 +343,15 @@ export default function MaterialShow({
                     </div>
 
                     {/* Reading Content Canvas */}
-                    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-10 space-y-6 sm:space-y-8">
+                    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-10 space-y-6 sm:space-y-8 w-full min-w-0 max-w-full">
                         {/* Goal TP */}
                         {material.tp_desc && (
-                            <div className="p-4 sm:p-5 rounded-3xl bg-amber-500/10 border border-amber-500/25 space-y-1.5">
+                            <div className="p-4 sm:p-5 rounded-3xl bg-amber-500/10 border border-amber-500/25 space-y-1.5 w-full min-w-0 max-w-full overflow-hidden">
                                 <div className="flex items-center gap-2 text-xs font-bold text-amber-700">
                                     <Sparkles className="h-4 w-4 text-amber-600" />
                                     <span>Tujuan Pembelajaran {material.tp_code ? `(TP: ${material.tp_code})` : ''}</span>
                                 </div>
-                                <p className="text-sm sm:text-base text-foreground/90 font-medium leading-relaxed pl-6">
+                                <p className="text-sm sm:text-base text-foreground/90 font-medium leading-relaxed pl-6 break-words [overflow-wrap:anywhere]">
                                     {material.tp_desc}
                                 </p>
                             </div>
@@ -357,15 +359,17 @@ export default function MaterialShow({
 
                         {/* Main Reading Content */}
                         {material.content && (
-                            <div className="p-6 sm:p-8 rounded-3xl bg-card border border-border/70 shadow-xs space-y-4">
+                            <div className="p-4 sm:p-8 rounded-3xl bg-card border border-border/70 shadow-xs space-y-4 w-full min-w-0 max-w-full overflow-hidden">
                                 <div className="flex items-center gap-2 text-xs font-bold text-primary uppercase tracking-wider pb-2 border-b border-border/40">
                                     <BookOpen className="h-4 w-4" />
                                     <span>Isi Pembelajaran</span>
                                 </div>
-                                <div
-                                    className={`prose max-w-none text-foreground ${proseFontSizeClass}`}
-                                    dangerouslySetInnerHTML={{ __html: material.content }}
-                                />
+                                <div className="w-full min-w-0 max-w-full overflow-x-auto">
+                                    <div
+                                        className={`prose max-w-none text-foreground ${proseFontSizeClass} break-words [overflow-wrap:anywhere] [word-break:break-word] material-content`}
+                                        dangerouslySetInnerHTML={{ __html: material.content }}
+                                    />
+                                </div>
                             </div>
                         )}
 

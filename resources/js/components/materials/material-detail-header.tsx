@@ -39,7 +39,7 @@ export function MaterialDetailHeader({
     };
 
     return (
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary/15 via-primary/5 to-card p-4 sm:p-6 border border-primary/20 shadow-xs space-y-3 w-full min-w-0">
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary/15 via-primary/5 to-card p-4 sm:p-6 border border-primary/20 shadow-xs space-y-3 w-full min-w-0 max-w-full">
             {/* Top Row: Meta Badges, Back Button & Teacher Controls */}
             <div className="flex items-center justify-between gap-2 flex-wrap">
                 <div className="flex flex-wrap items-center gap-1.5 min-w-0">
@@ -113,7 +113,7 @@ export function MaterialDetailHeader({
 
             {/* Title */}
             <div className="space-y-1">
-                <h1 className="text-lg sm:text-2xl font-black text-foreground tracking-tight leading-snug">
+                <h1 className="text-lg sm:text-2xl font-black text-foreground tracking-tight leading-snug break-words [overflow-wrap:anywhere]">
                     {title}
                 </h1>
 

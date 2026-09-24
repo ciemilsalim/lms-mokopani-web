@@ -86,7 +86,7 @@ export function MaterialResourcesSection({
     const isMainFileVideo = isVideoFile(mainFilePath) || isVideoFile(mainFileType);
 
     return (
-        <div className="space-y-4 fade-in">
+        <div className="space-y-4 fade-in w-full min-w-0 max-w-full overflow-hidden">
             <SectionHeader
                 title="Materi & Berkas Belajar"
                 subtitle="Dokumen, video, dan tautan pembelajaran pendukung"
@@ -95,7 +95,7 @@ export function MaterialResourcesSection({
 
             {/* External Link Video Embed if YouTube */}
             {externalLink && externalYoutubeEmbed && (
-                <div className="space-y-2 p-4 sm:p-5 rounded-3xl bg-card border border-border/70 shadow-xs">
+                <div className="space-y-2 p-4 sm:p-5 rounded-3xl bg-card border border-border/70 shadow-xs w-full min-w-0 max-w-full overflow-hidden">
                     <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2 text-xs font-bold text-foreground">
                             <Youtube className="h-4 w-4 text-rose-600" />
@@ -125,7 +125,7 @@ export function MaterialResourcesSection({
 
             {/* Main File Media Embeds (if image or video) */}
             {mainFileUrl && isMainFileImage && (
-                <div className="space-y-2 p-4 sm:p-5 rounded-3xl bg-card border border-border/70 shadow-xs">
+                <div className="space-y-2 p-4 sm:p-5 rounded-3xl bg-card border border-border/70 shadow-xs w-full min-w-0 max-w-full overflow-hidden">
                     <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2 text-xs font-bold text-foreground">
                             <ImageIcon className="h-4 w-4 text-amber-600" />
@@ -170,7 +170,7 @@ export function MaterialResourcesSection({
             )}
 
             {mainFileUrl && isMainFileVideo && (
-                <div className="space-y-2 p-4 sm:p-5 rounded-3xl bg-card border border-border/70 shadow-xs">
+                <div className="space-y-2 p-4 sm:p-5 rounded-3xl bg-card border border-border/70 shadow-xs w-full min-w-0 max-w-full overflow-hidden">
                     <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2 text-xs font-bold text-foreground">
                             <Video className="h-4 w-4 text-sky-600" />
