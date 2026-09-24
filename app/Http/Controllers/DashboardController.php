@@ -282,8 +282,8 @@ class DashboardController extends Controller
                 ->select('subject_id')->distinct());
         }
 
-        $data = $query->withCount('materials')
-            ->having('materials_count', '>', 0)
+        $data = $query->has('materials')
+            ->withCount('materials')
             ->get()
             ->values()
             ->map(fn ($s, $i) => [

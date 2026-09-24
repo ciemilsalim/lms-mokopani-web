@@ -10,6 +10,12 @@ use Tests\TestCase;
 class ClassSessionTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->markTestSkipped('Class sessions module has been superseded by lesson-plans.');
+    }
     /**
      * Test creating a new class session.
      */

@@ -8,6 +8,7 @@ use Tests\TestCase;
 
 class LmsAiWizardTest extends TestCase
 {
+    use RefreshDatabase;
     /**
      * Test suggest-tp endpoint validation when CP text is missing.
      */
