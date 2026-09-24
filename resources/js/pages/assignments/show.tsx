@@ -619,6 +619,7 @@ interface ShowAssignmentProps {
     auth_id: number;
     available_peers?: Student[];
     selected_class_id?: number | 'all';
+    selected_subject_id?: number | null;
     assigned_classes?: { id: number; name: string; students_count?: number }[];
 }
 
@@ -632,6 +633,7 @@ export default function ShowAssignment({
     auth_id,
     available_peers = [],
     selected_class_id,
+    selected_subject_id,
     assigned_classes = [],
 }: ShowAssignmentProps) {
     const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
@@ -2168,6 +2170,10 @@ export default function ShowAssignment({
         { title: 'Daftar Kelas', href: '/classes' },
         { title: selectedClassObj?.name || 'Detail Kelas', href: `/classes/${selected_class_id}?tab=assignments` },
         { title: assignment.title, href: '#' },
+    ] : selected_subject_id ? [
+        { title: 'Mata Pelajaran', href: '/subjects' },
+        { title: assignment.subject || 'Detail Mapel', href: `/subjects/${selected_subject_id}` },
+        { title: assignment.title, href: '#' },
     ] : [
         { title: 'Dashboard', href: '/dashboard' },
         { title: 'Asesmen', href: '/assignments' },
@@ -2193,7 +2199,11 @@ export default function ShowAssignment({
                             assessmentType={assignment.assessment_type}
                             isTeacher={false}
                             onDelete={handleDelete}
-                            backUrl={(selected_class_id && selected_class_id !== 'all') ? `/classes/${selected_class_id}?tab=assignments` : undefined}
+                            backUrl={(selected_class_id && selected_class_id !== 'all') 
+                                ? `/classes/${selected_class_id}?tab=assignments` 
+                                : selected_subject_id 
+                                    ? `/subjects/${selected_subject_id}` 
+                                    : undefined}
                         />
 
                         <AssessmentInstructions
@@ -2419,6 +2429,7 @@ export default function ShowAssignment({
                             students={students}
                             assignedClasses={assigned_classes}
                             selectedClassId={selected_class_id}
+                            selectedSubjectId={selected_subject_id}
                             onOpenObservationModal={openObservationModal}
                             onOpenAnecdotalModal={openAnecdotalModal}
                             onOpenRubricModal={openRubricModal}

@@ -1,4 +1,4 @@
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { Lock, ArrowLeft } from 'lucide-react';
 
 export default function Error403() {
@@ -30,7 +30,7 @@ export default function Error403() {
                         </p>
                         
                         <button 
-                            onClick={() => window.history.back()}
+                            onClick={() => window.history.length > 1 ? window.history.back() : router.visit('/dashboard')}
                             className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#5E6AD2] to-[#5E6AD2]/80 px-6 py-3 text-sm font-bold text-white transition-all hover:scale-[1.02] hover:shadow-lg hover:shadow-[#5E6AD2]/25 active:scale-95 w-full sm:w-auto"
                         >
                             <ArrowLeft className="h-4.5 w-4.5" />

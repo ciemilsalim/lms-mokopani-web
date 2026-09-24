@@ -47,8 +47,20 @@ export default function CreateRemedial({ teachings = [] }: { teachings?: Teachin
     const { flash } = usePage<{ flash: Flash }>().props;
 
     const [step, setStep] = useState(1);
-    const [subjectId, setSubjectId] = useState('');
-    const [classId, setClassId] = useState('');
+    const [subjectId, setSubjectId] = useState(() => {
+        if (typeof window !== 'undefined') {
+            const params = new URLSearchParams(window.location.search);
+            return params.get('subject_id') || '';
+        }
+        return '';
+    });
+    const [classId, setClassId] = useState(() => {
+        if (typeof window !== 'undefined') {
+            const params = new URLSearchParams(window.location.search);
+            return params.get('class_id') || '';
+        }
+        return '';
+    });
     const [type, setType] = useState<'remedial' | 'pengayaan'>('remedial');
     const [loading, setLoading] = useState(false);
     const [errorMessage, setErrorMessage] = useState('');
@@ -194,7 +206,11 @@ export default function CreateRemedial({ teachings = [] }: { teachings?: Teachin
                 <button
                     onClick={() => {
                         if (step === 1) {
-                            window.history.back();
+                            if (window.history.length > 1) {
+                                window.history.back();
+                            } else {
+                                router.visit('/remedial');
+                            }
                         } else {
                             setStep(1);
                             setErrorMessage('');

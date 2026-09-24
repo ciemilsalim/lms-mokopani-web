@@ -71,7 +71,7 @@ export function AppSidebarHeader({ breadcrumbs = [] }: { breadcrumbs?: Breadcrum
                 <div className="md:hidden flex items-center gap-1.5 min-w-0">
                     {hasBackHistory ? (
                         <div className="flex items-center gap-1.5 min-w-0">
-                            {prevBreadcrumb?.href ? (
+                            {prevBreadcrumb?.href && prevBreadcrumb.href !== '#' ? (
                                 <Link
                                     href={prevBreadcrumb.href}
                                     className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted/60 text-foreground active:scale-95 transition-transform"
@@ -82,7 +82,7 @@ export function AppSidebarHeader({ breadcrumbs = [] }: { breadcrumbs?: Breadcrum
                             ) : (
                                 <button
                                     type="button"
-                                    onClick={() => window.history.back()}
+                                    onClick={() => window.history.length > 1 ? window.history.back() : router.visit('/dashboard')}
                                     className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted/60 text-foreground active:scale-95 transition-transform"
                                     aria-label="Kembali"
                                 >

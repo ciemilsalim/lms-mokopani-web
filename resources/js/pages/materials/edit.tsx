@@ -1,6 +1,6 @@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
-import { Head } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import { ChevronLeft } from 'lucide-react';
 import { MaterialForm } from '@/components/materials';
 
@@ -30,7 +30,8 @@ export default function EditMaterial({ material, teachings, objectives, errors =
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Dashboard', href: '/dashboard' },
         { title: 'Bahan Materi', href: '/materials' },
-        { title: 'Edit Materi', href: '#' },
+        { title: material.title, href: route('materials.show', material.id) },
+        { title: 'Edit', href: '#' },
     ];
 
     // Filter out image type resources for the main resource editor (handled in image modal)
@@ -68,8 +69,8 @@ export default function EditMaterial({ material, teachings, objectives, errors =
                 {/* Page Header */}
                 <div className="space-y-1 mb-6 sm:mb-8">
                     <button
-                        onClick={() => window.history.back()}
-                        className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground hover:text-foreground transition mb-3 min-h-[44px] -ml-1 px-1"
+                        onClick={() => window.history.length > 1 ? window.history.back() : router.visit(route('materials.show', material.id))}
+                        className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground hover:text-foreground transition mb-3 min-h-[44px] -ml-1 px-1 cursor-pointer"
                     >
                         <ChevronLeft className="h-4 w-4" />
                         Kembali

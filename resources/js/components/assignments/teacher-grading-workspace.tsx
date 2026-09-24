@@ -39,6 +39,7 @@ interface TeacherGradingWorkspaceProps {
     students: Student[];
     assignedClasses?: { id: number; name: string; students_count?: number }[];
     selectedClassId?: number | 'all';
+    selectedSubjectId?: number | null;
     onOpenObservationModal: (student: Student, existingSubmission?: Submission) => void;
     onOpenAnecdotalModal: (student: Student, existingSubmission?: Submission) => void;
     onOpenRubricModal: (student: Student, existingSubmission?: Submission) => void;
@@ -63,6 +64,7 @@ export function TeacherGradingWorkspace({
     students = [],
     assignedClasses = [],
     selectedClassId,
+    selectedSubjectId,
     onOpenObservationModal,
     onOpenAnecdotalModal,
     onOpenRubricModal,
@@ -352,9 +354,21 @@ export function TeacherGradingWorkspace({
                         {/* Contextual Back Navigation */}
                         <button
                             type="button"
-                            onClick={() => router.visit(selectedClassId && selectedClassId !== 'all' ? `/classes/${selectedClassId}?tab=assignments` : route('assignments.index'))}
+                            onClick={() => router.visit(
+                                (selectedClassId && selectedClassId !== 'all') 
+                                    ? `/classes/${selectedClassId}?tab=assignments` 
+                                    : selectedSubjectId 
+                                        ? `/subjects/${selectedSubjectId}` 
+                                        : route('assignments.index')
+                            )}
                             className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-border bg-background hover:bg-muted text-xs font-bold text-foreground transition cursor-pointer min-h-[44px]"
-                            title={selectedClassId && selectedClassId !== 'all' ? `Kembali ke ${selectedClassName}` : 'Kembali ke Daftar Asesmen'}
+                            title={
+                                (selectedClassId && selectedClassId !== 'all') 
+                                    ? `Kembali ke ${selectedClassName}` 
+                                    : selectedSubjectId 
+                                        ? 'Kembali ke Mata Pelajaran' 
+                                        : 'Kembali ke Daftar Asesmen'
+                            }
                         >
                             <ArrowLeft className="h-4 w-4" />
                             <span className="hidden sm:inline">Kembali</span>

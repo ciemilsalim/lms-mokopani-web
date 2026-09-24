@@ -78,7 +78,8 @@ export default function Edit({ modulAjar, teachings, objectives, materials, peri
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Dashboard', href: '/dashboard' },
         { title: 'Pembelajaran', href: '/lesson-plans' },
-        { title: `Edit Modul Ajar #${modulAjar.id}`, href: `/lesson-plans/${modulAjar.id}/edit` },
+        { title: `Modul Ajar #${modulAjar.id}`, href: route('lesson-plans.show', modulAjar.id) },
+        { title: 'Edit', href: '#' },
     ];
 
     const [pedagogicalModel, setPedagogicalModel] = useState<string>(modulAjar.pedagogical_model || 'PBL');
@@ -356,10 +357,14 @@ export default function Edit({ modulAjar, teachings, objectives, materials, peri
                 {/* Top Back Action & Title */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
-                        <Link href={route('lesson-plans.index')} className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition">
+                        <button
+                            type="button"
+                            onClick={() => window.history.length > 1 ? window.history.back() : router.visit(route('lesson-plans.show', modulAjar.id))}
+                            className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition"
+                        >
                             <ChevronLeft className="h-4 w-4" />
-                            Kembali
-                        </Link>
+                            Kembali ke Detail Modul Ajar
+                        </button>
                         <h1 className="text-xl font-bold text-foreground">Edit Modul Ajar</h1>
                     </div>
                 </div>

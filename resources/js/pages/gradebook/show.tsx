@@ -1,6 +1,6 @@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { 
     ChevronLeft, 
     Search,
@@ -120,8 +120,8 @@ export default function GradebookShow({ summative_headers = [], initial_headers 
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pt-2">
                     <div>
                         <button 
-                            onClick={() => window.history.back()}
-                            className="mb-1.5 flex items-center gap-1.5 text-xs font-bold text-muted-foreground hover:text-primary transition active:scale-95"
+                            onClick={() => window.history.length > 1 ? window.history.back() : router.visit(route('gradebook.index'))}
+                            className="mb-1.5 flex items-center gap-1.5 text-xs font-bold text-muted-foreground hover:text-primary transition active:scale-95 cursor-pointer"
                         >
                             <ChevronLeft className="h-4 w-4" />
                             <span>Kembali ke Daftar Kelas</span>

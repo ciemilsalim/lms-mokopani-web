@@ -492,10 +492,10 @@ export default function Show({ modulAjar, assignments }: any) {
                 {/* Action Bar (Not printed) */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 print:hidden">
                     <button 
-                        onClick={() => window.history.back()}
-                        className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition self-start sm:self-auto"
+                        onClick={() => window.history.length > 1 ? window.history.back() : router.visit('/lesson-plans')}
+                        className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition self-start sm:self-auto cursor-pointer"
                     >
-                        <ChevronLeft className="h-4 w-4" /> Kembali
+                        <ChevronLeft className="h-4 w-4" /> Kembali ke Pembelajaran
                     </button>
                     <div className="flex flex-wrap gap-2 sm:gap-3 w-full sm:w-auto justify-end">
                         <button

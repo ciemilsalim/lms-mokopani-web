@@ -124,6 +124,7 @@ export default function SubjectShow({ subject, learning_path, diagnostic_summary
                     learningPath={learning_path}
                     diagnosticSummary={diagnostic_summary}
                     isStudent={isStudent}
+                    subjectId={subject.id}
                 />
             </div>
         </AppLayout>

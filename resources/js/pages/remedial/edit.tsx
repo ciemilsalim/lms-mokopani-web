@@ -4,11 +4,6 @@ import { Head, router, usePage } from '@inertiajs/react';
 import { ChevronLeft, Save, Trash2, User, BookOpen, AlertCircle } from 'lucide-react';
 import { useState } from 'react';
 
-const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Dashboard', href: '/dashboard' },
-    { title: 'Remedial & Pengayaan', href: '/remedial' },
-    { title: 'Detail', href: '#' },
-];
 
 interface Student {
     id: number;
@@ -85,17 +80,23 @@ export default function EditRemedial({ record }: EditRemedialProps) {
         router.delete(route('remedial.destroy', record.id));
     };
 
+    const breadcrumbs: BreadcrumbItem[] = [
+        { title: 'Dashboard', href: '/dashboard' },
+        { title: 'Remedial & Pengayaan', href: '/remedial' },
+        { title: `${record.type === 'remedial' ? 'Remedial' : 'Pengayaan'}: ${record.student.name}`, href: '#' },
+    ];
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`Detail ${record.type === 'remedial' ? 'Remedial' : 'Pengayaan'} – LMS Mokopani`} />
 
             <div className="space-y-4 sm:space-y-6 min-w-0 fade-in pb-24 sm:pb-8 max-w-7xl mx-auto w-full px-1 sm:px-0">
                 <button
-                    onClick={() => window.history.back()}
+                    onClick={() => window.history.length > 1 ? window.history.back() : router.visit('/remedial')}
                     className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary transition w-fit min-h-[44px]"
                 >
                     <ChevronLeft className="h-4 w-4" />
-                    Kembali
+                    Kembali ke Daftar Remedial & Pengayaan
                 </button>
 
                 <div className="grid gap-6 lg:grid-cols-3">

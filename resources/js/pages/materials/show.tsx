@@ -57,6 +57,7 @@ interface ShowMaterialProps {
     assignments?: any[];
     school_name?: string;
     class_id?: number | null;
+    subject_id?: number | null;
 }
 
 export default function MaterialShow({
@@ -70,6 +71,7 @@ export default function MaterialShow({
     assignments = [],
     school_name,
     class_id,
+    subject_id,
 }: ShowMaterialProps) {
     const [isDeleting, setIsDeleting] = useState(false);
 
@@ -82,12 +84,18 @@ export default function MaterialShow({
 
     const backUrl = class_id 
         ? `/classes/${class_id}?tab=materials` 
-        : '/materials';
+        : subject_id
+            ? `/subjects/${subject_id}`
+            : '/materials';
 
     const breadcrumbs: BreadcrumbItem[] = class_id ? [
         { title: 'Daftar Kelas', href: '/classes' },
         { title: targetClassName, href: `/classes/${class_id}?tab=materials` },
         { title: material.title, href: `/materials/${material.id}?class_id=${class_id}` },
+    ] : subject_id ? [
+        { title: 'Mata Pelajaran', href: '/subjects' },
+        { title: material.subject_name || 'Detail Mapel', href: `/subjects/${subject_id}` },
+        { title: material.title, href: `/materials/${material.id}?subject_id=${subject_id}` },
     ] : [
         { title: 'Bahan Materi', href: '/materials' },
         { title: material.title, href: `/materials/${material.id}` },

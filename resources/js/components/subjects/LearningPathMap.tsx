@@ -33,9 +33,10 @@ interface LearningPathMapProps {
     learningPath: LearningObjective[];
     diagnosticSummary: DiagnosticSummary | null;
     isStudent: boolean;
+    subjectId?: number;
 }
 
-export default function LearningPathMap({ learningPath, diagnosticSummary, isStudent }: LearningPathMapProps) {
+export default function LearningPathMap({ learningPath, diagnosticSummary, isStudent, subjectId }: LearningPathMapProps) {
     const masteredTpIds = diagnosticSummary?.mastered_tp_ids ?? [];
 
     const isTPAccessible = (index: number) => {
@@ -63,6 +64,7 @@ export default function LearningPathMap({ learningPath, diagnosticSummary, isStu
                                 isAccessible={isAccessible}
                                 isMastered={isMastered && !tp.is_completed}
                                 total={learningPath.length}
+                                subjectId={subjectId}
                             />
                         </div>
                     );

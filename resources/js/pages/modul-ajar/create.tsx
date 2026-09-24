@@ -103,11 +103,11 @@ export default function Create({ teachings, objectives, materials, period }: Cre
             <div className="flex h-full flex-1 flex-col gap-5 sm:gap-6 pb-20 md:pb-0">
                 <div className="flex items-center justify-between">
                     <button 
-                        onClick={() => window.history.back()}
+                        onClick={() => window.history.length > 1 ? window.history.back() : router.visit('/lesson-plans')}
                         className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground hover:text-foreground transition active:scale-95"
                     >
                         <ChevronLeft className="h-4 w-4" />
-                        Kembali
+                        Kembali ke Modul Ajar
                     </button>
                     <h1 className="text-base sm:text-xl font-black text-foreground">Perakit Modul Ajar</h1>
                 </div>

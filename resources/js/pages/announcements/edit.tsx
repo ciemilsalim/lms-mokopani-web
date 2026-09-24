@@ -3,11 +3,6 @@ import { type BreadcrumbItem } from '@/types';
 import { Head, useForm, router } from '@inertiajs/react';
 import { Megaphone, X, ChevronLeft } from 'lucide-react';
 
-const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Dashboard', href: '/dashboard' },
-    { title: 'Pengumuman', href: '/announcements' },
-    { title: 'Edit Pengumuman', href: '' },
-];
 
 interface Announcement {
     id: number;
@@ -43,17 +38,23 @@ export default function EditAnnouncement({ announcement, classes }: EditProps) {
         }
     };
 
+    const breadcrumbs: BreadcrumbItem[] = [
+        { title: 'Dashboard', href: '/dashboard' },
+        { title: 'Pengumuman', href: '/announcements' },
+        { title: announcement.title, href: '#' },
+    ];
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Edit Pengumuman" />
 
             <div className="flex h-full flex-1 flex-col gap-6 min-w-0 fade-in">
                 <button
-                    onClick={() => window.history.back()}
+                    onClick={() => window.history.length > 1 ? window.history.back() : router.visit('/announcements')}
                     className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary transition w-fit cursor-pointer"
                 >
                     <ChevronLeft className="h-4 w-4" />
-                    Kembali
+                    Kembali ke Daftar Pengumuman
                 </button>
 
                 <div className="max-w-3xl w-full">

@@ -5,11 +5,6 @@ import { Heart, Calendar, Users, BookOpen, Pencil, Trash2, CheckCircle2, XCircle
 import { useState } from 'react';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 
-const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Dashboard', href: '/dashboard' },
-    { title: 'Projek P5', href: '/p5' },
-    { title: 'Detail Projek', href: '#' },
-];
 
 interface SubElement {
     id: number;
@@ -139,13 +134,19 @@ export default function P5Show({ project, dimensi, students }: P5ShowProps) {
     const totalSubElements = dimensi.reduce((s, d) => s + d.elements.reduce((s2, e) => s2 + e.sub_elements.length, 0), 0);
     const totalScores = project.scores.length;
 
+    const breadcrumbs: BreadcrumbItem[] = [
+        { title: 'Dashboard', href: '/dashboard' },
+        { title: 'Projek P5', href: '/p5' },
+        { title: project.judul, href: '#' },
+    ];
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`${project.judul} – P5`} />
 
             <div className="flex h-full flex-1 flex-col gap-6 min-w-0">
                 <button 
-                    onClick={() => window.history.back()}
+                    onClick={() => window.history.length > 1 ? window.history.back() : router.visit('/p5')}
                     className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition self-start w-fit"
                 >
                     <ChevronLeft className="h-4 w-4" /> Kembali ke Daftar Projek

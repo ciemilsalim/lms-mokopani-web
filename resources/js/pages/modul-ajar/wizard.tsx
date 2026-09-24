@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Head, router } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
+import { type BreadcrumbItem } from '@/types';
+import { ChevronLeft } from 'lucide-react';
 import { WizardStepper } from '@/components/wizard/WizardStepper';
 import { TpStep, TpItem } from '@/components/wizard/TpStep';
 import { AtpStep } from '@/components/wizard/AtpStep';
@@ -16,6 +18,12 @@ const WIZARD_STEPS = [
     { id: 1, title: 'Formulasi TP', description: 'Analisis CP (Kompetensi + Konten)' },
     { id: 2, title: 'Urutan ATP', description: 'Metode Pengurutan Logis PPA 2025' },
     { id: 3, title: 'KKTP & Rubrik', description: 'Penetapan Standar Ketercapaian' },
+];
+
+const breadcrumbs: BreadcrumbItem[] = [
+    { title: 'Dashboard', href: '/dashboard' },
+    { title: 'Pembelajaran', href: '/lesson-plans' },
+    { title: 'Wizard Modul Ajar', href: '#' },
 ];
 
 export default function ModulAjarWizardPage({ cpList, teachings, period }: ModulAjarWizardProps) {
@@ -60,10 +68,19 @@ export default function ModulAjarWizardPage({ cpList, teachings, period }: Modul
     };
 
     return (
-        <AppLayout title="Wizard Modul Ajar PPA 2025">
+        <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Wizard Modul Ajar PPA 2025" />
 
             <div className="max-w-4xl mx-auto py-6 px-4 sm:px-6">
+                <button
+                    type="button"
+                    onClick={() => router.visit('/lesson-plans')}
+                    className="inline-flex items-center gap-1.5 text-xs font-bold text-muted-foreground hover:text-primary transition mb-4 min-h-[44px] cursor-pointer"
+                >
+                    <ChevronLeft className="h-4 w-4" />
+                    <span>Kembali ke Modul Ajar</span>
+                </button>
+
                 {/* Header */}
                 <div className="mb-6">
                     <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">

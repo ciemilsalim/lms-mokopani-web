@@ -241,6 +241,7 @@ class AssignmentController extends Controller
         $activeYear = \App\Models\AcademicYear::getActive();
         $activeSemester = \App\Models\Semester::getActive();
         $initialClassId = $request->query('class_id') ? (int) $request->query('class_id') : null;
+        $initialSubjectId = $request->query('subject_id') ? (int) $request->query('subject_id') : null;
         
         // Ambil data pengampuan (Subject + Class) dari tabel teaching_assignments di Absensi
         $teachings = \App\Models\TeachingAssignment::with(['subject', 'schoolClass'])
@@ -311,6 +312,7 @@ class AssignmentController extends Controller
                 ['id' => 'anecdotal_notes',  'name' => 'Catatan Anekdotal',   'icon' => 'file-text',    'desc' => 'Catatan naratif pengamatan guru'],
             ],
             'initial_class_id' => $initialClassId,
+            'initial_subject_id' => $initialSubjectId,
         ]);
     }
 
@@ -381,6 +383,8 @@ class AssignmentController extends Controller
 
         // Determine active class filter (e.g. from query param or default to the first class if multiple classes exist)
         $classParam = $request->query('class_id');
+        $subjectParam = $request->query('subject_id');
+        $selectedSubjectId = $subjectParam ? (int) $subjectParam : null;
         if ($classParam && in_array((int)$classParam, $assignedClassIds)) {
             $selectedClassId = (int)$classParam;
         } elseif ($classParam === 'all') {
@@ -654,6 +658,7 @@ class AssignmentController extends Controller
             'available_peers'   => $availablePeers,
             'readiness_status'  => $readinessStatus,
             'selected_class_id' => $selectedClassId,
+            'selected_subject_id' => $selectedSubjectId,
             'assigned_classes'  => $assignedClasses->map(fn($c) => [
                 'id'             => $c->id,
                 'name'           => $c->name,

@@ -340,6 +340,7 @@ class MaterialController extends Controller
     {
         $user = Auth::user();
         $classIdParam = $request->query('class_id');
+        $subjectIdParam = $request->query('subject_id');
         $material->load(['subject', 'teacher', 'learningObjective', 'resources', 'schoolClasses', 'semester', 'academicYear']);
 
         $readinessStatus = [
@@ -529,6 +530,7 @@ class MaterialController extends Controller
             'headmaster_nip'  => $headmasterNip,
             'readiness_status' => $readinessStatus,
             'class_id'         => $classIdParam ? (int) $classIdParam : null,
+            'subject_id'       => $subjectIdParam ? (int) $subjectIdParam : null,
         ]);
     }
 

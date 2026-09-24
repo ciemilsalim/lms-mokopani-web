@@ -36,6 +36,17 @@ interface ReportLearningProps {
 }
 
 export default function ReportLearning({ subject, class: cls, tps, reportData, period, kktp }: ReportLearningProps) {
+    const backUrl = (cls?.id && subject?.id)
+        ? route('gradebook.show', { class_id: cls.id, subject_id: subject.id })
+        : route('gradebook.index');
+
+    const breadcrumbs: BreadcrumbItem[] = [
+        { title: 'Dashboard', href: '/dashboard' },
+        { title: 'Rapor', href: '/gradebook' },
+        { title: `${cls?.name ? `Kelas ${cls.name}` : 'Detail Kelas'} (${subject?.name || ''})`, href: backUrl },
+        { title: 'Laporan CP', href: '#' },
+    ];
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`Laporan CP ${subject.name} – LMS Mokopani`} />
@@ -43,11 +54,11 @@ export default function ReportLearning({ subject, class: cls, tps, reportData, p
             <div className="space-y-4 sm:space-y-5 fade-in pb-24 sm:pb-8 max-w-7xl mx-auto w-full min-w-0">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <Link
-                        href={route('gradebook.index')}
-                        className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary transition"
+                        href={backUrl}
+                        className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground hover:text-primary transition min-h-[44px]"
                     >
                         <ChevronLeft className="h-4 w-4" />
-                        Kembali
+                        <span>Kembali ke Alur Asesmen</span>
                     </Link>
                     <h1 className="text-xl font-bold text-foreground">Laporan Capaian Pembelajaran</h1>
                 </div>

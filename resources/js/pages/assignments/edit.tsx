@@ -4,12 +4,6 @@ import { Head, router } from '@inertiajs/react';
 import { ArrowLeft } from 'lucide-react';
 import { AssessmentForm } from '@/components/assignments';
 
-const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Dashboard', href: '/dashboard' },
-    { title: 'Asesmen', href: '/assignments' },
-    { title: 'Edit Asesmen', href: '#' },
-];
-
 interface EditAssignmentProps {
     assignment: any;
     teachings: any[];
@@ -29,6 +23,13 @@ export default function EditAssignment({
     holidays,
     scoring_tools,
 }: EditAssignmentProps) {
+    const breadcrumbs: BreadcrumbItem[] = [
+        { title: 'Dashboard', href: '/dashboard' },
+        { title: 'Asesmen', href: '/assignments' },
+        { title: assignment.title, href: route('assignments.show', assignment.id) },
+        { title: 'Edit Asesmen', href: '#' },
+    ];
+
     return (
         <AppLayout breadcrumbs={breadcrumbs} hideBottomNav={true}>
             <Head title={`Edit ${assignment.title} – LMS Mokopani`} />

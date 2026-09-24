@@ -4,11 +4,6 @@ import { Head, router } from '@inertiajs/react';
 import { ChevronLeft, Save, User, Eye, Ear, Hand, BookOpen, Brain, Heart, Star, Users, Home } from 'lucide-react';
 import { useState } from 'react';
 
-const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Dashboard', href: '/dashboard' },
-    { title: 'Diagnostik Non-Kognitif', href: '/non-cognitive' },
-    { title: 'Edit', href: '#' },
-];
 
 interface StudentInfo {
     id: number;
@@ -135,17 +130,23 @@ export default function NonCognitiveEdit({ student, diagnostic }: EditProps) {
 
     const setField = (field: string, value: any) => setForm((p) => ({ ...p, [field]: value }));
 
+    const breadcrumbs: BreadcrumbItem[] = [
+        { title: 'Dashboard', href: '/dashboard' },
+        { title: 'Diagnostik Non-Kognitif', href: '/non-cognitive' },
+        { title: student.name, href: '#' },
+    ];
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`Diagnostik ${student.name} – LMS Mokopani`} />
 
             <div className="flex h-full flex-1 flex-col gap-6 min-w-0">
                 <button
-                    onClick={() => window.history.back()}
+                    onClick={() => window.history.length > 1 ? window.history.back() : router.visit('/non-cognitive')}
                     className="flex items-center gap-2 text-sm font-bold text-muted-foreground hover:text-primary transition w-fit cursor-pointer"
                 >
                     <ChevronLeft className="h-4 w-4" />
-                    Kembali
+                    Kembali ke Daftar Siswa
                 </button>
 
                 <div className="grid gap-6 lg:grid-cols-3">

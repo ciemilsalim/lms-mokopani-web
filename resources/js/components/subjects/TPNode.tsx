@@ -31,9 +31,10 @@ interface TPNodeProps {
     isAccessible: boolean;
     isMastered?: boolean;
     total: number;
+    subjectId?: number;
 }
 
-export default function TPNode({ tp, index, isAccessible, isMastered, total }: TPNodeProps) {
+export default function TPNode({ tp, index, isAccessible, isMastered, total, subjectId }: TPNodeProps) {
     const [expanded, setExpanded] = useState(false);
 
     const isCompleted = tp.is_completed;
@@ -135,7 +136,8 @@ export default function TPNode({ tp, index, isAccessible, isMastered, total }: T
                         <div className="mt-2 space-y-1.5 animate-in slide-in-from-top-2 duration-200">
                             {tp.items.map((item) => {
                                 const isMaterial = item.type === 'material';
-                                const url = isMaterial ? route('materials.show', item.id) : route('assignments.show', item.id);
+                                const baseUrl = isMaterial ? route('materials.show', item.id) : route('assignments.show', item.id);
+                                const url = subjectId ? `${baseUrl}?subject_id=${subjectId}` : baseUrl;
 
                                 return (
                                     <Link

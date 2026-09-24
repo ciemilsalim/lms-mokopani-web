@@ -175,7 +175,10 @@ export default function RemedialIndex({ records, teachings = [], filters }: Reme
                     
                     {/* CTA Button: 48px height, 100% on mobile */}
                     <Link
-                        href={route('remedial.create')}
+                        href={route('remedial.create', {
+                            ...(searchSubject ? { subject_id: searchSubject } : {}),
+                            ...(searchClass ? { class_id: searchClass } : {}),
+                        })}
                         className="inline-flex h-12 w-full sm:w-auto items-center justify-center gap-2 rounded-2xl bg-primary px-5 text-sm font-bold text-white shadow-sm transition hover:bg-primary/90 hover:shadow active:scale-[0.98] shrink-0"
                     >
                         <Plus className="h-5 w-5" />

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Download, Printer, ChevronLeft } from 'lucide-react';
+import { router } from '@inertiajs/react';
 import { cn } from '@/lib/utils';
 
 export interface ReportActionsProps {
@@ -18,7 +19,7 @@ export function ReportActions({
     downloading = false,
     onDownloadPdf,
     onPrint = () => window.print(),
-    onBack = () => window.history.back(),
+    onBack = () => (typeof window !== 'undefined' && window.history.length > 1 ? window.history.back() : router.visit('/gradebook')),
     className = '',
 }: ReportActionsProps) {
     return (

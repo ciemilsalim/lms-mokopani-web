@@ -34,19 +34,28 @@ export default function CreateMaterial({
     initial_subject_id,
     errors = {},
 }: CreateMaterialProps) {
-    // Find class name if initial_class_id is provided
+    // Find class or subject name if initial ID is provided
     const teachingClass = initial_class_id 
         ? teachings.find(t => t.school_class_id === initial_class_id)?.school_class?.name 
+        : null;
+    const teachingSubject = initial_subject_id
+        ? teachings.find(t => t.subject_id === initial_subject_id)?.subject?.name
         : null;
 
     const backUrl = initial_class_id 
         ? `/classes/${initial_class_id}?tab=materials` 
-        : route('materials.index');
+        : initial_subject_id
+            ? `/subjects/${initial_subject_id}`
+            : route('materials.index');
 
     const breadcrumbs: BreadcrumbItem[] = initial_class_id ? [
         { title: 'Daftar Kelas', href: '/classes' },
         { title: teachingClass || 'Detail Kelas', href: `/classes/${initial_class_id}?tab=materials` },
         { title: 'Tambah Materi', href: `/materials/create?class_id=${initial_class_id}` },
+    ] : initial_subject_id ? [
+        { title: 'Mata Pelajaran', href: '/subjects' },
+        { title: teachingSubject || 'Detail Mapel', href: `/subjects/${initial_subject_id}` },
+        { title: 'Tambah Materi', href: `/materials/create?subject_id=${initial_subject_id}` },
     ] : [
         { title: 'Bahan Materi', href: '/materials' },
         { title: 'Tambah Materi', href: '/materials/create' },
