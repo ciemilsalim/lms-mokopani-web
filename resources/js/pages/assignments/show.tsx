@@ -51,7 +51,8 @@ import {
     ZoomIn,
     ZoomOut,
     ClipboardCheck,
-    Target
+    Target,
+    FileBarChart
 } from 'lucide-react';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { ConfirmDialog } from '@/components/confirm-dialog';
