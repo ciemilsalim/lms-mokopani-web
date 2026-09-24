@@ -17,6 +17,7 @@ interface CreateAssignmentProps {
     instruments: Record<string, any[]>;
     holidays: any[];
     scoring_tools: any[];
+    initial_class_id?: number | null;
 }
 
 export default function CreateAssignment({
@@ -26,7 +27,46 @@ export default function CreateAssignment({
     instruments,
     holidays,
     scoring_tools,
+    initial_class_id,
 }: CreateAssignmentProps) {
+    // Find class info if initial_class_id provided
+    const teachingItem = initial_class_id 
+        ? teachings.find(t => t.class_id === initial_class_id)
+        : null;
+    const targetClassName = teachingItem ? teachingItem.class_name : null;
+
+    const backUrl = initial_class_id 
+        ? `/classes/${initial_class_id}?tab=assignments` 
+        : route('assignments.index');
+
+    const breadcrumbs: BreadcrumbItem[] = initial_class_id ? [
+        { title: 'Daftar Kelas', href: '/classes' },
+        { title: targetClassName || 'Detail Kelas', href: `/classes/${initial_class_id}?tab=assignments` },
+        { title: 'Buat Asesmen Baru', href: `/assignments/create?class_id=${initial_class_id}` },
+    ] : [
+        { title: 'Dashboard', href: '/dashboard' },
+        { title: 'Asesmen', href: '/assignments' },
+        { title: 'Buat Asesmen Baru', href: '/assignments/create' },
+    ];
+
+    // Compute initial assignment state if initial_class_id is present
+    const initialAssignment = initial_class_id ? {
+        id: 0,
+        title: '',
+        description: '',
+        subject_id: teachingItem ? teachingItem.subject_id : 0,
+        school_classes: [initial_class_id],
+        learning_objective_id: null,
+        assessment_type: 'formative',
+        instrument_type: 'formative_quiz',
+        instrument_config: {},
+        scoring_tool: null,
+        scoring_tool_config: {},
+        due_date: '',
+        max_points: 100,
+        passing_grade: 75,
+    } : undefined;
+
     return (
         <AppLayout breadcrumbs={breadcrumbs} hideBottomNav={true}>
             <Head title="Buat Asesmen Baru – LMS Mokopani" />
@@ -37,9 +77,9 @@ export default function CreateAssignment({
                     <div className="flex items-center gap-2.5 min-w-0 flex-1">
                         <button
                             type="button"
-                            onClick={() => router.visit(route('assignments.index'))}
+                            onClick={() => router.visit(backUrl)}
                             className="h-11 w-11 rounded-2xl border border-border bg-card text-foreground hover:bg-muted transition flex items-center justify-center cursor-pointer shrink-0"
-                            title="Kembali ke Daftar Asesmen"
+                            title="Kembali"
                         >
                             <ArrowLeft className="h-5 w-5" />
                         </button>
@@ -48,7 +88,7 @@ export default function CreateAssignment({
                                 Buat Asesmen Baru
                             </h1>
                             <p className="text-xs text-muted-foreground truncate">
-                                Wizard perancangan asesmen kurikulum merdeka
+                                {targetClassName ? `Perancangan asesmen untuk kelas ${targetClassName}` : 'Wizard perancangan asesmen kurikulum merdeka'}
                             </p>
                         </div>
                     </div>
@@ -57,6 +97,7 @@ export default function CreateAssignment({
                 {/* Modular Assessment Form Wizard */}
                 <AssessmentForm
                     mode="create"
+                    initialAssignment={initialAssignment}
                     teachings={teachings}
                     objectives={objectives}
                     assessment_types={assessment_types}

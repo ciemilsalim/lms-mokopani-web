@@ -46,7 +46,32 @@ export default function ClassShow({
     materials = [],
     assignments = [],
 }: ClassShowProps) {
-    const [activeTab, setActiveTab] = useState<ClassTabKey>('overview');
+    const initialTab = useMemo<ClassTabKey>(() => {
+        if (typeof window !== 'undefined') {
+            const params = new URLSearchParams(window.location.search);
+            const tabParam = params.get('tab');
+            if (tabParam && ['overview', 'students', 'materials', 'assignments', 'attendance'].includes(tabParam)) {
+                return tabParam as ClassTabKey;
+            }
+        }
+        return 'overview';
+    }, []);
+
+    const [activeTab, setActiveTabState] = useState<ClassTabKey>(initialTab);
+
+    const handleTabChange = (newTab: ClassTabKey) => {
+        setActiveTabState(newTab);
+        if (typeof window !== 'undefined') {
+            const url = new URL(window.location.href);
+            if (newTab === 'overview') {
+                url.searchParams.delete('tab');
+            } else {
+                url.searchParams.set('tab', newTab);
+            }
+            window.history.replaceState({}, '', url.toString());
+        }
+    };
+
     const [studentSearch, setStudentSearch] = useState('');
 
     const cleanClassName = schoolClass.name.replace(/^Kelas\s+Kelas\s*/i, 'Kelas ').replace(/^Kelas\s*(\d)/i, 'Kelas $1');
@@ -83,7 +108,7 @@ export default function ClassShow({
             id: 'materi',
             title: 'Tambah Materi',
             description: 'Unggah modul & bahan',
-            href: '/materials/create',
+            href: `/materials/create?class_id=${schoolClass.id}`,
             icon: BookOpen,
             variant: 'primary' as const,
         },
@@ -91,7 +116,7 @@ export default function ClassShow({
             id: 'asesmen',
             title: 'Buat Asesmen',
             description: 'Tugas, tes & kuis',
-            href: '/assignments/create',
+            href: `/assignments/create?class_id=${schoolClass.id}`,
             icon: ClipboardList,
             variant: 'destructive' as const,
         },
@@ -102,7 +127,7 @@ export default function ClassShow({
             href: '#',
             icon: Users,
             variant: 'success' as const,
-            onClick: () => setActiveTab('students'),
+            onClick: () => handleTabChange('students'),
         },
     ];
 
@@ -122,7 +147,7 @@ export default function ClassShow({
                 {/* 2. Touch-Friendly Navigation Tabs */}
                 <ClassTabs
                     activeTab={activeTab}
-                    onTabChange={setActiveTab}
+                    onTabChange={handleTabChange}
                     studentsCount={students.length}
                     materialsCount={materials.length}
                     assignmentsCount={assignments.length}
@@ -139,7 +164,7 @@ export default function ClassShow({
                                 icon={Users}
                                 variant="primary"
                                 href="#"
-                                onClick={(e) => { e.preventDefault(); setActiveTab('students'); }}
+                                onClick={(e) => { e.preventDefault(); handleTabChange('students'); }}
                             />
                             <SummaryCard
                                 label="Mata Pelajaran"
@@ -153,7 +178,7 @@ export default function ClassShow({
                                 icon={Library}
                                 variant="warning"
                                 href="#"
-                                onClick={(e) => { e.preventDefault(); setActiveTab('materials'); }}
+                                onClick={(e) => { e.preventDefault(); handleTabChange('materials'); }}
                             />
                             <SummaryCard
                                 label="Asesmen"
@@ -161,7 +186,7 @@ export default function ClassShow({
                                 icon={ClipboardList}
                                 variant="destructive"
                                 href="#"
-                                onClick={(e) => { e.preventDefault(); setActiveTab('assignments'); }}
+                                onClick={(e) => { e.preventDefault(); handleTabChange('assignments'); }}
                             />
                         </div>
 
@@ -247,7 +272,7 @@ export default function ClassShow({
                                         </div>
                                     </div>
                                     <Link
-                                        href={`/assignments/${pendingAssignments[0].id}/grade-view`}
+                                        href={`/assignments/${pendingAssignments[0].id}/grade-view?class_id=${schoolClass.id}`}
                                         className="inline-flex items-center gap-1 text-xs font-bold text-rose-600 dark:text-rose-400 hover:underline shrink-0"
                                     >
                                         <span>Periksa</span>
@@ -263,8 +288,8 @@ export default function ClassShow({
                                 <h3 className="text-xs sm:text-sm font-bold text-foreground">Aktivitas Terakhir Kelas</h3>
                                 <button
                                     type="button"
-                                    onClick={() => setActiveTab('materials')}
-                                    className="text-xs font-bold text-primary hover:underline flex items-center gap-0.5"
+                                    onClick={() => handleTabChange('materials')}
+                                    className="text-xs font-bold text-primary hover:underline flex items-center gap-0.5 cursor-pointer"
                                 >
                                     <span>Semua</span>
                                     <ChevronRight className="h-3 w-3" />
@@ -280,7 +305,7 @@ export default function ClassShow({
                                         {materials.slice(0, 2).map((m) => (
                                             <Link
                                                 key={m.id}
-                                                href={`/materials/${m.id}`}
+                                                href={`/materials/${m.id}?class_id=${schoolClass.id}`}
                                                 className="flex items-center justify-between p-3 sm:p-3.5 hover:bg-muted/30 transition text-xs"
                                             >
                                                 <div className="flex items-center gap-2.5 min-w-0 flex-1">
@@ -298,7 +323,7 @@ export default function ClassShow({
                                         {assignments.slice(0, 1).map((a) => (
                                             <Link
                                                 key={a.id}
-                                                href={`/assignments/${a.id}/grade-view`}
+                                                href={`/assignments/${a.id}/grade-view?class_id=${schoolClass.id}`}
                                                 className="flex items-center justify-between p-3 sm:p-3.5 hover:bg-muted/30 transition text-xs"
                                             >
                                                 <div className="flex items-center gap-2.5 min-w-0 flex-1">
@@ -389,7 +414,7 @@ export default function ClassShow({
                                 </div>
                             </div>
                             <Link
-                                href="/materials/create"
+                                href={`/materials/create?class_id=${schoolClass.id}`}
                                 className="inline-flex items-center justify-center gap-1.5 px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-xl bg-primary text-primary-foreground text-xs font-bold shadow-xs hover:bg-primary/90 transition active:scale-95 shrink-0 whitespace-nowrap min-h-[36px]"
                             >
                                 <Plus className="h-3.5 w-3.5 shrink-0" />
@@ -403,14 +428,14 @@ export default function ClassShow({
                                 title="Belum Ada Materi"
                                 description={`Belum ada bahan materi yang diunggah untuk ${cleanClassName}.`}
                                 actionLabel="+ Tambah Materi"
-                                actionHref="/materials/create"
+                                actionHref={`/materials/create?class_id=${schoolClass.id}`}
                             />
                         ) : (
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 {materials.map((mat) => (
                                     <Link
                                         key={mat.id}
-                                        href={`/materials/${mat.id}`}
+                                        href={`/materials/${mat.id}?class_id=${schoolClass.id}`}
                                         className="group p-3.5 sm:p-4 rounded-2xl bg-card border border-border/70 hover:border-primary/40 shadow-2xs transition-all active:scale-[0.98] flex items-center justify-between min-h-[56px]"
                                     >
                                         <div className="flex items-center gap-3 min-w-0">
@@ -452,7 +477,7 @@ export default function ClassShow({
                                 </div>
                             </div>
                             <Link
-                                href="/assignments/create"
+                                href={`/assignments/create?class_id=${schoolClass.id}`}
                                 className="inline-flex items-center justify-center gap-1.5 px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-xl bg-rose-600 text-white text-xs font-bold shadow-xs hover:bg-rose-700 transition active:scale-95 shrink-0 whitespace-nowrap min-h-[36px]"
                             >
                                 <Plus className="h-3.5 w-3.5 shrink-0" />
@@ -466,14 +491,14 @@ export default function ClassShow({
                                 title="Belum Ada Asesmen"
                                 description={`Belum ada tugas atau asesmen yang dibuat untuk ${cleanClassName}.`}
                                 actionLabel="+ Buat Asesmen"
-                                actionHref="/assignments/create"
+                                actionHref={`/assignments/create?class_id=${schoolClass.id}`}
                             />
                         ) : (
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 {assignments.map((asg) => (
                                     <Link
                                         key={asg.id}
-                                        href={`/assignments/${asg.id}/grade-view`}
+                                        href={`/assignments/${asg.id}/grade-view?class_id=${schoolClass.id}`}
                                         className="group p-3.5 sm:p-4 rounded-2xl bg-card border border-border/70 hover:border-primary/40 shadow-2xs transition-all active:scale-[0.98] flex items-center justify-between min-h-[64px]"
                                     >
                                         <div className="flex items-center gap-3 min-w-0">

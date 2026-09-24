@@ -294,23 +294,14 @@ export function AssessmentCard({
                         ) : submissionsCount > 0 ? (
                             <button
                                 type="button"
-                                onClick={handleNavigate}
+                                onClick={handleOpenGrading}
                                 className="inline-flex items-center justify-center gap-1 px-3.5 py-2 rounded-xl border border-border bg-card hover:bg-muted text-xs font-bold text-foreground transition active:scale-95 cursor-pointer min-h-[44px]"
                             >
                                 <BarChart3 className="h-3.5 w-3.5 text-primary" />
                                 <span>Lihat Rekap</span>
                                 <ArrowRight className="h-3.5 w-3.5 ml-0.5 text-muted-foreground" />
                             </button>
-                        ) : (
-                            <button
-                                type="button"
-                                onClick={handleNavigate}
-                                className="inline-flex items-center justify-center gap-1 px-3 py-2 rounded-xl border border-border bg-card hover:bg-muted text-xs font-semibold text-muted-foreground hover:text-foreground transition active:scale-95 cursor-pointer min-h-[44px]"
-                            >
-                                <span>Buka</span>
-                                <ChevronRight className="h-4 w-4" />
-                            </button>
-                        )}
+                        ) : null}
                     </div>
                 </div>
 

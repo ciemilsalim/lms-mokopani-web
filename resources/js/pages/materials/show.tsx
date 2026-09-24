@@ -56,6 +56,7 @@ interface ShowMaterialProps {
     auth_id: number;
     assignments?: any[];
     school_name?: string;
+    class_id?: number | null;
 }
 
 export default function MaterialShow({
@@ -68,13 +69,26 @@ export default function MaterialShow({
     auth_id,
     assignments = [],
     school_name,
+    class_id,
 }: ShowMaterialProps) {
     const [isDeleting, setIsDeleting] = useState(false);
 
     const isTeacher = user_role === 'teacher' || user_role === 'admin';
     const isStudent = user_role === 'student';
 
-    const breadcrumbs: BreadcrumbItem[] = [
+    // Find class name if class_id provided
+    const targetClass = class_id && (material as any).school_classes?.find((c: any) => c.id === class_id);
+    const targetClassName = targetClass ? targetClass.name : (material.school_class_name || 'Detail Kelas');
+
+    const backUrl = class_id 
+        ? `/classes/${class_id}?tab=materials` 
+        : '/materials';
+
+    const breadcrumbs: BreadcrumbItem[] = class_id ? [
+        { title: 'Daftar Kelas', href: '/classes' },
+        { title: targetClassName, href: `/classes/${class_id}?tab=materials` },
+        { title: material.title, href: `/materials/${material.id}?class_id=${class_id}` },
+    ] : [
         { title: 'Bahan Materi', href: '/materials' },
         { title: material.title, href: `/materials/${material.id}` },
     ];
@@ -97,7 +111,7 @@ export default function MaterialShow({
                     id={material.id}
                     title={material.title}
                     subjectName={material.subject_name}
-                    className={material.school_class_name}
+                    className={targetClass ? targetClass.name : material.school_class_name}
                     tpCode={material.tp_code}
                     tpDesc={material.tp_desc}
                     teacherName={material.teacher_name}
@@ -106,7 +120,7 @@ export default function MaterialShow({
                     accessStatus={material.access_status}
                     isTeacher={isTeacher}
                     onDelete={() => setIsDeleting(true)}
-                    backUrl="/materials"
+                    backUrl={backUrl}
                 />
 
                 {/* 2. Tujuan Pembelajaran (Explicit Goal Card) */}

@@ -804,7 +804,17 @@ export default function GradeSplitPage({
                                 {assignment.title}
                             </h1>
                             <p className="text-xs text-muted-foreground truncate">
-                                <span className="font-bold text-foreground">{selectedClassName}</span>
+                                {selected_class_id && selected_class_id !== 'all' ? (
+                                    <Link 
+                                        href={`/classes/${selected_class_id}?tab=assignments`}
+                                        className="font-bold text-primary hover:underline"
+                                        title={`Buka kelas ${selectedClassName}`}
+                                    >
+                                        {selectedClassName}
+                                    </Link>
+                                ) : (
+                                    <span className="font-bold text-foreground">{selectedClassName}</span>
+                                )}
                                 <span> · </span>
                                 <span>{assessmentTypeLabel}</span>
                             </p>

@@ -1,5 +1,6 @@
 import React from 'react';
-import { GraduationCap, Users, BookOpen } from 'lucide-react';
+import { Link } from '@inertiajs/react';
+import { GraduationCap, Users, BookOpen, ArrowLeft } from 'lucide-react';
 
 interface ClassHeaderProps {
     className: string;
@@ -8,7 +9,7 @@ interface ClassHeaderProps {
     backUrl?: string;
 }
 
-export function ClassHeader({ className, subjects = [], studentsCount }: ClassHeaderProps) {
+export function ClassHeader({ className, subjects = [], studentsCount, backUrl }: ClassHeaderProps) {
     const subjectsText = subjects.length > 0 ? subjects.join(', ') : 'Informatika';
     // Clean redundant "Kelas Kelas" prefix
     const cleanClassName = className.replace(/^Kelas\s+Kelas\s*/i, 'Kelas ').replace(/^Kelas\s*(\d)/i, 'Kelas $1');
@@ -16,6 +17,15 @@ export function ClassHeader({ className, subjects = [], studentsCount }: ClassHe
     return (
         <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/15 via-primary/5 to-card p-4 sm:p-5 border border-primary/20 shadow-xs w-full min-w-0">
             <div className="flex items-center gap-3">
+                {backUrl && (
+                    <Link
+                        href={backUrl}
+                        className="inline-flex items-center justify-center h-10 w-10 sm:h-11 sm:w-11 rounded-2xl bg-background/80 hover:bg-background border border-border/70 text-foreground hover:text-primary transition shadow-2xs shrink-0 cursor-pointer active:scale-95"
+                        title="Kembali ke Daftar Kelas"
+                    >
+                        <ArrowLeft className="h-5 w-5" />
+                    </Link>
+                )}
                 <div className="flex h-10 w-10 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-foreground font-black shadow-xs">
                     <GraduationCap className="h-5 w-5" />
                 </div>

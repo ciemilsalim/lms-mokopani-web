@@ -336,9 +336,10 @@ class MaterialController extends Controller
         return redirect()->route('materials.index')->with('success', 'Materi berhasil diterbitkan.');
     }
 
-    public function show(LmsMaterial $material)
+    public function show(Request $request, LmsMaterial $material)
     {
         $user = Auth::user();
+        $classIdParam = $request->query('class_id');
         $material->load(['subject', 'teacher', 'learningObjective', 'resources', 'schoolClasses', 'semester', 'academicYear']);
 
         $readinessStatus = [
@@ -527,6 +528,7 @@ class MaterialController extends Controller
             'headmaster_name' => $headmasterName,
             'headmaster_nip'  => $headmasterNip,
             'readiness_status' => $readinessStatus,
+            'class_id'         => $classIdParam ? (int) $classIdParam : null,
         ]);
     }
 

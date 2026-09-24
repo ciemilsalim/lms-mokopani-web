@@ -6,7 +6,7 @@ import {
     Activity, ListChecks, Mic, FileText, CheckSquare, RotateCcw,
     MessageSquare, Award, ArrowUpDown, Filter, Eye, Check, Loader2,
     SlidersHorizontal, UserCheck, UserX, Star, Info, ChevronDown, ChevronUp,
-    ExternalLink, Send, CheckCheck, ArrowRight
+    ExternalLink, Send, CheckCheck, ArrowRight, ArrowLeft
 } from 'lucide-react';
 import { StudentAvatar } from '@/components/student-avatar';
 
@@ -349,6 +349,17 @@ export function TeacherGradingWorkspace({
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0 pt-1 sm:pt-0">
+                        {/* Contextual Back Navigation */}
+                        <button
+                            type="button"
+                            onClick={() => router.visit(selectedClassId && selectedClassId !== 'all' ? `/classes/${selectedClassId}?tab=assignments` : route('assignments.index'))}
+                            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-border bg-background hover:bg-muted text-xs font-bold text-foreground transition cursor-pointer min-h-[44px]"
+                            title={selectedClassId && selectedClassId !== 'all' ? `Kembali ke ${selectedClassName}` : 'Kembali ke Daftar Asesmen'}
+                        >
+                            <ArrowLeft className="h-4 w-4" />
+                            <span className="hidden sm:inline">Kembali</span>
+                        </button>
+
                         {assignment.description && (
                             <button
                                 type="button"

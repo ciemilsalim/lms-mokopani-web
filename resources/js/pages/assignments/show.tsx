@@ -2160,12 +2160,22 @@ export default function ShowAssignment({
         }
     }, [students, assignment.instrument_type, submissionMap, user_role]);
 
+    const selectedClassObj = (selected_class_id && selected_class_id !== 'all') 
+        ? assigned_classes.find(c => c.id === selected_class_id) || assignment.school_classes?.find((c: any) => c.id === selected_class_id)
+        : null;
+
+    const breadcrumbs: BreadcrumbItem[] = (selected_class_id && selected_class_id !== 'all') ? [
+        { title: 'Daftar Kelas', href: '/classes' },
+        { title: selectedClassObj?.name || 'Detail Kelas', href: `/classes/${selected_class_id}?tab=assignments` },
+        { title: assignment.title, href: '#' },
+    ] : [
+        { title: 'Dashboard', href: '/dashboard' },
+        { title: 'Asesmen', href: '/assignments' },
+        { title: assignment.title, href: '#' },
+    ];
+
     return (
-        <AppLayout breadcrumbs={[
-            { title: 'Dashboard', href: '/dashboard' },
-            { title: 'Asesmen', href: '/assignments' },
-            { title: assignment.title, href: '#' },
-        ]}>
+        <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`${assignment.title} – LMS Mokopani`} />
 
             <>
@@ -2183,6 +2193,7 @@ export default function ShowAssignment({
                             assessmentType={assignment.assessment_type}
                             isTeacher={false}
                             onDelete={handleDelete}
+                            backUrl={(selected_class_id && selected_class_id !== 'all') ? `/classes/${selected_class_id}?tab=assignments` : undefined}
                         />
 
                         <AssessmentInstructions

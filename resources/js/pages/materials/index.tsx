@@ -198,6 +198,7 @@ export default function MaterialsIndex({
                     <div className="grid grid-cols-2 gap-2">
                         {/* Filter Mapel */}
                         <select
+                            aria-label="Filter Mata Pelajaran"
                             value={selectedSubject}
                             onChange={(e) => setSelectedSubject(e.target.value)}
                             className="h-10 px-3 text-xs rounded-xl bg-card border border-border/70 text-foreground font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20 transition shadow-2xs cursor-pointer w-full"
@@ -212,6 +213,7 @@ export default function MaterialsIndex({
 
                         {/* Filter Kelas */}
                         <select
+                            aria-label="Filter Kelas"
                             value={selectedClass}
                             onChange={(e) => setSelectedClass(e.target.value)}
                             className="h-10 px-3 text-xs rounded-xl bg-card border border-border/70 text-foreground font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20 transition shadow-2xs cursor-pointer w-full"

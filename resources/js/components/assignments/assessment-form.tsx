@@ -242,6 +242,96 @@ const defaultPpaIntervals = [
     { min: 86, max: 100, label: '86 – 100%', status: 'Tuntas (Pengayaan)', desc: 'Sudah mencapai ketuntasan, perlu pengayaan atau tantangan lebih.' }
 ];
 
+interface IndicatorBuilderProps {
+    title: string;
+    description: string;
+    icon: React.ReactNode;
+    emptyText: string;
+    emptySubtext: string;
+    placeholder: string;
+    indicators: string[];
+    onChange: (updated: string[]) => void;
+}
+
+function IndicatorBuilder({
+    title,
+    description,
+    icon,
+    emptyText,
+    emptySubtext,
+    placeholder,
+    indicators,
+    onChange,
+}: IndicatorBuilderProps) {
+    const handleAdd = () => {
+        onChange([...indicators, '']);
+    };
+
+    const handleUpdate = (idx: number, val: string) => {
+        const next = [...indicators];
+        next[idx] = val;
+        onChange(next);
+    };
+
+    const handleRemove = (idx: number) => {
+        onChange(indicators.filter((_, i) => i !== idx));
+    };
+
+    return (
+        <div className="space-y-3">
+            <div className="flex items-center justify-between p-3 rounded-xl bg-primary/5 border border-primary/20">
+                <div className="flex items-center gap-2">
+                    {icon}
+                    <div>
+                        <span className="text-xs font-black text-foreground">{title}</span>
+                        <p className="text-[10px] text-muted-foreground">{description}</p>
+                    </div>
+                </div>
+                <button
+                    type="button"
+                    onClick={handleAdd}
+                    className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-primary text-primary-foreground text-[11px] font-black transition cursor-pointer hover:bg-primary/90"
+                >
+                    <Plus className="h-3 w-3" />
+                    <span>Tambah Indikator</span>
+                </button>
+            </div>
+
+            <div className="space-y-2">
+                {indicators && indicators.length > 0 ? (
+                    indicators.map((ind, indIdx) => (
+                        <div key={indIdx} className="flex items-center gap-2">
+                            <span className="text-xs font-mono font-bold text-primary w-5 shrink-0 text-center">
+                                {indIdx + 1}.
+                            </span>
+                            <input
+                                type="text"
+                                placeholder={placeholder}
+                                value={ind}
+                                onChange={(e) => handleUpdate(indIdx, e.target.value)}
+                                className="flex-1 rounded-xl border border-border bg-card px-3 py-2 text-xs text-foreground outline-none focus:border-primary"
+                            />
+                            <button
+                                type="button"
+                                onClick={() => handleRemove(indIdx)}
+                                className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition"
+                                title="Hapus Indikator"
+                            >
+                                <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                        </div>
+                    ))
+                ) : (
+                    <div className="text-center py-4 border border-dashed border-border rounded-xl p-4 bg-muted/10">
+                        <p className="text-xs text-muted-foreground">{emptyText}</p>
+                        <p className="text-[10px] text-primary font-bold mt-0.5">{emptySubtext}</p>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
 export function AssessmentForm({
     mode,
     initialAssignment,
@@ -351,6 +441,16 @@ export function AssessmentForm({
             .filter(o => o.subject_id === Number(data.subject_id))
             .sort((a, b) => (a.code || '').localeCompare(b.code || '', undefined, { numeric: true, sensitivity: 'base' }));
     }, [objectives, data.subject_id]);
+
+    const canGoNext = () => {
+        if (currentStep === 1) {
+            return Boolean(data.subject_id && data.school_classes.length > 0);
+        }
+        if (currentStep === 2) {
+            return Boolean(data.title && data.title.trim().length > 0);
+        }
+        return true;
+    };
 
     // Check Holiday Warning
     useEffect(() => {
@@ -747,8 +847,6 @@ export function AssessmentForm({
         });
     };
 
-    const handleSetCorrectOption = handleOptionCorrectChange;
-
     const handleAddOption = (qIndex: number) => {
         const currentQuestions = [...(data.instrument_config.questions || [])];
         const options = currentQuestions[qIndex].options || [];
@@ -893,8 +991,12 @@ export function AssessmentForm({
                                 key={step.id}
                                 type="button"
                                 onClick={() => {
-                                    if (step.id <= currentStep || (step.id === 2 && data.subject_id) || (step.id === 3 && data.subject_id && data.instrument_type)) {
+                                    if (step.id <= currentStep) {
                                         setCurrentStep(step.id);
+                                    } else if (step.id === 2 && data.subject_id && data.school_classes.length > 0) {
+                                        setCurrentStep(2);
+                                    } else if (step.id === 3 && data.subject_id && data.school_classes.length > 0 && data.title.trim()) {
+                                        setCurrentStep(3);
                                     }
                                 }}
                                 className={`flex items-center justify-center py-2 px-1.5 rounded-xl text-xs font-bold transition cursor-pointer min-h-[40px] truncate ${
@@ -1398,7 +1500,7 @@ export function AssessmentForm({
                                                             <div className="flex items-center gap-2 ml-auto shrink-0">
                                                                 {/* Score / Points input */}
                                                                 <div className="flex items-center gap-1 bg-muted/60 px-2 py-0.5 rounded-lg border border-border/70">
-                                                                    <span className="text-[10px] font-bold text-muted-foreground">Skor:</span>
+                                                                    <span className="text-[10px] font-bold text-muted-foreground">Poin:</span>
                                                                     <input
                                                                         type="number"
                                                                         min={0}
@@ -1446,7 +1548,7 @@ export function AssessmentForm({
                                                                             <div key={opt.id || optIdx} className="flex items-center gap-2">
                                                                                 <button
                                                                                     type="button"
-                                                                                    onClick={() => handleSetCorrectOption(qIdx, optIdx)}
+                                                                                    onClick={() => handleOptionCorrectChange(qIdx, optIdx)}
                                                                                     className={`flex h-8 w-8 items-center justify-center rounded-xl text-xs font-black transition cursor-pointer shrink-0 ${
                                                                                         isCorrect
                                                                                             ? 'bg-emerald-600 text-white shadow-xs'
@@ -1513,158 +1615,37 @@ export function AssessmentForm({
 
                             {/* 2B. Indikator Lembar Observasi (HANYA MUNCUL DI OBSERVASI) */}
                             {(data.instrument_type === 'performance_observation' || data.instrument_type === 'observation_checklist') && (
-                                <div className="space-y-3">
-                                    <div className="flex items-center justify-between p-3 rounded-xl bg-primary/5 border border-primary/20">
-                                        <div className="flex items-center gap-2">
-                                            <Eye className="h-4 w-4 text-primary shrink-0" />
-                                            <div>
-                                                <span className="text-xs font-black text-foreground">
-                                                    Indikator Pengamatan Aktivitas Pembelajaran
-                                                </span>
-                                                <p className="text-[10px] text-muted-foreground">
-                                                    Daftar aspek perilaku, keterampilan, atau keterlibatan yang diobservasi guru.
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                const current = data.instrument_config.indicators || [];
-                                                setData('instrument_config', {
-                                                    ...data.instrument_config,
-                                                    indicators: [...current, '']
-                                                });
-                                            }}
-                                            className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-primary text-primary-foreground text-[11px] font-black transition cursor-pointer hover:bg-primary/90"
-                                        >
-                                            <Plus className="h-3 w-3" />
-                                            <span>Tambah Indikator</span>
-                                        </button>
-                                    </div>
-
-                                    <div className="space-y-2">
-                                        {(data.instrument_config.indicators && data.instrument_config.indicators.length > 0) ? (
-                                            data.instrument_config.indicators.map((ind: string, indIdx: number) => (
-                                                <div key={indIdx} className="flex items-center gap-2">
-                                                    <span className="text-xs font-mono font-bold text-primary w-5 shrink-0 text-center">
-                                                        {indIdx + 1}.
-                                                    </span>
-                                                    <input
-                                                        type="text"
-                                                        placeholder={`Contoh: Siswa aktif berkolaborasi dan menyampaikan gagasan dalam kelompok...`}
-                                                        value={ind}
-                                                        onChange={(e) => {
-                                                            const updated = [...(data.instrument_config.indicators || [])];
-                                                            updated[indIdx] = e.target.value;
-                                                            setData('instrument_config', {
-                                                                ...data.instrument_config,
-                                                                indicators: updated
-                                                            });
-                                                        }}
-                                                        className="flex-1 rounded-xl border border-border bg-card px-3 py-2 text-xs text-foreground outline-none focus:border-primary"
-                                                    />
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => {
-                                                            const updated = (data.instrument_config.indicators || []).filter((_: any, i: number) => i !== indIdx);
-                                                            setData('instrument_config', {
-                                                                ...data.instrument_config,
-                                                                indicators: updated
-                                                            });
-                                                        }}
-                                                        className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition"
-                                                        title="Hapus Indikator"
-                                                    >
-                                                        <Trash2 className="h-3.5 w-3.5" />
-                                                    </button>
-                                                </div>
-                                            ))
-                                        ) : (
-                                            <div className="text-center py-4 border border-dashed border-border rounded-xl p-4 bg-muted/10">
-                                                <p className="text-xs text-muted-foreground">Belum ada indikator pengamatan.</p>
-                                                <p className="text-[10px] text-primary font-bold mt-0.5">Gunakan Asisten AI di atas atau klik "Tambah Indikator" untuk menambahkan aspek observasi.</p>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
+                                <IndicatorBuilder
+                                    title="Indikator Pengamatan Aktivitas Pembelajaran"
+                                    description="Daftar aspek perilaku, keterampilan, atau keterlibatan yang diobservasi guru."
+                                    icon={<Eye className="h-4 w-4 text-primary shrink-0" />}
+                                    placeholder="Contoh: Siswa aktif berkolaborasi dan menyampaikan gagasan dalam kelompok..."
+                                    emptyText="Belum ada indikator pengamatan."
+                                    emptySubtext='Gunakan Asisten AI di atas atau klik "Tambah Indikator" untuk menambahkan aspek observasi.'
+                                    indicators={data.instrument_config.indicators || []}
+                                    onChange={(updated) => setData('instrument_config', {
+                                        ...data.instrument_config,
+                                        indicators: updated
+                                    })}
+                                />
                             )}
 
                             {/* 2C. Panduan Kriteria & Indikator Tugas LKPD / Kinerja (HANYA MUNCUL DI KINERJA / LKPD) */}
                             {(data.instrument_type === 'structured_assignment' || data.instrument_type === 'performance' || data.instrument_type === 'assignment') && (
                                 <div className="space-y-3">
-                                    <div className="flex items-center justify-between p-3 rounded-xl bg-primary/5 border border-primary/20">
-                                        <div className="flex items-center gap-2">
-                                            <FileText className="h-4 w-4 text-primary shrink-0" />
-                                            <div>
-                                                <span className="text-xs font-black text-foreground">
-                                                    Indikator Penilaian Kinerja & Langkah Kerja LKPD
-                                                </span>
-                                                <p className="text-[10px] text-muted-foreground">
-                                                    Daftar indikator tahapan tugas dan kriteria kualitas karya / hasil kerja siswa.
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                const current = data.instrument_config.indicators || [];
-                                                setData('instrument_config', {
-                                                    ...data.instrument_config,
-                                                    indicators: [...current, '']
-                                                });
-                                            }}
-                                            className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-primary text-primary-foreground text-[11px] font-black transition cursor-pointer hover:bg-primary/90"
-                                        >
-                                            <Plus className="h-3 w-3" />
-                                            <span>Tambah Indikator</span>
-                                        </button>
-                                    </div>
-
-                                    {/* Specific LKPD Indicators */}
-                                    <div className="space-y-2">
-                                        {(data.instrument_config.indicators && data.instrument_config.indicators.length > 0) ? (
-                                            data.instrument_config.indicators.map((ind: string, indIdx: number) => (
-                                                <div key={indIdx} className="flex items-center gap-2">
-                                                    <span className="text-xs font-mono font-bold text-primary w-5 shrink-0 text-center">
-                                                        {indIdx + 1}.
-                                                    </span>
-                                                    <input
-                                                        type="text"
-                                                        placeholder={`Contoh: Mengidentifikasi alat dan bahan secara tepat, atau mengikuti langkah kerja secara runtut...`}
-                                                        value={ind}
-                                                        onChange={(e) => {
-                                                            const updated = [...(data.instrument_config.indicators || [])];
-                                                            updated[indIdx] = e.target.value;
-                                                            setData('instrument_config', {
-                                                                ...data.instrument_config,
-                                                                indicators: updated
-                                                            });
-                                                        }}
-                                                        className="flex-1 rounded-xl border border-border bg-card px-3 py-2 text-xs text-foreground outline-none focus:border-primary"
-                                                    />
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => {
-                                                            const updated = (data.instrument_config.indicators || []).filter((_: any, i: number) => i !== indIdx);
-                                                            setData('instrument_config', {
-                                                                ...data.instrument_config,
-                                                                indicators: updated
-                                                            });
-                                                        }}
-                                                        className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition"
-                                                        title="Hapus Indikator"
-                                                    >
-                                                        <Trash2 className="h-3.5 w-3.5" />
-                                                    </button>
-                                                </div>
-                                            ))
-                                        ) : (
-                                            <div className="text-center py-4 border border-dashed border-border rounded-xl p-4 bg-muted/10">
-                                                <p className="text-xs text-muted-foreground">Belum ada indikator langkah LKPD.</p>
-                                                <p className="text-[10px] text-primary font-bold mt-0.5">Gunakan Asisten AI di atas atau klik "Tambah Indikator" untuk menambahkan butir indikator pengerjaan LKPD.</p>
-                                            </div>
-                                        )}
-                                    </div>
+                                    <IndicatorBuilder
+                                        title="Indikator Penilaian Kinerja & Langkah Kerja LKPD"
+                                        description="Daftar indikator tahapan tugas dan kriteria kualitas karya / hasil kerja siswa."
+                                        icon={<FileText className="h-4 w-4 text-primary shrink-0" />}
+                                        placeholder="Contoh: Mengidentifikasi alat dan bahan secara tepat, atau mengikuti langkah kerja secara runtut..."
+                                        emptyText="Belum ada indikator langkah LKPD."
+                                        emptySubtext='Gunakan Asisten AI di atas atau klik "Tambah Indikator" untuk menambahkan butir indikator pengerjaan LKPD.'
+                                        indicators={data.instrument_config.indicators || []}
+                                        onChange={(updated) => setData('instrument_config', {
+                                            ...data.instrument_config,
+                                            indicators: updated
+                                        })}
+                                    />
 
                                     {/* Criteria Summary Note */}
                                     <div className="space-y-1.5 pt-1">
@@ -1761,7 +1742,7 @@ export function AssessmentForm({
 
                                                         <div className="flex items-center gap-2">
                                                             <div className="flex items-center gap-1 bg-muted/50 px-2 py-0.5 rounded-lg border border-border/70">
-                                                                <span className="text-[10px] font-bold text-muted-foreground">Bobot:</span>
+                                                                <span className="text-[10px] font-bold text-muted-foreground">Poin:</span>
                                                                 <input
                                                                     type="number"
                                                                     min={0}
@@ -2055,12 +2036,24 @@ export function AssessmentForm({
                             </button>
                         )}
 
-                        <div className="flex-1 flex justify-end">
+                        <div className="flex-1 flex flex-col sm:flex-row items-end sm:items-center justify-end gap-2">
+                            {currentStep < 3 && !canGoNext() && (
+                                <span className="text-[11px] font-semibold text-amber-600 dark:text-amber-400">
+                                    {currentStep === 1 
+                                        ? 'Pilih mata pelajaran & minimal 1 kelas' 
+                                        : 'Masukkan judul asesmen'}
+                                </span>
+                            )}
                             {currentStep < 3 ? (
                                 <button
                                     type="button"
-                                    onClick={() => setCurrentStep(prev => Math.min(3, prev + 1))}
-                                    className="inline-flex items-center justify-center gap-1.5 h-12 px-6 rounded-2xl bg-primary text-primary-foreground text-sm font-bold shadow-xs hover:bg-primary/90 active:scale-98 transition cursor-pointer flex-1 sm:flex-none sm:min-w-[180px]"
+                                    disabled={!canGoNext()}
+                                    onClick={() => {
+                                        if (canGoNext()) {
+                                            setCurrentStep(prev => Math.min(3, prev + 1));
+                                        }
+                                    }}
+                                    className="inline-flex items-center justify-center gap-1.5 h-12 px-6 rounded-2xl bg-primary text-primary-foreground text-sm font-bold shadow-xs hover:bg-primary/90 active:scale-98 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex-1 sm:flex-none sm:min-w-[180px]"
                                 >
                                     <span>Lanjut</span>
                                     <ArrowRight className="h-4 w-4" />

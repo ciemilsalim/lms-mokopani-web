@@ -235,11 +235,12 @@ class AssignmentController extends Controller
         ]);
     }
 
-    public function create()
+    public function create(Request $request)
     {
         $teacher = Auth::user()->teacher;
         $activeYear = \App\Models\AcademicYear::getActive();
         $activeSemester = \App\Models\Semester::getActive();
+        $initialClassId = $request->query('class_id') ? (int) $request->query('class_id') : null;
         
         // Ambil data pengampuan (Subject + Class) dari tabel teaching_assignments di Absensi
         $teachings = \App\Models\TeachingAssignment::with(['subject', 'schoolClass'])
@@ -309,6 +310,7 @@ class AssignmentController extends Controller
                 ['id' => 'checklist',        'name' => 'Checklist',           'icon' => 'check-square', 'desc' => 'Daftar periksa ya/tidak untuk aspek yang dinilai'],
                 ['id' => 'anecdotal_notes',  'name' => 'Catatan Anekdotal',   'icon' => 'file-text',    'desc' => 'Catatan naratif pengamatan guru'],
             ],
+            'initial_class_id' => $initialClassId,
         ]);
     }
 

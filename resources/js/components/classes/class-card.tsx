@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link } from '@inertiajs/react';
+import { Link, router } from '@inertiajs/react';
 import { ChevronRight, GraduationCap, Library, ClipboardList, AlertCircle } from 'lucide-react';
 
 export interface ClassItemProps {
@@ -62,19 +62,37 @@ export function ClassCard({ classItem }: ClassCardProps) {
                 ) : (
                     <>
                         {typeof classItem.materials_count === 'number' && (
-                            <span className="inline-flex items-center gap-1 bg-muted/60 px-2 py-0.5 rounded-md">
+                            <button
+                                type="button"
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    router.visit(`/classes/${classItem.id}?tab=materials`);
+                                }}
+                                className="inline-flex items-center gap-1 bg-muted/60 hover:bg-amber-500/15 hover:text-amber-700 dark:hover:text-amber-300 px-2 py-0.5 rounded-md transition cursor-pointer"
+                                title="Buka Materi Kelas Ini"
+                            >
                                 <Library className="h-3 w-3 text-amber-500 shrink-0" />
                                 <span className="font-bold text-foreground">{classItem.materials_count}</span>
                                 <span>Materi</span>
-                            </span>
+                            </button>
                         )}
 
                         {typeof classItem.assignments_count === 'number' && (
-                            <span className="inline-flex items-center gap-1 bg-muted/60 px-2 py-0.5 rounded-md">
+                            <button
+                                type="button"
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    router.visit(`/classes/${classItem.id}?tab=assignments`);
+                                }}
+                                className="inline-flex items-center gap-1 bg-muted/60 hover:bg-rose-500/15 hover:text-rose-700 dark:hover:text-rose-300 px-2 py-0.5 rounded-md transition cursor-pointer"
+                                title="Buka Asesmen Kelas Ini"
+                            >
                                 <ClipboardList className="h-3 w-3 text-rose-500 shrink-0" />
                                 <span className="font-bold text-foreground">{classItem.assignments_count}</span>
                                 <span>Asesmen</span>
-                            </span>
+                            </button>
                         )}
                     </>
                 )}

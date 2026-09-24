@@ -23,6 +23,7 @@ interface AssessmentDetailHeaderProps {
     isTeacher?: boolean;
     onDelete?: () => void;
     className?: string;
+    backUrl?: string;
 }
 
 export function AssessmentDetailHeader({
@@ -37,11 +38,14 @@ export function AssessmentDetailHeader({
     isTeacher = false,
     onDelete,
     className = '',
+    backUrl,
 }: AssessmentDetailHeaderProps) {
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
     const handleBack = () => {
-        if (window.history.length > 1) {
+        if (backUrl) {
+            router.visit(backUrl);
+        } else if (window.history.length > 1) {
             window.history.back();
         } else {
             router.visit(route('assignments.index'));

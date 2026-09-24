@@ -40,9 +40,19 @@ export function MaterialDetailHeader({
 
     return (
         <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary/15 via-primary/5 to-card p-4 sm:p-6 border border-primary/20 shadow-xs space-y-3 w-full min-w-0">
-            {/* Top Row: Meta Badges & Teacher Controls */}
+            {/* Top Row: Meta Badges, Back Button & Teacher Controls */}
             <div className="flex items-center justify-between gap-2 flex-wrap">
                 <div className="flex flex-wrap items-center gap-1.5 min-w-0">
+                    {backUrl && (
+                        <Link
+                            href={backUrl}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-background/80 hover:bg-background border border-border/70 text-foreground hover:text-primary text-xs font-bold transition active:scale-95 shadow-2xs mr-1 min-h-[34px]"
+                            title="Kembali ke Daftar Materi"
+                        >
+                            <ArrowLeft className="h-3.5 w-3.5" />
+                            <span className="hidden sm:inline">Kembali</span>
+                        </Link>
+                    )}
                     <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30 text-xs font-black px-2.5 py-0.5 rounded-lg">
                         {subjectName}
                     </Badge>
