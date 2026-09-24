@@ -266,22 +266,7 @@ export function MobileBottomNav() {
                                         </Link>
                                     </SheetClose>
 
-                                    {user_role === 'admin' && (
-                                        <SheetClose asChild>
-                                            <Link
-                                                href="/appearance"
-                                                className="flex items-center justify-between p-3 rounded-2xl bg-muted/40 hover:bg-muted/70 border border-border/40 transition active:scale-98"
-                                            >
-                                                <div className="flex items-center gap-3">
-                                                    <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-muted text-foreground">
-                                                        <Palette className="h-4 w-4" />
-                                                    </div>
-                                                    <div className="text-xs font-bold text-foreground">Tampilan & Tema</div>
-                                                </div>
-                                                <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                                            </Link>
-                                        </SheetClose>
-                                    )}
+
 
                                     <SheetClose asChild>
                                         <Link

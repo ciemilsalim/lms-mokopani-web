@@ -17,11 +17,6 @@ const sidebarNavItems: NavItem[] = [
         url: '/settings/password',
         icon: Lock,
     },
-    {
-        title: 'Appearance',
-        url: '/settings/appearance',
-        icon: Palette,
-    },
 ];
 
 export default function SettingsLayout({ children }: { children: React.ReactNode }) {
