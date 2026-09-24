@@ -1129,6 +1129,31 @@ export default function ShowAssignment({
     });
     const [conceptMapSubMode, setConceptMapSubMode] = useState<'canvas' | 'upload'>('canvas');
 
+    const isDirectWorkAssessment = [
+        'written_test',
+        'formative_quiz',
+        'quiz_survey',
+        'exit_ticket',
+        'peer_assessment',
+        'self_assessment',
+        'reflective_journal',
+        'guided_discussion',
+        'oral_test',
+        'oral_qa',
+        'oral',
+        'performance_observation',
+        'observation_checklist',
+        'anecdotal_notes',
+        'observation',
+    ].includes(assignment.instrument_type) || (assignment.instrument_type === 'concept_map' && conceptMapSubMode !== 'upload');
+
+    const hasDedicatedUploadSection = [
+        'structured_assignment',
+        'project',
+        'assignment',
+        'portfolio',
+    ].includes(assignment.instrument_type);
+
     // Rubric State (Teacher)
     const [rubricData, setRubricData] = useState<Record<string, string>>({});
 
@@ -2045,9 +2070,15 @@ export default function ShowAssignment({
                 });
             }
         } else if (assignment.instrument_type === 'structured_assignment') {
-            finalContent = JSON.stringify({ type: 'structured_assignment', answer_text: structuredAssignmentData.answer_text });
-            if (structuredAssignmentData.file) {
+            finalContent = JSON.stringify({ 
+                type: 'structured_assignment', 
+                answer_text: structuredAssignmentData.answer_text,
+                is_offline_submission: studentForm.data.is_offline_submission
+            });
+            if (!studentForm.data.is_offline_submission && structuredAssignmentData.file) {
                 fileToSubmit = structuredAssignmentData.file;
+            } else {
+                fileToSubmit = null;
             }
         } else if (assignment.instrument_type === 'reflective_journal') {
             finalContent = JSON.stringify({ type: 'reflective_journal', answers: journalAnswers });
@@ -2073,6 +2104,10 @@ export default function ShowAssignment({
                 nodes: conceptMapSubMode === 'canvas' ? conceptMapData.nodes : [], 
                 edges: conceptMapSubMode === 'canvas' ? conceptMapData.edges : [] 
             });
+        }
+
+        if (isDirectWorkAssessment || studentForm.data.is_offline_submission) {
+            fileToSubmit = null;
         }
 
         router.post(route('assignments.submit', assignment.id), {
@@ -3652,7 +3687,7 @@ export default function ShowAssignment({
                                             </div>
 
                                             <div className="space-y-3">
-                                                <label className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">Lampiran File (Opsional)</label>
+                                                <label className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">Lampiran Berkas LKPD (Opsional)</label>
                                                 {my_submission?.file_path && (
                                                     <div className="mb-4 p-4 rounded-xl bg-slate-50 dark:bg-slate-950/40 bg-slate-50 border border-slate-200 dark:border-slate-800 border-slate-100 flex items-center justify-between">
                                                         <div className="flex items-center gap-3">
@@ -3673,19 +3708,49 @@ export default function ShowAssignment({
                                                         </a>
                                                     </div>
                                                 )}
-                                                <p className="text-[10px] text-muted-foreground">Format: PDF, DOC, DOCX, PNG, JPG (Maks 10MB)</p>
-                                                <input
-                                                    type="file"
-                                                    accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
-                                                    disabled={isSummativeLocked}
-                                                    onChange={(e) => {
-                                                        const file = e.target.files?.[0] || null;
-                                                        setStructuredAssignmentData({ ...structuredAssignmentData, file });
-                                                    }}
-                                                    className="w-full text-xs text-slate-600 dark:text-slate-300 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 file:cursor-pointer"
-                                                />
-                                                {structuredAssignmentData.file && (
-                                                    <p className="text-[10px] text-emerald-600 font-medium">File dipilih: {structuredAssignmentData.file.name}</p>
+
+                                                <label className={`flex items-center gap-3 p-3.5 rounded-xl border transition-all cursor-pointer ${studentForm.data.is_offline_submission ? 'border-primary bg-primary/5 text-primary' : 'border-slate-200 bg-white hover:bg-slate-50'}`}>
+                                                    <input 
+                                                        type="checkbox" 
+                                                        className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary"
+                                                        checked={studentForm.data.is_offline_submission}
+                                                        onChange={(e) => {
+                                                            const checked = e.target.checked;
+                                                            studentForm.setData('is_offline_submission', checked);
+                                                            if (checked) {
+                                                                setStructuredAssignmentData({ ...structuredAssignmentData, file: null });
+                                                            }
+                                                        }}
+                                                        disabled={isSummativeLocked}
+                                                    />
+                                                    <div>
+                                                        <p className="font-bold text-xs">Lembar LKPD fisik diserahkan langsung ke guru di kelas</p>
+                                                        <p className="text-[11px] text-muted-foreground">Centang jika Anda menyerahkan lembar kerja fisik/cetak dan tidak mengunggah berkas digital.</p>
+                                                    </div>
+                                                </label>
+
+                                                {studentForm.data.is_offline_submission ? (
+                                                    <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-medium flex items-center gap-2.5">
+                                                        <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                                                        <span>Penyerahan langsung aktif. Anda tidak perlu melampirkan berkas digital.</span>
+                                                    </div>
+                                                ) : (
+                                                    <div className="space-y-2">
+                                                        <p className="text-[10px] text-muted-foreground">Format: PDF, DOC, DOCX, PNG, JPG (Maks 10MB)</p>
+                                                        <input
+                                                            type="file"
+                                                            accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
+                                                            disabled={isSummativeLocked}
+                                                            onChange={(e) => {
+                                                                const file = e.target.files?.[0] || null;
+                                                                setStructuredAssignmentData({ ...structuredAssignmentData, file });
+                                                            }}
+                                                            className="w-full text-xs text-slate-600 dark:text-slate-300 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 file:cursor-pointer"
+                                                        />
+                                                        {structuredAssignmentData.file && (
+                                                            <p className="text-[10px] text-emerald-600 font-medium">File dipilih: {structuredAssignmentData.file.name}</p>
+                                                        )}
+                                                    </div>
                                                 )}
                                             </div>
                                         </div>
@@ -4096,19 +4161,7 @@ export default function ShowAssignment({
                                         </div>
                                     )}
 
-                                    {(![
-                                        'structured_assignment', 
-                                        'project', 
-                                        'assignment', 
-                                        'portfolio',
-                                        'formative_quiz',
-                                        'exit_ticket',
-                                        'peer_assessment',
-                                        'self_assessment',
-                                        'reflective_journal',
-                                        'guided_discussion',
-                                        'quiz_survey'
-                                    ].includes(assignment.instrument_type) || (assignment.instrument_type === 'concept_map' && conceptMapSubMode === 'upload')) && (
+                                    {(!isDirectWorkAssessment && !hasDedicatedUploadSection) && (
                                         <div className="space-y-4">
                                             <label className="text-xs font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2">
                                                 <Upload className="h-4 w-4" /> Lampiran File (Opsional)
@@ -4140,7 +4193,13 @@ export default function ShowAssignment({
                                                             type="checkbox" 
                                                             className="w-5 h-5 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
                                                             checked={studentForm.data.is_offline_submission}
-                                                            onChange={(e) => studentForm.setData('is_offline_submission', e.target.checked)}
+                                                            onChange={(e) => {
+                                                                const checked = e.target.checked;
+                                                                studentForm.setData('is_offline_submission', checked);
+                                                                if (checked) {
+                                                                    studentForm.setData('file', null);
+                                                                }
+                                                            }}
                                                             disabled={isSummativeLocked}
                                                         />
                                                         <div>
@@ -4149,33 +4208,40 @@ export default function ShowAssignment({
                                                         </div>
                                                     </label>
 
-                                                    <div className="relative flex-1">
-                                                        <button 
-                                                            type="button" 
-                                                            className="w-full h-full flex flex-col items-center justify-center p-4 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 hover:bg-slate-100 hover:border-slate-400 transition-all text-slate-600"
-                                                            disabled={isSummativeLocked}
-                                                        >
-                                                            <Camera className="h-6 w-6 mb-2 text-slate-400" />
-                                                            <span className="font-bold text-sm">Ambil Foto Bukti Fisik</span>
-                                                            <span className="text-[10px] uppercase tracking-widest text-slate-400 mt-1">Gunakan Kamera HP</span>
-                                                        </button>
-                                                        <input 
-                                                            type="file"
-                                                            accept="image/*"
-                                                            capture="environment"
-                                                            disabled={isSummativeLocked}
-                                                            onChange={(e) => {
-                                                                if(e.target.files && e.target.files[0]) {
-                                                                    studentForm.setData('file', e.target.files[0]);
-                                                                    studentForm.setData('is_offline_submission', false);
-                                                                }
-                                                            }}
-                                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                                                        />
-                                                    </div>
+                                                    {!studentForm.data.is_offline_submission && (
+                                                        <div className="relative flex-1">
+                                                            <button 
+                                                                type="button" 
+                                                                className="w-full h-full flex flex-col items-center justify-center p-4 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 hover:bg-slate-100 hover:border-slate-400 transition-all text-slate-600"
+                                                                disabled={isSummativeLocked}
+                                                            >
+                                                                <Camera className="h-6 w-6 mb-2 text-slate-400" />
+                                                                <span className="font-bold text-sm">Ambil Foto Bukti Fisik</span>
+                                                                <span className="text-[10px] uppercase tracking-widest text-slate-400 mt-1">Gunakan Kamera HP</span>
+                                                            </button>
+                                                            <input 
+                                                                type="file"
+                                                                accept="image/*"
+                                                                capture="environment"
+                                                                disabled={isSummativeLocked}
+                                                                onChange={(e) => {
+                                                                    if(e.target.files && e.target.files[0]) {
+                                                                        studentForm.setData('file', e.target.files[0]);
+                                                                        studentForm.setData('is_offline_submission', false);
+                                                                    }
+                                                                }}
+                                                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                                            />
+                                                        </div>
+                                                    )}
                                                 </div>
 
-                                                {!studentForm.data.is_offline_submission && (
+                                                {studentForm.data.is_offline_submission ? (
+                                                    <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-medium flex items-center gap-3">
+                                                        <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
+                                                        <span>Mode penyerahan langsung aktif. Anda tidak perlu mengunggah berkas atau foto bukti fisik.</span>
+                                                    </div>
+                                                ) : (
                                                     <div className={`w-full rounded-xl border-2 border-dashed border-border bg-slate-50/20 px-8 py-12 text-center transition-all relative ${isSummativeLocked ? 'pointer-events-none opacity-60' : 'group-hover:border-sky-400 group-hover:bg-sky-50/10 cursor-pointer'}`}>
                                                         <div className="h-12 w-12 rounded-xl bg-white dark:bg-slate-900 border border-border flex items-center justify-center mx-auto mb-4 text-muted-foreground group-hover:text-primary transition-colors shadow-sm">
                                                             <Upload className="h-6 w-6" />
