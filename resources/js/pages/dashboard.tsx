@@ -22,6 +22,7 @@ interface DashboardStats {
     total_students: number;
     total_teachers: number;
     total_subjects: number;
+    total_classes?: number;
     total_materials: number;
     total_assignments: number;
     pending_submissions: number;
@@ -29,7 +30,7 @@ interface DashboardStats {
     p5_scored?: number;
     p5_progress?: number;
     pending_grading_list?: { id: number; title: string; subject: string; class: string; pending_count: number }[];
-    class_performance?: { name: string; value: number; color: string }[];
+    class_performance?: { id?: number; name: string; value: number; student_count?: number; color?: string }[];
     upcoming_deadlines?: { id: number; title: string; subject: string; due_date: string; is_urgent: boolean }[];
     grade_trend?: { name: string; title: string; score: number }[];
     topic_data?: { name: string; value: number; color: string }[];
@@ -60,6 +61,7 @@ interface RecentActivity {
 interface ScheduleItem {
     subject: string;
     class?: string;
+    class_id?: number;
     teacher?: string;
     time: string;
     is_current: boolean;
@@ -77,7 +79,7 @@ interface DashboardProps {
     stats: DashboardStats;
     identity?: IdentityInfo;
     subjects?: { id: number; name: string }[];
-    classes?: { id: number; name: string }[];
+    classes?: { id: number; name: string; student_count?: number; subjects?: string[] }[];
     recentActivities: RecentActivity[];
     recentAnnouncements: AnnouncementItem[];
     todaySchedule: ScheduleItem[];

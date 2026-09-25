@@ -72,17 +72,23 @@ export default function EditAnnouncement({ announcement, classes }: EditProps) {
                         <div className="space-y-6">
                             <div className="grid gap-6 md:grid-cols-2">
                                 <div className="space-y-2">
-                                    <label className="text-sm font-bold text-foreground block">Target Kelas</label>
+                                    <label className="text-sm font-bold text-foreground block">
+                                        Target Kelas
+                                        <span className="text-xs font-normal text-muted-foreground ml-2">
+                                            (Hanya kelas yang diampu)
+                                        </span>
+                                    </label>
                                     <select
                                         value={data.school_class_id}
                                         onChange={(e) => setData('school_class_id', e.target.value)}
                                         className="w-full rounded-xl border border-border bg-white px-4 py-3 text-sm text-foreground outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 dark:bg-slate-900 transition"
                                     >
-                                        <option value="">Semua Kelas</option>
+                                        <option value="">Semua Kelas yang Diampu</option>
                                         {classes.map(c => (
                                             <option key={c.id} value={c.id}>{c.name}</option>
                                         ))}
                                     </select>
+                                    {errors.school_class_id && <p className="text-xs text-destructive">{errors.school_class_id}</p>}
                                 </div>
 
                                 <div className="space-y-2">

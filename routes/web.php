@@ -255,7 +255,7 @@ Route::middleware(['auth'])->group(function () {
         // Pengumuman CRUD
         Route::post('announcements', [AnnouncementController::class, 'store'])->name('announcements.store');
         Route::get('announcements/{announcement}/edit', [AnnouncementController::class, 'edit'])->name('announcements.edit');
-        Route::post('announcements/{announcement}', [AnnouncementController::class, 'update'])->name('announcements.update');
+        Route::match(['post', 'put'], 'announcements/{announcement}', [AnnouncementController::class, 'update'])->name('announcements.update');
         Route::delete('announcements/{announcement}', [AnnouncementController::class, 'destroy'])->name('announcements.destroy');
 
         // Data kelas & detail kelas (Mobile-First Class Hub)

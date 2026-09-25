@@ -190,17 +190,25 @@ export default function Announcements({ announcements, classes, user_role }: Ann
 
                         <form onSubmit={handleSubmit} className="space-y-5">
                             <div className="space-y-2">
-                                <label className="text-sm font-bold text-foreground block">Target Kelas</label>
+                                <label className="text-sm font-bold text-foreground block">
+                                    Target Kelas
+                                    {user_role === 'teacher' && (
+                                        <span className="text-xs font-normal text-muted-foreground ml-2">
+                                            (Hanya kelas yang Anda ampu)
+                                        </span>
+                                    )}
+                                </label>
                                 <select 
                                     value={data.school_class_id}
                                     onChange={(e) => setData('school_class_id', e.target.value)}
                                     className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 dark:bg-popover transition"
                                 >
-                                    <option value="">Semua Kelas</option>
+                                    <option value="">{user_role === 'teacher' ? 'Semua Kelas yang Diampu' : 'Semua Kelas'}</option>
                                     {classes.map(c => (
                                         <option key={c.id} value={c.id}>{c.name}</option>
                                     ))}
                                 </select>
+                                {errors.school_class_id && <p className="text-xs text-destructive">{errors.school_class_id}</p>}
                             </div>
 
                             <div className="space-y-2">

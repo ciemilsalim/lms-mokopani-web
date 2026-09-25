@@ -7,4 +7,6 @@ export * from './schedule-list';
 export * from './activity-list';
 export * from './empty-state';
 export * from './dashboard-skeleton';
+export * from './class-performance-card';
+export * from './assigned-classes-card';
 export * from './teacher-dashboard-view';

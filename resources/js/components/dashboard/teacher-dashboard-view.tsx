@@ -10,7 +10,8 @@ import {
     Bell,
     ChevronRight,
     ArrowRight,
-    AlertCircle,
+    School,
+    Plus,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import {
@@ -21,6 +22,8 @@ import {
     ScheduleList,
     ActivityList,
     SectionHeader,
+    ClassPerformanceCard,
+    AssignedClassesCard,
 } from './index';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -32,11 +35,12 @@ export interface TeacherDashboardViewProps {
         total_students: number;
         total_teachers: number;
         total_subjects: number;
+        total_classes?: number;
         total_materials: number;
         total_assignments: number;
         pending_submissions: number;
         pending_grading_list?: { id: number; title: string; subject: string; class: string; pending_count: number }[];
-        class_performance?: { name: string; value: number; color: string }[];
+        class_performance?: { id?: number; name: string; value: number; student_count?: number; color?: string }[];
         course_progress?: {
             student_id?: number;
             student: string;
@@ -59,7 +63,7 @@ export interface TeacherDashboardViewProps {
         semester: string;
     };
     subjects?: { id: number; name: string }[];
-    classes?: { id: number; name: string }[];
+    classes?: { id: number; name: string; student_count?: number; subjects?: string[] }[];
     recentActivities: {
         id: number;
         type: 'material' | 'assignment' | 'submission';
@@ -77,6 +81,7 @@ export interface TeacherDashboardViewProps {
     todaySchedule: {
         subject: string;
         class?: string;
+        class_id?: number;
         teacher?: string;
         time: string;
         is_current: boolean;
@@ -87,18 +92,18 @@ export interface TeacherDashboardViewProps {
 
 /**
  * TeacherDashboardView
- * Mobile-First presenter component for Teacher Dashboard.
- * Strictly follows the mobile dashboard exact spec:
- * 01 Header
- * 02 Welcome Card
- * 03 Agenda Hari Ini
- * 04 Perlu Tindakan
- * 05 Aksi Cepat Guru
- * 06 Ringkasan Pembelajaran
- * 07 Aktivitas Terkini
- * 08 Progress Pembelajaran (Single Summary Card)
- * 09 Pengumuman Sekolah
- * 10 Bottom Navigation
+ * Mobile-First presenter component for Teacher Dashboard with responsive desktop enhancements.
+ * Order on mobile:
+ * 01 Welcome Card
+ * 02 Agenda Hari Ini
+ * 03 Perlu Tindakan
+ * 04 Aksi Cepat Guru
+ * 05 Ringkasan Pembelajaran
+ * 06 Performa Nilai per Kelas
+ * 07 Kelas yang Diampu
+ * 08 Aktivitas Terkini
+ * 09 Progress Pembelajaran
+ * 10 Pengumuman Sekolah
  */
 export function TeacherDashboardView({
     stats,
@@ -126,11 +131,11 @@ export function TeacherDashboardView({
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Dashboard Guru - LMS Mokopani" />
 
-            {/* Main Canvas Container: Standardized to match Kelas Saya */}
-            <div className="space-y-4 sm:space-y-5 fade-in pb-24 sm:pb-8 max-w-7xl mx-auto w-full min-w-0">
+            {/* Main Canvas: Responsive Grid (Flex-col on mobile, 12-cols on desktop) */}
+            <div className="flex flex-col lg:grid lg:grid-cols-12 gap-4 sm:gap-5 fade-in pb-24 sm:pb-8 max-w-7xl mx-auto w-full min-w-0">
                 
-                {/* 02. WELCOME CARD (~148px height, 20px radius, 16px padding) */}
-                <div className="w-full min-w-0 box-border">
+                {/* 01. WELCOME CARD (Full Width Header) */}
+                <div className="order-1 lg:order-none lg:col-span-12 w-full min-w-0 box-border">
                     <WelcomeCard
                         identity={identity || {
                             name: auth?.user?.name || 'Guru',
@@ -144,48 +149,28 @@ export function TeacherDashboardView({
                     />
                 </div>
 
-                {/* 03. AGENDA HARI INI */}
-                <div className="w-full min-w-0 box-border">
-                    <ScheduleList
-                        schedules={todaySchedule}
-                        dayName={todayName || 'Hari Ini'}
-                        dateText={todayDateText}
-                    />
-                </div>
-
-                {/* 04. PERLU TINDAKAN (Positioned right after Agenda) */}
-                <div className="w-full min-w-0 box-border">
-                    <PendingTaskList
-                        items={pendingGradingItems}
-                        actionHref="/assignments"
-                    />
-                </div>
-
-                {/* 05. AKSI CEPAT GURU (2 columns, 8px gap, 76px card height) */}
-                <div className="w-full min-w-0 box-border">
-                    <SectionHeader
-                        title="Aksi Cepat Guru"
-                        subtitle="Pintasan pembuatan materi & asesmen"
-                        className="mb-2"
-                    />
-                    <QuickActionGrid />
-                </div>
-
-                {/* 06. RINGKASAN PEMBELAJARAN (2x2 Grid, 8px gap, ~100px card height) */}
-                <div className="w-full min-w-0 box-border">
+                {/* 02. RINGKASAN PEMBELAJARAN (Full Width 5 Stats) */}
+                <div className="order-5 lg:order-none lg:col-span-12 w-full min-w-0 box-border">
                     <SectionHeader
                         title="Ringkasan Pembelajaran"
-                        subtitle="Statistik utama pembelajaran"
+                        subtitle="Statistik utama pengampuan guru mapel"
                         icon={GraduationCap}
                         className="mb-2"
                     />
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 w-full min-w-0 box-border">
+                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-3 w-full min-w-0 box-border">
                         <SummaryCard
                             label="SISWA"
                             value={stats?.total_students ?? 0}
                             icon={GraduationCap}
                             variant="primary"
                             href="/students"
+                        />
+                        <SummaryCard
+                            label="KELAS"
+                            value={classes?.length ?? stats?.total_classes ?? 0}
+                            icon={School}
+                            variant="info"
+                            href="/classes"
                         />
                         <SummaryCard
                             label="MATERI"
@@ -207,19 +192,65 @@ export function TeacherDashboardView({
                             icon={BookOpen}
                             variant="success"
                             href="/assignments"
+                            className="col-span-2 sm:col-span-1"
                         />
                     </div>
                 </div>
 
-                {/* 07. AKTIVITAS TERKINI (Max 3 items, 56px min height per row) */}
-                <div className="w-full min-w-0 box-border">
+                {/* 03. AGENDA HARI INI (Right side on desktop, right after Welcome on mobile) */}
+                <div className="order-2 lg:order-none lg:col-span-5 w-full min-w-0 box-border">
+                    <ScheduleList
+                        schedules={todaySchedule}
+                        dayName={todayName || 'Hari Ini'}
+                        dateText={todayDateText}
+                    />
+                </div>
+
+                {/* 04. AKSI CEPAT GURU (Left side on desktop) */}
+                <div className="order-4 lg:order-none lg:col-span-7 w-full min-w-0 box-border">
+                    <SectionHeader
+                        title="Aksi Cepat Guru"
+                        subtitle="Pintasan pembuatan materi, asesmen & penilaian"
+                        className="mb-2"
+                    />
+                    <QuickActionGrid />
+                </div>
+
+                {/* 05. PERLU TINDAKAN (Right side on desktop) */}
+                <div className="order-3 lg:order-none lg:col-span-5 w-full min-w-0 box-border">
+                    <PendingTaskList
+                        items={pendingGradingItems}
+                        actionHref="/assignments"
+                    />
+                </div>
+
+                {/* 06. PERFORMA NILAI PER KELAS (Left side on desktop) */}
+                {stats?.class_performance && stats.class_performance.length > 0 && (
+                    <div className="order-6 lg:order-none lg:col-span-7 w-full min-w-0 box-border">
+                        <ClassPerformanceCard
+                            items={stats.class_performance}
+                        />
+                    </div>
+                )}
+
+                {/* 07. KELAS YANG DIAMPU (Left side on desktop) */}
+                {classes && classes.length > 0 && (
+                    <div className="order-7 lg:order-none lg:col-span-7 w-full min-w-0 box-border">
+                        <AssignedClassesCard
+                            classes={classes}
+                        />
+                    </div>
+                )}
+
+                {/* 08. AKTIVITAS TERKINI (Right side on desktop) */}
+                <div className="order-8 lg:order-none lg:col-span-5 w-full min-w-0 box-border">
                     <ActivityList
                         activities={recentActivities}
                     />
                 </div>
 
-                {/* 08. PROGRESS PEMBELAJARAN (Single High-Level Summary Card, ~110-130px height) */}
-                <div className="w-full min-w-0 box-border">
+                {/* 09. PROGRESS PEMBELAJARAN (Left side on desktop) */}
+                <div className="order-9 lg:order-none lg:col-span-7 w-full min-w-0 box-border">
                     <Card className="rounded-2xl border border-border/80 shadow-xs bg-card overflow-hidden w-full min-w-0 box-border">
                         <div className="p-3.5 sm:p-4 border-b border-border/60 bg-muted/20 flex items-center justify-between">
                             <div className="min-w-0 flex-1">
@@ -227,10 +258,10 @@ export function TeacherDashboardView({
                                     <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
                                         <GraduationCap className="h-4 w-4" />
                                     </div>
-                                    <span className="truncate">Progress Pembelajaran</span>
+                                    <span className="truncate">Progress Pembelajaran Siswa</span>
                                 </h2>
                                 <p className="text-xs text-muted-foreground mt-0.5 truncate pl-10">
-                                    {totalStudents} siswa terdaftar
+                                    {totalStudents} total siswa di kelas yang diampu
                                 </p>
                             </div>
 
@@ -250,7 +281,7 @@ export function TeacherDashboardView({
                                         {avgProgress}%
                                     </span>
                                     <span className="text-xs text-muted-foreground block mt-1">
-                                        Rata-rata progres pembelajaran
+                                        Rata-rata penyelesaian asesmen & tugas
                                     </span>
                                 </div>
                                 <div className="text-right">
@@ -279,7 +310,7 @@ export function TeacherDashboardView({
                                     href="/students"
                                     className="w-full min-h-[44px] px-4 rounded-xl border border-primary/20 bg-primary/5 hover:bg-primary/10 text-primary text-xs font-bold flex items-center justify-center gap-1.5 transition-colors active:scale-98"
                                 >
-                                    <span>Lihat Semua Siswa</span>
+                                    <span>Lihat Direktori Siswa</span>
                                     <ArrowRight className="h-3.5 w-3.5" />
                                 </Link>
                             </div>
@@ -287,23 +318,32 @@ export function TeacherDashboardView({
                     </Card>
                 </div>
 
-                {/* 09. PENGUMUMAN SEKOLAH (Max 2 items or 88-96px empty card) */}
-                <div className="w-full min-w-0 box-border">
+                {/* 10. PENGUMUMAN SEKOLAH (Right side on desktop) */}
+                <div className="order-10 lg:order-none lg:col-span-5 w-full min-w-0 box-border">
                     <Card className="rounded-2xl border border-border/80 shadow-xs bg-card overflow-hidden w-full min-w-0 box-border">
                         <div className="flex items-center justify-between border-b border-border/60 p-3.5 sm:p-4 bg-muted/20 w-full min-w-0">
                             <div className="flex items-center gap-2 min-w-0 flex-1">
                                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] bg-rose-500/10 text-rose-600 dark:text-rose-400">
                                     <Bell className="h-4 w-4" />
                                 </div>
-                                <h2 className="text-base font-bold text-foreground truncate">Pengumuman Sekolah</h2>
+                                <h2 className="text-base font-bold text-foreground truncate">Pengumuman</h2>
                             </div>
-                            <Link
-                                href="/announcements"
-                                className="text-xs font-bold text-primary hover:underline flex items-center gap-0.5 min-h-[44px] px-2 py-1 shrink-0"
-                            >
-                                <span>Semua</span>
-                                <ChevronRight className="h-3.5 w-3.5" />
-                            </Link>
+                            <div className="flex items-center gap-2 shrink-0">
+                                <Link
+                                    href="/announcements"
+                                    className="inline-flex items-center gap-1 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary text-xs font-bold px-2.5 py-1 transition-colors"
+                                >
+                                    <Plus className="h-3.5 w-3.5" />
+                                    <span>Buat</span>
+                                </Link>
+                                <Link
+                                    href="/announcements"
+                                    className="text-xs font-bold text-muted-foreground hover:text-primary flex items-center gap-0.5 px-1 py-1"
+                                >
+                                    <span>Semua</span>
+                                    <ChevronRight className="h-3.5 w-3.5" />
+                                </Link>
+                            </div>
                         </div>
 
                         <CardContent className="p-3 sm:p-4 w-full min-w-0">

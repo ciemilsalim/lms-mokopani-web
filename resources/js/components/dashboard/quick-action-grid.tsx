@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from '@inertiajs/react';
-import { type LucideIcon, BookOpen, ClipboardList, CalendarCheck, FileText } from 'lucide-react';
+import { type LucideIcon, BookOpen, ClipboardList, CalendarCheck, FileText, Award, Megaphone } from 'lucide-react';
 
 export interface QuickActionItem {
     id: string;
@@ -33,6 +33,22 @@ const defaultTeacherActions: QuickActionItem[] = [
         href: '/assignments/create',
         icon: ClipboardList,
         variant: 'destructive',
+    },
+    {
+        id: 'gradebook',
+        title: 'Buku Nilai',
+        description: 'Rekap nilai & rapor',
+        href: '/gradebook',
+        icon: Award,
+        variant: 'warning',
+    },
+    {
+        id: 'announcements',
+        title: 'Pengumuman',
+        description: 'Kirim info kelas',
+        href: '/announcements',
+        icon: Megaphone,
+        variant: 'primary',
     },
     {
         id: 'presensi-kelas',
@@ -87,7 +103,7 @@ export function QuickActionGrid({
     className = '',
 }: QuickActionGridProps) {
     return (
-        <div className={`grid grid-cols-2 gap-2 w-full min-w-0 ${className}`}>
+        <div className={`grid grid-cols-2 sm:grid-cols-3 gap-2 w-full min-w-0 ${className}`}>
             {actions.map((act) => {
                 const Icon = act.icon;
                 const style = actionStyles[act.variant || 'primary'];

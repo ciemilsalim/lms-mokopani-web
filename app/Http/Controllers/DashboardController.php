@@ -106,22 +106,25 @@ class DashboardController extends Controller
         $teacher->loadMissing('subjects');
 
         $myMaterials = LmsMaterial::where('teacher_id', $teacher->id)
-            ->where('academic_year_id', $activeYear?->id)
-            ->where('semester_id', $activeSemester?->id);
+            ->when($activeYear, fn($q) => $q->where('academic_year_id', $activeYear->id))
+            ->when($activeSemester, fn($q) => $q->where('semester_id', $activeSemester->id));
 
         $myAssignments = LmsAssignment::where('teacher_id', $teacher->id)
-            ->where('academic_year_id', $activeYear?->id)
-            ->where('semester_id', $activeSemester?->id);
+            ->when($activeYear, fn($q) => $q->where('academic_year_id', $activeYear->id))
+            ->when($activeSemester, fn($q) => $q->where('semester_id', $activeSemester->id));
 
         $myAssignmentIds = (clone $myAssignments)->pluck('id');
 
         $teachingClassIds = TeachingAssignment::where('teacher_id', $teacher->id)
-            ->pluck('school_class_id');
+            ->pluck('school_class_id')
+            ->filter()
+            ->unique();
 
         $stats = [
             'total_students'      => Student::whereIn('school_class_id', $teachingClassIds)->count(),
             'total_teachers'      => 0,
             'total_subjects'      => TeachingAssignment::where('teacher_id', $teacher->id)->distinct('subject_id')->count('subject_id'),
+            'total_classes'       => $teachingClassIds->count(),
             'total_materials'     => (clone $myMaterials)->count(),
             'total_assignments'   => (clone $myAssignments)->count(),
             'pending_submissions' => LmsSubmission::whereIn('assignment_id', $myAssignmentIds)->whereNull('score')->count(),
@@ -129,7 +132,7 @@ class DashboardController extends Controller
 
         $stats = array_merge($stats, $this->assignmentProgress($myAssignmentIds));
         $stats['course_progress'] = $this->courseProgress($teacher, $teachingClassIds);
-        $stats['pending_grading_list'] = $this->pendingGradingList($teacher->id);
+        $stats['pending_grading_list'] = $this->pendingGradingList($teacher->id, $activeYear?->id, $activeSemester?->id);
         $stats['class_performance'] = $this->classPerformance($teacher->id, $teachingClassIds);
 
         $recentActivities = $this->recentActivities(
@@ -137,11 +140,33 @@ class DashboardController extends Controller
             (clone $myAssignments)->with('subject')->latest()->take(5)->get()
         );
 
-        $todaySchedule = $this->getTeacherSchedule($user);
+        $todaySchedule = $this->getTeacherSchedule($teacher);
 
         $mapelList = $teacher->subjects ? $teacher->subjects->pluck('name')->join(', ') : '';
         $subjects = $teacher->subjects ? $teacher->subjects->values()->map(fn($s) => ['id' => $s->id, 'name' => $s->name]) : collect();
-        $classes = \App\Models\SchoolClass::whereIn('id', $teachingClassIds)->get()->map(fn($c) => ['id' => $c->id, 'name' => $c->name]);
+        $classes = \App\Models\SchoolClass::whereIn('id', $teachingClassIds)
+            ->orderBy('name')
+            ->get()
+            ->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)
+            ->values()
+            ->map(function ($c) use ($teacher) {
+                $studentCount = Student::where('school_class_id', $c->id)->count();
+                $subjectNames = TeachingAssignment::where('teacher_id', $teacher->id)
+                    ->where('school_class_id', $c->id)
+                    ->with('subject')
+                    ->get()
+                    ->map(fn($ta) => $ta->subject?->name)
+                    ->filter()
+                    ->values()
+                    ->toArray();
+
+                return [
+                    'id'            => $c->id,
+                    'name'          => $c->name,
+                    'student_count' => $studentCount,
+                    'subjects'      => $subjectNames,
+                ];
+            });
 
         return Inertia::render('dashboard', [
             'stats'               => $stats,
@@ -158,7 +183,7 @@ class DashboardController extends Controller
             'subjects'            => $subjects,
             'classes'             => $classes,
             'recentActivities'    => $recentActivities,
-            'recentAnnouncements' => $this->getAnnouncements($user),
+            'recentAnnouncements' => $this->getAnnouncements($user, $teacher),
             'todaySchedule'       => $todaySchedule,
             'todayName'           => $this->getTodayName(),
         ]);
@@ -374,16 +399,41 @@ class DashboardController extends Controller
             $subjects = Subject::whereIn('id', TeachingAssignment::where('teacher_id', $teacher->id)
                 ->select('subject_id')->distinct())->get();
 
+            if ($students->isEmpty() || $subjects->isEmpty()) {
+                return [];
+            }
+
+            // Pre-fetch all teacher assignments grouped by subject
+            $assignmentsBySubject = LmsAssignment::where('teacher_id', $teacher->id)
+                ->select('id', 'subject_id')
+                ->get()
+                ->groupBy('subject_id');
+
+            $allAssignmentIds = $assignmentsBySubject->flatten()->pluck('id');
+
+            // Pre-fetch completed submission counts grouped by student_id
+            $completedSubmissions = LmsSubmission::whereIn('assignment_id', $allAssignmentIds)
+                ->whereNotNull('score')
+                ->select('student_id', 'assignment_id')
+                ->get()
+                ->groupBy('student_id');
+
             $result = [];
             foreach ($students as $student) {
+                $studentCompleted = $completedSubmissions->get($student->id, collect())->pluck('assignment_id')->flip();
+
                 foreach ($subjects as $subject) {
-                    $assignmentIds = LmsAssignment::where('subject_id', $subject->id)
-                        ->where('teacher_id', $teacher->id)->pluck('id');
-                    $total = $assignmentIds->count();
+                    $subjectAssignments = $assignmentsBySubject->get($subject->id, collect());
+                    $total = $subjectAssignments->count();
                     if ($total === 0) continue;
-                    $completed = LmsSubmission::where('student_id', $student->id)
-                        ->whereIn('assignment_id', $assignmentIds)
-                        ->whereNotNull('score')->count();
+
+                    $completed = 0;
+                    foreach ($subjectAssignments as $asgn) {
+                        if (isset($studentCompleted[$asgn->id])) {
+                            $completed++;
+                        }
+                    }
+
                     $result[] = [
                         'student_id' => $student->id,
                         'student'    => $student->name,
@@ -425,9 +475,11 @@ class DashboardController extends Controller
         return $result;
     }
 
-    private function pendingGradingList($teacherId): array
+    private function pendingGradingList($teacherId, $activeYearId = null, $activeSemesterId = null): array
     {
         return LmsAssignment::where('teacher_id', $teacherId)
+            ->when($activeYearId, fn($q) => $q->where('academic_year_id', $activeYearId))
+            ->when($activeSemesterId, fn($q) => $q->where('semester_id', $activeSemesterId))
             ->withCount(['submissions as pending_count' => function ($query) {
                 $query->whereNull('score');
             }])
@@ -437,10 +489,10 @@ class DashboardController extends Controller
             ->take(5)
             ->get()
             ->map(fn($a) => [
-                'id' => $a->id,
-                'title' => $a->title,
-                'subject' => $a->subject?->name,
-                'class' => $a->schoolClasses->pluck('name')->join(', '),
+                'id'            => $a->id,
+                'title'         => $a->title,
+                'subject'       => $a->subject?->name ?? 'Mata Pelajaran',
+                'class'         => $a->schoolClasses->pluck('name')->join(', '),
                 'pending_count' => $a->pending_count,
             ])
             ->toArray();
@@ -448,22 +500,34 @@ class DashboardController extends Controller
 
     private function classPerformance($teacherId, $classIds): array
     {
-        $classes = \App\Models\SchoolClass::whereIn('id', $classIds)->get();
+        if (empty($classIds) || (is_countable($classIds) && count($classIds) === 0)) {
+            return [];
+        }
+
+        $classes = \App\Models\SchoolClass::whereIn('id', $classIds)
+            ->orderBy('name')
+            ->get()
+            ->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)
+            ->values();
+
         $assignmentIds = LmsAssignment::where('teacher_id', $teacherId)->pluck('id');
         
-        return $classes->map(function ($c) use ($assignmentIds) {
+        return $classes->map(function ($c, $i) use ($assignmentIds) {
             $studentIds = Student::where('school_class_id', $c->id)->pluck('id');
             $avg = LmsSubmission::whereIn('student_id', $studentIds)
                 ->whereIn('assignment_id', $assignmentIds)
                 ->whereNotNull('score')
                 ->avg('score');
             
+            $val = $avg ? round((float)$avg, 1) : 0;
             return [
-                'name' => $c->name,
-                'value' => round((float)$avg, 1),
-                'color' => $this->chartColors[$c->id % count($this->chartColors)],
+                'id'            => $c->id,
+                'name'          => $c->name,
+                'value'         => $val,
+                'student_count' => $studentIds->count(),
+                'color'         => $this->chartColors[$i % count($this->chartColors)],
             ];
-        })->filter(fn($c) => $c['value'] > 0)->values()->toArray();
+        })->values()->toArray();
     }
 
     private function upcomingDeadlines($student): array
@@ -546,15 +610,18 @@ class DashboardController extends Controller
         return $day === 0 ? 7 : $day; // DB: 1=Senin ... 7=Minggu
     }
 
-    private function getAnnouncements($user): array
+    private function getAnnouncements($user, ?Teacher $teacher = null): array
     {
+        $teacher = $teacher ?? $user->teacher ?? Teacher::where('user_id', $user->id)->orWhere('email', $user->email)->first();
+
         return LmsAnnouncement::with('teacher')
-            ->where(function ($q) use ($user) {
+            ->where(function ($q) use ($user, $teacher) {
                 if ($user->student) {
                     $q->where('school_class_id', $user->student->school_class_id)
                       ->orWhereNull('school_class_id');
-                } elseif ($user->teacher) {
-                    $q->where('teacher_id', $user->teacher->id);
+                } elseif ($teacher) {
+                    $q->where('teacher_id', $teacher->id)
+                      ->orWhereNull('school_class_id');
                 }
             })
             ->latest()
@@ -570,20 +637,27 @@ class DashboardController extends Controller
             ->toArray();
     }
 
-    private function getTeacherSchedule($user): array
+    private function getTeacherSchedule(Teacher $teacher): array
     {
         $todayNumber = $this->getTodayNumber();
-        return Schedule::whereHas('teachingAssignment', fn ($q) => $q->where('teacher_id', $user->teacher->id))
+        $currentTime = now()->format('H:i');
+
+        return Schedule::whereHas('teachingAssignment', fn ($q) => $q->where('teacher_id', $teacher->id))
             ->where('day_of_week', $todayNumber)
             ->with(['teachingAssignment.subject', 'teachingAssignment.schoolClass'])
             ->orderBy('start_time')
             ->get()
-            ->map(fn ($s) => [
-                'subject'    => $s->teachingAssignment->subject->name,
-                'class'      => $s->teachingAssignment->schoolClass->name,
-                'time'       => substr($s->start_time, 0, 5) . ' - ' . substr($s->end_time, 0, 5),
-                'is_current' => now()->between($s->start_time, $s->end_time),
-            ])
+            ->map(function ($s) use ($currentTime) {
+                $start = substr($s->start_time, 0, 5);
+                $end   = substr($s->end_time, 0, 5);
+                return [
+                    'subject'    => $s->teachingAssignment->subject?->name ?? 'Mata Pelajaran',
+                    'class'      => $s->teachingAssignment->schoolClass?->name ?? '-',
+                    'class_id'   => $s->teachingAssignment->school_class_id,
+                    'time'       => "{$start} - {$end}",
+                    'is_current' => ($currentTime >= $start && $currentTime <= $end),
+                ];
+            })
             ->toArray();
     }
 
