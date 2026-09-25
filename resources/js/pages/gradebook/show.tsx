@@ -17,7 +17,7 @@ import {
 import { StudentGradeCard, GradeSummary } from '@/components/gradebook';
 
 interface Header {
-    id: number;
+    id: number | string;
     title: string;
     tp?: string;
     tp_desc?: string;
@@ -29,7 +29,7 @@ interface StudentGrade {
     student_id: number;
     student_name: string;
     student_nis?: string;
-    summative: { tp_id: number; score: any; tp_code: string }[];
+    summative: { tp_id: number | string; score: any; tp_code: string }[];
     initial: { id: number; score: any; type: string }[];
     formative: { id: number; score: any; type: string }[];
     sumatif_akhir: number;

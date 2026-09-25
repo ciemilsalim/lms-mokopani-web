@@ -96,11 +96,7 @@ class GradebookController extends Controller
     protected function getEvaluatedTpsForClass($subjectId, $classId, $activeYear, $activeSemester)
     {
         $tpQuery = LmsLearningObjective::with('subObjectives')
-            ->where('subject_id', $subjectId)
-            ->where(function ($q) use ($classId) {
-                $q->where('school_class_id', $classId)
-                  ->orWhereNull('school_class_id');
-            });
+            ->where('subject_id', $subjectId);
 
         if ($activeYear && $activeSemester) {
             $tpQuery->where(function ($q) use ($activeYear, $activeSemester) {
@@ -121,30 +117,60 @@ class GradebookController extends Controller
 
         $allTps = $tpQuery->get();
 
-        $classSpecificTps = $allTps->where('school_class_id', $classId);
-        if ($classSpecificTps->isNotEmpty()) {
-            $allTps = $classSpecificTps;
+        if ($allTps->isEmpty()) {
+            return collect();
         }
 
+        // 1. TPs explicitly assigned to this class
+        $classSpecificTps = $allTps->where('school_class_id', $classId);
+
+        // 2. TPs used in any assignments for this class
+        $classAssignmentTpIds = LmsAssignment::where('subject_id', $subjectId)
+            ->whereHas('schoolClasses', function ($q) use ($classId) {
+                $q->where('school_classes.id', $classId);
+            })
+            ->pluck('learning_objective_id')
+            ->filter()
+            ->unique();
+        $assignmentTps = $allTps->whereIn('id', $classAssignmentTpIds);
+
+        if ($classSpecificTps->isNotEmpty() || $assignmentTps->isNotEmpty()) {
+            $candidates = $classSpecificTps->merge($assignmentTps)->unique('id');
+        } else {
+            // Fallback: check unassigned (null school_class_id)
+            $globalTps = $allTps->whereNull('school_class_id');
+            if ($globalTps->isNotEmpty()) {
+                $candidates = $globalTps;
+            } else {
+                // Fallback to all subject TPs so they don't vanish for other classes of same teacher/subject
+                $candidates = $allTps;
+            }
+        }
+
+        // Determine evaluated TPs: top level vs sub-TPs
         $leafTps = collect();
-        $topLevelTps = $allTps->whereNull('parent_id');
+        $topLevelTps = $candidates->whereNull('parent_id');
 
         if ($topLevelTps->isNotEmpty()) {
             foreach ($topLevelTps as $parentTp) {
                 $subObjectives = $allTps->where('parent_id', $parentTp->id);
-                if ($subObjectives->isNotEmpty()) {
-                    foreach ($subObjectives as $subTp) {
+                // Check if any sub-objective is explicitly targeted by an assignment in this class
+                $subTargeted = $subObjectives->filter(fn($s) => $classAssignmentTpIds->contains($s->id));
+                if ($subTargeted->isNotEmpty()) {
+                    foreach ($subTargeted as $subTp) {
                         $leafTps->push($subTp);
                     }
                 } else {
+                    // Evaluate at the parent TP level (e.g. TP-1)
                     $leafTps->push($parentTp);
                 }
             }
         } else {
-            $leafTps = $allTps->filter(fn($tp) => $tp->subObjectives->isEmpty());
+            $leafTps = $candidates;
         }
 
-        $unprocessedSubTps = $allTps->whereNotNull('parent_id')->whereNotIn('id', $leafTps->pluck('id'));
+        // Include any candidate sub-TPs that are not yet in leafTps and have no children
+        $unprocessedSubTps = $candidates->whereNotNull('parent_id')->whereNotIn('id', $leafTps->pluck('id'));
         foreach ($unprocessedSubTps as $orphan) {
             if (!$leafTps->contains('id', $orphan->id) && $orphan->subObjectives->isEmpty()) {
                 $leafTps->push($orphan);
@@ -193,28 +219,69 @@ class GradebookController extends Controller
             return redirect()->route('gradebook.index');
         }
 
-        // 2. Get evaluated TPs (sub-TPs if present, else parent TPs) specifically for this class
-        $tps = $this->getEvaluatedTpsForClass($subjectId, $classId, $activeYear, $activeSemester);
-
         // 2. Ambil semua tugas untuk kelas & mapel ini
-        $allAssignments = LmsAssignment::with('learningObjective')
+        $allAssignments = LmsAssignment::with(['learningObjective', 'schoolClasses'])
             ->whereHas('schoolClasses', function ($q) use ($classId) { $q->where('school_classes.id', $classId); })
             ->where('subject_id', $subjectId)
             ->where('academic_year_id', $activeYear?->id)
             ->where('semester_id', $activeSemester?->id)
             ->get();
 
-        $summativeAssignments = $allAssignments->where('assessment_type', 'summative');
-        $initialAssignments = $allAssignments->where('assessment_type', 'initial');
-        $formativeAssignments = $allAssignments->where('assessment_type', 'formative');
+        $summativeAssignments = $allAssignments->where('assessment_type', 'summative')->sortBy('id')->values();
+        $initialAssignments = $allAssignments->where('assessment_type', 'initial')->sortBy('id')->values();
+        $formativeAssignments = $allAssignments->where('assessment_type', 'formative')->sortBy('id')->values();
 
-        // 3. Ambil semua siswa di kelas ini
+        // 3. Ambil TP yang terfilter spesifik untuk kelas & mapel ini
+        $tps = $this->getEvaluatedTpsForClass($subjectId, $classId, $activeYear, $activeSemester);
+
+        // 4. Bangun Kolom Asesmen Sumatif secara Lengkap:
+        // Setiap tugas sumatif yang dibuat untuk kelas ini PASTI menjadi kolom penilaian sumatif
+        $summativeColumns = collect();
+        foreach ($summativeAssignments as $asm) {
+            $tpObj = $asm->learningObjective;
+            $tpCode = $tpObj?->code ?: ('Sumatif ' . ($summativeColumns->count() + 1));
+            $summativeColumns->push([
+                'key'           => 'asm_' . $asm->id,
+                'assignment_id' => $asm->id,
+                'tp_id'         => $tpObj?->id ?? $asm->id,
+                'title'         => $asm->title,
+                'tp'            => $tpCode,
+                'tp_desc'       => $tpObj?->description ?: $asm->description,
+                'type'          => 'assignment',
+            ]);
+        }
+
+        // TP yang belum ada penugasan asesmen sumatifnya ditampilkan sebagai kolom target kurikulum (placeholder)
+        $coveredTpIds = $summativeAssignments->pluck('learning_objective_id')->filter()->unique();
+        foreach ($tps as $tp) {
+            $isCovered = $coveredTpIds->contains($tp->id);
+            if (!$isCovered && $tp->parent_id) {
+                $isCovered = $coveredTpIds->contains($tp->parent_id);
+            }
+            if (!$isCovered && $tp->subObjectives && $tp->subObjectives->isNotEmpty()) {
+                $isCovered = $coveredTpIds->intersect($tp->subObjectives->pluck('id'))->isNotEmpty();
+            }
+
+            if (!$isCovered) {
+                $summativeColumns->push([
+                    'key'           => 'tp_' . $tp->id,
+                    'assignment_id' => null,
+                    'tp_id'         => $tp->id,
+                    'title'         => 'Sumatif',
+                    'tp'            => $tp->code ?: ('TP ' . ($summativeColumns->count() + 1)),
+                    'tp_desc'       => $tp->description,
+                    'type'          => 'tp',
+                ]);
+            }
+        }
+
+        // 5. Ambil semua siswa di kelas ini
         $students = Student::where('school_class_id', $classId)->orderBy('name', 'asc')->get(['id', 'name', 'nis']);
 
-        // 4. Ambil semua nilai
+        // 6. Ambil semua nilai
         $submissions = LmsSubmission::whereIn('assignment_id', $allAssignments->pluck('id'))->get();
 
-        // 5. Load existing final scores
+        // 7. Load existing final scores
         $finalScores = GradebookFinalScore::where('subject_id', $subjectId)
             ->where('school_class_id', $classId)
             ->where('academic_year_id', $activeYear?->id)
@@ -222,76 +289,62 @@ class GradebookController extends Controller
             ->get()
             ->keyBy('student_id');
 
-        // 6. Format data
-        $gradeData = $students->map(function ($student) use ($tps, $summativeAssignments, $initialAssignments, $formativeAssignments, $submissions, $finalScores, $subjectId) {
-            // Map scores to TPs - Step 1: Direct Scores
-            $directScores = $tps->mapWithKeys(function ($tp) use ($student, $summativeAssignments, $submissions) {
-                $assignment = $summativeAssignments->where('learning_objective_id', $tp->id)->first();
-                if (!$assignment && $tp->parent_id) {
-                    $assignment = $summativeAssignments->where('learning_objective_id', $tp->parent_id)->first();
+        // 8. Format data nilai per siswa
+        $gradeData = $students->map(function ($student) use ($summativeColumns, $summativeAssignments, $initialAssignments, $formativeAssignments, $submissions, $finalScores, $subjectId) {
+            $summativeScores = $summativeColumns->map(function ($col) use ($student, $submissions) {
+                if ($col['type'] === 'assignment' && $col['assignment_id']) {
+                    $sub = $submissions->where('student_id', $student->id)->where('assignment_id', $col['assignment_id'])->first();
+                    $score = ($sub && $sub->score !== null && $sub->score !== '') ? (float) $sub->score : '-';
+                    return [
+                        'tp_id'          => $col['tp_id'],
+                        'tp_code'        => $col['tp'],
+                        'score'          => $score,
+                        'is_top_level'   => true,
+                        'has_assignment' => true,
+                    ];
+                } else {
+                    return [
+                        'tp_id'          => $col['tp_id'],
+                        'tp_code'        => $col['tp'],
+                        'score'          => '-',
+                        'is_top_level'   => true,
+                        'has_assignment' => false,
+                    ];
                 }
-
-                $score = 0; // Asumsi 0 untuk semua TP
-                if ($assignment) {
-                    $sub = $submissions->where('student_id', $student->id)->where('assignment_id', $assignment->id)->first();
-                    $score = $sub?->score ?? 0;
-                }
-                return [$tp->id => [
-                    'score' => $score,
-                    'has_assignment' => $assignment ? true : false
-                ]];
-            });
-
-            // Map scores to TPs - Step 2: HANYA TAMPILKAN SUB TP JIKA ADA
-            $summativeScores = $tps->map(function ($tp) use ($directScores) {
-                $dir = $directScores[$tp->id];
-                $score = $dir['score'];
-                $hasAssignment = $dir['has_assignment'];
-
-                return [
-                    'tp_id' => $tp->id,
-                    'tp_code' => $tp->code,
-                    'score' => $score,
-                    'is_top_level' => true, // Anggap semua leaf TPs valid untuk dihitung rata-rata
-                    'has_assignment' => $hasAssignment
-                ];
             });
 
             // Initial assessment scores
             $initialScores = $initialAssignments->values()->map(function ($a) use ($student, $submissions) {
                 $sub = $submissions->where('student_id', $student->id)->where('assignment_id', $a->id)->first();
-                return ['id' => $a->id, 'score' => $sub?->score ?? '-', 'type' => $a->assessment_type];
+                return ['id' => $a->id, 'score' => ($sub && $sub->score !== null && $sub->score !== '') ? (float) $sub->score : '-', 'type' => $a->assessment_type];
             });
 
             // Formative assessment scores
             $formativeScores = $formativeAssignments->values()->map(function ($a) use ($student, $submissions) {
                 $sub = $submissions->where('student_id', $student->id)->where('assignment_id', $a->id)->first();
-                return ['id' => $a->id, 'score' => $sub?->score ?? '-', 'type' => $a->assessment_type];
+                return ['id' => $a->id, 'score' => ($sub && $sub->score !== null && $sub->score !== '') ? (float) $sub->score : '-', 'type' => $a->assessment_type];
             });
 
-            // Rata-rata keseluruhan hanya diambil dari Top-level TPs
-            $topLevelScores = $summativeScores->filter(fn($s) => $s['is_top_level'])->pluck('score');
-            $average = $topLevelScores->count() > 0 ? round($topLevelScores->avg(), 1) : 0;
+            // Rata-rata sumatif dihitung dari semua nilai numerik yang sudah dinilai
+            $validScores = $summativeScores->filter(fn($s) => is_numeric($s['score']))->pluck('score');
+            $average = $validScores->count() > 0 ? round($validScores->avg(), 1) : 0;
 
-            // Generate Deskripsi Otomatis HANYA dari TP yang sudah ada tugas/asesmennya
-            $validScoresForDesc = $summativeScores->filter(fn($s) => $s['is_top_level'] && $s['has_assignment']);
-            $hasAnySummativeSubmission = $submissions->where('student_id', $student->id)
-                ->whereIn('assignment_id', $summativeAssignments->pluck('id'))->count() > 0;
-            
+            // Generate Deskripsi Otomatis HANYA dari nilai sumatif yang ada
+            $assessedSummatives = $summativeScores->filter(fn($s) => is_numeric($s['score']));
             $description = '';
-            if ($hasAnySummativeSubmission && $validScoresForDesc->count() > 0) {
-                $highest = $validScoresForDesc->sortByDesc('score')->first();
-                $lowest = $validScoresForDesc->sortBy('score')->first();
-                
-                $highTpObj = $tps->find($highest['tp_id']);
-                $lowTpObj = $tps->find($lowest['tp_id']);
-                
-                $highLabel = $highTpObj ? $highTpObj->code . ": " . $highTpObj->description : "TP " . $highest['tp_code'];
-                $lowLabel = $lowTpObj ? $lowTpObj->code . ": " . $lowTpObj->description : "TP " . $lowest['tp_code'];
+            if ($assessedSummatives->count() > 0) {
+                $highest = $assessedSummatives->sortByDesc('score')->first();
+                $lowest = $assessedSummatives->sortBy('score')->first();
+
+                $highCol = $summativeColumns->firstWhere('tp_id', $highest['tp_id']) ?? $summativeColumns->first();
+                $lowCol = $summativeColumns->firstWhere('tp_id', $lowest['tp_id']) ?? $summativeColumns->first();
+
+                $highLabel = ($highCol && !empty($highCol['tp_desc'])) ? $highCol['tp'] . ": " . $highCol['tp_desc'] : "TP " . $highest['tp_code'];
+                $lowLabel = ($lowCol && !empty($lowCol['tp_desc'])) ? $lowCol['tp'] . ": " . $lowCol['tp_desc'] : "TP " . $lowest['tp_code'];
 
                 $subjectKktp = get_kktp($subjectId);
                 $description = "Menunjukkan penguasaan yang sangat baik dalam {$highLabel}.";
-                
+
                 if ($lowest['score'] < $subjectKktp && $highest['tp_id'] !== $lowest['tp_id']) {
                     $description .= " Perlu peningkatan dalam {$lowLabel}.";
                 }
@@ -300,24 +353,24 @@ class GradebookController extends Controller
             }
 
             return [
-                'student_id'   => $student->id,
-                'student_name' => $student->name,
-                'student_nis'  => $student->nis,
-                'summative'    => $summativeScores,
-                'initial'      => $initialScores,
-                'formative'    => $formativeScores,
-                'sumatif_akhir' => $finalScores->get($student->id)?->score ?? 0, 
-                'average'      => $average,
-                'description'  => $description,
+                'student_id'    => $student->id,
+                'student_name'  => $student->name,
+                'student_nis'   => $student->nis,
+                'summative'     => $summativeScores,
+                'initial'       => $initialScores,
+                'formative'     => $formativeScores,
+                'sumatif_akhir' => $finalScores->get($student->id)?->score ?? 0,
+                'average'       => $average,
+                'description'   => $description,
             ];
         });
 
         return Inertia::render('gradebook/show', [
-            'summative_headers' => $tps->values()->map(fn($tp, $index) => [
-                'id' => $tp->id,
-                'title' => 'Sumatif',
-                'tp' => $tp->code ?: ('TP ' . ($index + 1)),
-                'tp_desc' => $tp->description,
+            'summative_headers' => $summativeColumns->values()->map(fn($col) => [
+                'id'      => $col['key'],
+                'title'   => $col['title'],
+                'tp'      => $col['tp'],
+                'tp_desc' => $col['tp_desc'],
             ]),
             'initial_headers'   => $initialAssignments->values()->map(fn($a) => ['id' => $a->id, 'title' => $a->title, 'type' => $a->assessment_type]),
             'formative_headers' => $formativeAssignments->values()->map(fn($a) => ['id' => $a->id, 'title' => $a->title, 'type' => $a->assessment_type]),
@@ -410,6 +463,12 @@ class GradebookController extends Controller
                     $parentAssignments = $assignments->where('learning_objective_id', $tp->parent_id);
                     if ($parentAssignments->isNotEmpty()) {
                         $tpAssignments = $parentAssignments;
+                    }
+                }
+                if ($tpAssignments->isEmpty() && $tp->subObjectives && $tp->subObjectives->isNotEmpty()) {
+                    $childAssignments = $assignments->whereIn('learning_objective_id', $tp->subObjectives->pluck('id'));
+                    if ($childAssignments->isNotEmpty()) {
+                        $tpAssignments = $childAssignments;
                     }
                 }
 
