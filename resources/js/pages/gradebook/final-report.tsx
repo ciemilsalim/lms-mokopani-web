@@ -143,6 +143,23 @@ export default function FinalReport({
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2">
+                        {/* Unified Switcher: Buku Nilai <-> Rapor Akhir */}
+                        {subject_id && class_id && (
+                            <div className="flex items-center gap-1.5 p-1 bg-muted/80 rounded-2xl border border-border/60">
+                                <Link
+                                    href={route('gradebook.show', { class_id, subject_id })}
+                                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-card/50 transition cursor-pointer"
+                                >
+                                    <SlidersHorizontal className="h-4 w-4 text-primary" />
+                                    <span>Buku Nilai</span>
+                                </Link>
+                                <div className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-black bg-card text-primary shadow-xs">
+                                    <Award className="h-4 w-4" />
+                                    <span>Rapor Akhir</span>
+                                </div>
+                            </div>
+                        )}
+
                         {subject_id && class_id && (
                             <button
                                 type="button"

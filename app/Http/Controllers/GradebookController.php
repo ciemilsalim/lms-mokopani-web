@@ -20,14 +20,14 @@ use Inertia\Inertia;
 
 class GradebookController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $user = Auth::user();
         $activeYear = AcademicYear::getActive();
         $activeSemester = Semester::getActive();
 
         if ($user->teacher || $user->role === 'admin') {
-            $query = TeachingAssignment::with(['subject', 'schoolClass']);
+            $query = TeachingAssignment::with(['subject', 'schoolClass.students']);
             if ($user->teacher && $user->role !== 'admin') {
                 $query->where('teacher_id', $user->teacher->id);
             }
@@ -49,8 +49,18 @@ class GradebookController extends Controller
                 });
             }
 
-            $teachings = $query->get()
-                ->unique(fn ($t) => $t->subject_id . '-' . $t->school_class_id)
+            $rawTeachings = $query->get()->unique(fn ($t) => $t->subject_id . '-' . $t->school_class_id);
+
+            // Extract unique sorted classes for quick filter pills
+            $classes = $rawTeachings->map(fn ($t) => [
+                'id'   => $t->school_class_id,
+                'name' => $t->schoolClass?->name ?? 'Kelas -',
+            ])
+            ->unique('id')
+            ->sortBy('name', SORT_NATURAL)
+            ->values();
+
+            $teachings = $rawTeachings
                 ->sortBy(function ($t) {
                     $className = $t->schoolClass?->name ?? '';
                     $subjectName = $t->subject?->name ?? '';
@@ -58,15 +68,21 @@ class GradebookController extends Controller
                 }, SORT_NATURAL)
                 ->values()
                 ->map(fn ($t) => [
-                    'id'           => $t->id,
-                    'subject_id'   => $t->subject_id,
-                    'subject_name' => $t->subject?->name ?? '-',
-                    'class_id'     => $t->school_class_id,
-                    'class_name'   => $t->schoolClass?->name ?? '-',
+                    'id'            => $t->id,
+                    'subject_id'    => $t->subject_id,
+                    'subject_name'  => $t->subject?->name ?? '-',
+                    'class_id'      => $t->school_class_id,
+                    'class_name'    => $t->schoolClass?->name ?? '-',
+                    'student_count' => $t->schoolClass?->students?->count() ?? 0,
                 ]);
 
+            $selectedClassId = $request->query('class_id') ? (int) $request->query('class_id') : null;
+
             return Inertia::render('gradebook/index', [
-                'teachings' => $teachings
+                'teachings'         => $teachings,
+                'classes'           => $classes,
+                'selected_class_id' => $selectedClassId,
+                'period'            => ($activeYear?->name ?? '') . ($activeSemester ? ' - ' . $activeSemester->name : ''),
             ]);
         }
 
@@ -145,7 +161,8 @@ class GradebookController extends Controller
 
     public function show(Request $request)
     {
-        $teacher = Auth::user()->teacher;
+        $user = Auth::user();
+        $teacher = $user->teacher;
         $classId = $request->query('class_id');
         $subjectId = $request->query('subject_id');
         $activeYear = AcademicYear::getActive();
@@ -155,7 +172,28 @@ class GradebookController extends Controller
             return redirect()->route('gradebook.index');
         }
 
-        // 1. Get evaluated TPs (sub-TPs if present, else parent TPs) specifically for this class
+        // 1. Authorize: Ensure logged-in teacher is assigned to this subject & class (or user is admin)
+        if (!$teacher && $user->role !== 'admin') {
+            abort(403, 'Akses khusus guru mata pelajaran.');
+        }
+
+        if ($teacher && $user->role !== 'admin') {
+            $isAssigned = TeachingAssignment::where('teacher_id', $teacher->id)
+                ->where('subject_id', $subjectId)
+                ->where('school_class_id', $classId)
+                ->exists();
+            if (!$isAssigned) {
+                abort(403, 'Anda tidak memiliki penugasan mengajar untuk mata pelajaran dan kelas ini.');
+            }
+        }
+
+        $subject = Subject::find($subjectId);
+        $schoolClass = SchoolClass::find($classId);
+        if (!$subject || !$schoolClass) {
+            return redirect()->route('gradebook.index');
+        }
+
+        // 2. Get evaluated TPs (sub-TPs if present, else parent TPs) specifically for this class
         $tps = $this->getEvaluatedTpsForClass($subjectId, $classId, $activeYear, $activeSemester);
 
         // 2. Ambil semua tugas untuk kelas & mapel ini
@@ -284,7 +322,12 @@ class GradebookController extends Controller
             'initial_headers'   => $initialAssignments->values()->map(fn($a) => ['id' => $a->id, 'title' => $a->title, 'type' => $a->assessment_type]),
             'formative_headers' => $formativeAssignments->values()->map(fn($a) => ['id' => $a->id, 'title' => $a->title, 'type' => $a->assessment_type]),
             'gradeData'         => $gradeData,
-            'period'            => $activeYear?->name . ' - ' . $activeSemester?->name,
+            'period'            => ($activeYear?->name ?? '') . ($activeSemester ? ' - ' . $activeSemester->name : ''),
+            'subject_name'      => $subject->name,
+            'class_name'        => $schoolClass->name,
+            'subject_id'        => (int) $subjectId,
+            'class_id'          => (int) $classId,
+            'kktp'              => get_kktp($subjectId),
         ]);
     }
 
