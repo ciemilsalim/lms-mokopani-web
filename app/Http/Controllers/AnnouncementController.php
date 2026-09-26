@@ -17,23 +17,60 @@ class AnnouncementController extends Controller
     private function getTeacherClasses($user)
     {
         $teacher = $user->teacher ?? Teacher::where('user_id', $user->id)->orWhere('email', $user->email)->first();
+        $activeYear = \App\Models\AcademicYear::getActive();
+        $activeSemester = \App\Models\Semester::getActive();
+
         if ($teacher && $user->role !== 'admin') {
-            $teachingClassIds = TeachingAssignment::where('teacher_id', $teacher->id)
-                ->pluck('school_class_id')
-                ->filter()
-                ->unique();
+            $teachingQuery = TeachingAssignment::where('teacher_id', $teacher->id)
+                ->whereHas('schoolClass', function ($q) use ($activeYear) {
+                    if ($activeYear) {
+                        $q->where(function ($sub) use ($activeYear) {
+                            $sub->where('academic_year_id', $activeYear->id)
+                                ->orWhereNull('academic_year_id');
+                        });
+                    }
+                });
+
+            if ($activeYear && $activeSemester) {
+                $teachingQuery->where(function ($q) use ($activeYear, $activeSemester) {
+                    $q->where(function ($sub) use ($activeYear, $activeSemester) {
+                        $sub->where('academic_year_id', $activeYear->id)
+                            ->where('semester_id', $activeSemester->id);
+                    })->orWhere(function ($sub) {
+                        $sub->whereNull('academic_year_id')
+                            ->whereNull('semester_id');
+                    });
+                });
+            }
+
+            $teachingClassIds = $teachingQuery->pluck('school_class_id')->filter()->unique();
+
+            if ($teachingClassIds->isEmpty()) {
+                $teachingClassIds = TeachingAssignment::where('teacher_id', $teacher->id)
+                    ->whereHas('schoolClass')
+                    ->pluck('school_class_id')
+                    ->filter()
+                    ->unique();
+            }
 
             return SchoolClass::whereIn('id', $teachingClassIds)
-                ->orderBy('name')
-                ->get(['id', 'name'])
+                ->withCount('students')
+                ->get()
+                ->sortByDesc('students_count')
+                ->unique('name')
                 ->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)
-                ->values();
+                ->values()
+                ->map(fn($c) => ['id' => $c->id, 'name' => $c->name]);
         }
 
-        return SchoolClass::orderBy('name')
-            ->get(['id', 'name'])
+        return SchoolClass::when($activeYear, fn($q) => $q->where(fn($sub) => $sub->where('academic_year_id', $activeYear->id)->orWhereNull('academic_year_id')))
+            ->withCount('students')
+            ->get()
+            ->sortByDesc('students_count')
+            ->unique('name')
             ->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)
-            ->values();
+            ->values()
+            ->map(fn($c) => ['id' => $c->id, 'name' => $c->name]);
     }
 
     public function index()

@@ -115,10 +115,44 @@ class DashboardController extends Controller
 
         $myAssignmentIds = (clone $myAssignments)->pluck('id');
 
-        $teachingClassIds = TeachingAssignment::where('teacher_id', $teacher->id)
-            ->pluck('school_class_id')
-            ->filter()
-            ->unique();
+        // Ambil penugasan mengajar khusus periode aktif dan kelas yang valid (tidak terhapus)
+        $teachingQuery = TeachingAssignment::where('teacher_id', $teacher->id)
+            ->whereHas('schoolClass', function ($q) use ($activeYear) {
+                if ($activeYear) {
+                    $q->where(function ($sub) use ($activeYear) {
+                        $sub->where('academic_year_id', $activeYear->id)
+                            ->orWhereNull('academic_year_id');
+                    });
+                }
+            });
+
+        if ($activeYear && $activeSemester) {
+            $teachingQuery->where(function ($q) use ($activeYear, $activeSemester) {
+                $q->where(function ($sub) use ($activeYear, $activeSemester) {
+                    $sub->where('academic_year_id', $activeYear->id)
+                        ->where('semester_id', $activeSemester->id);
+                })->orWhere(function ($sub) {
+                    $sub->whereNull('academic_year_id')
+                        ->whereNull('semester_id');
+                });
+            });
+        } elseif ($activeYear) {
+            $teachingQuery->where(function ($q) use ($activeYear) {
+                $q->where('academic_year_id', $activeYear->id)
+                    ->orWhereNull('academic_year_id');
+            });
+        }
+
+        $teachingClassIds = $teachingQuery->pluck('school_class_id')->filter()->unique();
+
+        // Fallback jika belum ada data ber-periode (legacy data tanpa academic_year_id)
+        if ($teachingClassIds->isEmpty()) {
+            $teachingClassIds = TeachingAssignment::where('teacher_id', $teacher->id)
+                ->whereHas('schoolClass')
+                ->pluck('school_class_id')
+                ->filter()
+                ->unique();
+        }
 
         $stats = [
             'total_students'      => Student::whereIn('school_class_id', $teachingClassIds)->count(),
@@ -145,6 +179,7 @@ class DashboardController extends Controller
         $mapelList = $teacher->subjects ? $teacher->subjects->pluck('name')->join(', ') : '';
         $subjects = $teacher->subjects ? $teacher->subjects->values()->map(fn($s) => ['id' => $s->id, 'name' => $s->name]) : collect();
         $classes = \App\Models\SchoolClass::whereIn('id', $teachingClassIds)
+            ->when($activeYear, fn($q) => $q->where(fn($sub) => $sub->where('academic_year_id', $activeYear->id)->orWhereNull('academic_year_id')))
             ->orderBy('name')
             ->get()
             ->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)
@@ -166,7 +201,11 @@ class DashboardController extends Controller
                     'student_count' => $studentCount,
                     'subjects'      => $subjectNames,
                 ];
-            });
+            })
+            ->sortByDesc('student_count')
+            ->unique('name')
+            ->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)
+            ->values();
 
         return Inertia::render('dashboard', [
             'stats'               => $stats,
@@ -504,15 +543,22 @@ class DashboardController extends Controller
             return [];
         }
 
+        $activeYear = AcademicYear::getActive();
+        $activeSemester = Semester::getActive();
+
         $classes = \App\Models\SchoolClass::whereIn('id', $classIds)
+            ->when($activeYear, fn($q) => $q->where(fn($sub) => $sub->where('academic_year_id', $activeYear->id)->orWhereNull('academic_year_id')))
             ->orderBy('name')
             ->get()
             ->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)
             ->values();
 
-        $assignmentIds = LmsAssignment::where('teacher_id', $teacherId)->pluck('id');
+        $assignmentIds = LmsAssignment::where('teacher_id', $teacherId)
+            ->when($activeYear, fn($q) => $q->where('academic_year_id', $activeYear->id))
+            ->when($activeSemester, fn($q) => $q->where('semester_id', $activeSemester->id))
+            ->pluck('id');
         
-        return $classes->map(function ($c, $i) use ($assignmentIds) {
+        $performanceList = $classes->map(function ($c, $i) use ($assignmentIds) {
             $studentIds = Student::where('school_class_id', $c->id)->pluck('id');
             $avg = LmsSubmission::whereIn('student_id', $studentIds)
                 ->whereIn('assignment_id', $assignmentIds)
@@ -527,7 +573,15 @@ class DashboardController extends Controller
                 'student_count' => $studentIds->count(),
                 'color'         => $this->chartColors[$i % count($this->chartColors)],
             ];
-        })->values()->toArray();
+        });
+
+        // Dedup: Jika terdapat nama kelas kembar (misal akibat mutasi/tahun ajaran), pertahankan kelas dengan jumlah siswa aktif
+        return $performanceList
+            ->sortByDesc('student_count')
+            ->unique('name')
+            ->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)
+            ->values()
+            ->toArray();
     }
 
     private function upcomingDeadlines($student): array
