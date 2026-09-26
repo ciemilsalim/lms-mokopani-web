@@ -4,6 +4,7 @@ import { type BreadcrumbItem } from '@/types';
 import { Head, Link } from '@inertiajs/react';
 import { Users, ChevronRight, GraduationCap, Sparkles, FileText } from 'lucide-react';
 import { ChildSwitcher, ParentAcademicSummary } from '@/components/parent';
+import { WelcomeCard, type IdentityProps } from '@/components/dashboard/welcome-card';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Portal Orang Tua', href: '/parent/dashboard' },
@@ -25,9 +26,17 @@ interface ChildData {
 
 interface ParentDashboardProps {
     children: ChildData[];
+    identity?: IdentityProps;
+    todayName?: string;
+    dateText?: string;
 }
 
-export default function ParentDashboard({ children = [] }: ParentDashboardProps) {
+export default function ParentDashboard({
+    children = [],
+    identity,
+    todayName,
+    dateText,
+}: ParentDashboardProps) {
     const [selectedChildId, setSelectedChildId] = useState<number>(() => (children.length > 0 ? children[0].id : 0));
 
     const selectedChild = children.find(c => c.id === selectedChildId) || children[0];
@@ -38,18 +47,13 @@ export default function ParentDashboard({ children = [] }: ParentDashboardProps)
 
             <div className="space-y-5 sm:space-y-6 fade-in pb-16 md:pb-6 max-w-5xl mx-auto px-4 sm:px-6">
                 {/* Header Banner */}
-                <div className="rounded-3xl bg-gradient-to-br from-primary via-primary/90 to-indigo-600 p-5 sm:p-6 text-primary-foreground shadow-md pt-3">
-                    <div className="flex items-center justify-between gap-3">
-                        <div>
-                            <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">Portal Orang Tua & Wali</h1>
-                            <p className="text-xs text-white/80 font-medium mt-0.5">Pantau perkembangan belajar dan presensi anak Anda secara akurat.</p>
-                        </div>
-                        <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-xs font-bold text-white border border-white/20">
-                            <Sparkles className="h-4 w-4" />
-                            <span>Pantauan Aktif</span>
-                        </span>
-                    </div>
-                </div>
+                <WelcomeCard
+                    identity={identity}
+                    userRole="parent"
+                    todayName={todayName}
+                    dateText={dateText}
+                    showIllustration={false}
+                />
 
                 {children.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-16 text-muted-foreground bg-card rounded-2xl border border-border p-6 text-center">

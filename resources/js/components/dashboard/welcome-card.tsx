@@ -5,15 +5,18 @@ import {
     Calendar,
     ShieldCheck,
     Clock,
+    GraduationCap,
+    Users,
+    Sparkles,
 } from 'lucide-react';
 
 export interface IdentityProps {
-    name: string;
-    role: string;
+    name?: string;
+    role?: string;
     idLabel?: string;
     idValue?: string;
     extra?: string;
-    sekolah: string;
+    sekolah?: string;
     tahunAjaran?: string;
     semester?: string;
 }
@@ -25,20 +28,21 @@ export interface WelcomeCardProps {
     className?: string;
     todayName?: string;
     dateText?: string;
+    showIllustration?: boolean;
 }
 
 const roleLabelMap: Record<string, string> = {
     admin: 'Administrator',
     teacher: 'Guru',
     student: 'Siswa',
-    parent: 'Orang Tua',
+    parent: 'Orang Tua / Wali',
     user: 'Pengguna',
 };
 
 /**
  * WelcomeCard
- * Clean, simple, and focused hero banner for the dashboard.
- * Designed with balanced whitespace, clear typography hierarchy, and full responsiveness.
+ * Clean, simple, and focused hero banner for all roles (Teacher, Student, Admin, Parent).
+ * Designed with balanced whitespace, clear typography hierarchy, and full responsiveness across devices.
  */
 export function WelcomeCard({
     identity,
@@ -47,13 +51,27 @@ export function WelcomeCard({
     className = '',
     todayName,
     dateText,
+    showIllustration = true,
 }: WelcomeCardProps) {
-    const defaultIllustration = userRole === 'student' ? '/student-illustration.png' : '/teacher-illustration.png';
-    const imgSrc = illustrationSrc || defaultIllustration;
+    // Resolve illustration based on role if not explicitly provided
+    const defaultIllustration = useMemo(() => {
+        if (!showIllustration) return undefined;
+        if (illustrationSrc) return illustrationSrc;
+        if (userRole === 'student') return '/student-illustration.png';
+        if (userRole === 'teacher') return '/teacher-illustration.png';
+        return undefined;
+    }, [userRole, illustrationSrc, showIllustration]);
 
-    const fullName = identity?.name ?? 'Guru LMS';
-    const firstName = fullName.trim().split(' ')[0] || 'Guru';
-    const cleanSubject = identity?.extra ? identity.extra.replace(/^Mengajar:\s*/i, '').trim() : '';
+    const hasIllustration = Boolean(defaultIllustration);
+
+    const fullName = identity?.name ?? 'Pengguna LMS';
+    const firstName = fullName.trim().split(' ')[0] || 'Pengguna';
+
+    // Parse role-specific extra info cleanly
+    const rawExtra = identity?.extra ?? '';
+    const cleanExtra = rawExtra.replace(/^(Mengajar|Kelas):\s*/i, '').trim();
+    const isSubject = userRole === 'teacher' || rawExtra.toLowerCase().startsWith('mengajar');
+    const isClass = userRole === 'student' || rawExtra.toLowerCase().startsWith('kelas');
 
     // Dynamic greeting based on current local hour
     const hour = new Date().getHours();
@@ -92,7 +110,7 @@ export function WelcomeCard({
             <div className="absolute -bottom-24 right-1/3 w-80 h-80 bg-violet-400/15 rounded-full blur-3xl pointer-events-none" />
 
             {/* Main Content Area */}
-            <div className="relative z-10 max-w-3xl pr-0 sm:pr-44 lg:pr-56 space-y-3">
+            <div className={`relative z-10 ${hasIllustration ? 'max-w-3xl pr-0 sm:pr-44 lg:pr-56' : 'max-w-4xl pr-0'} space-y-3`}>
                 
                 {/* Greeting & Date */}
                 <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 text-xs sm:text-sm text-white/85 font-medium">
@@ -113,20 +131,47 @@ export function WelcomeCard({
                         {fullName}
                     </h1>
                     <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white/20 backdrop-blur-md border border-white/25 text-[11px] font-semibold text-white tracking-wide shrink-0">
-                        <ShieldCheck className="h-3 w-3 text-emerald-300" />
+                        {userRole === 'admin' ? (
+                            <ShieldCheck className="h-3 w-3 text-emerald-300" />
+                        ) : userRole === 'student' ? (
+                            <GraduationCap className="h-3 w-3 text-sky-300" />
+                        ) : userRole === 'parent' ? (
+                            <Users className="h-3 w-3 text-amber-300" />
+                        ) : (
+                            <ShieldCheck className="h-3 w-3 text-emerald-300" />
+                        )}
                         {roleLabelMap[userRole] ?? userRole}
                     </span>
                 </div>
 
-                {/* Context Metadata (Mapel, Sekolah, Periode) */}
+                {/* Context Metadata (Mapel/Kelas/Role-extra, NIS, Sekolah, Periode) */}
                 <div className="flex flex-wrap items-center gap-2 pt-1 text-xs">
-                    {cleanSubject && (
+                    {/* Role-specific extra badge */}
+                    {cleanExtra && (
                         <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/15 backdrop-blur-sm border border-white/20 text-white font-semibold shadow-xs">
-                            <BookOpen className="h-3.5 w-3.5 text-amber-300 shrink-0" />
-                            <span className="truncate max-w-[200px]">{cleanSubject}</span>
+                            {isSubject ? (
+                                <BookOpen className="h-3.5 w-3.5 text-amber-300 shrink-0" />
+                            ) : isClass ? (
+                                <GraduationCap className="h-3.5 w-3.5 text-sky-300 shrink-0" />
+                            ) : userRole === 'parent' ? (
+                                <Users className="h-3.5 w-3.5 text-emerald-300 shrink-0" />
+                            ) : (
+                                <Sparkles className="h-3.5 w-3.5 text-amber-300 shrink-0" />
+                            )}
+                            <span className="truncate max-w-[220px]">
+                                {isClass && !cleanExtra.toLowerCase().startsWith('kelas') ? `Kelas ${cleanExtra}` : cleanExtra}
+                            </span>
                         </div>
                     )}
 
+                    {/* ID / NIS badge if present */}
+                    {identity?.idValue && (
+                        <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-black/20 backdrop-blur-sm border border-white/15 text-white/95 font-mono font-medium shadow-xs">
+                            <span>{identity.idLabel ? `${identity.idLabel}: ` : ''}{identity.idValue}</span>
+                        </div>
+                    )}
+
+                    {/* Sekolah badge */}
                     {identity?.sekolah && (
                         <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/15 backdrop-blur-sm border border-white/20 text-white font-medium shadow-xs">
                             <School className="h-3.5 w-3.5 text-blue-200 shrink-0" />
@@ -134,6 +179,7 @@ export function WelcomeCard({
                         </div>
                     )}
 
+                    {/* Periode Akademik badge */}
                     {periodText && (
                         <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/15 backdrop-blur-sm border border-white/20 text-white/90 font-medium shadow-xs">
                             <Calendar className="h-3.5 w-3.5 text-emerald-300 shrink-0" />
@@ -144,17 +190,19 @@ export function WelcomeCard({
 
             </div>
 
-            {/* Illustration on Right Side (Desktop & Tablet) */}
-            <div className="hidden sm:block absolute right-4 lg:right-8 bottom-0 z-10 pointer-events-none">
-                <img
-                    src={imgSrc}
-                    alt="Ilustrasi Guru"
-                    className="h-32 sm:h-36 lg:h-40 w-auto object-contain object-bottom drop-shadow-xl translate-y-1 -scale-x-100"
-                    onError={(e) => {
-                        e.currentTarget.style.display = 'none';
-                    }}
-                />
-            </div>
+            {/* Illustration on Right Side (Desktop & Tablet) if available */}
+            {hasIllustration && (
+                <div className="hidden sm:block absolute right-4 lg:right-8 bottom-0 z-10 pointer-events-none">
+                    <img
+                        src={defaultIllustration}
+                        alt="Ilustrasi"
+                        className="h-32 sm:h-36 lg:h-40 w-auto object-contain object-bottom drop-shadow-xl translate-y-1 -scale-x-100"
+                        onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                        }}
+                    />
+                </div>
+            )}
         </div>
     );
 }

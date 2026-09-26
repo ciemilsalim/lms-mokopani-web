@@ -100,8 +100,23 @@ class ParentController extends Controller
             ];
         });
 
+        $user = Auth::user();
+        $days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+        $todayName = $days[(int) date('w')];
+        $todayDateText = now()->locale('id')->isoFormat('D MMMM Y');
+
         return Inertia::render('parent/dashboard', [
-            'children' => $childrenData,
+            'children'  => $childrenData,
+            'identity'  => [
+                'name'        => $user->name,
+                'role'        => 'parent',
+                'extra'       => count($childrenData) > 0 ? count($childrenData) . ' Anak Terhubung' : 'Portal Wali Murid',
+                'sekolah'     => school_setting('school_name', config('app.name')),
+                'tahunAjaran' => $activeYear?->name,
+                'semester'    => $activeSemester?->name,
+            ],
+            'todayName' => $todayName,
+            'dateText'  => $todayDateText,
         ]);
     }
 

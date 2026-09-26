@@ -2,6 +2,7 @@ import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem, type SharedData } from '@/types';
 import { Head, usePage, Link } from '@inertiajs/react';
 import { TeacherDashboardView } from '@/components/dashboard/teacher-dashboard-view';
+import { WelcomeCard } from '@/components/dashboard/welcome-card';
 import {
     BookOpen, ClipboardCheck, ClipboardList, GraduationCap, Library,
     TrendingUp, Users, Bell, ChevronRight, ChevronLeft, Clock, Award, BarChart3,
@@ -224,48 +225,12 @@ function StudentDashboard({
 
             <div className="space-y-6 fade-in pb-12 md:pb-6">
                 {/* 1. Hero Banner */}
-                <div className="relative">
-                    <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-indigo-600 via-indigo-500 to-sky-500 p-6 sm:p-8 text-white shadow-xl shadow-indigo-500/10">
-                        <div className="relative z-10 max-w-2xl">
-                            <div className="inline-flex items-center gap-2 rounded-full bg-white/20 px-3 py-1 text-xs font-bold backdrop-blur-md mb-3">
-                                <Sparkles className="h-3.5 w-3.5 text-amber-300" />
-                                <span>Ruang Belajar Siswa</span>
-                            </div>
-                            <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
-                                Halo, {identity?.name ?? auth?.user?.name ?? 'Siswa'}! 👋
-                            </h1>
-                            <p className="mt-2 text-xs sm:text-sm text-white/90 leading-relaxed font-medium">
-                                Siap untuk belajar hari ini? Akses materi pelajaranmu, selesaikan tugas tepat waktu, dan pantau hasil belajarmu di sini.
-                            </p>
-                            {identity && (
-                                <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-white/95">
-                                    {identity.extra && (
-                                        <span className="bg-white/20 backdrop-blur-md px-3 py-1 rounded-xl font-bold">
-                                            {identity.extra}
-                                        </span>
-                                    )}
-                                    {identity.idValue && (
-                                        <span className="bg-black/25 px-3 py-1 rounded-xl font-mono font-semibold">
-                                            NISN: {identity.idValue}
-                                        </span>
-                                    )}
-                                    <span className="bg-white/15 px-3 py-1 rounded-xl font-medium">
-                                        {identity.sekolah} &bull; {identity.tahunAjaran} ({identity.semester})
-                                    </span>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                    <div className="hidden md:block absolute right-8 bottom-0 z-20 pointer-events-none">
-                        <img
-                            src="/student-illustration.png"
-                            alt=""
-                            aria-hidden="true"
-                            className="h-48 w-auto object-contain object-bottom drop-shadow-2xl translate-y-1 -scale-x-100"
-                            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
-                        />
-                    </div>
-                </div>
+                <WelcomeCard
+                    identity={identity}
+                    userRole="student"
+                    todayName={todayName}
+                    dateText={todayDate}
+                />
 
                 {/* Mobile Quick Action Bar */}
                 <div className="flex items-center gap-2 overflow-x-auto pb-1 md:hidden scrollbar-none">
@@ -726,48 +691,13 @@ export default function Dashboard(props: DashboardProps) {
 
             <div className="space-y-4 sm:space-y-5 fade-in pb-24 sm:pb-8 max-w-7xl mx-auto w-full min-w-0">
                 {/* Welcome Banner + Identity */}
-                <div className="relative">
-                    <div className="relative overflow-hidden rounded-2xl md:rounded-xl bg-gradient-to-br from-primary via-primary/95 to-indigo-700 p-5 sm:p-6 text-white shadow-md">
-                        <div className="relative z-10 flex items-center justify-between">
-                            <div className="min-w-0 flex-1">
-                                <p className="text-xs sm:text-sm font-medium text-white/80">Selamat datang kembali,</p>
-                                <h1 className="mt-1 text-xl sm:text-2xl font-black flex flex-wrap items-center gap-2">
-                                    <span className="truncate">{identity?.name ?? auth?.user?.name ?? 'Pengguna'}</span>
-                                    <span className="inline-flex items-center rounded-full bg-white/20 px-2.5 py-0.5 text-[11px] font-bold tracking-wide backdrop-blur-xs">
-                                        {roleLabel[user_role] ?? user_role}
-                                    </span>
-                                </h1>
-                                {identity ? (
-                                    <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-white/90">
-                                        {identity.idLabel && identity.idValue && (
-                                            <span className="bg-black/20 px-2 py-0.5 rounded-md font-mono font-semibold">
-                                                {identity.idLabel}: {identity.idValue}
-                                            </span>
-                                        )}
-                                        {identity.extra && (
-                                            <span className="bg-white/15 px-2 py-0.5 rounded-md font-medium">
-                                                {identity.extra}
-                                            </span>
-                                        )}
-                                        <span className="text-white/80">{identity.sekolah}</span>
-                                        <span className="hidden sm:inline text-white/40">&bull;</span>
-                                        <span className="text-white/80">{identity.tahunAjaran} ({identity.semester})</span>
-                                    </div>
-                                ) : (
-                                    <p className="mt-1 text-xs text-white/80">Pantau aktivitas pembelajaran hari ini</p>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                    {/* Pop-out Image outside overflow-hidden */}
-                    <div className="hidden sm:block absolute right-8 bottom-0 z-20 pointer-events-none">
-                        <img 
-                            src={user_role === 'student' ? "/student-illustration.png" : "/teacher-illustration.png"} 
-                            alt={user_role === 'student' ? "Ilustrasi Siswa" : "Ilustrasi Guru"} 
-                            className="h-44 w-auto object-contain object-bottom drop-shadow-xl translate-y-1 -scale-x-100" 
-                        />
-                    </div>
-                </div>
+                <WelcomeCard
+                    identity={identity}
+                    userRole={user_role}
+                    todayName={todayName}
+                    dateText={todayDate}
+                    showIllustration={false}
+                />
 
                 {/* Mobile Quick Action Buttons Bar */}
                 <div className="md:hidden flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
