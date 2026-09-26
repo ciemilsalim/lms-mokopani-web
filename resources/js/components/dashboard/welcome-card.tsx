@@ -144,9 +144,16 @@ export function WelcomeCard({
                     </span>
                 </div>
 
-                {/* Context Metadata (Mapel/Kelas/Role-extra, NIS, Sekolah, Periode) */}
+                {/* Context Metadata (NIP/ID, Mapel/Kelas/Role-extra, Sekolah, Periode) */}
                 <div className="flex flex-wrap items-center gap-2 pt-1 text-xs">
-                    {/* Role-specific extra badge */}
+                    {/* 1. ID / NIP / NIS badge if present */}
+                    {identity?.idValue && identity.idValue !== '-' && (
+                        <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-black/20 backdrop-blur-sm border border-white/15 text-white/95 font-mono text-xs font-medium shadow-xs">
+                            <span>{identity.idLabel ? `${identity.idLabel}: ` : ''}{identity.idValue}</span>
+                        </div>
+                    )}
+
+                    {/* 2. Role-specific extra badge (Mapel / Kelas / Role-extra) */}
                     {cleanExtra && (
                         <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/15 backdrop-blur-sm border border-white/20 text-white font-semibold shadow-xs">
                             {isSubject ? (
@@ -164,14 +171,7 @@ export function WelcomeCard({
                         </div>
                     )}
 
-                    {/* ID / NIS badge if present */}
-                    {identity?.idValue && (
-                        <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-black/20 backdrop-blur-sm border border-white/15 text-white/95 font-mono font-medium shadow-xs">
-                            <span>{identity.idLabel ? `${identity.idLabel}: ` : ''}{identity.idValue}</span>
-                        </div>
-                    )}
-
-                    {/* Sekolah badge */}
+                    {/* 3. Sekolah badge */}
                     {identity?.sekolah && (
                         <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/15 backdrop-blur-sm border border-white/20 text-white font-medium shadow-xs">
                             <School className="h-3.5 w-3.5 text-blue-200 shrink-0" />
@@ -179,7 +179,7 @@ export function WelcomeCard({
                         </div>
                     )}
 
-                    {/* Periode Akademik badge */}
+                    {/* 4. Periode Akademik badge */}
                     {periodText && (
                         <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/15 backdrop-blur-sm border border-white/20 text-white/90 font-medium shadow-xs">
                             <Calendar className="h-3.5 w-3.5 text-emerald-300 shrink-0" />
