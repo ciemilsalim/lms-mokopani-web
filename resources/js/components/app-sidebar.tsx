@@ -24,28 +24,28 @@ const teacherNavSections: NavSection[] = [
         ],
     },
     {
-        label: 'Tahap 1: Perencanaan',
+        label: 'Perencanaan',
         items: [
             { title: 'Analisis CP & TP',      url: '/learning-objectives',    icon: Target },
             { title: 'Modul Ajar / RPP',      url: '/lesson-plans',           icon: BookOpen },
         ],
     },
     {
-        label: 'Tahap 2: Pelaksanaan',
+        label: 'Pelaksanaan',
         items: [
             { title: 'Bahan Materi',          url: '/materials',              icon: Library },
             { title: 'Bank Asesmen',          url: '/assignments',            icon: ClipboardList },
         ],
     },
     {
-        label: 'Tahap 3: Pengolahan',
+        label: 'Pengolahan',
         items: [
             { title: 'Nilai & Rapor',         url: '/gradebook',              icon: FileBarChart },
             { title: 'Projek P5',             url: '/p5',                     icon: Heart },
         ],
     },
     {
-        label: 'Tahap 4: Refleksi',
+        label: 'Refleksi',
         items: [
             { title: 'Remedial & Pengayaan',  url: '/remedial',               icon: GraduationCap },
             { title: 'Analitik Pembelajaran', url: '/analytics',              icon: BarChart3 },
