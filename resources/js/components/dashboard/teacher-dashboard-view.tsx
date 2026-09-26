@@ -146,6 +146,8 @@ export function TeacherDashboardView({
                         }}
                         userRole="teacher"
                         illustrationSrc="/teacher-illustration.png"
+                        todayName={todayName}
+                        dateText={todayDateText}
                     />
                 </div>
 
