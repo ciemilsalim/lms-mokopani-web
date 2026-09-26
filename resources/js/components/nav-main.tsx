@@ -63,7 +63,15 @@ function NavItemComponent({ item, currentUrl }: { item: NavItem; currentUrl: str
     );
 }
 
-export function NavMain({ items = [], label = 'Menu' }: { items: NavItem[]; label?: string }) {
+export function NavMain({
+    items = [],
+    label = 'Menu',
+    icon: SectionIcon,
+}: {
+    items: NavItem[];
+    label?: string;
+    icon?: React.ComponentType<{ className?: string }>;
+}) {
     const page = usePage();
 
     if (items.length === 0) return null;
@@ -73,16 +81,17 @@ export function NavMain({ items = [], label = 'Menu' }: { items: NavItem[]; labe
         return isActive(item.url || '', page.url);
     });
 
-    const isUtama = label === 'Utama';
+    const isUtama = label === 'Utama' || label === 'Menu Utama';
     const [open, setOpen] = useState(() => hasActive || isUtama);
 
     return (
         <SidebarGroup className="px-3 py-0.5">
             <Collapsible open={open} onOpenChange={setOpen}>
                 <CollapsibleTrigger asChild>
-                    <SidebarGroupLabel className="flex cursor-pointer select-none items-center gap-2 rounded-lg px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-sidebar-foreground/50 hover:bg-sidebar-accent/30 transition-colors">
+                    <SidebarGroupLabel className="flex cursor-pointer select-none items-center gap-1.5 rounded-lg px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-sidebar-foreground/60 hover:bg-sidebar-accent/30 hover:text-sidebar-foreground transition-colors">
                         <ChevronDown className={`h-3 w-3 shrink-0 transition-transform duration-200 ${open ? '' : '-rotate-90'}`} />
-                        {label}
+                        {SectionIcon && <SectionIcon className="h-3.5 w-3.5 shrink-0 opacity-70" />}
+                        <span>{label}</span>
                     </SidebarGroupLabel>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
