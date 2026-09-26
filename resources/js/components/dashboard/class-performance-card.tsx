@@ -8,6 +8,8 @@ export interface ClassPerformanceItem {
     name: string;
     value: number;
     student_count?: number;
+    assignment_count?: number;
+    has_assignments?: boolean;
     color?: string;
 }
 
@@ -52,7 +54,8 @@ export function ClassPerformanceCard({ items = [], className = '' }: ClassPerfor
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                     {items.map((c, i) => {
                         const score = Number(c.value) || 0;
-                        const hasScore = score > 0;
+                        const hasAssignments = c.has_assignments !== undefined ? c.has_assignments : (score > 0);
+                        const hasScore = hasAssignments || score > 0;
                         const badgeColor = score >= 80 
                             ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' 
                             : score >= 70 
@@ -81,9 +84,12 @@ export function ClassPerformanceCard({ items = [], className = '' }: ClassPerfor
                                             {c.name}
                                         </h3>
                                         {c.student_count !== undefined && (
-                                            <p className="text-[11px] text-muted-foreground flex items-center gap-1 mt-0.5">
-                                                <Users className="h-3 w-3 text-muted-foreground/70" />
+                                            <p className="text-[11px] text-muted-foreground flex items-center gap-1.5 mt-0.5">
+                                                <Users className="h-3 w-3 text-muted-foreground/70 shrink-0" />
                                                 <span>{c.student_count} Siswa</span>
+                                                {c.assignment_count !== undefined && c.assignment_count > 0 && (
+                                                    <span className="text-muted-foreground/80">• {c.assignment_count} Asesmen</span>
+                                                )}
                                             </p>
                                         )}
                                     </div>
@@ -103,7 +109,7 @@ export function ClassPerformanceCard({ items = [], className = '' }: ClassPerfor
                                 <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
                                     <div
                                         className={`h-full rounded-full transition-all duration-500 ${hasScore ? barColor : 'bg-muted'}`}
-                                        style={{ width: `${hasScore ? Math.min(100, Math.max(5, score)) : 0}%` }}
+                                        style={{ width: `${hasScore ? Math.min(100, Math.max(0, score)) : 0}%` }}
                                     />
                                 </div>
                             </Link>

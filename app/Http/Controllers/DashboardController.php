@@ -553,25 +553,91 @@ class DashboardController extends Controller
             ->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)
             ->values();
 
-        $assignmentIds = LmsAssignment::where('teacher_id', $teacherId)
-            ->when($activeYear, fn($q) => $q->where('academic_year_id', $activeYear->id))
-            ->when($activeSemester, fn($q) => $q->where('semester_id', $activeSemester->id))
-            ->pluck('id');
-        
-        $performanceList = $classes->map(function ($c, $i) use ($assignmentIds) {
+        $performanceList = $classes->map(function ($c, $i) use ($teacherId, $activeYear, $activeSemester) {
             $studentIds = Student::where('school_class_id', $c->id)->pluck('id');
-            $avg = LmsSubmission::whereIn('student_id', $studentIds)
+            $studentCount = $studentIds->count();
+
+            // Ambil mata pelajaran yang diampu oleh guru ini pada kelas ini
+            $teacherSubjectIds = TeachingAssignment::where('teacher_id', $teacherId)
+                ->where('school_class_id', $c->id)
+                ->pluck('subject_id')
+                ->unique();
+
+            // Deteksi semua penugasan / seluruh jenis asesmen (formatif, sumatif, dll) untuk kelas ini
+            $assignments = LmsAssignment::where(function ($q) use ($teacherId, $teacherSubjectIds) {
+                    $q->where('teacher_id', $teacherId);
+                    if ($teacherSubjectIds->isNotEmpty()) {
+                        $q->orWhereIn('subject_id', $teacherSubjectIds);
+                    }
+                })
+                ->whereHas('schoolClasses', fn($q) => $q->where('school_classes.id', $c->id))
+                ->when($activeYear, fn($q) => $q->where(fn($sub) => $sub->where('academic_year_id', $activeYear->id)->orWhereNull('academic_year_id')))
+                ->when($activeSemester, fn($q) => $q->where(fn($sub) => $sub->where('semester_id', $activeSemester->id)->orWhereNull('semester_id')))
+                ->get(['id', 'max_points']);
+
+            $assignmentCount = $assignments->count();
+
+            // Jika belum ada siswa atau belum ada asesmen sama sekali
+            if ($studentCount === 0 || $assignmentCount === 0) {
+                return [
+                    'id'               => $c->id,
+                    'name'             => $c->name,
+                    'value'            => 0,
+                    'student_count'    => $studentCount,
+                    'assignment_count' => $assignmentCount,
+                    'has_assignments'  => false,
+                    'color'            => $this->chartColors[$i % count($this->chartColors)],
+                ];
+            }
+
+            // Ambil semua perolehan nilai siswa pada seluruh asesmen di kelas ini
+            $assignmentIds = $assignments->pluck('id');
+            $submissions = LmsSubmission::whereIn('student_id', $studentIds)
                 ->whereIn('assignment_id', $assignmentIds)
                 ->whereNotNull('score')
-                ->avg('score');
-            
-            $val = $avg ? round((float)$avg, 1) : 0;
+                ->get(['student_id', 'assignment_id', 'score']);
+
+            // Simpan nilai perolehan per siswa per asesmen (ambil skor terbaik jika ada lebih dari 1)
+            $submissionScores = [];
+            foreach ($submissions as $sub) {
+                $key = $sub->student_id . '_' . $sub->assignment_id;
+                $currentScore = (float) $sub->score;
+                if (!isset($submissionScores[$key]) || $currentScore > $submissionScores[$key]) {
+                    $submissionScores[$key] = $currentScore;
+                }
+            }
+
+            // Akumulasi seluruh siswa pada semua asesmen:
+            // Siswa yang belum mengerjakan diberikan nilai 0
+            $totalAccumulatedScore = 0;
+            $totalSlots = $studentCount * $assignmentCount;
+
+            foreach ($studentIds as $sId) {
+                foreach ($assignments as $a) {
+                    $key = $sId . '_' . $a->id;
+                    if (isset($submissionScores[$key])) {
+                        $rawScore = $submissionScores[$key];
+                        $maxPoints = (float) ($a->max_points ?: 100);
+                        // Normalisasi ke skala 100
+                        $scoreOn100 = $maxPoints > 0 ? min(100, max(0, ($rawScore / $maxPoints) * 100)) : $rawScore;
+                        $totalAccumulatedScore += $scoreOn100;
+                    } else {
+                        // Belum mengerjakan asesmen = nilai nol (0)
+                        $totalAccumulatedScore += 0;
+                    }
+                }
+            }
+
+            $val = round($totalAccumulatedScore / $totalSlots, 1);
+
             return [
-                'id'            => $c->id,
-                'name'          => $c->name,
-                'value'         => $val,
-                'student_count' => $studentIds->count(),
-                'color'         => $this->chartColors[$i % count($this->chartColors)],
+                'id'               => $c->id,
+                'name'             => $c->name,
+                'value'            => $val,
+                'student_count'    => $studentCount,
+                'assignment_count' => $assignmentCount,
+                'has_assignments'  => true,
+                'color'            => $this->chartColors[$i % count($this->chartColors)],
             ];
         });
 
