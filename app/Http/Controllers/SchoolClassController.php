@@ -18,13 +18,33 @@ class SchoolClassController extends Controller
     public function index(Request $request)
     {
         $user = auth()->user();
+        $activeYear = \App\Models\AcademicYear::getActive();
+        $activeSemester = \App\Models\Semester::getActive();
 
         $query = SchoolClass::query();
 
         if ($user && $user->role === 'teacher' && $user->teacher) {
-            $teachingClassIds = TeachingAssignment::where('teacher_id', $user->teacher->id)
-                ->pluck('school_class_id')
-                ->unique();
+            $teachingQuery = TeachingAssignment::where('teacher_id', $user->teacher->id)
+                ->whereHas('schoolClass');
+
+            if ($activeYear && $activeSemester) {
+                $teachingQuery->where(function ($q) use ($activeYear, $activeSemester) {
+                    $q->where(function ($sub) use ($activeYear, $activeSemester) {
+                        $sub->where('academic_year_id', $activeYear->id)
+                            ->where('semester_id', $activeSemester->id);
+                    })->orWhere(function ($sub) {
+                        $sub->whereNull('academic_year_id')
+                            ->whereNull('semester_id');
+                    });
+                });
+            } elseif ($activeYear) {
+                $teachingQuery->where(function ($q) use ($activeYear) {
+                    $q->where('academic_year_id', $activeYear->id)
+                        ->orWhereNull('academic_year_id');
+                });
+            }
+
+            $teachingClassIds = $teachingQuery->pluck('school_class_id')->unique();
             $query->whereIn('id', $teachingClassIds);
         }
 
@@ -65,6 +85,18 @@ class SchoolClassController extends Controller
                     'assignments_count' => $assignmentsCount,
                 ];
             });
+
+        // Deduplicate duplicate class names, prioritizing the one with active students
+        $classes = $classes
+            ->sortByDesc('students_count')
+            ->unique(fn ($c) => strtolower(trim($c['name'])));
+
+        // If teacher has active classes with students, exclude empty ghost classes (0 students)
+        if ($classes->contains(fn ($c) => $c['students_count'] > 0)) {
+            $classes = $classes->filter(fn ($c) => $c['students_count'] > 0);
+        }
+
+        $classes = $classes->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)->values();
 
         return Inertia::render('classes/index', [
             'classes' => $classes,

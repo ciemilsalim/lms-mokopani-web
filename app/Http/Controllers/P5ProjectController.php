@@ -91,25 +91,58 @@ class P5ProjectController extends Controller
             'period' => $activeYear?->name . ' - ' . $activeSemester?->name,
         ]);
     }
+    protected function getTeacherClasses($teacher)
+    {
+        $activeYear = AcademicYear::getActive();
+        $activeSemester = Semester::getActive();
+
+        $query = TeachingAssignment::with(['schoolClass.students'])
+            ->whereHas('schoolClass')
+            ->where('teacher_id', $teacher->id);
+
+        if ($activeYear && $activeSemester) {
+            $query->where(function ($q) use ($activeYear, $activeSemester) {
+                $q->where(function ($sub) use ($activeYear, $activeSemester) {
+                    $sub->where('academic_year_id', $activeYear->id)
+                        ->where('semester_id', $activeSemester->id);
+                })->orWhere(function ($sub) {
+                    $sub->whereNull('academic_year_id')
+                        ->whereNull('semester_id');
+                });
+            });
+        } elseif ($activeYear) {
+            $query->where(function ($q) use ($activeYear) {
+                $q->where('academic_year_id', $activeYear->id)
+                    ->orWhereNull('academic_year_id');
+            });
+        }
+
+        $classes = $query->get()
+            ->filter(fn($t) => $t->schoolClass !== null)
+            ->map(fn($t) => [
+                'id'            => $t->id,
+                'class_id'      => $t->school_class_id,
+                'class_name'    => $t->schoolClass->name,
+                'student_count' => $t->schoolClass->students?->count() ?? 0,
+            ])
+            ->sortByDesc('student_count')
+            ->unique(fn($c) => strtolower(trim($c['class_name'])));
+
+        if ($classes->contains(fn($c) => $c['student_count'] > 0)) {
+            $classes = $classes->filter(fn($c) => $c['student_count'] > 0);
+        }
+
+        return $classes->sortBy('class_name', SORT_NATURAL | SORT_FLAG_CASE)->values();
+    }
+
     public function index()
     {
         $teacher = Auth::user()->teacher;
-
-        $teachings = TeachingAssignment::with(['subject', 'schoolClass'])
-            ->where('teacher_id', $teacher->id)
-            ->get()
-            ->map(fn($t) => [
-                'id'           => $t->id,
-                'subject_name' => $t->subject?->name,
-                'class_id'     => $t->school_class_id,
-                'class_name'   => $t->schoolClass?->name,
-            ]);
-
-        $classes = collect($teachings)->unique('class_id')->values();
+        $classes = $this->getTeacherClasses($teacher);
 
         $projects = LmsP5Project::with(['schoolClass', 'academicYear', 'semester'])
-            ->whereHas('schoolClass', function ($q) use ($teacher) {
-                $q->whereIn('id', TeachingAssignment::where('teacher_id', $teacher->id)->pluck('school_class_id'));
+            ->whereHas('schoolClass', function ($q) use ($classes) {
+                $q->whereIn('id', $classes->pluck('class_id'));
             })
             ->orderByDesc('created_at')
             ->get();
@@ -123,20 +156,7 @@ class P5ProjectController extends Controller
     public function create()
     {
         $teacher = Auth::user()->teacher;
-        $activeYear = AcademicYear::getActive();
-        $activeSemester = Semester::getActive();
-
-        $teachings = TeachingAssignment::with(['subject', 'schoolClass'])
-            ->where('teacher_id', $teacher->id)
-            ->get()
-            ->map(fn($t) => [
-                'id'           => $t->id,
-                'subject_name' => $t->subject?->name,
-                'class_id'     => $t->school_class_id,
-                'class_name'   => $t->schoolClass?->name,
-            ]);
-
-        $classes = collect($teachings)->unique('class_id')->values();
+        $classes = $this->getTeacherClasses($teacher);
 
         $dimensi = LmsP5Dimensi::with('elements.subElements')->get();
 
@@ -238,18 +258,7 @@ class P5ProjectController extends Controller
     public function edit(LmsP5Project $project)
     {
         $teacher = Auth::user()->teacher;
-
-        $teachings = TeachingAssignment::with(['subject', 'schoolClass'])
-            ->where('teacher_id', $teacher->id)
-            ->get()
-            ->map(fn($t) => [
-                'id'           => $t->id,
-                'subject_name' => $t->subject?->name,
-                'class_id'     => $t->school_class_id,
-                'class_name'   => $t->schoolClass?->name,
-            ]);
-
-        $classes = collect($teachings)->unique('class_id')->values();
+        $classes = $this->getTeacherClasses($teacher);
 
         $dimensi = LmsP5Dimensi::with('elements.subElements')->get();
         $activeYear = AcademicYear::getActive();

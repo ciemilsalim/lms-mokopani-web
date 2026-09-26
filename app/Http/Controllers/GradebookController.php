@@ -27,7 +27,8 @@ class GradebookController extends Controller
         $activeSemester = Semester::getActive();
 
         if ($user->teacher || $user->role === 'admin') {
-            $query = TeachingAssignment::with(['subject', 'schoolClass.students']);
+            $query = TeachingAssignment::with(['subject', 'schoolClass.students'])
+                ->whereHas('schoolClass');
             if ($user->teacher && $user->role !== 'admin') {
                 $query->where('teacher_id', $user->teacher->id);
             }
@@ -49,32 +50,43 @@ class GradebookController extends Controller
                 });
             }
 
-            $rawTeachings = $query->get()->unique(fn ($t) => $t->subject_id . '-' . $t->school_class_id);
+            $rawTeachings = $query->get()->filter(fn ($t) => $t->schoolClass !== null);
 
-            // Extract unique sorted classes for quick filter pills
-            $classes = $rawTeachings->map(fn ($t) => [
-                'id'   => $t->school_class_id,
-                'name' => $t->schoolClass?->name ?? 'Kelas -',
+            $mappedTeachings = $rawTeachings->map(fn ($t) => [
+                'id'            => $t->id,
+                'subject_id'    => $t->subject_id,
+                'subject_name'  => $t->subject?->name ?? '-',
+                'class_id'      => $t->school_class_id,
+                'class_name'    => $t->schoolClass?->name ?? '-',
+                'student_count' => $t->schoolClass?->students?->count() ?? 0,
+            ]);
+
+            // Deduplicate by subject_id + normalized class_name, prioritizing classes with active students
+            $dedupedTeachings = $mappedTeachings
+                ->sortByDesc('student_count')
+                ->unique(fn ($t) => $t['subject_id'] . '-' . strtolower(trim($t['class_name'])));
+
+            // If teacher has active classes with students, exclude any abandoned/ghost classes with 0 students
+            if ($dedupedTeachings->contains(fn ($t) => $t['student_count'] > 0)) {
+                $dedupedTeachings = $dedupedTeachings->filter(fn ($t) => $t['student_count'] > 0);
+            }
+
+            $dedupedTeachings = $dedupedTeachings
+                ->sortBy(function ($t) {
+                    return sprintf('%-50s %-50s', $t['class_name'], $t['subject_name']);
+                }, SORT_NATURAL | SORT_FLAG_CASE)
+                ->values();
+
+            // Extract unique sorted classes for quick filter pills based on deduplicated teachings
+            $classes = $dedupedTeachings->map(fn ($t) => [
+                'id'   => $t['class_id'],
+                'name' => $t['class_name'],
             ])
-            ->unique('id')
-            ->sortBy('name', SORT_NATURAL)
+            ->unique('name')
+            ->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)
             ->values();
 
-            $teachings = $rawTeachings
-                ->sortBy(function ($t) {
-                    $className = $t->schoolClass?->name ?? '';
-                    $subjectName = $t->subject?->name ?? '';
-                    return sprintf('%-50s %-50s', $className, $subjectName);
-                }, SORT_NATURAL)
-                ->values()
-                ->map(fn ($t) => [
-                    'id'            => $t->id,
-                    'subject_id'    => $t->subject_id,
-                    'subject_name'  => $t->subject?->name ?? '-',
-                    'class_id'      => $t->school_class_id,
-                    'class_name'    => $t->schoolClass?->name ?? '-',
-                    'student_count' => $t->schoolClass?->students?->count() ?? 0,
-                ]);
+            $teachings = $dedupedTeachings->values();
 
             $selectedClassId = $request->query('class_id') ? (int) $request->query('class_id') : null;
 

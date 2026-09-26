@@ -25,7 +25,8 @@ class RemedialRecordController extends Controller
         $activeYear = AcademicYear::getActive();
         $activeSemester = Semester::getActive();
         
-        $query = TeachingAssignment::with(['subject', 'schoolClass'])
+        $query = TeachingAssignment::with(['subject', 'schoolClass.students'])
+            ->whereHas('schoolClass')
             ->where('teacher_id', $teacher->id);
 
         if ($activeYear && $activeSemester) {
@@ -45,15 +46,24 @@ class RemedialRecordController extends Controller
             });
         }
 
-        return $query->get()
+        $teachings = $query->get()
             ->filter(fn ($t) => $t->subject && $t->schoolClass)
             ->map(fn ($t) => [
-                'subject_id'   => $t->subject_id,
-                'subject_name' => $t->subject->name,
-                'class_id'     => $t->school_class_id,
-                'class_name'   => $t->schoolClass->name,
+                'subject_id'    => $t->subject_id,
+                'subject_name'  => $t->subject->name,
+                'class_id'      => $t->school_class_id,
+                'class_name'    => $t->schoolClass->name,
+                'student_count' => $t->schoolClass->students?->count() ?? 0,
             ])
-            ->unique(fn ($t) => $t['subject_id'] . '-' . $t['class_id'])
+            ->sortByDesc('student_count')
+            ->unique(fn ($t) => $t['subject_id'] . '-' . strtolower(trim($t['class_name'])));
+
+        if ($teachings->contains(fn ($t) => $t['student_count'] > 0)) {
+            $teachings = $teachings->filter(fn ($t) => $t['student_count'] > 0);
+        }
+
+        return $teachings
+            ->sortBy(fn ($t) => sprintf('%-50s %-50s', $t['class_name'], $t['subject_name']), SORT_NATURAL | SORT_FLAG_CASE)
             ->values();
     }
 
