@@ -23,7 +23,6 @@ import {
     ActivityList,
     SectionHeader,
     ClassPerformanceCard,
-    AssignedClassesCard,
 } from './index';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -235,14 +234,6 @@ export function TeacherDashboardView({
                     </div>
                 )}
 
-                {/* 07. KELAS YANG DIAMPU (Left side on desktop) */}
-                {classes && classes.length > 0 && (
-                    <div className="order-7 lg:order-none lg:col-span-7 w-full min-w-0 box-border">
-                        <AssignedClassesCard
-                            classes={classes}
-                        />
-                    </div>
-                )}
 
                 {/* 08. AKTIVITAS TERKINI (Right side on desktop) */}
                 <div className="order-8 lg:order-none lg:col-span-5 w-full min-w-0 box-border">

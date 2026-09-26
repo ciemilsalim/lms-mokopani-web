@@ -4,22 +4,19 @@ import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, Sid
 import { type NavItem, type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
 import {
-    Book, BookOpen, ClipboardList, GraduationCap, LayoutDashboard, Library, Target, FileBarChart, Bell, Compass,
-    Heart, MessageSquare, BarChart3, Brain, Users, ExternalLink, FileText, Layers, Award, Sparkles, HelpCircle,
-    RotateCcw, School, FolderTree,
+    Book, BookOpen, ClipboardList, GraduationCap, LayoutDashboard, Library, Target, FileBarChart, Bell,
+    Heart, BarChart3, Users, ExternalLink, RotateCcw, School,
 } from 'lucide-react';
 import AppLogo from './app-logo';
 
 interface NavSection {
     label: string;
-    icon?: React.ComponentType<{ className?: string }>;
     items: NavItem[];
 }
 
 const teacherNavSections: NavSection[] = [
     {
         label: 'Utama',
-        icon: LayoutDashboard,
         items: [
             { title: 'Dashboard',           url: '/dashboard',     icon: LayoutDashboard },
             { title: 'Daftar Kelas',        url: '/classes',       icon: School },
@@ -28,7 +25,6 @@ const teacherNavSections: NavSection[] = [
     },
     {
         label: 'Perencanaan',
-        icon: Compass,
         items: [
             { title: 'Analisis CP & TP',      url: '/learning-objectives',    icon: Target },
             { title: 'Modul Ajar / RPP',      url: '/lesson-plans',           icon: BookOpen },
@@ -36,7 +32,6 @@ const teacherNavSections: NavSection[] = [
     },
     {
         label: 'Pelaksanaan',
-        icon: Layers,
         items: [
             { title: 'Bahan Materi',          url: '/materials',              icon: Library },
             { title: 'Bank Asesmen',          url: '/assignments',            icon: ClipboardList },
@@ -44,7 +39,6 @@ const teacherNavSections: NavSection[] = [
     },
     {
         label: 'Pengolahan',
-        icon: Award,
         items: [
             { title: 'Nilai & Rapor',         url: '/gradebook',              icon: FileBarChart },
             { title: 'Projek P5',             url: '/p5',                     icon: Heart },
@@ -52,7 +46,6 @@ const teacherNavSections: NavSection[] = [
     },
     {
         label: 'Refleksi',
-        icon: Sparkles,
         items: [
             { title: 'Remedial & Pengayaan',  url: '/remedial',               icon: RotateCcw },
             { title: 'Analitik Pembelajaran', url: '/analytics',              icon: BarChart3 },
@@ -60,7 +53,6 @@ const teacherNavSections: NavSection[] = [
     },
     {
         label: 'Bantuan',
-        icon: HelpCircle,
         items: [
             { title: 'Petunjuk Penggunaan', url: '/guide',     icon: Book },
         ],
@@ -70,7 +62,6 @@ const teacherNavSections: NavSection[] = [
 const studentNavSections: NavSection[] = [
     {
         label: 'Menu Utama',
-        icon: LayoutDashboard,
         items: [
             { title: 'Beranda',             url: '/dashboard',   icon: LayoutDashboard },
             { title: 'Materi Belajar',      url: '/materials',   icon: Library },
@@ -83,7 +74,6 @@ const studentNavSections: NavSection[] = [
 const adminNavSections: NavSection[] = [
     {
         label: 'Utama',
-        icon: LayoutDashboard,
         items: [
             { title: 'Dashboard',           url: '/dashboard', icon: LayoutDashboard },
             { title: 'Petunjuk Penggunaan', url: '/guide',     icon: Book },
@@ -91,7 +81,6 @@ const adminNavSections: NavSection[] = [
     },
     {
         label: 'Data Master',
-        icon: FolderTree,
         items: [
             { title: 'Capaian Pembelajaran', url: '/cp',       icon: Target },
             { title: 'Mata Pelajaran',      url: '/subjects',  icon: BookOpen },
@@ -101,14 +90,12 @@ const adminNavSections: NavSection[] = [
     },
     {
         label: 'Monitoring & Analitik',
-        icon: BarChart3,
         items: [
             { title: 'Analitik Pembelajaran', url: '/analytics',      icon: BarChart3 },
         ],
     },
     {
         label: 'Komunikasi',
-        icon: Bell,
         items: [
             { title: 'Pengumuman', url: '/announcements', icon: Bell },
         ],
@@ -118,7 +105,6 @@ const adminNavSections: NavSection[] = [
 const parentNavSections: NavSection[] = [
     {
         label: 'Portal Orang Tua',
-        icon: GraduationCap,
         items: [
             { title: 'Perkembangan Belajar', url: '/parent/dashboard', icon: GraduationCap },
             { title: 'Pengumuman Sekolah',   url: '/announcements',   icon: Bell },
@@ -126,7 +112,6 @@ const parentNavSections: NavSection[] = [
     },
     {
         label: 'Bantuan',
-        icon: HelpCircle,
         items: [
             { title: 'Petunjuk Penggunaan', url: '/guide',           icon: Book },
         ],
@@ -167,7 +152,6 @@ export function AppSidebar() {
                         key={section.label}
                         items={section.items}
                         label={section.label}
-                        icon={section.icon}
                     />
                 ))}
             </SidebarContent>
