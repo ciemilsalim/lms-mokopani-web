@@ -16,7 +16,7 @@ class AnnouncementController extends Controller
 {
     private function getTeacherClasses($user)
     {
-        $teacher = $user->teacher ?? Teacher::where('user_id', $user->id)->orWhere('email', $user->email)->first();
+        $teacher = $user->teacher ?? Teacher::where('user_id', $user->id)->first();
         $activeYear = \App\Models\AcademicYear::getActive();
         $activeSemester = \App\Models\Semester::getActive();
 
@@ -77,7 +77,7 @@ class AnnouncementController extends Controller
     {
         $user = Auth::user();
         $query = LmsAnnouncement::with(['teacher', 'schoolClass']);
-        $teacher = $user->teacher ?? Teacher::where('user_id', $user->id)->orWhere('email', $user->email)->first();
+        $teacher = $user->teacher ?? Teacher::where('user_id', $user->id)->first();
 
         if ($teacher && $user->role !== 'admin') {
             $query->where('teacher_id', $teacher->id);
@@ -110,7 +110,7 @@ class AnnouncementController extends Controller
     public function store(Request $request)
     {
         $user = Auth::user();
-        $teacher = $user->teacher ?? Teacher::where('user_id', $user->id)->orWhere('email', $user->email)->first();
+        $teacher = $user->teacher ?? Teacher::where('user_id', $user->id)->first();
 
         $validated = $request->validate([
             'school_class_id' => 'nullable|exists:mysql_absensi.school_classes,id',
@@ -160,7 +160,7 @@ class AnnouncementController extends Controller
     public function edit(LmsAnnouncement $announcement)
     {
         $user = Auth::user();
-        $teacher = $user->teacher ?? Teacher::where('user_id', $user->id)->orWhere('email', $user->email)->first();
+        $teacher = $user->teacher ?? Teacher::where('user_id', $user->id)->first();
 
         if ($teacher && $announcement->teacher_id && $announcement->teacher_id !== $teacher->id && $user->role !== 'admin') {
             abort(403, 'Anda tidak memiliki hak untuk mengedit pengumuman ini.');
@@ -177,7 +177,7 @@ class AnnouncementController extends Controller
     public function update(Request $request, LmsAnnouncement $announcement)
     {
         $user = Auth::user();
-        $teacher = $user->teacher ?? Teacher::where('user_id', $user->id)->orWhere('email', $user->email)->first();
+        $teacher = $user->teacher ?? Teacher::where('user_id', $user->id)->first();
 
         if ($teacher && $announcement->teacher_id && $announcement->teacher_id !== $teacher->id && $user->role !== 'admin') {
             abort(403, 'Anda tidak memiliki hak untuk mengubah pengumuman ini.');
@@ -207,7 +207,7 @@ class AnnouncementController extends Controller
     public function destroy(LmsAnnouncement $announcement)
     {
         $user = Auth::user();
-        $teacher = $user->teacher ?? Teacher::where('user_id', $user->id)->orWhere('email', $user->email)->first();
+        $teacher = $user->teacher ?? Teacher::where('user_id', $user->id)->first();
 
         if ($teacher && $announcement->teacher_id && $announcement->teacher_id !== $teacher->id && $user->role !== 'admin') {
             abort(403, 'Anda tidak memiliki hak untuk menghapus pengumuman ini.');

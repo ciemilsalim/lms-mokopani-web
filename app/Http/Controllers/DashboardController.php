@@ -27,19 +27,19 @@ class DashboardController extends Controller
     public function index()
     {
         $user = Auth::user();
-        $role = $user->role;
+        $role = strtolower($user->role ?? '');
 
         if (!$role) {
-            $role = $user->teacher ? 'teacher' : ($user->student ? 'student' : 'guest');
+            $role = $user->teacher ? 'teacher' : ($user->student ? 'student' : ($user->parent ? 'parent' : 'guest'));
         }
 
-        if ($role === 'parent') {
+        if (in_array($role, ['parent', 'orang_tua', 'ortu'])) {
             return redirect()->route('parent.dashboard');
         }
 
         return match ($role) {
-            'teacher' => $this->teacherDashboard($user),
-            'student' => $this->studentDashboard($user),
+            'teacher', 'guru' => $this->teacherDashboard($user),
+            'student', 'siswa' => $this->studentDashboard($user),
             default   => $this->adminDashboard($user),
         };
     }
@@ -87,10 +87,7 @@ class DashboardController extends Controller
 
     private function teacherDashboard($user)
     {
-        $teacher = $user->teacher;
-        if (!$teacher) {
-            $teacher = Teacher::where('user_id', $user->id)->orWhere('email', $user->email)->first();
-        }
+        $teacher = $user->teacher ?? Teacher::where('user_id', $user->id)->first();
 
         if (!$teacher) {
             \Illuminate\Support\Facades\Log::warning('[Dashboard] User memiliki peran guru namun data Teacher belum terhubung', [
@@ -232,10 +229,7 @@ class DashboardController extends Controller
 
     private function studentDashboard($user)
     {
-        $student = $user->student;
-        if (!$student) {
-            $student = Student::where('user_id', $user->id)->orWhere('email', $user->email)->first();
-        }
+        $student = $user->student ?? Student::where('user_id', $user->id)->orWhere('learning_email', $user->email)->first();
 
         if (!$student) {
             \Illuminate\Support\Facades\Log::warning('[Dashboard] User memiliki peran siswa namun data Student belum terhubung', [
@@ -311,7 +305,7 @@ class DashboardController extends Controller
             (clone $myAssignments)->with('subject')->latest()->take(5)->get()
         );
 
-        $todaySchedule = $this->getStudentSchedule($user);
+        $todaySchedule = $this->getStudentSchedule($user, $student);
 
         return Inertia::render('dashboard', [
             'stats'               => $stats,
@@ -732,12 +726,13 @@ class DashboardController extends Controller
 
     private function getAnnouncements($user, ?Teacher $teacher = null): array
     {
-        $teacher = $teacher ?? $user->teacher ?? Teacher::where('user_id', $user->id)->orWhere('email', $user->email)->first();
+        $teacher = $teacher ?? $user->teacher ?? Teacher::where('user_id', $user->id)->first();
+        $student = $user->student ?? Student::where('user_id', $user->id)->first();
 
         return LmsAnnouncement::with('teacher')
-            ->where(function ($q) use ($user, $teacher) {
-                if ($user->student) {
-                    $q->where('school_class_id', $user->student->school_class_id)
+            ->where(function ($q) use ($student, $teacher) {
+                if ($student) {
+                    $q->where('school_class_id', $student->school_class_id)
                       ->orWhereNull('school_class_id');
                 } elseif ($teacher) {
                     $q->where('teacher_id', $teacher->id)
@@ -781,10 +776,15 @@ class DashboardController extends Controller
             ->toArray();
     }
 
-    private function getStudentSchedule($user): array
+    private function getStudentSchedule($user, ?Student $student = null): array
     {
+        $student = $student ?? $user->student ?? Student::where('user_id', $user->id)->first();
+        if (!$student || !$student->school_class_id) {
+            return [];
+        }
+
         $todayNumber = $this->getTodayNumber();
-        return Schedule::whereHas('teachingAssignment', fn ($q) => $q->where('school_class_id', $user->student->school_class_id))
+        return Schedule::whereHas('teachingAssignment', fn ($q) => $q->where('school_class_id', $student->school_class_id))
             ->where('day_of_week', $todayNumber)
             ->with(['teachingAssignment.subject', 'teachingAssignment.teacher', 'teachingAssignment.schoolClass'])
             ->orderBy('start_time')
