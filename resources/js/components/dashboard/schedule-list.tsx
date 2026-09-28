@@ -6,6 +6,7 @@ import { Link } from '@inertiajs/react';
 export interface ScheduleItemData {
     subject: string;
     class?: string;
+    class_id?: number;
     teacher?: string;
     time: string;
     is_current?: boolean;
@@ -63,23 +64,24 @@ export function ScheduleList({
                     <div className="space-y-2 w-full min-w-0">
                         {schedules.map((item, index) => {
                             const isCurrent = item.is_current;
+                            const targetUrl = item.class_id ? `/classes/${item.class_id}` : '/classes';
                             return (
                                 <div
                                     key={index}
                                     className={`group flex items-center justify-between gap-3 p-3 rounded-xl transition-all min-h-[56px] w-full min-w-0 ${
                                         isCurrent
-                                            ? 'bg-primary/10 border border-primary/40 shadow-xs'
+                                            ? 'bg-primary/10 border border-primary/40 shadow-xs hover:bg-primary/15'
                                             : index === 0
-                                            ? 'bg-card border border-primary/20 hover:border-primary/40'
+                                            ? 'bg-card border border-primary/20 hover:border-primary/40 hover:bg-muted/30'
                                             : 'bg-card hover:bg-muted/40 border border-border/50'
                                     }`}
                                 >
-                                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                                    <Link href={targetUrl} className="flex items-center gap-3 min-w-0 flex-1 group/item">
                                         <div
                                             className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-xs font-bold ${
                                                 isCurrent
                                                     ? 'bg-primary text-primary-foreground shadow-xs'
-                                                    : 'bg-muted text-muted-foreground'
+                                                    : 'bg-muted text-muted-foreground group-hover/item:bg-primary/20 group-hover/item:text-primary transition-colors'
                                             }`}
                                         >
                                             {index + 1}
@@ -87,7 +89,7 @@ export function ScheduleList({
 
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center gap-2">
-                                                <h3 className="text-xs sm:text-sm font-bold text-foreground truncate">
+                                                <h3 className="text-xs sm:text-sm font-bold text-foreground group-hover/item:text-primary transition-colors truncate">
                                                     {item.subject}
                                                 </h3>
                                                 {isCurrent && (
@@ -103,11 +105,11 @@ export function ScheduleList({
                                                 <span className="truncate">{item.time}</span>
                                             </div>
                                         </div>
-                                    </div>
+                                    </Link>
 
                                     <div className="shrink-0">
                                         <Link
-                                            href="/classes"
+                                            href={targetUrl}
                                             className="inline-flex items-center justify-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all active:scale-95 min-h-[44px]"
                                         >
                                             <span>Buka</span>

@@ -56,9 +56,9 @@ export function AssignedClassesCard({ classes = [], className = '' }: AssignedCl
                         >
                             <div className="min-w-0">
                                 <div className="flex items-center justify-between gap-2">
-                                    <h3 className="text-sm font-bold text-foreground truncate">
+                                    <Link href={`/classes/${cls.id}`} className="text-sm font-bold text-foreground hover:text-primary transition-colors truncate">
                                         {cls.name}
-                                    </h3>
+                                    </Link>
                                     {cls.student_count !== undefined && (
                                         <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground shrink-0">
                                             <Users className="h-2.5 w-2.5" />

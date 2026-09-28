@@ -64,18 +64,20 @@ export function ActivityList({
                     <div className="divide-y divide-border/50 w-full min-w-0">
                         {activities.slice(0, 3).map((act) => {
                             const info = typeMap[act.type] || typeMap.material;
+                            const targetUrl = act.type === 'material' ? `/materials/${act.id}` : act.type === 'assignment' ? `/assignments/${act.id}` : '/materials';
                             return (
-                                <div
+                                <Link
                                     key={act.id}
-                                    className="flex items-start justify-between gap-2.5 p-3 hover:bg-muted/30 transition-colors min-h-[56px] w-full min-w-0"
+                                    href={targetUrl}
+                                    className="group flex items-start justify-between gap-2.5 p-3 hover:bg-muted/30 transition-colors min-h-[56px] w-full min-w-0"
                                 >
                                     <div className="flex items-start gap-2.5 min-w-0 flex-1">
-                                        <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${info.color} mt-0.5 shadow-2xs`}>
+                                        <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${info.color} mt-0.5 shadow-2xs group-hover:scale-105 transition-transform`}>
                                             <info.icon className="h-4.5 w-4.5" />
                                         </div>
 
                                         <div className="flex-1 min-w-0">
-                                            <h3 className="text-xs sm:text-[13px] font-bold text-foreground line-clamp-2 leading-snug overflow-wrap-anywhere">
+                                            <h3 className="text-xs sm:text-[13px] font-bold text-foreground group-hover:text-primary transition-colors line-clamp-2 leading-snug overflow-wrap-anywhere">
                                                 {act.title}
                                             </h3>
                                             <p className="text-[11px] text-muted-foreground truncate mt-0.5 leading-tight">
@@ -89,7 +91,7 @@ export function ActivityList({
                                             {act.created_at}
                                         </span>
                                     </div>
-                                </div>
+                                </Link>
                             );
                         })}
                     </div>

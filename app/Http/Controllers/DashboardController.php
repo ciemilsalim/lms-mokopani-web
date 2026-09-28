@@ -790,9 +790,10 @@ class DashboardController extends Controller
             ->orderBy('start_time')
             ->get()
             ->map(fn ($s) => [
-                'subject'    => $s->teachingAssignment->subject->name,
-                'teacher'    => $s->teachingAssignment->teacher->name,
-                'class'      => $s->teachingAssignment->schoolClass->name,
+                'subject'    => $s->teachingAssignment->subject?->name ?? 'Mata Pelajaran',
+                'teacher'    => $s->teachingAssignment->teacher?->name,
+                'class'      => $s->teachingAssignment->schoolClass?->name,
+                'class_id'   => $s->teachingAssignment->school_class_id,
                 'time'       => substr($s->start_time, 0, 5) . ' - ' . substr($s->end_time, 0, 5),
                 'is_current' => now()->between($s->start_time, $s->end_time),
             ])

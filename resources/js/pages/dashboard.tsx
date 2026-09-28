@@ -462,35 +462,45 @@ function StudentDashboard({
                                         <p className="text-[11px] text-muted-foreground mt-0.5">Selamat beristirahat atau belajar mandiri!</p>
                                     </div>
                                 ) : (
-                                    todaySchedule.map((s, i) => (
-                                        <div
-                                            key={i}
-                                            className={`flex items-center gap-3.5 rounded-2xl p-3.5 transition-all ${
-                                                s.is_current
-                                                    ? 'bg-primary/10 border border-primary/20 shadow-xs'
-                                                    : 'bg-muted/30 hover:bg-muted/60 border border-transparent'
-                                            }`}
-                                        >
-                                            <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-xs font-black ${
-                                                s.is_current ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
-                                            }`}>
-                                                {i + 1}
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex items-center gap-2 flex-wrap">
-                                                    <h3 className="text-xs sm:text-sm font-bold text-foreground truncate">{s.subject}</h3>
-                                                    {s.is_current && (
-                                                        <span className="inline-flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[9px] font-black text-primary-foreground animate-pulse">
-                                                            Live Sekarang
-                                                        </span>
-                                                    )}
+                                    todaySchedule.map((s, i) => {
+                                        const targetUrl = s.class_id ? `/classes/${s.class_id}` : '/classes';
+                                        return (
+                                            <Link
+                                                key={i}
+                                                href={targetUrl}
+                                                className={`group flex items-center justify-between gap-3.5 rounded-2xl p-3.5 transition-all hover:border-primary/40 ${
+                                                    s.is_current
+                                                        ? 'bg-primary/10 border border-primary/20 shadow-xs hover:bg-primary/15'
+                                                        : 'bg-muted/30 hover:bg-muted/60 border border-transparent'
+                                                }`}
+                                            >
+                                                <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                                                    <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-xs font-black ${
+                                                        s.is_current ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground group-hover:bg-primary group-hover:text-primary-foreground transition-colors'
+                                                    }`}>
+                                                        {i + 1}
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex items-center gap-2 flex-wrap">
+                                                            <h3 className="text-xs sm:text-sm font-bold text-foreground truncate group-hover:text-primary transition-colors">{s.subject}</h3>
+                                                            {s.is_current && (
+                                                                <span className="inline-flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[9px] font-black text-primary-foreground animate-pulse">
+                                                                    Live Sekarang
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                                                            {s.teacher ? `${s.teacher} • ` : ''}{s.time}
+                                                        </p>
+                                                    </div>
                                                 </div>
-                                                <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                                                    {s.teacher ? `${s.teacher} \u2022 ` : ''}{s.time}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    ))
+                                                <div className="shrink-0 flex items-center gap-1 text-xs font-bold text-primary opacity-80 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all">
+                                                    <span>Buka</span>
+                                                    <ChevronRight className="h-4 w-4" />
+                                                </div>
+                                            </Link>
+                                        );
+                                    })
                                 )}
                             </CardContent>
                         </Card>
@@ -1041,36 +1051,42 @@ export default function Dashboard(props: DashboardProps) {
                                     <p className="text-sm text-muted-foreground">Tidak ada jadwal mengajar hari ini.</p>
                                 </div>
                             ) : (
-                                todaySchedule.map((s, i) => (
-                                    <div
-                                        key={i}
-                                        className={`group relative flex items-center gap-4 rounded-lg p-3 transition-all ${
-                                            s.is_current ? 'bg-primary/5 ring-1 ring-primary/20' : 'hover:bg-muted/50'
-                                        }`}
-                                    >
-                                        <div className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg text-xs font-bold ${
-                                            s.is_current ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
-                                        }`}>
-                                            {i + 1}
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex items-center gap-2">
-                                                <h3 className="text-sm font-semibold text-foreground truncate">{s.subject}</h3>
-                                                {s.is_current && <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />}
+                                todaySchedule.map((s, i) => {
+                                    const targetUrl = s.class_id ? `/classes/${s.class_id}` : '/classes';
+                                    return (
+                                        <Link
+                                            key={i}
+                                            href={targetUrl}
+                                            className={`group relative flex items-center gap-4 rounded-lg p-3 transition-all ${
+                                                s.is_current ? 'bg-primary/5 ring-1 ring-primary/20 hover:bg-primary/10' : 'hover:bg-muted/50'
+                                            }`}
+                                        >
+                                            <div className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg text-xs font-bold ${
+                                                s.is_current ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground group-hover:bg-primary group-hover:text-primary-foreground transition-colors'
+                                            }`}>
+                                                {i + 1}
                                             </div>
-                                            <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-                                                {s.class ? `Kelas ${s.class}` : s.teacher}
-                                                <span className="h-1 w-1 rounded-full bg-muted-foreground/30" />
-                                                {s.time}
-                                            </p>
-                                        </div>
-                                        {s.is_current && (
-                                            <div className="rounded-full bg-primary/10 px-2 py-0.5 text-[9px] font-bold text-primary">
-                                                Sekarang
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center gap-2">
+                                                    <h3 className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors truncate">{s.subject}</h3>
+                                                    {s.is_current && <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />}
+                                                </div>
+                                                <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                                                    {s.class ? `Kelas ${s.class}` : s.teacher}
+                                                    <span className="h-1 w-1 rounded-full bg-muted-foreground/30" />
+                                                    {s.time}
+                                                </p>
                                             </div>
-                                        )}
-                                    </div>
-                                ))
+                                            {s.is_current ? (
+                                                <div className="rounded-full bg-primary/10 px-2 py-0.5 text-[9px] font-bold text-primary">
+                                                    Sekarang
+                                                </div>
+                                            ) : (
+                                                <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                                            )}
+                                        </Link>
+                                    );
+                                })
                             )}
                         </CardContent>
                     </Card>
