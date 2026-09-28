@@ -16,6 +16,8 @@ export interface SummaryCardProps {
     variant?: SemanticVariant;
     /** Optional navigation URL on tap */
     href?: string;
+    /** Optional click handler on tap */
+    onClick?: (e: React.MouseEvent) => void;
     /** Optional trend or secondary description */
     description?: string;
     /** Additional CSS classes */
@@ -61,6 +63,7 @@ export function SummaryCard({
     icon: Icon,
     variant = 'primary',
     href,
+    onClick,
     description,
     className = '',
 }: SummaryCardProps) {
@@ -91,6 +94,18 @@ export function SummaryCard({
             </CardContent>
         </Card>
     );
+
+    if (onClick) {
+        return (
+            <button
+                type="button"
+                onClick={onClick}
+                className="block h-full min-w-0 w-full text-left focus:outline-none focus:ring-2 focus:ring-primary/30 rounded-2xl active:scale-97 transition-transform cursor-pointer"
+            >
+                {cardNode}
+            </button>
+        );
+    }
 
     if (href) {
         return (

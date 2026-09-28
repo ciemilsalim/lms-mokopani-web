@@ -163,8 +163,7 @@ export default function ClassShow({
                                 value={students.length}
                                 icon={Users}
                                 variant="primary"
-                                href="#"
-                                onClick={(e) => { e.preventDefault(); handleTabChange('students'); }}
+                                onClick={() => handleTabChange('students')}
                             />
                             <SummaryCard
                                 label="Mata Pelajaran"
@@ -177,16 +176,14 @@ export default function ClassShow({
                                 value={materials.length}
                                 icon={Library}
                                 variant="warning"
-                                href="#"
-                                onClick={(e) => { e.preventDefault(); handleTabChange('materials'); }}
+                                onClick={() => handleTabChange('materials')}
                             />
                             <SummaryCard
                                 label="Asesmen"
                                 value={assignments.length}
                                 icon={ClipboardList}
                                 variant="destructive"
-                                href="#"
-                                onClick={(e) => { e.preventDefault(); handleTabChange('assignments'); }}
+                                onClick={() => handleTabChange('assignments')}
                             />
                         </div>
 
@@ -256,7 +253,7 @@ export default function ClassShow({
 
                         {/* Perlu Tindakan */}
                         {pendingAssignments.length > 0 && (
-                            <Card className="rounded-2xl border border-rose-200/60 dark:border-rose-900/40 bg-rose-50/20 dark:bg-rose-950/10 p-3.5 sm:p-4 w-full min-w-0">
+                            <Card className="rounded-2xl border border-rose-200/60 dark:border-rose-900/40 bg-rose-50/20 dark:bg-rose-950/10 p-3.5 sm:p-4 w-full min-w-0 space-y-3">
                                 <div className="flex items-center justify-between gap-3">
                                     <div className="flex items-center gap-2.5 min-w-0 flex-1">
                                         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-rose-500/15 text-rose-600 dark:text-rose-400">
@@ -264,20 +261,42 @@ export default function ClassShow({
                                         </div>
                                         <div className="min-w-0 flex-1">
                                             <h3 className="text-xs sm:text-sm font-bold text-foreground truncate">
-                                                {pendingAssignments.reduce((sum, a) => sum + (a.pending_count || 0), 0)} tugas perlu dinilai di {cleanClassName}
+                                                {pendingAssignments.reduce((sum, a) => sum + (a.pending_count || 0), 0)} Jawaban Siswa Perlu Dinilai
                                             </h3>
                                             <p className="text-[11px] text-muted-foreground truncate mt-0.5">
-                                                {pendingAssignments.map(a => a.title).join(', ')}
+                                                Terdapat {pendingAssignments.length} asesmen di {cleanClassName} yang membutuhkan pemeriksaan
                                             </p>
                                         </div>
                                     </div>
-                                    <Link
-                                        href={`/assignments/${pendingAssignments[0].id}/grade-view?class_id=${schoolClass.id}`}
-                                        className="inline-flex items-center gap-1 text-xs font-bold text-rose-600 dark:text-rose-400 hover:underline shrink-0"
-                                    >
-                                        <span>Periksa</span>
-                                        <ChevronRight className="h-3.5 w-3.5" />
-                                    </Link>
+                                </div>
+
+                                <div className="divide-y divide-border/60 rounded-xl bg-card border border-border/70 overflow-hidden">
+                                    {pendingAssignments.map((asg) => (
+                                        <div
+                                            key={asg.id}
+                                            className="flex items-center justify-between gap-3 p-3 hover:bg-muted/30 transition text-xs"
+                                        >
+                                            <div className="min-w-0 flex-1">
+                                                <div className="flex items-center gap-2">
+                                                    <h4 className="font-bold text-foreground truncate">{asg.title}</h4>
+                                                    <Badge variant="destructive" className="text-[10px] font-bold px-2 py-0.5 rounded-lg shrink-0">
+                                                        {asg.pending_count} Perlu Dinilai
+                                                    </Badge>
+                                                </div>
+                                                <p className="text-[11px] text-muted-foreground truncate mt-0.5">
+                                                    {asg.subject_name} {asg.due_date ? `• Deadline: ${asg.due_date}` : ''}
+                                                </p>
+                                            </div>
+
+                                            <Link
+                                                href={`/assignments/${asg.id}/grade-view?class_id=${schoolClass.id}`}
+                                                className="inline-flex items-center justify-center gap-1 px-3 py-1.5 rounded-xl bg-rose-600 text-white hover:bg-rose-700 text-xs font-bold transition active:scale-95 shrink-0 min-h-[36px]"
+                                            >
+                                                <span>Periksa</span>
+                                                <ChevronRight className="h-3.5 w-3.5" />
+                                            </Link>
+                                        </div>
+                                    ))}
                                 </div>
                             </Card>
                         )}
