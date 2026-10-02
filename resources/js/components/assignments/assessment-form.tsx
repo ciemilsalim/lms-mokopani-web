@@ -332,6 +332,19 @@ function IndicatorBuilder({
     );
 }
 
+const ensureArray = <T = any>(val: any): T[] => {
+    if (Array.isArray(val)) return val;
+    if (val && typeof val === 'object') return Object.values(val);
+    if (typeof val === 'string') {
+        try {
+            const parsed = JSON.parse(val);
+            if (Array.isArray(parsed)) return parsed;
+            if (parsed && typeof parsed === 'object') return Object.values(parsed);
+        } catch (e) {}
+    }
+    return [];
+};
+
 export function AssessmentForm({
     mode,
     initialAssignment,
@@ -1475,7 +1488,7 @@ export function AssessmentForm({
                                         </div>
                                     ) : (
                                         <div className="space-y-3">
-                                            {data.instrument_config.questions.map((q: any, qIdx: number) => {
+                                            {ensureArray(data.instrument_config?.questions).map((q: any, qIdx: number) => {
                                                 const qText = q.question || q.text || '';
                                                 const calcRows = Math.max(3, Math.min(8, Math.ceil(qText.length / 40)));
                                                 return (
@@ -1541,7 +1554,7 @@ export function AssessmentForm({
                                                                     Pilihan Jawaban & Kunci:
                                                                 </p>
                                                                 <div className="space-y-2">
-                                                                    {(q.options || []).map((opt: any, optIdx: number) => {
+                                                                    {ensureArray(q.options).map((opt: any, optIdx: number) => {
                                                                         const optLabel = String.fromCharCode(65 + optIdx);
                                                                         const isCorrect = Boolean(opt.is_correct);
                                                                         return (
@@ -1722,7 +1735,7 @@ export function AssessmentForm({
                                     </div>
 
                                     <div className="space-y-3">
-                                        {(data.instrument_config.questions || []).map((q: any, qIdx: number) => {
+                                        {ensureArray(data.instrument_config?.questions).map((q: any, qIdx: number) => {
                                             const diffColor = q.difficulty === 'Mudah'
                                                 ? 'bg-emerald-500/10 text-emerald-600 border-emerald-300'
                                                 : q.difficulty === 'Sedang'

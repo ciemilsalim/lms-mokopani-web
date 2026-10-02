@@ -102,8 +102,18 @@ interface Student {
 import { StudentAvatar } from '@/components/student-avatar';
 
 import CommentSection from '@/components/CommentSection';
-import ReflectionForm from '@/components/ReflectionForm';
-import { PlusCircle, Link2, Move, Type, Trash } from 'lucide-react';
+const ensureArray = <T = any>(val: any): T[] => {
+    if (Array.isArray(val)) return val;
+    if (val && typeof val === 'object') return Object.values(val);
+    if (typeof val === 'string') {
+        try {
+            const parsed = JSON.parse(val);
+            if (Array.isArray(parsed)) return parsed;
+            if (parsed && typeof parsed === 'object') return Object.values(parsed);
+        } catch (e) {}
+    }
+    return [];
+};
 
 const ConceptMapCanvas = ({ data, setData, readOnly = false, canvasHeight }: { data: any, setData?: any, readOnly?: boolean, canvasHeight?: string }) => {
     const canvasRef = React.useRef<HTMLDivElement>(null);
@@ -711,8 +721,8 @@ export default function ShowAssignment({
                 assignment.instrument_type === 'structured_assignment' ||
                 (assignment.instrument_type === 'exit_ticket' && assignment.instrument_config?.assessment_mode === 'checklist')
             )
-                ? (assignment.instrument_config?.indicators || [])
-                : (assignment.instrument_config?.questions || []);
+                ? ensureArray(assignment.instrument_config?.indicators)
+                : ensureArray(assignment.instrument_config?.questions);
             const total = items.length;
             const minCriteria = assignment.instrument_config?.kktp?.min_criteria ?? Math.max(1, Math.round(total / 2));
             const checkedCount = checkedArray.length;
@@ -741,7 +751,7 @@ export default function ShowAssignment({
             grading.selected_level = levelName;
             grading.approach = getGradingApproach();
 
-            const levels = assignment.instrument_config?.levels || [];
+            const levels = ensureArray(assignment.instrument_config?.levels);
             const selectedLvlObj = levels.find((l: any) => l.name === levelName);
             const passingLvlObj = levels.find((l: any) => l.name === assignment.instrument_config?.kktp?.passing_level);
             
@@ -771,7 +781,7 @@ export default function ShowAssignment({
         let paham = 0, ragu = 0, bingung = 0;
         const reflections: { student_name: string; emoji: string; text: string }[] = [];
         
-        (assignment.submissions || []).forEach((s: any) => {
+        ensureArray(assignment.submissions).forEach((s: any) => {
             try {
                 const p = JSON.parse(s.content || '');
                 const emoji = p.answers?.emoji;
@@ -796,8 +806,8 @@ export default function ShowAssignment({
 
     const formativeDifficultyStats = useMemo(() => {
         if (assignment.instrument_type !== 'formative_quiz') return null;
-        const questions = assignment.instrument_config?.questions || [];
-        const submissions = assignment.submissions || [];
+        const questions = ensureArray(assignment.instrument_config?.questions);
+        const submissions = ensureArray(assignment.submissions);
         const stats: { id: string; num: number; text: string; wrongCount: number; totalCount: number; wrongPct: number }[] = [];
         
         questions.forEach((q: any, idx: number) => {
@@ -862,14 +872,14 @@ export default function ShowAssignment({
         try {
             const parsed = JSON.parse(content || '');
             if (parsed.type === 'written_test' || parsed.type === 'formative_quiz' || parsed.type === 'quiz_response') {
-                const questions = assignment.instrument_config?.questions || [];
+                const questions = ensureArray(assignment.instrument_config?.questions);
                 const answers = parsed.answers || {};
                 let total = 0;
                 questions.forEach((q: any) => {
                     const studentAns = answers[q.id];
                     const points = Number(q.points || 0);
                     const isMcq = q.type === 'multiple_choice';
-                    const correctOpt = isMcq ? (q.options?.find((o: any) => o.is_correct) || q.options?.find((o: any) => o.id === q.answer)) : null;
+                    const correctOpt = isMcq ? (ensureArray(q.options).find((o: any) => o.is_correct) || ensureArray(q.options).find((o: any) => o.id === q.answer)) : null;
                     const isCorrect = isMcq 
                         ? (correctOpt?.id == studentAns) 
                         : (q.type === 'short_answer' && (q.correct_answer || q.answer) && studentAns?.trim().toLowerCase() == (q.correct_answer || q.answer)?.trim().toLowerCase());
@@ -910,7 +920,7 @@ export default function ShowAssignment({
 
             // 1. Approach: score_interval / interval / score
             if (['score_interval', 'interval', 'score'].includes(approach)) {
-                const intervals: Array<any> = kktp.intervals || [];
+                const intervals: Array<any> = ensureArray(kktp.intervals);
                 if (intervals.length > 0 && score !== null && score !== undefined) {
                     const s = Number(score);
                     for (const iv of intervals) {
@@ -949,7 +959,7 @@ export default function ShowAssignment({
 
             // 3. Approach: criteria_description
             if (approach === 'criteria_description') {
-                const total = (config?.rubrics?.length || config?.questions?.length || config?.indicators?.length || 0);
+                const total = (ensureArray(config?.rubrics).length || ensureArray(config?.questions).length || ensureArray(config?.indicators).length || 0);
                 const minCrit = Number(kktp.min_criteria ?? Math.max(1, Math.round(total / 2)));
                 if (parsed.grading?.checked_indicators && Array.isArray(parsed.grading.checked_indicators)) {
                     return parsed.grading.checked_indicators.length >= minCrit;
@@ -965,7 +975,7 @@ export default function ShowAssignment({
 
             // 4. Approach: rubric
             if (approach === 'rubric') {
-                const levels: Array<any> = config?.levels || [];
+                const levels: Array<any> = ensureArray(config?.levels);
                 const passingLvlName = kktp.passing_level;
                 const passingIdx = levels.findIndex(l => l.name === passingLvlName);
                 if (parsed.grading?.selected_level && passingIdx !== -1) {
@@ -1217,9 +1227,9 @@ export default function ShowAssignment({
                 const parsed = JSON.parse(my_submission.content);
                 if (parsed.type === 'self_assessment') {
                     if (parsed.assessment_mode === 'checklist') {
-                        setSelfChecklistData(parsed.indicators || []);
+                        setSelfChecklistData(ensureArray(parsed.indicators));
                     } else if (parsed.assessment_mode === 'simple_rubric') {
-                        setSelfRubricData(parsed.indicators || []);
+                        setSelfRubricData(ensureArray(parsed.indicators));
                     } else {
                         setSelfAssessmentData({
                             feeling: parsed.feeling || '',
@@ -1230,9 +1240,9 @@ export default function ShowAssignment({
                     }
                 } else if (parsed.type === 'peer_assessment') {
                     if (parsed.assessment_mode === 'checklist') {
-                        setPeerChecklistData(parsed.indicators || []);
+                        setPeerChecklistData(ensureArray(parsed.indicators));
                     } else if (parsed.assessment_mode === 'simple_rubric') {
-                        setPeerRubricData(parsed.indicators || []);
+                        setPeerRubricData(ensureArray(parsed.indicators));
                     } else {
                         setPeerAssessmentData({
                             peer_student_id: parsed.peer_student_id || '',
@@ -1246,9 +1256,9 @@ export default function ShowAssignment({
                     }
                 } else if (parsed.type === 'exit_ticket') {
                     if (parsed.assessment_mode === 'checklist') {
-                        setExitChecklistData(parsed.indicators || []);
+                        setExitChecklistData(ensureArray(parsed.indicators));
                     } else if (parsed.assessment_mode === 'short_note') {
-                        setExitShortNoteData(parsed.answers || []);
+                        setExitShortNoteData(ensureArray(parsed.answers));
                     } else {
                         studentForm.setData('answers', parsed.answers || {});
                         if (parsed.answers && Array.isArray(parsed.answers.reflection_answers)) {
@@ -1257,15 +1267,15 @@ export default function ShowAssignment({
                     }
                 } else if (parsed.type === 'concept_map') {
                     setConceptMapData({
-                        nodes: parsed.nodes || [],
-                        edges: parsed.edges || []
+                        nodes: ensureArray(parsed.nodes),
+                        edges: ensureArray(parsed.edges)
                     });
                     if (parsed.submission_type) {
                         setConceptMapSubMode(parsed.submission_type);
                     }
                 } else if (parsed.type === 'written_test' || parsed.type === 'formative_quiz') {
                     if (parsed.type === 'formative_quiz' && parsed.assessment_mode === 'checklist') {
-                        setQuizChecklistData(parsed.indicators || []);
+                        setQuizChecklistData(ensureArray(parsed.indicators));
                     } else {
                         studentForm.setData('answers', parsed.answers || {});
                     }
@@ -1275,7 +1285,7 @@ export default function ShowAssignment({
                         file: null
                     });
                 } else if (parsed.type === 'reflective_journal') {
-                    setJournalAnswers(parsed.answers || []);
+                    setJournalAnswers(ensureArray(parsed.answers));
                 } else if (parsed.type === 'project') {
                     setProjectData({
                         description: parsed.description || '',
@@ -1283,7 +1293,7 @@ export default function ShowAssignment({
                         file: null
                     });
                 } else if (parsed.type === 'portfolio') {
-                    setPortfolioReflections(parsed.reflections || []);
+                    setPortfolioReflections(ensureArray(parsed.reflections));
                 } else if (parsed.type === 'assignment') {
                     setAssignmentData({
                         report_text: parsed.report_text || '',
@@ -1301,7 +1311,7 @@ export default function ShowAssignment({
     // Pre-initialize checklist and rubric data for self/peer assessment if no submission yet
     useEffect(() => {
         if (!my_submission?.content) {
-            const indicators = assignment.instrument_config?.indicators || [];
+            const indicators = ensureArray(assignment.instrument_config?.indicators);
             if (indicators.length > 0) {
                 if (selfChecklistData.length === 0) {
                     setSelfChecklistData(indicators.map((ind: any) => ({
@@ -1335,7 +1345,7 @@ export default function ShowAssignment({
                 }
             }
 
-            const questions = assignment.instrument_config?.questions || [];
+            const questions = ensureArray(assignment.instrument_config?.questions);
             if (questions.length > 0 && assignment.instrument_type === 'exit_ticket') {
                 if (exitShortNoteData.length === 0) {
                     setExitShortNoteData(questions.map((q: any) => ({
@@ -1357,7 +1367,7 @@ export default function ShowAssignment({
     // Initialize Concept Map nodes with teacher's keywords if not already loaded or submitted
     useEffect(() => {
         if (assignment.instrument_type === 'concept_map' && !my_submission?.content) {
-            const keywords = assignment.instrument_config?.keywords || [];
+            const keywords = ensureArray(assignment.instrument_config?.keywords);
             if (keywords.length > 0 && conceptMapData.nodes.length === 0) {
                 // Position keywords in a grid layout
                 const initialNodes = keywords.map((keyword: string, idx: number) => {
@@ -2600,10 +2610,10 @@ export default function ShowAssignment({
                                             ? my_submission.kktp_details
                                             : (parsedContent?.observations || parsedContent?.checklist || parsedContent?.scores || {});
 
-                                        const rawIndicators = (assignment.instrument_config?.indicators && assignment.instrument_config.indicators.length > 0)
-                                            ? assignment.instrument_config.indicators
-                                            : (assignment.instrument_config?.criteria && Array.isArray(assignment.instrument_config.criteria) && assignment.instrument_config.criteria.length > 0)
-                                                ? assignment.instrument_config.criteria
+                                        const rawIndicators = (ensureArray(assignment.instrument_config?.indicators).length > 0)
+                                            ? ensureArray(assignment.instrument_config?.indicators)
+                                            : (ensureArray(assignment.instrument_config?.criteria).length > 0)
+                                                ? ensureArray(assignment.instrument_config?.criteria)
                                                 : [];
 
                                         return (
@@ -2762,10 +2772,10 @@ export default function ShowAssignment({
                                                     {assignment.instrument_type === 'performance' ? 'Tugas & Langkah-Langkah Kerja yang Dinilai' : 'Aspek & Indikator yang Diamati Guru'}
                                                 </h4>
                                                 <div className="space-y-2">
-                                                    {((assignment.instrument_config?.indicators && assignment.instrument_config.indicators.length > 0)
-                                                        ? assignment.instrument_config.indicators
-                                                        : (assignment.instrument_config?.criteria && Array.isArray(assignment.instrument_config.criteria) && assignment.instrument_config.criteria.length > 0)
-                                                            ? assignment.instrument_config.criteria
+                                                    {((ensureArray(assignment.instrument_config?.indicators).length > 0)
+                                                        ? ensureArray(assignment.instrument_config?.indicators)
+                                                        : (ensureArray(assignment.instrument_config?.criteria).length > 0)
+                                                            ? ensureArray(assignment.instrument_config?.criteria)
                                                             : []
                                                     ).map((ind: any, idx: number) => {
                                                         const indName = typeof ind === 'string' ? ind : (ind.name || ind.text || ind.criteria || `Langkah ${idx + 1}`);
@@ -2871,7 +2881,7 @@ export default function ShowAssignment({
                                                     className="w-full rounded-xl border border-slate-100 bg-slate-50/30 px-6 py-4 text-sm font-bold outline-none focus:border-indigo-400 focus:bg-white transition-all shadow-sm dark:bg-slate-800/50 dark:border-slate-800 dark:text-slate-200"
                                                 >
                                                     <option value="">Pilih teman yang akan dinilai...</option>
-                                                    {available_peers.map(p => (
+                                                    {ensureArray(available_peers).map(p => (
                                                         <option key={p.id} value={p.id}>{p.name} ({p.nis})</option>
                                                     ))}
                                                 </select>
@@ -2890,7 +2900,7 @@ export default function ShowAssignment({
                                                                 <p className="text-sm font-black text-slate-700 dark:text-slate-200 uppercase tracking-widest">Penilaian Antarteman - Mode Ceklis</p>
                                                             </div>
                                                             <p className="text-xs text-muted-foreground">Tandai indikator yang menurutmu sudah dicapai oleh rekanmu:</p>
-                                                            {(assignment.instrument_config?.indicators || []).map((ind: any, idx: number) => (
+                                                            {ensureArray(assignment.instrument_config?.indicators).map((ind: any, idx: number) => (
                                                                 <label key={idx} className="flex items-center gap-4 p-4 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20 hover:bg-white dark:hover:bg-slate-800 transition-all cursor-pointer group">
                                                                     <input
                                                                         type="checkbox"
@@ -2917,7 +2927,7 @@ export default function ShowAssignment({
                                                                 </div>
                                                                 <p className="text-sm font-black text-slate-700 dark:text-slate-200 uppercase tracking-widest">Penilaian Antarteman - Rubrik Sederhana</p>
                                                             </div>
-                                                            {(assignment.instrument_config?.indicators || []).map((ind: any, idx: number) => (
+                                                            {ensureArray(assignment.instrument_config?.indicators).map((ind: any, idx: number) => (
                                                                 <div key={idx} className="p-4 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20 space-y-3">
                                                                     <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{ind.name}</p>
                                                                     <div className="flex gap-2">
@@ -3040,7 +3050,7 @@ export default function ShowAssignment({
                                                             <p className="text-sm font-black text-slate-700 dark:text-slate-200 uppercase tracking-widest">Penilaian Diri - Mode Ceklis</p>
                                                         </div>
                                                         <p className="text-xs text-muted-foreground">Tandai indikator yang menurutmu sudah kamu capai:</p>
-                                                        {(assignment.instrument_config?.indicators || []).map((ind: any, idx: number) => (
+                                                        {ensureArray(assignment.instrument_config?.indicators).map((ind: any, idx: number) => (
                                                             <label key={idx} className="flex items-center gap-4 p-4 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20 hover:bg-white dark:hover:bg-slate-800 transition-all cursor-pointer group">
                                                                 <input
                                                                     type="checkbox"
@@ -3067,7 +3077,7 @@ export default function ShowAssignment({
                                                             </div>
                                                             <p className="text-sm font-black text-slate-700 dark:text-slate-200 uppercase tracking-widest">Penilaian Diri - Rubrik Sederhana</p>
                                                         </div>
-                                                        {(assignment.instrument_config?.indicators || []).map((ind: any, idx: number) => (
+                                                        {ensureArray(assignment.instrument_config?.indicators).map((ind: any, idx: number) => (
                                                             <div key={idx} className="p-4 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20 space-y-3">
                                                                 <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{ind.name}</p>
                                                                 <div className="flex gap-2">
@@ -3202,7 +3212,7 @@ export default function ShowAssignment({
                                                                  {assignment.instrument_type === 'formative_quiz' ? 'Tes/Penugasan Singkat (Umpan Balik Instan)' : 'Lembar Tes Tertulis'}
                                                             </h3>
                                                             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider mt-1">
-                                                                {assignment.instrument_type === 'formative_quiz' ? 'Jawab & Pelajari Langsung Pembahasannya!' : 'Fokus & Teliti'} • {assignment.instrument_config?.questions?.length || 0} Pertanyaan
+                                                                {assignment.instrument_type === 'formative_quiz' ? 'Jawab & Pelajari Langsung Pembahasannya!' : 'Fokus & Teliti'} • {ensureArray(assignment.instrument_config?.questions).length} Pertanyaan
                                                             </p>
                                                         </div>
                                                     </div>
@@ -3216,19 +3226,19 @@ export default function ShowAssignment({
                                                 <div className="mt-8">
                                                     <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider mb-2 text-slate-500 text-muted-foreground">
                                                         <span>Progres Pengerjaan</span>
-                                                        <span>{Math.round((Object.keys(studentForm.data.answers).length / (assignment.instrument_config?.questions?.length || 1)) * 100)}%</span>
+                                                        <span>{Math.round((Object.keys(studentForm.data.answers).length / (ensureArray(assignment.instrument_config?.questions).length || 1)) * 100)}%</span>
                                                     </div>
                                                     <div className="h-1.5 w-full rounded-full bg-slate-200 dark:bg-slate-950/40 bg-slate-50 overflow-hidden">
                                                         <div 
                                                             className="h-full bg-primary transition-all duration-500"
-                                                            style={{ width: `${(Object.keys(studentForm.data.answers).length / (assignment.instrument_config?.questions?.length || 1)) * 100}%` }}
+                                                            style={{ width: `${(Object.keys(studentForm.data.answers).length / (ensureArray(assignment.instrument_config?.questions).length || 1)) * 100}%` }}
                                                         />
                                                     </div>
                                                 </div>
                                             </div>
 
                                             <div className="space-y-8">
-                                                {(assignment.instrument_config?.questions || []).map((q: any, idx: number) => {
+                                                {ensureArray(assignment.instrument_config?.questions).map((q: any, idx: number) => {
                                                     const isSubmitted = Boolean(my_submission);
                                                     const showCorrection = isSubmitted && !isRetryActive && !my_submission?.is_remedial_open;
                                                     const studentAns = studentForm.data.answers[q.id];
@@ -3393,7 +3403,7 @@ export default function ShowAssignment({
                                         </div>
                                     ) : assignment.instrument_type === 'quiz_survey' ? (
                                         <div className="space-y-10 animate-in fade-in duration-500">
-                                            {(assignment.instrument_config?.questions || []).map((q: any, idx: number) => (
+                                            {ensureArray(assignment.instrument_config?.questions).map((q: any, idx: number) => (
                                                 <div key={q.id || idx} className="space-y-4 animate-in slide-in-from-bottom-4 duration-300" style={{ animationDelay: `${idx * 100}ms` }}>
                                                     <div className="flex items-start gap-4">
                                                         <div className="h-8 w-8 rounded-xl bg-sky-50 dark:bg-sky-950/30 text-primary text-xs font-black flex items-center justify-center flex-shrink-0 shadow-sm border border-sky-100 dark:border-sky-900/30">
@@ -3413,7 +3423,7 @@ export default function ShowAssignment({
                                                             ></textarea>
                                                         ) : q.type === 'multiple_choice' ? (
                                                             <div className="grid gap-3">
-                                                                {(q.options || []).map((opt: any, optIdx: number) => (
+                                                                {ensureArray(q.options).map((opt: any, optIdx: number) => (
                                                                     <label key={opt.id} className={`flex items-center gap-4 p-4 rounded-xl border transition-all group shadow-sm ${studentForm.data.answers[q.id] === opt.id.toString() ? 'border-sky-500 bg-sky-50/50 dark:bg-sky-950/20' : 'border-slate-50 bg-white dark:bg-slate-900 dark:border-slate-800 hover:border-sky-200'} ${isSummativeLocked ? 'pointer-events-none opacity-60' : 'cursor-pointer'}`}>
                                                                         <div className={`h-5 w-5 rounded-full border-2 flex items-center justify-center transition-all ${studentForm.data.answers[q.id] === opt.id.toString() ? 'border-sky-500 bg-sky-500' : 'border-slate-200 group-hover:border-sky-300'}`}>
                                                                             {studentForm.data.answers[q.id] === opt.id.toString() && <div className="h-2 w-2 rounded-full bg-white" />}
@@ -3478,7 +3488,7 @@ export default function ShowAssignment({
                                                     </div>
                                                 </div>
                                             </div>
-                                            {(assignment.instrument_config?.indicators || []).map((ind: any, idx: number) => (
+                                            {ensureArray(assignment.instrument_config?.indicators).map((ind: any, idx: number) => (
                                                 <label key={idx} className="flex items-center gap-4 p-4 rounded-xl border border-slate-200 dark:border-slate-800 border-slate-100 bg-white dark:bg-[#0b0f19]/30 bg-white/70 backdrop-blur-md hover:border-primary/50 transition-all cursor-pointer group shadow-none">
                                                     <input
                                                         type="checkbox"
@@ -3576,7 +3586,7 @@ export default function ShowAssignment({
                                                 {/* Reflection Questions */}
                                                 {(assignment.instrument_config?.questions && assignment.instrument_config.questions.length > 0) ? (
                                                     <div className="space-y-6">
-                                                        {assignment.instrument_config.questions.map((q: any, idx: number) => (
+                                                        {ensureArray(assignment.instrument_config?.questions).map((q: any, idx: number) => (
                                                             <div key={idx} className="rounded-xl border border-slate-200 bg-white dark:border-slate-800 border-slate-100 dark:bg-[#0b0f19]/30 bg-white/70 backdrop-blur-md p-6 shadow-none space-y-4 animate-in slide-in-from-bottom-2 duration-300">
                                                                 <div className="flex items-start gap-3">
                                                                     <span className="h-6 w-6 rounded-full bg-primary/10 text-primary text-[10px] font-black flex items-center justify-center shrink-0 mt-0.5">{idx + 1}</span>
@@ -3653,7 +3663,7 @@ export default function ShowAssignment({
                                                     <p className="text-[10px] text-muted-foreground font-medium">Tandai indikator pemahaman yang sudah kamu capai</p>
                                                 </div>
                                             </div>
-                                            {(assignment.instrument_config?.indicators || []).map((ind: any, idx: number) => (
+                                            {ensureArray(assignment.instrument_config?.indicators).map((ind: any, idx: number) => (
                                                 <label key={idx} className="flex items-center gap-4 p-4 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20 hover:bg-white dark:hover:bg-slate-800 transition-all cursor-pointer group">
                                                     <input
                                                         type="checkbox"
@@ -3681,7 +3691,7 @@ export default function ShowAssignment({
                                                     <p className="text-[10px] text-muted-foreground font-medium">Jawab pertanyaan singkat berikut secara singkat dan jelas</p>
                                                 </div>
                                             </div>
-                                            {(assignment.instrument_config?.questions || []).map((q: any, idx: number) => (
+                                            {ensureArray(assignment.instrument_config?.questions).map((q: any, idx: number) => (
                                                 <div key={idx} className="p-4 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20 space-y-3">
                                                     <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{q.text}</p>
                                                     <input
@@ -3977,7 +3987,7 @@ export default function ShowAssignment({
 
                                             <div className="space-y-6">
                                                 <label className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">Refleksi Perkembangan Belajar</label>
-                                                {(assignment.instrument_config?.reflection_prompts || []).map((prompt: string, idx: number) => (
+                                                {ensureArray(assignment.instrument_config?.reflection_prompts).map((prompt: string, idx: number) => (
                                                     <div key={idx} className="p-5 rounded-xl border border-slate-200 dark:border-slate-800 border-slate-100 bg-white dark:bg-[#0b0f19]/30 bg-white/70 backdrop-blur-md shadow-none space-y-3">
                                                         <div className="flex items-start gap-3">
                                                             <span className="h-6 w-6 rounded-full bg-primary/10 text-primary text-[10px] font-black flex items-center justify-center shrink-0 mt-0.5">{idx + 1}</span>
@@ -4169,7 +4179,7 @@ export default function ShowAssignment({
                                             </div>
 
                                             <div className="space-y-6">
-                                                {(assignment.instrument_config?.questions || []).map((q: any, idx: number) => (
+                                                {ensureArray(assignment.instrument_config?.questions).map((q: any, idx: number) => (
                                                     <div key={idx} className="p-5 rounded-xl border border-slate-200 dark:border-slate-800 border-slate-100 bg-white dark:bg-[#0b0f19]/30 bg-white/70 backdrop-blur-md shadow-none space-y-3">
                                                         <div className="flex items-start gap-3">
                                                             <span className="h-6 w-6 rounded-full bg-primary/10 text-primary text-[10px] font-black flex items-center justify-center shrink-0 mt-0.5">{idx + 1}</span>
@@ -4447,7 +4457,7 @@ export default function ShowAssignment({
                                                          <div className="pt-4 border-t border-slate-100 dark:border-slate-800 border-slate-100 text-left space-y-2">
                                                              <p className="text-[10px] font-black text-muted-foreground uppercase tracking-wider">Riwayat Remedial:</p>
                                                              <div className="space-y-1 bg-slate-50 dark:bg-slate-950/40 bg-slate-50 p-3 rounded-lg border border-slate-100 dark:border-slate-800">
-                                                                 {my_submission.remedial_history.map((hist: any, hIdx: number) => (
+                                                                 {ensureArray(my_submission?.remedial_history).map((hist: any, hIdx: number) => (
                                                                      <div key={hIdx} className="text-[10px] text-muted-foreground flex justify-between">
                                                                          <span>Percobaan {hist.attempt}:</span>
                                                                          <span className="font-bold text-foreground">{hist.score} / {assignment.max_points}</span>
@@ -4559,7 +4569,7 @@ export default function ShowAssignment({
                                                             return (
                                                                 <div className="space-y-6">
                                                                     <div className="grid gap-3">
-                                                                        {(assignment.instrument_config?.indicators || []).map((ind: any, idx: number) => {
+                                                                        {ensureArray(assignment.instrument_config?.indicators).map((ind: any, idx: number) => {
                                                                             const indKey = ind.id || ind.name || ind.text || idx.toString();
                                                                             return (
                                                                                 <div key={indKey} className="flex items-center justify-between p-4 rounded-xl bg-muted/50 border border-border">
@@ -4606,7 +4616,7 @@ export default function ShowAssignment({
                                                         if (p.type === 'rubric') {
                                                             return (
                                                                 <div className="space-y-6">
-                                                                    {(assignment.instrument_config?.criteria || []).map((criterion: any) => {
+                                                                    {ensureArray(assignment.instrument_config?.criteria).map((criterion: any) => {
                                                                         const achievedLevelId = p.scores[criterion.id];
                                                                         const level = (assignment.instrument_config?.levels || []).find((l: any) => l.id === achievedLevelId);
                                                                         return (
@@ -4718,7 +4728,7 @@ export default function ShowAssignment({
                                                                         <div className="p-5 rounded-xl bg-indigo-50/40 dark:bg-indigo-950/15 border border-indigo-100/60 dark:border-indigo-900/35 space-y-3">
                                                                             <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest leading-none mb-1">Daftar Indikator Penilaian Diri</p>
                                                                             <div className="space-y-3">
-                                                                                {(p.indicators || []).map((ind: any, idx: number) => (
+                                                                                {ensureArray(p.indicators).map((ind: any, idx: number) => (
                                                                                     <div key={idx} className="flex items-start gap-2.5 text-xs text-slate-700 dark:text-slate-200">
                                                                                         {ind.checked ? (
                                                                                             <CheckSquare className="h-4 w-4 text-indigo-600 mt-0.5 shrink-0" />
@@ -4743,7 +4753,7 @@ export default function ShowAssignment({
                                                                         <div className="p-5 rounded-xl bg-indigo-50/40 dark:bg-indigo-950/15 border border-indigo-100/60 dark:border-indigo-900/35 space-y-3">
                                                                             <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest leading-none mb-1">Kriteria Capaian Penilaian Diri</p>
                                                                             <div className="space-y-4">
-                                                                                {(p.indicators || []).map((ind: any, idx: number) => (
+                                                                                {ensureArray(p.indicators).map((ind: any, idx: number) => (
                                                                                     <div key={idx} className="border-b border-indigo-100/30 dark:border-indigo-900/20 pb-3 last:border-0 last:pb-0">
                                                                                         <p className="text-xs font-bold text-slate-700 dark:text-slate-200">{ind.name}</p>
                                                                                         <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 text-[10px] font-black uppercase tracking-wider">
@@ -4823,7 +4833,7 @@ export default function ShowAssignment({
                                                                         <div className="p-5 rounded-xl bg-indigo-50/40 dark:bg-indigo-950/15 border border-indigo-100/60 dark:border-indigo-900/35 space-y-3">
                                                                             <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest leading-none mb-1">Daftar Indikator Penilaian</p>
                                                                             <div className="space-y-3">
-                                                                                {(p.indicators || []).map((ind: any, idx: number) => (
+                                                                                {ensureArray(p.indicators).map((ind: any, idx: number) => (
                                                                                     <div key={idx} className="flex items-start gap-2.5 text-xs text-slate-700 dark:text-slate-200">
                                                                                         {ind.checked ? (
                                                                                             <CheckSquare className="h-4 w-4 text-indigo-600 mt-0.5 shrink-0" />
@@ -4852,7 +4862,7 @@ export default function ShowAssignment({
                                                                         <div className="p-5 rounded-xl bg-indigo-50/40 dark:bg-indigo-950/15 border border-indigo-100/60 dark:border-indigo-900/35 space-y-3">
                                                                             <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest leading-none mb-1">Kriteria Capaian Penilaian</p>
                                                                             <div className="space-y-4">
-                                                                                {(p.indicators || []).map((ind: any, idx: number) => (
+                                                                                {ensureArray(p.indicators).map((ind: any, idx: number) => (
                                                                                     <div key={idx} className="border-b border-indigo-100/30 dark:border-indigo-900/20 pb-3 last:border-0 last:pb-0">
                                                                                         <p className="text-xs font-bold text-slate-700 dark:text-slate-200">{ind.name}</p>
                                                                                         <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 text-[10px] font-black uppercase tracking-wider">
@@ -4948,7 +4958,7 @@ export default function ShowAssignment({
                                                              return (
                                                                  <div className="space-y-4">
                                                                      <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">Ceklis Pemahaman</p>
-                                                                     {(parsed.indicators || []).map((ind: any, idx: number) => (
+                                                                     {ensureArray(parsed.indicators).map((ind: any, idx: number) => (
                                                                          <div key={idx} className="flex items-center gap-3 p-3 rounded-xl bg-muted/30 border border-border">
                                                                              {ind.checked ? <CheckSquare className="h-4 w-4 text-emerald-500 shrink-0" /> : <Square className="h-4 w-4 text-muted-foreground/30 shrink-0" />}
                                                                              <span className={`text-xs font-medium ${ind.checked ? 'text-foreground' : 'text-muted-foreground'}`}>{ind.name}</span>
@@ -4961,7 +4971,7 @@ export default function ShowAssignment({
                                                              return (
                                                                  <div className="space-y-4">
                                                                      <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">Catatan Singkat</p>
-                                                                     {(parsed.answers || []).map((ans: any, idx: number) => (
+                                                                     {ensureArray(parsed.answers).map((ans: any, idx: number) => (
                                                                          <div key={idx} className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950/40 bg-slate-50 border border-slate-200 dark:border-slate-800 border-slate-100 space-y-1">
                                                                              <p className="text-[10px] font-black text-primary uppercase tracking-widest">{ans.text || `Pertanyaan ${idx + 1}`}</p>
                                                                              <p className="text-sm font-semibold text-foreground whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{ans.answer || '-'}</p>
@@ -5021,7 +5031,7 @@ export default function ShowAssignment({
                                                         if (p.type !== 'reflective_journal') return null;
                                                         return (
                                                             <div className="space-y-4">
-                                                                {(p.answers || []).map((a: any, idx: number) => (
+                                                                {ensureArray(p.answers).map((a: any, idx: number) => (
                                                                     <div key={idx} className="p-5 rounded-xl bg-slate-50 dark:bg-slate-950/40 bg-slate-50 border border-slate-200 dark:border-slate-800 border-slate-100 space-y-2">
                                                                         <p className="text-[10px] font-black text-primary uppercase tracking-widest">Pertanyaan {idx + 1}:</p>
                                                                         <p className="text-xs font-bold text-slate-700 dark:text-slate-200">{a.question}</p>
@@ -5157,7 +5167,7 @@ export default function ShowAssignment({
                                                         if (p.type !== 'formative_quiz' || p.assessment_mode !== 'checklist') return null;
                                                         return (
                                                             <div className="space-y-2">
-                                                                {(p.indicators || []).map((ind: any, idx: number) => (
+                                                                {ensureArray(p.indicators).map((ind: any, idx: number) => (
                                                                     <div key={idx} className={`flex items-center gap-3 p-3 rounded-xl border ${ind.checked ? 'bg-emerald-50 border-emerald-200 dark:bg-emerald-950/20 dark:border-emerald-800' : 'bg-red-50 border-red-200 dark:bg-red-950/20 dark:border-red-800'}`}>
                                                                         {ind.checked ? <CheckSquare className="h-4 w-4 text-emerald-500 shrink-0" /> : <Square className="h-4 w-4 text-red-400 shrink-0" />}
                                                                         <span className={`text-xs font-medium ${ind.checked ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-600 dark:text-red-400'}`}>{ind.name}</span>
@@ -5258,7 +5268,7 @@ export default function ShowAssignment({
                                                             return (
                                                                 <div className="space-y-6">
                                                                     <div className="grid gap-3">
-                                                                        {(assignment.instrument_config?.indicators || []).map((indicator: any, idx: number) => {
+                                                                        {ensureArray(assignment.instrument_config?.indicators).map((indicator: any, idx: number) => {
                                                                             const indKey = indicator.id || indicator.name || indicator.text || idx.toString();
                                                                             const val = p.observations?.[indKey];
                                                                             const isChecked = val === true || val === 'konsisten' || val === 'mulai';
@@ -5568,7 +5578,7 @@ export default function ShowAssignment({
                                             <Mic className="h-4 w-4" /> Panduan Pertanyaan & Respon Siswa
                                         </h4>
                                         <div className="grid gap-6">
-                                            {(assignment.instrument_config?.questions || []).map((q: any, idx: number) => {
+                                            {ensureArray(assignment.instrument_config?.questions).map((q: any, idx: number) => {
                                                 const selectedLevel = oralTestData.kktp_details?.[q.id] || '';
                                                 const totalQuestions = (assignment.instrument_config?.questions || []).length || 1;
                                                 const qPoints = Number(q.points) || (assignment.max_points / totalQuestions) || 10;
@@ -5791,7 +5801,7 @@ export default function ShowAssignment({
                                                 </div>
                                             </div>
                                         ) : (
-                                            (assignment.instrument_config?.criteria || []).map((criterion: any) => (
+                                            ensureArray(assignment.instrument_config?.criteria).map((criterion: any) => (
                                                 <div key={criterion.id} className="space-y-5">
                                                     <div className="flex items-center justify-between">
                                                         <div className="flex items-center gap-3">
@@ -5802,7 +5812,7 @@ export default function ShowAssignment({
                                                         </div>
                                                     </div>
                                                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                                                        {(assignment.instrument_config?.levels || []).map((level: any) => (
+                                                        {ensureArray(assignment.instrument_config?.levels).map((level: any) => (
                                                             <button
                                                                 key={level.id}
                                                                 type="button"
@@ -6035,7 +6045,7 @@ export default function ShowAssignment({
                                     </div>
 
                                     <div className="max-h-[65vh] overflow-y-auto pr-3 custom-scrollbar space-y-8 pb-8">
-                                        {(assignment.instrument_config?.criteria || []).map((criterion: any) => (
+                                        {ensureArray(assignment.instrument_config?.criteria).map((criterion: any) => (
                                             <div key={criterion.id} className="space-y-4">
                                                 <div className="flex items-center gap-2 ml-2">
                                                     <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">{criterion.text}</span>
@@ -6043,7 +6053,7 @@ export default function ShowAssignment({
                                                     <span className="text-[9px] font-bold text-muted-foreground">{criterion.weight}%</span>
                                                 </div>
                                                 <div className="grid grid-cols-2 gap-2">
-                                                    {(assignment.instrument_config?.levels || []).map((level: any) => (
+                                                    {ensureArray(assignment.instrument_config?.levels).map((level: any) => (
                                                         <button
                                                             key={level.id}
                                                             type="button"
@@ -6233,7 +6243,7 @@ export default function ShowAssignment({
                                         <div className="space-y-6 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar pb-8">
                                             {/* Student Reflections */}
                                             <div className="space-y-4">
-                                                {(assignment.instrument_config?.reflection_prompts || []).map((prompt: string, idx: number) => (
+                                                {ensureArray(assignment.instrument_config?.reflection_prompts).map((prompt: string, idx: number) => (
                                                     <div key={idx} className="p-6 rounded-xl bg-muted/40 border border-slate-100 dark:border-slate-700 space-y-2">
                                                         <p className="text-[9px] font-black text-amber-600 uppercase tracking-widest leading-relaxed">{prompt}</p>
                                                         <p className="text-[11px] font-medium text-slate-600 dark:text-muted-foreground italic">
@@ -6287,7 +6297,7 @@ export default function ShowAssignment({
                                             <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium whitespace-pre-wrap break-words [overflow-wrap:anywhere]" dangerouslySetInnerHTML={{ __html: assignment.instrument_config?.stimulus || assignment.description || '' }} />
                                         </div>
                                     )}
-                                    {(assignment.instrument_config?.criteria || []).map((criterion: any) => (
+                                    {ensureArray(assignment.instrument_config?.criteria).map((criterion: any) => (
                                         <div key={criterion.id} className="space-y-4">
                                             <div className="flex items-center gap-3">
                                                 <div className="h-6 w-6 rounded-lg bg-amber-50 dark:bg-amber-950/30 text-amber-600 flex items-center justify-center border border-amber-100 dark:border-amber-900/30">
@@ -6296,7 +6306,7 @@ export default function ShowAssignment({
                                                 <h4 className="text-[10px] font-black text-foreground uppercase tracking-widest leading-none">{criterion.text}</h4>
                                             </div>
                                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                                                {(assignment.instrument_config?.levels || []).map((level: any) => (
+                                                {ensureArray(assignment.instrument_config?.levels).map((level: any) => (
                                                     <button
                                                         key={level.id}
                                                         type="button"
@@ -6366,7 +6376,7 @@ export default function ShowAssignment({
                                         <ListChecks className="h-4 w-4" /> Daftar Indikator Perilaku
                                     </h4>
                                     <div className="grid gap-3">
-                                        {(assignment.instrument_config?.indicators || []).map((indicator: any, idx: number) => {
+                                        {ensureArray(assignment.instrument_config?.indicators).map((indicator: any, idx: number) => {
                                             const indicatorKey = indicator.id || indicator.name || indicator.text || idx.toString();
                                             return (
                                                 <div key={indicatorKey} className="flex items-center justify-between p-4 rounded-xl border border-slate-50 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20 hover:bg-white transition-all">
@@ -6519,7 +6529,7 @@ export default function ShowAssignment({
                                         <Activity className="h-4 w-4 text-emerald-500" /> Indikator Kinerja yang Diamati
                                     </h4>
                                     <div className="grid gap-3">
-                                        {(assignment.instrument_config?.indicators || []).map((indicator: any, idx: number) => {
+                                        {ensureArray(assignment.instrument_config?.indicators).map((indicator: any, idx: number) => {
                                             const indicatorKey = indicator.id || indicator.name || indicator.text || idx.toString();
                                             const isChecked = !!performanceObsData.observations[indicatorKey];
                                             return (
@@ -6735,7 +6745,7 @@ export default function ShowAssignment({
                                                     </div>
                                                     <span className="text-3xl font-black text-blue-600 tracking-tighter">{recalculatedScore}</span>
                                                 </div>
-                                                {assignment.instrument_config.questions.map((q: any, idx: number) => {
+                                                {ensureArray(assignment.instrument_config?.questions).map((q: any, idx: number) => {
                                                     const studentAnswer = parsed.answers[q.id];
                                                     const isMcq = q.type === 'multiple_choice';
                                                     const correctOpt = isMcq ? (q.options?.find((o: any) => o.is_correct) || q.options?.find((o: any) => o.id === q.answer)) : null;
@@ -6778,7 +6788,7 @@ export default function ShowAssignment({
                                             return (
                                                 <div className="space-y-4">
                                                     <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">Penilaian Diri - Ceklis</p>
-                                                    {(parsed.indicators || []).map((ind: any, idx: number) => (
+                                                    {ensureArray(parsed.indicators).map((ind: any, idx: number) => (
                                                         <div key={idx} className="flex items-center gap-3 p-3 rounded-xl bg-muted/30 border border-border">
                                                             {ind.checked ? <CheckSquare className="h-4 w-4 text-emerald-500 shrink-0" /> : <Square className="h-4 w-4 text-muted-foreground/30 shrink-0" />}
                                                             <span className={`text-xs font-medium ${ind.checked ? 'text-foreground' : 'text-muted-foreground'}`}>{ind.name}</span>
@@ -6792,7 +6802,7 @@ export default function ShowAssignment({
                                             return (
                                                 <div className="space-y-4">
                                                     <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">Penilaian Diri - Rubrik Sederhana</p>
-                                                    {(parsed.indicators || []).map((ind: any, idx: number) => (
+                                                    {ensureArray(parsed.indicators).map((ind: any, idx: number) => (
                                                         <div key={idx} className="p-3 rounded-xl bg-muted/30 border border-border space-y-2">
                                                             <p className="text-xs font-bold text-foreground">{ind.name}</p>
                                                             <span className={`inline-block px-3 py-1 rounded-full text-[10px] font-bold uppercase ${levelColors[ind.selected_level] || 'bg-muted text-muted-foreground'}`}>{ind.selected_level || '-'}</span>
@@ -6841,7 +6851,7 @@ export default function ShowAssignment({
                                                         <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">Penilaian Antarteman - Ceklis</p>
                                                         {parsed.peer_name && <span className="text-xs font-bold text-foreground">→ {parsed.peer_name}</span>}
                                                     </div>
-                                                    {(parsed.indicators || []).map((ind: any, idx: number) => (
+                                                    {ensureArray(parsed.indicators).map((ind: any, idx: number) => (
                                                         <div key={idx} className="flex items-center gap-3 p-3 rounded-xl bg-muted/30 border border-border">
                                                             {ind.checked ? <CheckSquare className="h-4 w-4 text-emerald-500 shrink-0" /> : <Square className="h-4 w-4 text-muted-foreground/30 shrink-0" />}
                                                             <span className={`text-xs font-medium ${ind.checked ? 'text-foreground' : 'text-muted-foreground'}`}>{ind.name}</span>
@@ -6858,7 +6868,7 @@ export default function ShowAssignment({
                                                         <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">Penilaian Antarteman - Rubrik Sederhana</p>
                                                         {parsed.peer_name && <span className="text-xs font-bold text-foreground">→ {parsed.peer_name}</span>}
                                                     </div>
-                                                    {(parsed.indicators || []).map((ind: any, idx: number) => (
+                                                    {ensureArray(parsed.indicators).map((ind: any, idx: number) => (
                                                         <div key={idx} className="p-3 rounded-xl bg-muted/30 border border-border space-y-2">
                                                             <p className="text-xs font-bold text-foreground">{ind.name}</p>
                                                             <span className={`inline-block px-3 py-1 rounded-full text-[10px] font-bold uppercase ${levelColors[ind.selected_level] || 'bg-muted text-muted-foreground'}`}>{ind.selected_level || '-'}</span>
@@ -7049,7 +7059,7 @@ export default function ShowAssignment({
                                             <div className="space-y-6 animate-in fade-in duration-300">
                                                 <div className="p-6 rounded-xl bg-white dark:bg-slate-900 border border-border shadow-sm space-y-4">
                                                     <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest leading-none mb-3">Refleksi Portofolio</p>
-                                                    {(parsed.reflections || []).map((ref: any, idx: number) => (
+                                                    {ensureArray(parsed.reflections).map((ref: any, idx: number) => (
                                                         <div key={idx} className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950/40 bg-slate-50 border border-slate-200 dark:border-slate-800 border-slate-100 space-y-1">
                                                             <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Refleksi {idx + 1}</p>
                                                             <p className="text-sm font-semibold text-foreground whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{ref.answer || '-'}</p>
@@ -7077,7 +7087,7 @@ export default function ShowAssignment({
                                             <div className="space-y-6 animate-in fade-in duration-300">
                                                 <div className="p-6 rounded-xl bg-white dark:bg-slate-900 border border-border shadow-sm space-y-4">
                                                     <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest leading-none mb-3">Refleksi Jurnal Murid</p>
-                                                    {(parsed.answers || []).map((ans: any, idx: number) => (
+                                                    {ensureArray(parsed.answers).map((ans: any, idx: number) => (
                                                         <div key={idx} className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950/40 bg-slate-50 border border-slate-200 dark:border-slate-800 border-slate-100 space-y-1">
                                                             <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">{ans.question || `Pertanyaan ${idx + 1}`}</p>
                                                             <p className="text-sm font-semibold text-foreground whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{ans.answer || '-'}</p>
@@ -7111,7 +7121,7 @@ export default function ShowAssignment({
                                                 </div>
 
                                                 <div className="space-y-10">
-                                                    {(assignment.instrument_config?.questions || []).map((q: any, idx: number) => {
+                                                    {ensureArray(assignment.instrument_config?.questions).map((q: any, idx: number) => {
                                                         const studentAns = parsed.answers?.[q.id];
                                                         const isMcq = q.type === 'multiple_choice';
                                                         const correctOpt = isMcq ? (q.options?.find((o: any) => o.is_correct) || q.options?.find((o: any) => o.id === q.answer)) : null;
@@ -7184,7 +7194,7 @@ export default function ShowAssignment({
                                             return (
                                                 <div className="space-y-4">
                                                     <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">Exit Ticket - Ceklis Pemahaman</p>
-                                                    {(parsed.indicators || []).map((ind: any, idx: number) => (
+                                                    {ensureArray(parsed.indicators).map((ind: any, idx: number) => (
                                                         <div key={idx} className="flex items-center gap-3 p-3 rounded-xl bg-muted/30 border border-border animate-in fade-in duration-300">
                                                             {ind.checked ? <CheckSquare className="h-4 w-4 text-emerald-500 shrink-0" /> : <Square className="h-4 w-4 text-muted-foreground/30 shrink-0" />}
                                                             <span className={`text-xs font-medium ${ind.checked ? 'text-foreground' : 'text-muted-foreground'}`}>{ind.name}</span>
@@ -7197,7 +7207,7 @@ export default function ShowAssignment({
                                             return (
                                                 <div className="space-y-4">
                                                     <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">Exit Ticket - Catatan Singkat</p>
-                                                    {(parsed.answers || []).map((ans: any, idx: number) => (
+                                                    {ensureArray(parsed.answers).map((ans: any, idx: number) => (
                                                         <div key={idx} className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950/40 bg-slate-50 border border-slate-200 dark:border-slate-800 border-slate-100 space-y-1 animate-in fade-in duration-300">
                                                             <p className="text-[10px] font-black text-primary uppercase tracking-widest">{ans.text || `Pertanyaan ${idx + 1}`}</p>
                                                             <p className="text-sm font-semibold text-foreground whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{ans.answer || '-'}</p>
