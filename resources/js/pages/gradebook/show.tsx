@@ -368,11 +368,8 @@ export default function GradebookShow({
                                                     </div>
                                                 </th>
                                             ))}
-                                            <th className="px-3 py-3 text-[11px] font-black uppercase tracking-wider text-primary min-w-[110px] text-center bg-primary/10 border-r border-border/40">
+                                            <th className="px-3 py-3 text-[11px] font-black uppercase tracking-wider text-primary min-w-[120px] text-center bg-primary/10 border-r border-border/40">
                                                 Total Sumatif
-                                            </th>
-                                            <th className="px-3 py-3 text-[11px] font-bold uppercase tracking-wider text-foreground min-w-[90px] text-center bg-muted/40 border-r border-border/40">
-                                                Rata-rata
                                             </th>
                                         </>
                                     ) : viewMode === 'summative' ? (
@@ -390,9 +387,6 @@ export default function GradebookShow({
                                             </th>
                                             <th className="px-3 py-3 text-[11px] font-bold uppercase tracking-widest text-primary min-w-[120px] text-center bg-primary/5 border-r border-border/40">
                                                 Sumatif Akhir
-                                            </th>
-                                            <th className="px-3 py-3 text-[11px] font-bold uppercase tracking-widest text-primary min-w-[100px] text-center bg-primary/5 border-r border-border/40">
-                                                Rata-rata TP
                                             </th>
                                             <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-400 min-w-[280px] bg-emerald-500/5">
                                                 Capaian Kompetensi (Rapor)
@@ -453,15 +447,11 @@ export default function GradebookShow({
                                                             </span>
                                                         </td>
                                                     ))}
-                                                    {/* Total Sumatif (Akumulasi Nilai Sumatif) */}
+                                                    {/* Total Sumatif (Rata-rata Nilai Sumatif) */}
                                                     <td className="px-3 py-3 text-center bg-primary/10 border-r border-border/40">
                                                         <span className="text-xs sm:text-sm font-black text-primary">
-                                                            {d.total_sumatif ?? 0}
+                                                            {Math.round(d.average)}
                                                         </span>
-                                                    </td>
-                                                    {/* Rata-rata Sumatif */}
-                                                    <td className="px-3 py-3 text-center bg-muted/20 border-r border-border/40 font-bold text-foreground">
-                                                        {Math.round(d.average)}
                                                     </td>
                                                 </>
                                             ) : viewMode === 'summative' ? (
@@ -473,10 +463,10 @@ export default function GradebookShow({
                                                             </span>
                                                         </td>
                                                     ))}
-                                                    {/* Total Sumatif */}
+                                                    {/* Total Sumatif (Rata-rata Nilai Sumatif) */}
                                                     <td className="px-3 py-3 text-center bg-primary/10 border-r border-border/40">
                                                         <span className="text-xs sm:text-sm font-black text-primary">
-                                                            {d.total_sumatif ?? 0}
+                                                            {Math.round(d.average)}
                                                         </span>
                                                     </td>
                                                     <td className="px-3 py-3 text-center bg-primary/5 border-r border-border/40">
@@ -488,9 +478,6 @@ export default function GradebookShow({
                                                             onChange={(e) => updateSumatifAkhir(d.student_id, Number(e.target.value))}
                                                             onBlur={(e) => saveSumatifAkhir(d.student_id, Number(e.target.value))}
                                                         />
-                                                    </td>
-                                                    <td className="px-3 py-3 text-center bg-primary/5 font-black text-primary border-r border-border/40">
-                                                        {Math.round(d.average)}
                                                     </td>
                                                     <td className="px-4 py-3 bg-emerald-500/5">
                                                         <p className="text-[11px] leading-relaxed text-foreground font-medium italic line-clamp-2" title={d.description}>
@@ -604,11 +591,8 @@ export default function GradebookShow({
                                         Nilai Sumatif (Capaian TP)
                                     </th>
                                 )}
-                                <th rowSpan={2} className="border border-black px-2 py-1.5 w-20 bg-gray-300 font-black">
+                                <th rowSpan={2} className="border border-black px-2 py-1.5 w-24 bg-gray-300 font-black">
                                     Total Sumatif
-                                </th>
-                                <th rowSpan={2} className="border border-black px-2 py-1.5 w-16">
-                                    Rata-rata
                                 </th>
                             </tr>
                             <tr className="bg-gray-100 text-center text-[10px] font-bold">
@@ -627,7 +611,7 @@ export default function GradebookShow({
                         <tbody>
                             {gradeData.length === 0 ? (
                                 <tr>
-                                    <td colSpan={3 + formative_headers.length + summative_headers.length + 2} className="border border-black px-4 py-6 text-center italic">
+                                    <td colSpan={3 + formative_headers.length + summative_headers.length + 1} className="border border-black px-4 py-6 text-center italic">
                                         Tidak ada data siswa untuk ditampilkan.
                                     </td>
                                 </tr>
@@ -652,13 +636,8 @@ export default function GradebookShow({
                                             </td>
                                         ))}
 
-                                        {/* Total Sumatif (Akumulasi Nilai Sumatif) */}
+                                        {/* Total Sumatif (Rata-rata Nilai Sumatif) */}
                                         <td className="border border-black px-2 py-1 text-center font-black bg-gray-200/50 text-[11px]">
-                                            {row.total_sumatif ?? 0}
-                                        </td>
-
-                                        {/* Rata-rata Sumatif */}
-                                        <td className="border border-black px-2 py-1 text-center font-medium text-[11px]">
                                             {Math.round(row.average)}
                                         </td>
                                     </tr>
@@ -676,7 +655,7 @@ export default function GradebookShow({
                             1. Asesmen formatif digunakan sebagai pemantauan proses belajar siswa dan tidak diakumulasikan.
                         </p>
                         <p className="italic">
-                            2. Tugas sumatif yang telah diterbitkan namun belum dikerjakan oleh siswa dihitung bernilai 0 (nol) agar dapat diakumulasikan ke Total Sumatif.
+                            2. Tugas sumatif yang telah diterbitkan namun belum dikerjakan oleh siswa dihitung bernilai 0 (nol). Total sumatif dihitung dari rata-rata capaian nilai sumatif yang telah diterbitkan.
                         </p>
                     </div>
 

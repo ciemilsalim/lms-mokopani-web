@@ -359,14 +359,17 @@ class GradebookController extends Controller
                 ];
             });
 
-            // Akumulasi Total Sumatif dari tugas sumatif yang sudah diterbitkan
+            // Akumulasi nilai sumatif dari tugas sumatif yang sudah diterbitkan
             $publishedSummatives = $summativeScores->filter(fn($s) => $s['has_assignment']);
-            $totalSumatif = $publishedSummatives->sum(fn($s) => is_numeric($s['score']) ? (float) $s['score'] : 0);
+            $sumSumatif = $publishedSummatives->sum(fn($s) => is_numeric($s['score']) ? (float) $s['score'] : 0);
 
-            // Rata-rata sumatif dihitung dari tugas sumatif yang diterbitkan
+            // Rata-rata sumatif dihitung dari tugas sumatif yang diterbitkan (belum dikerjakan = 0)
             $average = $publishedSummatives->count() > 0 
-                ? round($totalSumatif / $publishedSummatives->count(), 1) 
+                ? round($sumSumatif / $publishedSummatives->count(), 1) 
                 : 0;
+
+            // Aturan pengguna: Total sumatif yang dimaksud adalah rata-rata sumatif
+            $totalSumatif = round($average);
 
             // Generate Deskripsi Otomatis HANYA dari nilai sumatif yang ada
             $assessedSummatives = $summativeScores->filter(fn($s) => is_numeric($s['score']));
