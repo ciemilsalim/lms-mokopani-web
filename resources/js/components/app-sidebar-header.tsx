@@ -54,7 +54,7 @@ export function AppSidebarHeader({ breadcrumbs = [] }: { breadcrumbs?: Breadcrum
     const prevBreadcrumb = hasBackHistory ? breadcrumbs[breadcrumbs.length - 2] : null;
 
     return (
-        <header className="sticky top-0 z-30 flex h-14 md:h-14 w-full max-w-full shrink-0 items-center justify-between gap-1.5 sm:gap-2 border-b border-border/60 bg-card/95 backdrop-blur-md px-2.5 sm:px-4 shadow-xs transition-all">
+        <header className="sticky top-0 z-30 flex h-14 md:h-14 w-full max-w-full shrink-0 items-center justify-between gap-1.5 sm:gap-2 border-b border-border/60 bg-card/95 backdrop-blur-md px-2.5 sm:px-4 shadow-xs transition-all print:hidden">
 
             {/* ── Left: sidebar trigger + breadcrumbs / mobile logo & back ── */}
             <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1">

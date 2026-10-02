@@ -158,14 +158,28 @@ export default function GradebookShow({
                         size: landscape;
                         margin: 8mm;
                     }
+                    header,
+                    nav,
+                    aside,
+                    footer,
+                    [data-sidebar],
+                    .layout-page > header,
+                    .print\\:hidden {
+                        display: none !important;
+                    }
+                    .layout-page,
+                    .content-wrapper,
+                    main {
+                        padding: 0 !important;
+                        margin: 0 !important;
+                        border: none !important;
+                        box-shadow: none !important;
+                    }
                     body {
                         -webkit-print-color-adjust: exact !important;
                         print-color-adjust: exact !important;
                         background: #ffffff !important;
                         color: #000000 !important;
-                    }
-                    .print\\:hidden {
-                        display: none !important;
                     }
                     .print\\:block {
                         display: block !important;
