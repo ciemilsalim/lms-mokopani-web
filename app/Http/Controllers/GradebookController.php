@@ -231,6 +231,12 @@ class GradebookController extends Controller
             return redirect()->route('gradebook.index');
         }
 
+        $teachingAssignment = TeachingAssignment::with('teacher')
+            ->where('subject_id', $subjectId)
+            ->where('school_class_id', $classId)
+            ->first();
+        $teacherName = $teacher ? $teacher->name : ($teachingAssignment?->teacher?->name ?? '-');
+
         // 2. Ambil semua tugas untuk kelas & mapel ini
         $allAssignments = LmsAssignment::with(['learningObjective', 'schoolClasses'])
             ->whereHas('schoolClasses', function ($q) use ($classId) { $q->where('school_classes.id', $classId); })
@@ -306,11 +312,15 @@ class GradebookController extends Controller
             $summativeScores = $summativeColumns->map(function ($col) use ($student, $submissions) {
                 if ($col['type'] === 'assignment' && $col['assignment_id']) {
                     $sub = $submissions->where('student_id', $student->id)->where('assignment_id', $col['assignment_id'])->first();
-                    $score = ($sub && $sub->score !== null && $sub->score !== '') ? (float) $sub->score : '-';
+                    $hasSubmittedWithScore = ($sub && $sub->score !== null && $sub->score !== '');
+                    // Aturan: Jika sumatif sudah diterbitkan tapi siswa belum mengerjakan, nilainya 0 agar bisa diakumulasi
+                    $score = $hasSubmittedWithScore ? (float) $sub->score : 0;
                     return [
                         'tp_id'          => $col['tp_id'],
                         'tp_code'        => $col['tp'],
+                        'title'          => $col['title'],
                         'score'          => $score,
+                        'submitted'      => $hasSubmittedWithScore,
                         'is_top_level'   => true,
                         'has_assignment' => true,
                     ];
@@ -318,7 +328,9 @@ class GradebookController extends Controller
                     return [
                         'tp_id'          => $col['tp_id'],
                         'tp_code'        => $col['tp'],
+                        'title'          => $col['title'],
                         'score'          => '-',
+                        'submitted'      => false,
                         'is_top_level'   => true,
                         'has_assignment' => false,
                     ];
@@ -328,18 +340,33 @@ class GradebookController extends Controller
             // Initial assessment scores
             $initialScores = $initialAssignments->values()->map(function ($a) use ($student, $submissions) {
                 $sub = $submissions->where('student_id', $student->id)->where('assignment_id', $a->id)->first();
-                return ['id' => $a->id, 'score' => ($sub && $sub->score !== null && $sub->score !== '') ? (float) $sub->score : '-', 'type' => $a->assessment_type];
+                return [
+                    'id'    => $a->id,
+                    'title' => $a->title,
+                    'score' => ($sub && $sub->score !== null && $sub->score !== '') ? (float) $sub->score : '-',
+                    'type'  => $a->assessment_type,
+                ];
             });
 
-            // Formative assessment scores
+            // Formative assessment scores (Nilai formatif tidak perlu dijumlahkan)
             $formativeScores = $formativeAssignments->values()->map(function ($a) use ($student, $submissions) {
                 $sub = $submissions->where('student_id', $student->id)->where('assignment_id', $a->id)->first();
-                return ['id' => $a->id, 'score' => ($sub && $sub->score !== null && $sub->score !== '') ? (float) $sub->score : '-', 'type' => $a->assessment_type];
+                return [
+                    'id'    => $a->id,
+                    'title' => $a->title,
+                    'score' => ($sub && $sub->score !== null && $sub->score !== '') ? (float) $sub->score : '-',
+                    'type'  => $a->assessment_type,
+                ];
             });
 
-            // Rata-rata sumatif dihitung dari semua nilai numerik yang sudah dinilai
-            $validScores = $summativeScores->filter(fn($s) => is_numeric($s['score']))->pluck('score');
-            $average = $validScores->count() > 0 ? round($validScores->avg(), 1) : 0;
+            // Akumulasi Total Sumatif dari tugas sumatif yang sudah diterbitkan
+            $publishedSummatives = $summativeScores->filter(fn($s) => $s['has_assignment']);
+            $totalSumatif = $publishedSummatives->sum(fn($s) => is_numeric($s['score']) ? (float) $s['score'] : 0);
+
+            // Rata-rata sumatif dihitung dari tugas sumatif yang diterbitkan
+            $average = $publishedSummatives->count() > 0 
+                ? round($totalSumatif / $publishedSummatives->count(), 1) 
+                : 0;
 
             // Generate Deskripsi Otomatis HANYA dari nilai sumatif yang ada
             $assessedSummatives = $summativeScores->filter(fn($s) => is_numeric($s['score']));
@@ -367,10 +394,11 @@ class GradebookController extends Controller
             return [
                 'student_id'    => $student->id,
                 'student_name'  => $student->name,
-                'student_nis'   => $student->nis,
+                'student_nis'   => $student->nis ?? '-',
                 'summative'     => $summativeScores,
                 'initial'       => $initialScores,
                 'formative'     => $formativeScores,
+                'total_sumatif' => $totalSumatif,
                 'sumatif_akhir' => $finalScores->get($student->id)?->score ?? 0,
                 'average'       => $average,
                 'description'   => $description,
@@ -379,10 +407,12 @@ class GradebookController extends Controller
 
         return Inertia::render('gradebook/show', [
             'summative_headers' => $summativeColumns->values()->map(fn($col) => [
-                'id'      => $col['key'],
-                'title'   => $col['title'],
-                'tp'      => $col['tp'],
-                'tp_desc' => $col['tp_desc'],
+                'id'             => $col['key'],
+                'title'          => $col['title'],
+                'tp'             => $col['tp'],
+                'tp_desc'        => $col['tp_desc'],
+                'type'           => $col['type'],
+                'has_assignment' => ($col['type'] === 'assignment'),
             ]),
             'initial_headers'   => $initialAssignments->values()->map(fn($a) => ['id' => $a->id, 'title' => $a->title, 'type' => $a->assessment_type]),
             'formative_headers' => $formativeAssignments->values()->map(fn($a) => ['id' => $a->id, 'title' => $a->title, 'type' => $a->assessment_type]),
@@ -390,9 +420,14 @@ class GradebookController extends Controller
             'period'            => ($activeYear?->name ?? '') . ($activeSemester ? ' - ' . $activeSemester->name : ''),
             'subject_name'      => $subject->name,
             'class_name'        => $schoolClass->name,
+            'teacher_name'      => $teacherName,
             'subject_id'        => (int) $subjectId,
             'class_id'          => (int) $classId,
             'kktp'              => get_kktp($subjectId),
+            'school_name'       => school_setting('school_name', config('app.name')),
+            'school_address'    => school_setting('school_address', ''),
+            'headmaster_name'   => school_setting('school_headmaster_name', ''),
+            'headmaster_nip'    => school_setting('school_headmaster_nip', ''),
         ]);
     }
 

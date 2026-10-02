@@ -10,6 +10,7 @@ export interface StudentGradeCardItemProps {
     summative: { tp_id: number | string; score: any; tp_code: string }[];
     initial: { id: number; score: any; type: string }[];
     formative: { id: number; score: any; type: string }[];
+    totalSumatif?: number;
     sumatifAkhir: number;
     average: number;
     description: string;
@@ -24,6 +25,7 @@ export function StudentGradeCard({
     summative = [],
     initial = [],
     formative = [],
+    totalSumatif,
     sumatifAkhir,
     average,
     description,
@@ -65,6 +67,9 @@ export function StudentGradeCard({
                     <div className="text-right">
                         <div className="text-xs sm:text-sm font-black text-foreground">{finalDisplayScore}</div>
                         <PredicateBadge score={finalDisplayScore} />
+                        {typeof totalSumatif === 'number' && (
+                            <div className="text-[10px] font-bold text-primary">Tot: {totalSumatif}</div>
+                        )}
                     </div>
 
                     <button
@@ -120,9 +125,16 @@ export function StudentGradeCard({
                     {/* Summative TP Scores List */}
                     {summative.length > 0 && (
                         <div className="space-y-2">
-                            <h4 className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
-                                Nilai Sumatif per Tujuan Pembelajaran (TP)
-                            </h4>
+                            <div className="flex items-center justify-between">
+                                <h4 className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                                    Nilai Sumatif per TP
+                                </h4>
+                                {typeof totalSumatif === 'number' && (
+                                    <span className="text-[11px] font-black text-primary bg-primary/10 px-2 py-0.5 rounded-md">
+                                        Total Sumatif: {totalSumatif}
+                                    </span>
+                                )}
+                            </div>
                             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                                 {summative.map((tp) => (
                                     <div key={tp.tp_id} className="p-2.5 rounded-xl bg-card border border-border/60 text-center">
