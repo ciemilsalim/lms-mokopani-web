@@ -155,30 +155,42 @@ class P5ProjectController extends Controller
 
     public function create()
     {
-        $teacher = Auth::user()->teacher;
+        $user = Auth::user();
+        $teacher = $user->teacher ?? \App\Models\Teacher::where('user_id', $user->id)->first();
+        $activeYear = AcademicYear::getActive();
+        $activeSemester = Semester::getActive();
         $classes = $this->getTeacherClasses($teacher);
 
         $dimensi = LmsP5Dimensi::with('elements.subElements')->get();
 
         // Fetch SIPADA Cocurriculars assigned to this teacher
-        $sipadaProjects = \Illuminate\Support\Facades\DB::connection('mysql_absensi')
-            ->table('cocurriculars')
-            ->join('cocurricular_teacher', 'cocurriculars.id', '=', 'cocurricular_teacher.cocurricular_id')
-            ->where('cocurricular_teacher.teacher_id', $teacher->id)
-            ->where('cocurriculars.academic_year_id', $activeYear?->id)
-            ->select('cocurriculars.*')
-            ->get();
+        $sipadaProjects = collect();
+        if ($teacher) {
+            try {
+                $sipadaProjects = \Illuminate\Support\Facades\DB::connection('mysql_absensi')
+                    ->table('cocurriculars')
+                    ->join('cocurricular_teacher', 'cocurriculars.id', '=', 'cocurricular_teacher.cocurricular_id')
+                    ->where('cocurricular_teacher.teacher_id', $teacher->id)
+                    ->where('cocurriculars.academic_year_id', $activeYear?->id)
+                    ->select('cocurriculars.*')
+                    ->get();
+            } catch (\Throwable $e) {
+                $sipadaProjects = collect();
+            }
+        }
 
         return Inertia::render('p5/create', [
             'classes'         => $classes,
             'dimensi'         => $dimensi,
             'sipada_projects' => $sipadaProjects,
-            'period'          => $activeYear?->name . ' - ' . $activeSemester?->name,
+            'period'          => ($activeYear?->name ?? '') . ($activeSemester ? ' - ' . $activeSemester->name : ''),
         ]);
     }
 
     public function store(Request $request)
     {
+        $user = Auth::user();
+        $teacher = $user->teacher ?? \App\Models\Teacher::where('user_id', $user->id)->first();
         $activeYear = AcademicYear::getActive();
         $activeSemester = Semester::getActive();
 
@@ -196,16 +208,28 @@ class P5ProjectController extends Controller
             'cocurricular_id' => 'nullable|integer',
         ]);
 
+        if ($user->role !== 'admin') {
+            if (!$teacher) {
+                abort(403, 'Akses khusus guru.');
+            }
+            $isAssigned = TeachingAssignment::where('teacher_id', $teacher->id)
+                ->where('school_class_id', $validated['school_class_id'])
+                ->exists();
+            if (!$isAssigned) {
+                abort(403, 'Anda hanya dapat membuat projek P5 pada kelas yang Anda ampu.');
+            }
+        }
+
         LmsP5Project::create([
             'judul'           => $validated['judul'],
-            'deskripsi'       => $validated['deskripsi'],
-            'tema'            => $validated['tema'],
+            'deskripsi'       => $validated['deskripsi'] ?? null,
+            'tema'            => $validated['tema'] ?? null,
             'school_class_id' => $validated['school_class_id'],
             'academic_year_id' => $activeYear?->id,
             'semester_id'      => $activeSemester?->id,
             'dimensi_ids'      => $validated['dimensi_ids'],
             'sub_element_ids'  => $validated['sub_element_ids'],
-            'alokasi_waktu'    => $validated['alokasi_waktu'],
+            'alokasi_waktu'    => $validated['alokasi_waktu'] ?? null,
             'status'           => $validated['status'],
             'cocurricular_id'  => $validated['cocurricular_id'] ?? null,
         ]);
@@ -257,20 +281,29 @@ class P5ProjectController extends Controller
 
     public function edit(LmsP5Project $project)
     {
-        $teacher = Auth::user()->teacher;
-        $classes = $this->getTeacherClasses($teacher);
+        $user = Auth::user();
+        $teacher = $user->teacher ?? \App\Models\Teacher::where('user_id', $user->id)->first();
+        $this->authorizeProjectAccess($project, $user, $teacher);
 
+        $classes = $this->getTeacherClasses($teacher);
         $dimensi = LmsP5Dimensi::with('elements.subElements')->get();
         $activeYear = AcademicYear::getActive();
 
         // Fetch SIPADA Cocurriculars assigned to this teacher
-        $sipadaProjects = \Illuminate\Support\Facades\DB::connection('mysql_absensi')
-            ->table('cocurriculars')
-            ->join('cocurricular_teacher', 'cocurriculars.id', '=', 'cocurricular_teacher.cocurricular_id')
-            ->where('cocurricular_teacher.teacher_id', $teacher->id)
-            ->where('cocurriculars.academic_year_id', $activeYear?->id)
-            ->select('cocurriculars.*')
-            ->get();
+        $sipadaProjects = collect();
+        if ($teacher) {
+            try {
+                $sipadaProjects = \Illuminate\Support\Facades\DB::connection('mysql_absensi')
+                    ->table('cocurriculars')
+                    ->join('cocurricular_teacher', 'cocurriculars.id', '=', 'cocurricular_teacher.cocurricular_id')
+                    ->where('cocurricular_teacher.teacher_id', $teacher->id)
+                    ->where('cocurriculars.academic_year_id', $activeYear?->id)
+                    ->select('cocurriculars.*')
+                    ->get();
+            } catch (\Throwable $e) {
+                $sipadaProjects = collect();
+            }
+        }
 
         return Inertia::render('p5/edit', [
             'project'         => $project,
@@ -282,6 +315,10 @@ class P5ProjectController extends Controller
 
     public function update(Request $request, LmsP5Project $project)
     {
+        $user = Auth::user();
+        $teacher = $user->teacher ?? \App\Models\Teacher::where('user_id', $user->id)->first();
+        $this->authorizeProjectAccess($project, $user, $teacher);
+
         $validated = $request->validate([
             'judul'          => 'required|string|max:255',
             'deskripsi'      => 'nullable|string',
@@ -296,6 +333,15 @@ class P5ProjectController extends Controller
             'cocurricular_id' => 'nullable|integer',
         ]);
 
+        if ($user->role !== 'admin' && (int)$validated['school_class_id'] !== (int)$project->school_class_id) {
+            $isAssigned = TeachingAssignment::where('teacher_id', $teacher->id)
+                ->where('school_class_id', $validated['school_class_id'])
+                ->exists();
+            if (!$isAssigned) {
+                abort(403, 'Anda hanya dapat memindahkan projek ke kelas yang Anda ampu.');
+            }
+        }
+
         $project->update($validated);
 
         return redirect()->route('p5.index')->with('success', 'Projek P5 berhasil diperbarui.');
@@ -303,6 +349,10 @@ class P5ProjectController extends Controller
 
     public function destroy(LmsP5Project $project)
     {
+        $user = Auth::user();
+        $teacher = $user->teacher ?? \App\Models\Teacher::where('user_id', $user->id)->first();
+        $this->authorizeProjectAccess($project, $user, $teacher);
+
         $project->delete();
 
         return redirect()->route('p5.index')->with('success', 'Projek P5 berhasil dihapus.');
@@ -317,6 +367,16 @@ class P5ProjectController extends Controller
             'nilai'          => 'nullable|in:BB,MB,BSH,SB',
             'catatan'        => 'nullable|string',
         ]);
+
+        $project = LmsP5Project::findOrFail($validated['project_id']);
+        $user = Auth::user();
+        $teacher = $user->teacher ?? \App\Models\Teacher::where('user_id', $user->id)->first();
+        $this->authorizeProjectAccess($project, $user, $teacher);
+
+        $student = Student::findOrFail($validated['student_id']);
+        if ($project->school_class_id && $student->school_class_id !== $project->school_class_id) {
+            return back()->withErrors(['student_id' => 'Siswa tidak terdaftar pada kelas projek ini.']);
+        }
 
         if (empty($validated['nilai'])) {
             LmsP5ProjectScore::where([
@@ -341,5 +401,24 @@ class P5ProjectController extends Controller
         );
 
         return back()->with('success', 'Nilai P5 berhasil disimpan.');
+    }
+
+    protected function authorizeProjectAccess(LmsP5Project $project, $user, $teacher)
+    {
+        if ($user->role === 'admin') {
+            return;
+        }
+
+        if (!$teacher) {
+            abort(403, 'Akses khusus guru.');
+        }
+
+        $isAssigned = TeachingAssignment::where('teacher_id', $teacher->id)
+            ->where('school_class_id', $project->school_class_id)
+            ->exists();
+
+        if (!$isAssigned) {
+            abort(403, 'Anda tidak memiliki hak akses untuk mengelola projek P5 di kelas ini.');
+        }
     }
 }

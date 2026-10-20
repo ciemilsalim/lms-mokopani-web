@@ -56,6 +56,21 @@ class AdaptiveLearningController extends Controller
 
     public function students($subjectId, $classId)
     {
+        $user = Auth::user();
+        if ($user->role !== 'admin') {
+            $teacher = $user->teacher ?? \App\Models\Teacher::where('user_id', $user->id)->first();
+            if (!$teacher) {
+                abort(403, 'Akses khusus guru.');
+            }
+            $isAssigned = \App\Models\TeachingAssignment::where('teacher_id', $teacher->id)
+                ->where('subject_id', $subjectId)
+                ->where('school_class_id', $classId)
+                ->exists();
+            if (!$isAssigned) {
+                abort(403, 'Anda tidak memiliki penugasan mengajar untuk mata pelajaran dan kelas ini.');
+            }
+        }
+
         $subject = Subject::findOrFail($subjectId);
         $schoolClass = SchoolClass::findOrFail($classId);
         $students = Student::where('school_class_id', $classId)
@@ -71,14 +86,36 @@ class AdaptiveLearningController extends Controller
 
     public function summary(Request $request, $subjectId, $studentId)
     {
+        $user = Auth::user();
         $subject = Subject::findOrFail($subjectId);
         $student = Student::with('schoolClass')->findOrFail($studentId);
+
+        if ($user->role === 'student' || $user->student) {
+            if ((int)$user->student?->id !== (int)$studentId) {
+                abort(403, 'Anda hanya dapat melihat ringkasan pembelajaran adaptif milik Anda sendiri.');
+            }
+        } elseif ($user->role === 'parent' || $user->parent) {
+            $hasChild = $user->parent && $user->parent->students->contains('id', (int)$studentId);
+            if (!$hasChild) {
+                abort(403, 'Anda tidak memiliki hak akses ke data siswa ini.');
+            }
+        } elseif ($user->role !== 'admin') {
+            $teacher = $user->teacher ?? \App\Models\Teacher::where('user_id', $user->id)->first();
+            if (!$teacher) {
+                abort(403, 'Akses ditolak.');
+            }
+            $isAssigned = \App\Models\TeachingAssignment::where('teacher_id', $teacher->id)
+                ->where('subject_id', $subjectId)
+                ->where('school_class_id', $student->school_class_id)
+                ->exists();
+            if (!$isAssigned) {
+                abort(403, 'Anda tidak memiliki penugasan mengajar untuk mata pelajaran dan kelas siswa ini.');
+            }
+        }
 
         $summary = $this->adaptiveLearning->getDiagnosticSummary((int) $subjectId, (int) $studentId);
         
         $nonCognitive = \App\Models\StudentNonCognitiveDiagnostic::where('student_id', $studentId)
-            // Optional: you can filter by subject_id if your schema uses it strictly for non-cognitive, 
-            // but usually non-cognitive is general per student. We'll just take the first one.
             ->first();
 
         $regenerate = $request->boolean('regenerate');

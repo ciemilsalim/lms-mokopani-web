@@ -877,8 +877,21 @@ class GradebookController extends Controller
 
     public function learningReport(Request $request, $class_id, $subject_id)
     {
-        $teacher = Auth::user()->teacher;
-        if (!$teacher) abort(403);
+        $user = Auth::user();
+        $teacher = $user->teacher ?? \App\Models\Teacher::where('user_id', $user->id)->first();
+
+        if ($user->role !== 'admin') {
+            if (!$teacher) {
+                abort(403, 'Akses khusus guru mata pelajaran.');
+            }
+            $isAssigned = TeachingAssignment::where('teacher_id', $teacher->id)
+                ->where('subject_id', $subject_id)
+                ->where('school_class_id', $class_id)
+                ->exists();
+            if (!$isAssigned) {
+                abort(403, 'Anda tidak memiliki penugasan mengajar untuk mata pelajaran dan kelas ini.');
+            }
+        }
 
         $subject = Subject::findOrFail($subject_id);
         $class = SchoolClass::findOrFail($class_id);

@@ -23,27 +23,36 @@ class LearningObjectiveController extends Controller
 
     public function index()
     {
-        $teacher = Auth::user()->teacher;
+        $user = Auth::user();
+        $teacher = $user->teacher ?? \App\Models\Teacher::where('user_id', $user->id)->first();
         $activeYear = AcademicYear::getActive();
         $activeSemester = Semester::getActive();
 
-        $objectives = LmsLearningObjective::with(['subject', 'schoolClass', 'capaianPembelajaran', 'capaianPembelajarans', 'subObjectives'])
+        $objectivesQuery = LmsLearningObjective::with(['subject', 'schoolClass', 'capaianPembelajaran', 'capaianPembelajarans', 'subObjectives'])
             ->whereNull('parent_id')
-            ->where('teacher_id', $teacher->id)
             ->where('academic_year_id', $activeYear?->id)
-            ->where('semester_id', $activeSemester?->id)
-            ->orderBy('order')
-            ->get();
+            ->where('semester_id', $activeSemester?->id);
 
-        $activeYear = \App\Models\AcademicYear::getActive();
-        $activeSemester = \App\Models\Semester::getActive();
+        if ($user->role !== 'admin' || $teacher) {
+            if (!$teacher) {
+                abort(403, 'Akses khusus guru.');
+            }
+            $objectivesQuery->where('teacher_id', $teacher->id);
+        }
 
-        $subjects = TeachingAssignment::with('subject')
-            ->where('teacher_id', $teacher->id)
+        $objectives = $objectivesQuery->orderBy('order')->get();
+
+        $subjectsQuery = TeachingAssignment::with('subject')
             ->where('academic_year_id', $activeYear?->id)
-            ->where('semester_id', $activeSemester?->id)
-            ->get()
+            ->where('semester_id', $activeSemester?->id);
+
+        if ($teacher) {
+            $subjectsQuery->where('teacher_id', $teacher->id);
+        }
+
+        $subjects = $subjectsQuery->get()
             ->pluck('subject')
+            ->filter()
             ->unique('id');
 
         $cpList = LmsCapaianPembelajaran::with('subject')
@@ -153,6 +162,12 @@ class LearningObjectiveController extends Controller
 
     public function update(Request $request, LmsLearningObjective $objective)
     {
+        $user = Auth::user();
+        $teacher = $user->teacher ?? \App\Models\Teacher::where('user_id', $user->id)->first();
+        if ($user->role !== 'admin' && (!$teacher || (int)$objective->teacher_id !== (int)$teacher->id)) {
+            abort(403, 'Anda tidak memiliki hak untuk mengubah Tujuan Pembelajaran ini.');
+        }
+
         $validated = $request->validate([
             'subject_id'         => 'required|exists:mysql_absensi.subjects,id',
             'school_class_id'    => 'required|exists:mysql_absensi.school_classes,id',
@@ -170,11 +185,11 @@ class LearningObjectiveController extends Controller
         $objective->update([
             'subject_id'         => $validated['subject_id'],
             'school_class_id'    => $validated['school_class_id'],
-            'code'               => $validated['code'],
+            'code'               => $validated['code'] ?? null,
             'description'        => $validated['description'],
-            'cp_id'              => $validated['cp_id'],
-            'competence'         => $validated['competence'],
-            'content'            => $validated['content'],
+            'cp_id'              => $validated['cp_id'] ?? null,
+            'competence'         => $validated['competence'] ?? null,
+            'content'            => $validated['content'] ?? null,
             'formulation_method' => $validated['formulation_method'],
             'parent_id'          => $validated['parent_id'] ?? null,
         ]);
@@ -188,6 +203,9 @@ class LearningObjectiveController extends Controller
 
     public function updateOrder(Request $request)
     {
+        $user = Auth::user();
+        $teacher = $user->teacher ?? \App\Models\Teacher::where('user_id', $user->id)->first();
+
         $request->validate([
             'orders'   => 'required|array',
             'orders.*.id'    => 'required|exists:lms_learning_objectives,id',
@@ -197,6 +215,19 @@ class LearningObjectiveController extends Controller
             'orders.*.sequencing_method' => 'nullable|string',
             'sequencing_method' => 'nullable|string', // Global fallback
         ]);
+
+        if ($user->role !== 'admin') {
+            if (!$teacher) {
+                abort(403, 'Akses khusus guru.');
+            }
+            $objectiveIds = collect($request->orders)->pluck('id');
+            $nonOwnedCount = LmsLearningObjective::whereIn('id', $objectiveIds)
+                ->where('teacher_id', '!=', $teacher->id)
+                ->count();
+            if ($nonOwnedCount > 0) {
+                abort(403, 'Anda hanya dapat mengubah urutan Tujuan Pembelajaran milik Anda.');
+            }
+        }
 
         foreach ($request->orders as $item) {
             LmsLearningObjective::where('id', $item['id'])->update([
@@ -316,8 +347,10 @@ class LearningObjectiveController extends Controller
 
     public function destroy(LmsLearningObjective $objective)
     {
-        if ($objective->teacher_id !== Auth::user()->teacher->id) {
-            abort(403);
+        $user = Auth::user();
+        $teacher = $user->teacher ?? \App\Models\Teacher::where('user_id', $user->id)->first();
+        if ($user->role !== 'admin' && (!$teacher || (int)$objective->teacher_id !== (int)$teacher->id)) {
+            abort(403, 'Anda tidak memiliki hak untuk menghapus Tujuan Pembelajaran ini.');
         }
 
         $objective->delete();

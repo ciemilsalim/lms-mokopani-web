@@ -14,10 +14,18 @@ class FeedbackRevisionController extends Controller
 {
     public function index(Request $request)
     {
-        $teacher = Auth::user()->teacher;
+        $user = Auth::user();
+        $teacher = $user->teacher ?? \App\Models\Teacher::where('user_id', $user->id)->first();
 
-        $query = LmsFeedbackRevision::with(['submission.student', 'submission.assignment', 'teacher'])
-            ->where('teacher_id', $teacher->id);
+        if ($user->role !== 'admin' && !$teacher) {
+            abort(403);
+        }
+
+        $query = LmsFeedbackRevision::with(['submission.student', 'submission.assignment', 'teacher']);
+
+        if ($user->role !== 'admin' || $teacher) {
+            $query->where('teacher_id', $teacher->id);
+        }
 
         if ($request->filled('status')) {
             $query->where('status', $request->status);
@@ -28,22 +36,23 @@ class FeedbackRevisionController extends Controller
 
         $revisions = $query->latest()->paginate(20)->withQueryString();
 
-        $teachings = TeachingAssignment::with(['subject', 'schoolClass'])
-            ->where('teacher_id', $teacher->id)
-            ->get()
-            ->map(fn ($t) => [
-                'subject_id'   => $t->subject_id,
-                'subject_name' => $t->subject->name,
-                'class_id'     => $t->school_class_id,
-                'class_name'   => $t->schoolClass->name,
-            ])
-            ->unique(fn ($t) => $t['subject_id'] . '-' . $t['class_id'])
-            ->values();
+        $teachings = collect();
+        if ($teacher) {
+            $teachings = TeachingAssignment::with(['subject', 'schoolClass'])
+                ->where('teacher_id', $teacher->id)
+                ->get()
+                ->map(fn ($t) => [
+                    'subject_id'   => $t->subject_id,
+                    'subject_name' => $t->subject?->name,
+                    'class_id'     => $t->school_class_id,
+                    'class_name'   => $t->schoolClass?->name,
+                ])
+                ->unique(fn ($t) => $t['subject_id'] . '-' . $t['class_id'])
+                ->values();
+        }
 
-        $assignments = LmsAssignment::whereIn('id', $revisions->pluck('submission_id')
-            ->map(fn ($id) => LmsSubmission::find($id)?->assignment_id)
-            ->filter())
-            ->get(['id', 'title']);
+        $assignmentIds = $revisions->pluck('submission.assignment_id')->filter()->unique();
+        $assignments = LmsAssignment::whereIn('id', $assignmentIds)->get(['id', 'title']);
 
         return Inertia::render('feedback-revisions/index', [
             'revisions'   => $revisions,
@@ -55,18 +64,30 @@ class FeedbackRevisionController extends Controller
 
     public function store(Request $request)
     {
-        $teacher = Auth::user()->teacher;
+        $user = Auth::user();
+        $teacher = $user->teacher ?? \App\Models\Teacher::where('user_id', $user->id)->first();
+
+        if ($user->role !== 'admin' && !$teacher) {
+            abort(403);
+        }
 
         $validated = $request->validate([
             'submission_id' => 'required|exists:lms_submissions,id',
             'feedback'      => 'required|string|max:2000',
         ]);
 
-        $submission = LmsSubmission::findOrFail($validated['submission_id']);
+        $submission = LmsSubmission::with('assignment')->findOrFail($validated['submission_id']);
+        $assignment = $submission->assignment;
+
+        if ($user->role !== 'admin') {
+            if (!$assignment || (int)$assignment->teacher_id !== (int)$teacher->id) {
+                abort(403, 'Anda tidak memiliki hak untuk memberikan feedback pada tugas ini.');
+            }
+        }
 
         $revision = LmsFeedbackRevision::create([
             'submission_id'  => $validated['submission_id'],
-            'teacher_id'     => $teacher->id,
+            'teacher_id'     => $teacher?->id ?? $assignment?->teacher_id,
             'feedback'       => $validated['feedback'],
             'status'         => 'pending_revision',
             'revision_count' => 0,
@@ -79,14 +100,17 @@ class FeedbackRevisionController extends Controller
 
     public function update(Request $request, LmsFeedbackRevision $feedbackRevision)
     {
-        $teacher = Auth::user()->teacher;
+        $user = Auth::user();
+        $teacher = $user->teacher ?? \App\Models\Teacher::where('user_id', $user->id)->first();
 
-        if ($feedbackRevision->teacher_id !== $teacher->id) {
-            abort(403);
+        if ($user->role !== 'admin') {
+            if (!$teacher || (int)$feedbackRevision->teacher_id !== (int)$teacher->id) {
+                abort(403);
+            }
         }
 
         $validated = $request->validate([
-            'status'  => 'required|in:pending_revision,revised,approved',
+            'status'   => 'required|in:pending_revision,revised,approved',
             'feedback' => 'nullable|string|max:2000',
         ]);
 
@@ -107,9 +131,13 @@ class FeedbackRevisionController extends Controller
 
     public function destroy(LmsFeedbackRevision $feedbackRevision)
     {
-        $teacher = Auth::user()->teacher;
-        if ($feedbackRevision->teacher_id !== $teacher->id) {
-            abort(403);
+        $user = Auth::user();
+        $teacher = $user->teacher ?? \App\Models\Teacher::where('user_id', $user->id)->first();
+
+        if ($user->role !== 'admin') {
+            if (!$teacher || (int)$feedbackRevision->teacher_id !== (int)$teacher->id) {
+                abort(403);
+            }
         }
 
         $feedbackRevision->delete();

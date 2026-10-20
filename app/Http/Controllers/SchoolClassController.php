@@ -8,6 +8,7 @@ use App\Models\Student;
 use App\Models\LmsMaterial;
 use App\Models\LmsAssignment;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class SchoolClassController extends Controller
@@ -48,43 +49,47 @@ class SchoolClassController extends Controller
             $query->whereIn('id', $teachingClassIds);
         }
 
-        $classes = $query->withCount('students')
+        $rawClasses = $query->withCount('students')
             ->orderBy('name')
-            ->get()
-            ->map(function ($c) use ($user) {
-                $subjects = [];
-                if ($user && $user->role === 'teacher' && $user->teacher) {
-                    $subjects = TeachingAssignment::where('teacher_id', $user->teacher->id)
-                        ->where('school_class_id', $c->id)
-                        ->with('subject')
-                        ->get()
-                        ->map(fn($ta) => $ta->subject?->name)
-                        ->filter()
-                        ->values()
-                        ->toArray();
-                } else {
-                    $subjects = TeachingAssignment::where('school_class_id', $c->id)
-                        ->with('subject')
-                        ->get()
-                        ->map(fn($ta) => $ta->subject?->name)
-                        ->filter()
-                        ->unique()
-                        ->values()
-                        ->toArray();
-                }
+            ->get();
 
-                $materialsCount = LmsMaterial::whereHas('schoolClasses', fn($q) => $q->where('school_classes.id', $c->id))->count();
-                $assignmentsCount = LmsAssignment::whereHas('schoolClasses', fn($q) => $q->where('school_classes.id', $c->id))->count();
+        $classIds = $rawClasses->pluck('id');
 
-                return [
-                    'id'                => $c->id,
-                    'name'              => $c->name,
-                    'students_count'    => $c->students_count,
-                    'subjects'          => $subjects,
-                    'materials_count'   => $materialsCount,
-                    'assignments_count' => $assignmentsCount,
-                ];
-            });
+        $teachingQuery = TeachingAssignment::whereIn('school_class_id', $classIds)->with('subject');
+        if ($user && $user->role === 'teacher' && $user->teacher) {
+            $teachingQuery->where('teacher_id', $user->teacher->id);
+        }
+        $allTeachings = $teachingQuery->get()->groupBy('school_class_id');
+
+        $materialCounts = DB::table('lms_material_school_class')
+            ->whereIn('school_class_id', $classIds)
+            ->selectRaw('school_class_id, count(*) as count')
+            ->groupBy('school_class_id')
+            ->pluck('count', 'school_class_id');
+
+        $assignmentCounts = DB::table('lms_assignment_school_class')
+            ->whereIn('school_class_id', $classIds)
+            ->selectRaw('school_class_id, count(*) as count')
+            ->groupBy('school_class_id')
+            ->pluck('count', 'school_class_id');
+
+        $classes = $rawClasses->map(function ($c) use ($user, $allTeachings, $materialCounts, $assignmentCounts) {
+            $classTeachings = $allTeachings->get($c->id, collect());
+            $subjects = $classTeachings->map(fn($ta) => $ta->subject?->name)
+                ->filter()
+                ->unique()
+                ->values()
+                ->toArray();
+
+            return [
+                'id'                => $c->id,
+                'name'              => $c->name,
+                'students_count'    => $c->students_count,
+                'subjects'          => $subjects,
+                'materials_count'   => (int) ($materialCounts[$c->id] ?? 0),
+                'assignments_count' => (int) ($assignmentCounts[$c->id] ?? 0),
+            ];
+        });
 
         // Deduplicate duplicate class names, prioritizing the one with active students
         $classes = $classes

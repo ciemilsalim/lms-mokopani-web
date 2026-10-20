@@ -12,11 +12,16 @@ class NonCognitiveDiagnosticController extends Controller
 {
     public function index(Request $request)
     {
-        $teacher = Auth::user()->teacher;
+        $user = Auth::user();
+        $teacher = $user->teacher ?? \App\Models\Teacher::where('user_id', $user->id)->first();
 
-        $classIds = \App\Models\TeachingAssignment::where('teacher_id', $teacher->id)
-            ->pluck('school_class_id')
-            ->unique();
+        if ($user->role !== 'admin' && !$teacher) {
+            abort(403, 'Akses khusus guru.');
+        }
+
+        $classIds = $teacher 
+            ? \App\Models\TeachingAssignment::where('teacher_id', $teacher->id)->pluck('school_class_id')->unique()
+            : \App\Models\SchoolClass::pluck('id');
 
         $students = Student::with('schoolClass')
             ->whereIn('school_class_id', $classIds)
@@ -48,6 +53,7 @@ class NonCognitiveDiagnosticController extends Controller
     public function edit($studentId)
     {
         $student = Student::with('schoolClass')->findOrFail($studentId);
+        $this->authorizeStudentAccess($student);
 
         $diagnostic = StudentNonCognitiveDiagnostic::where('student_id', $studentId)->first();
 
@@ -73,6 +79,7 @@ class NonCognitiveDiagnosticController extends Controller
     public function update(Request $request, $studentId)
     {
         $student = Student::findOrFail($studentId);
+        $this->authorizeStudentAccess($student);
 
         $validated = $request->validate([
             'learning_style'       => 'nullable|string|max:100',
@@ -90,5 +97,30 @@ class NonCognitiveDiagnosticController extends Controller
 
         return redirect()->route('non-cognitive.index')
             ->with('success', 'Diagnostik non-kognitif berhasil disimpan.');
+    }
+
+    protected function authorizeStudentAccess(Student $student)
+    {
+        $user = Auth::user();
+        if ($user->role === 'admin') {
+            return;
+        }
+
+        $teacher = $user->teacher ?? \App\Models\Teacher::where('user_id', $user->id)->first();
+        if (!$teacher) {
+            abort(403, 'Akses khusus guru.');
+        }
+
+        if (!$student->school_class_id) {
+            abort(403, 'Siswa belum terdaftar pada kelas aktif.');
+        }
+
+        $isAssigned = \App\Models\TeachingAssignment::where('teacher_id', $teacher->id)
+            ->where('school_class_id', $student->school_class_id)
+            ->exists();
+
+        if (!$isAssigned) {
+            abort(403, 'Anda tidak memiliki hak akses diagnostik untuk siswa di luar kelas ampu Anda.');
+        }
     }
 }
