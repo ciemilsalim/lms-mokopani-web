@@ -18,6 +18,8 @@ interface SubjectReport {
     subject_name: string;
     assignments: AssignmentItem[];
     average: number;
+    tp_average?: number | null;
+    sas_score?: number | null;
     description: string;
     attendance_percentage: number | null;
     total_meetings: number;

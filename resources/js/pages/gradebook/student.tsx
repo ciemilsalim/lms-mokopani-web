@@ -44,6 +44,8 @@ interface SubjectReport {
         }[];
     }[];
     average: number;
+    tp_average?: number | null;
+    sas_score?: number | null;
     description: string;
     attendance_percentage: number;
     total_meetings: number;
@@ -209,6 +211,8 @@ export default function StudentGrade({ report = [], p5_projects = [], period }: 
                                         key={idx}
                                         subjectName={subject.subject_name}
                                         average={subject.average}
+                                        tpAverage={subject.tp_average}
+                                        sasScore={subject.sas_score}
                                         description={subject.description}
                                         attendancePercentage={subject.attendance_percentage}
                                         totalMeetings={subject.total_meetings}

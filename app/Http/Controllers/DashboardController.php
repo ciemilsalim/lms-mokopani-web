@@ -254,7 +254,7 @@ class DashboardController extends Controller
             ->where('semester_id', $activeSemester?->id);
 
         $myAssignments = LmsAssignment::whereHas('schoolClasses', function ($q) use ($student) { $q->where('school_classes.id', $student->school_class_id); })
-            ->whereNotIn('instrument_type', LmsAssignment::teacherOnlyInstruments())
+            ->forStudentPortal()
             ->where('academic_year_id', $activeYear?->id)
             ->where('semester_id', $activeSemester?->id);
 
@@ -706,7 +706,7 @@ class DashboardController extends Controller
         return LmsAssignment::whereHas('schoolClasses', function ($q) use ($student) { 
                 $q->where('school_classes.id', $student->school_class_id); 
             })
-            ->whereNotIn('instrument_type', LmsAssignment::teacherOnlyInstruments())
+            ->forStudentPortal()
             ->whereNotNull('due_date')
             ->where('due_date', '>=', now())
             ->whereDoesntHave('submissions', function ($q) use ($student) {

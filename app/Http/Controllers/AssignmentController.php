@@ -41,7 +41,7 @@ class AssignmentController extends Controller
                 });
             }
             // Asesmen yang hanya dikelola guru (lisan, observasi, dll.) tidak perlu ditampilkan di daftar tugas siswa
-            $query->whereNotIn('instrument_type', LmsAssignment::teacherOnlyInstruments());
+            $query->forStudentPortal();
         }
 
         $models = $query->latest()->get();

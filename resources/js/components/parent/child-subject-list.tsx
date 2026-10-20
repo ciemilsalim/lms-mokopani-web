@@ -17,6 +17,8 @@ export interface SubjectReportItem {
     subject_name: string;
     assignments: AssignmentItem[];
     average: number;
+    tp_average?: number | null;
+    sas_score?: number | null;
     description: string;
     attendance_percentage: number | null;
     total_meetings: number;
@@ -88,6 +90,20 @@ export function ChildSubjectList({ reports = [], className = '' }: ChildSubjectL
                         {/* Expandable Accordion Body */}
                         {isExpanded && (
                             <div className="p-4 sm:p-4.5 border-t border-border/60 bg-muted/20 space-y-4 fade-in">
+                                {/* Score Breakdown (Sumatif LM & SAS) */}
+                                {(subject.tp_average !== undefined || subject.sas_score !== undefined) && (
+                                    <div className="grid grid-cols-2 gap-2 p-2.5 rounded-xl bg-card border border-border/70 text-xs">
+                                        <div>
+                                            <span className="text-[10px] text-muted-foreground font-semibold block uppercase">Rata-rata Sumatif (TP)</span>
+                                            <span className="text-sm font-black text-foreground">{subject.tp_average !== null && subject.tp_average !== undefined ? subject.tp_average : '-'}</span>
+                                        </div>
+                                        <div>
+                                            <span className="text-[10px] text-muted-foreground font-semibold block uppercase">Sumatif Akhir (SAS)</span>
+                                            <span className="text-sm font-black text-indigo-600 dark:text-indigo-400">{subject.sas_score !== null && subject.sas_score !== undefined ? subject.sas_score : '-'}</span>
+                                        </div>
+                                    </div>
+                                )}
+
                                 {/* Achievement Description */}
                                 {subject.description && (
                                     <div className="p-3 rounded-xl bg-card border border-border/70 space-y-1">

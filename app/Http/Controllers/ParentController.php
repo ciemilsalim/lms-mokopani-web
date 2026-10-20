@@ -10,6 +10,7 @@ use App\Models\Semester;
 use App\Models\Student;
 use App\Models\SubjectAttendance;
 use App\Models\LmsLearningObjective;
+use App\Services\RaporCalculationService;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
@@ -30,7 +31,7 @@ class ParentController extends Controller
         $assignmentsQuery = LmsAssignment::whereHas('schoolClasses', function ($q) use ($childClassIds) {
                 $q->whereIn('school_classes.id', $childClassIds);
             })
-            ->whereNotIn('instrument_type', LmsAssignment::teacherOnlyInstruments());
+            ->forStudentPortal();
 
         if ($activeYear && $activeSemester) {
             $assignmentsQuery->where(function ($q) use ($activeYear, $activeSemester) {
@@ -167,7 +168,7 @@ class ParentController extends Controller
             ->whereHas('schoolClasses', function ($q) use ($student) {
                 $q->where('school_classes.id', $student->school_class_id);
             })
-            ->whereNotIn('instrument_type', LmsAssignment::teacherOnlyInstruments());
+            ->forStudentPortal();
 
         if ($activeYear && $activeSemester) {
             $assignmentsQuery->where(function ($q) use ($activeYear, $activeSemester) {
@@ -224,7 +225,7 @@ class ParentController extends Controller
         $allTpIds = $assignments->pluck('learning_objective_id')->filter()->unique();
         $learningObjectives = LmsLearningObjective::whereIn('id', $allTpIds)->get()->keyBy('id');
 
-        $report = $assignments->groupBy('subject_id')->map(function ($subjectAssignments) use ($submissions, $attendances, $student, $finalScores, $learningObjectives) {
+        $report = $assignments->groupBy('subject_id')->map(function ($subjectAssignments) use ($submissions, $attendances, $student, $finalScores, $learningObjectives, $activeYear, $activeSemester) {
             $subjectId = $subjectAssignments->first()->subject_id;
             $subjectKktp = get_kktp($subjectId);
             $subjectName = $subjectAssignments->first()->subject?->name ?? 'Mata Pelajaran';
@@ -251,34 +252,23 @@ class ParentController extends Controller
                 ];
             });
 
-            $summativeItems = $items->where('type', 'summative')->where('score', '!==', '-');
-            $totalScore = $summativeItems->sum('score');
-            $count = $summativeItems->count();
-            $average = $count > 0 ? round($totalScore / $count) : 0;
+            $subjectSummativeAssignments = $subjectAssignments->where('assessment_type', 'summative');
+            $subjectEvaluatedTps = app(RaporCalculationService::class)->getEvaluatedTpsForClass($subjectId, $student->school_class_id, $activeYear, $activeSemester);
 
-            $sasScore = $finalScores->get($subjectId)?->score;
-            $finalScore = $average;
-            if ($sasScore !== null && $sasScore !== '') {
-                $finalScore = $count > 0 ? round(((float)$average + (float)$sasScore) / 2) : (int)$sasScore;
-            }
+            $calc = app(RaporCalculationService::class)->calculateStudentSubjectReport(
+                $student->id,
+                $subjectId,
+                $subjectEvaluatedTps,
+                $subjectSummativeAssignments,
+                $submissions,
+                $finalScores->get($subjectId)?->score,
+                $subjectKktp
+            );
 
-            $description = 'Menunjukkan penguasaan yang baik dalam materi pembelajaran.';
-            if ($count > 0) {
-                $highest = $summativeItems->sortByDesc('score')->first();
-                $lowest = $summativeItems->sortBy('score')->first();
-
-                // T6: Keyed lookup instead of LmsLearningObjective::find() query inside loop
-                $highTp = $highest && !empty($highest['tp_id']) ? $learningObjectives->get($highest['tp_id']) : null;
-                $lowTp = $lowest && !empty($lowest['tp_id']) ? $learningObjectives->get($lowest['tp_id']) : null;
-
-                if ($highTp) {
-                    $description = 'Menunjukkan penguasaan yang sangat baik dalam ' . $highTp->description . '.';
-                }
-
-                if ($lowTp && is_numeric($lowest['score']) && (float)$lowest['score'] < $subjectKktp && $highest['id'] !== $lowest['id']) {
-                    $description .= ' Perlu peningkatan dalam ' . $lowTp->description . '.';
-                }
-            }
+            $average = $calc['tp_average'] ?? 0;
+            $finalScore = $calc['final_score'];
+            $sasScore = $calc['sas_score'];
+            $description = $calc['description'];
 
             return [
                 'subject_name'          => $subjectName,

@@ -55,6 +55,17 @@ class LmsAssignment extends Model
         return in_array($this->instrument_type, self::teacherOnlyInstruments(), true);
     }
 
+    /**
+     * Scope query to exclude teacher-only instruments safely (preserving NULL instrument_type).
+     */
+    public function scopeForStudentPortal($query)
+    {
+        return $query->where(function ($q) {
+            $q->whereNull('instrument_type')
+              ->orWhereNotIn('instrument_type', self::teacherOnlyInstruments());
+        });
+    }
+
     public function subject()
     {
         return $this->belongsTo(Subject::class);

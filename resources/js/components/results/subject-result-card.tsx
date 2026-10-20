@@ -18,6 +18,8 @@ export interface AssignmentResult {
 export interface SubjectResultCardProps {
     subjectName: string;
     average: number;
+    tpAverage?: number | null;
+    sasScore?: number | null;
     description: string;
     attendancePercentage: number;
     totalMeetings: number;
@@ -37,6 +39,8 @@ export interface SubjectResultCardProps {
 export function SubjectResultCard({
     subjectName,
     average,
+    tpAverage,
+    sasScore,
     description,
     attendancePercentage,
     totalMeetings,
@@ -83,6 +87,20 @@ export function SubjectResultCard({
             {/* Expandable Accordion Body */}
             {expanded && (
                 <div className="p-4 sm:p-4.5 border-t border-border/60 bg-muted/20 space-y-4 fade-in">
+                    {/* Score Breakdown (Sumatif LM & SAS) */}
+                    {(tpAverage !== undefined || sasScore !== undefined) && (
+                        <div className="grid grid-cols-2 gap-2 p-2.5 rounded-xl bg-card border border-border/70 text-xs">
+                            <div>
+                                <span className="text-[10px] text-muted-foreground font-semibold block uppercase">Rata-rata Sumatif (TP)</span>
+                                <span className="text-sm font-black text-foreground">{tpAverage !== null && tpAverage !== undefined ? tpAverage : '-'}</span>
+                            </div>
+                            <div>
+                                <span className="text-[10px] text-muted-foreground font-semibold block uppercase">Sumatif Akhir (SAS)</span>
+                                <span className="text-sm font-black text-indigo-600 dark:text-indigo-400">{sasScore !== null && sasScore !== undefined ? sasScore : '-'}</span>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Achievement Description */}
                     {description && (
                         <div className="p-3 rounded-xl bg-card border border-border/70 space-y-1">
