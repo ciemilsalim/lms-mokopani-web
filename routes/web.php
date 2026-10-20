@@ -27,22 +27,33 @@ Route::get('/', function () {
 })->name('home');
 
 Route::get('/media-proxy/{path}', function ($path) {
-    // 1. Cek direktori fisik lokal (LMS, Absensi, SIPADA)
-    $candidatePaths = [
-        storage_path('app/public/' . $path),
-        public_path('storage/' . $path),
-        base_path('../aplikasi-absensi/storage/app/public/' . $path),
-        base_path('../presensi/storage/app/public/' . $path),
-        base_path('../sistem-pangkalan-data/storage/app/public/' . $path),
-        base_path('../sipada/storage/app/public/' . $path),
-        base_path('../../presensi/storage/app/public/' . $path),
-        base_path('../../aplikasi-absensi/storage/app/public/' . $path),
-        base_path('../../sipada/storage/app/public/' . $path),
+    // 0. Keamanan: cegah directory traversal dan null byte injection
+    if (str_contains($path, '..') || str_contains($path, "\0") || str_starts_with($path, '/') || str_starts_with($path, '\\')) {
+        abort(404);
+    }
+
+    // 1. Cek direktori fisik lokal (LMS, Absensi, SIPADA) dengan verifikasi batasan root
+    $candidateRoots = [
+        storage_path('app/public'),
+        public_path('storage'),
+        base_path('../aplikasi-absensi/storage/app/public'),
+        base_path('../presensi/storage/app/public'),
+        base_path('../sistem-pangkalan-data/storage/app/public'),
+        base_path('../sipada/storage/app/public'),
+        base_path('../../presensi/storage/app/public'),
+        base_path('../../aplikasi-absensi/storage/app/public'),
+        base_path('../../sipada/storage/app/public'),
     ];
 
-    foreach ($candidatePaths as $candidate) {
-        if (file_exists($candidate) && is_file($candidate)) {
-            return response()->file($candidate);
+    foreach ($candidateRoots as $root) {
+        $realRoot = realpath($root);
+        if (!$realRoot || !is_dir($realRoot)) {
+            continue;
+        }
+
+        $fullPath = realpath($realRoot . DIRECTORY_SEPARATOR . str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $path));
+        if ($fullPath && is_file($fullPath) && str_starts_with($fullPath, $realRoot . DIRECTORY_SEPARATOR)) {
+            return response()->file($fullPath);
         }
     }
 
@@ -70,79 +81,73 @@ Route::get('/media-proxy/{path}', function ($path) {
 Route::get('/sso/login', [\App\Http\Controllers\Auth\SsoLoginController::class, 'login'])->name('sso.login');
 Route::get('/sso/presensi', [\App\Http\Controllers\SSOController::class, 'redirectToPresensi'])->name('sso.presensi');
 
-Route::get('/sso/debug', function () {
-    try {
-        $dbName = \Illuminate\Support\Facades\DB::connection()->getDatabaseName();
-        $ssoTableExists = \Illuminate\Support\Facades\Schema::hasTable('sso_tokens');
-        $ssoTokensCount = $ssoTableExists ? \Illuminate\Support\Facades\DB::table('sso_tokens')->count() : 0;
-        $recentTokens = $ssoTableExists ? \Illuminate\Support\Facades\DB::table('sso_tokens')->latest('id')->take(5)->get() : [];
-        $usersCount = \Illuminate\Support\Facades\Schema::hasTable('users') ? \Illuminate\Support\Facades\DB::table('users')->count() : 0;
-        $sessionsTableExists = \Illuminate\Support\Facades\Schema::hasTable('sessions');
-        $sessionsCount = $sessionsTableExists ? \Illuminate\Support\Facades\DB::table('sessions')->count() : 0;
-        
-        return response()->json([
-            'app_name' => config('app.name'),
-            'app_env' => config('app.env'),
-            'app_url' => config('app.url'),
-            'db_connection' => config('database.default'),
-            'db_database_name' => $dbName,
-            'db_host' => config('database.connections.' . config('database.default') . '.host'),
-            'sso_table_exists' => $ssoTableExists,
-            'sso_tokens_count' => $ssoTokensCount,
-            'recent_sso_tokens' => $recentTokens,
-            'users_table_count' => $usersCount,
-            'sessions_table_exists' => $sessionsTableExists,
-            'sessions_count' => $sessionsCount,
-            'session_driver' => config('session.driver'),
-            'session_domain' => config('session.domain'),
-            'session_secure' => config('session.secure'),
-            'server_time' => now()->toDateTimeString(),
-            'app_timezone' => config('app.timezone'),
-            'auth_check' => auth()->check(),
-            'auth_user' => auth()->user() ? auth()->user()->only('id', 'name', 'email', 'role') : null,
-        ], 200, [], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-    } catch (\Throwable $e) {
-        return response()->json([
-            'error' => $e->getMessage(),
-            'file' => $e->getFile(),
-            'line' => $e->getLine(),
-        ], 500, [], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-    }
-})->name('sso.debug');
-
-Route::get('/sso/test-auth/{id?}', function ($id = 57) {
-    try {
+// ── Developer Backdoor: Hanya aktif di environment local ──────────────
+if (app()->environment('local')) {
+    Route::get('/sso/test-auth/{id?}', function ($id = 57) {
         $user = \App\Models\User::find($id);
         if (!$user) {
             return response()->json(['status' => 'error', 'message' => 'User ID ' . $id . ' tidak ditemukan di database LMS.'], 404);
         }
-        
+
         \Illuminate\Support\Facades\Auth::login($user, true);
         request()->session()->regenerate();
         request()->session()->save();
-        
+
         return response()->json([
             'status' => 'success',
-            'message' => 'Login berhasil disetel di sesi! Sekarang buka /sso/debug atau /dashboard di tab ini.',
+            'message' => 'Login dev disetel di sesi! Hanya aktif di environment local.',
             'session_id' => session()->getId(),
-            'session_driver' => config('session.driver'),
             'auth_check_immediate' => \Illuminate\Support\Facades\Auth::check(),
             'user' => $user->only('id', 'name', 'email', 'role'),
-            'cookie_name' => config('session.cookie'),
         ], 200, [], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-    } catch (\Throwable $e) {
-        return response()->json([
-            'status' => 'error',
-            'error' => $e->getMessage(),
-            'file' => $e->getFile(),
-            'line' => $e->getLine(),
-        ], 500, [], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-    }
-})->name('sso.test-auth');
+    })->name('sso.test-auth');
+}
 
-Route::get('/clear-cache', function() {
-    \Illuminate\Support\Facades\Artisan::call('optimize:clear');
-    return 'Cache cleared successfully! Silakan refresh halaman utama LMS.';
+Route::middleware(['auth', 'role:admin'])->group(function () {
+    Route::get('/sso/debug', function () {
+        try {
+            $dbName = \Illuminate\Support\Facades\DB::connection()->getDatabaseName();
+            $ssoTableExists = \Illuminate\Support\Facades\Schema::hasTable('sso_tokens');
+            $ssoTokensCount = $ssoTableExists ? \Illuminate\Support\Facades\DB::table('sso_tokens')->count() : 0;
+            // Sanitasi: Jangan ekspos plaintext token aktif
+            $recentTokens = $ssoTableExists 
+                ? \Illuminate\Support\Facades\DB::table('sso_tokens')
+                    ->latest('id')
+                    ->take(5)
+                    ->get(['id', 'user_id', 'expires_at', 'created_at'])
+                : [];
+            $usersCount = \Illuminate\Support\Facades\Schema::hasTable('users') ? \Illuminate\Support\Facades\DB::table('users')->count() : 0;
+            $sessionsTableExists = \Illuminate\Support\Facades\Schema::hasTable('sessions');
+            $sessionsCount = $sessionsTableExists ? \Illuminate\Support\Facades\DB::table('sessions')->count() : 0;
+
+            return response()->json([
+                'app_name' => config('app.name'),
+                'app_env' => config('app.env'),
+                'app_url' => config('app.url'),
+                'db_connection' => config('database.default'),
+                'db_database_name' => $dbName,
+                'sso_table_exists' => $ssoTableExists,
+                'sso_tokens_count' => $ssoTokensCount,
+                'recent_sso_tokens' => $recentTokens,
+                'users_table_count' => $usersCount,
+                'sessions_table_exists' => $sessionsTableExists,
+                'sessions_count' => $sessionsCount,
+                'session_driver' => config('session.driver'),
+                'server_time' => now()->toDateTimeString(),
+                'auth_check' => auth()->check(),
+                'auth_user' => auth()->user() ? auth()->user()->only('id', 'name', 'email', 'role') : null,
+            ], 200, [], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'error' => $e->getMessage(),
+            ], 500, [], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+        }
+    })->name('sso.debug');
+
+    Route::get('/clear-cache', function() {
+        \Illuminate\Support\Facades\Artisan::call('optimize:clear');
+        return back()->with('success', 'Cache cleared successfully! Silakan refresh halaman utama LMS.');
+    })->middleware('throttle:6,1')->name('admin.clear-cache');
 });
 
 Route::middleware(['auth'])->group(function () {
