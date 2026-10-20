@@ -513,15 +513,30 @@ class DashboardController extends Controller
         $subjects = Subject::whereHas('assignments')->take(5)->get();
         $students = Student::with('schoolClass')->take(5)->get();
 
+        $subjectIds = $subjects->pluck('id');
+        $assignmentsBySubject = LmsAssignment::whereIn('subject_id', $subjectIds)
+            ->get(['id', 'subject_id'])
+            ->groupBy('subject_id');
+
+        $allAssignmentIds = $assignmentsBySubject->flatten()->pluck('id')->unique();
+        $studentIds = $students->pluck('id');
+
+        $submissions = ($allAssignmentIds->isNotEmpty() && $studentIds->isNotEmpty())
+            ? LmsSubmission::whereIn('student_id', $studentIds)
+                ->whereIn('assignment_id', $allAssignmentIds)
+                ->whereNotNull('score')
+                ->get(['student_id', 'assignment_id'])
+                ->groupBy('student_id')
+            : collect();
+
         $result = [];
         foreach ($students as $student) {
+            $studentSubs = $submissions->get($student->id, collect())->pluck('assignment_id')->flip();
             foreach ($subjects as $subject) {
-                $assignmentIds = LmsAssignment::where('subject_id', $subject->id)->pluck('id');
-                $total = $assignmentIds->count();
+                $assignmentList = $assignmentsBySubject->get($subject->id, collect());
+                $total = $assignmentList->count();
                 if ($total === 0) continue;
-                $completed = LmsSubmission::where('student_id', $student->id)
-                    ->whereIn('assignment_id', $assignmentIds)
-                    ->whereNotNull('score')->count();
+                $completed = $assignmentList->filter(fn($a) => isset($studentSubs[$a->id]))->count();
                 $result[] = [
                     'student'    => $student->name,
                     'class_id'   => $student->school_class_id,

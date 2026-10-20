@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\LmsAiCache;
 use App\Models\Setting;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
@@ -15,6 +16,10 @@ class AdminAiAnalyticsController extends Controller
      */
     public function index()
     {
+        if (Auth::user()?->role !== 'admin') {
+            abort(403, 'Akses khusus administrator.');
+        }
+
         $totalCalls = LmsAiCache::count();
         $cacheHits = LmsAiCache::whereNotNull('generated_response')->count();
         $hitRate = $totalCalls > 0 ? round(($cacheHits / $totalCalls) * 100, 1) : 100.0;
@@ -59,6 +64,10 @@ class AdminAiAnalyticsController extends Controller
      */
     public function updateSettings(Request $request)
     {
+        if (Auth::user()?->role !== 'admin') {
+            abort(403, 'Akses khusus administrator.');
+        }
+
         $validated = $request->validate([
             'rapor_default_weights' => 'required|array',
             'kktp_default_threshold' => 'required|numeric|min:0|max:100',

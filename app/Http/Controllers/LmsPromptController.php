@@ -13,7 +13,9 @@ class LmsPromptController extends Controller
      */
     public function index(Request $request)
     {
-        $teacher = Auth::user()->teacher;
+        $user = Auth::user();
+        $teacher = $user->teacher ?? \App\Models\Teacher::where('user_id', $user->id)->first();
+        $teacherId = $teacher?->id;
 
         // The master list of all prompt keys we support.
         $keys = [
@@ -62,14 +64,13 @@ class LmsPromptController extends Controller
         $results = [];
 
         foreach ($keys as $key => $meta) {
-            // Check if teacher has custom prompt
-            $custom = LmsAiPrompt::where('key', $key)
-                ->where('teacher_id', $teacher->id)
-                ->first();
+            $custom = $teacherId ? LmsAiPrompt::where('key', $key)
+                ->where('teacher_id', $teacherId)
+                ->first() : null;
 
             $isCustom = $custom && !empty($custom->prompt_text);
-            $promptText = LmsAiPrompt::getPromptFor($key, $teacher->id); // Automatically gets fallback if no custom
-            $defaultPrompt = LmsAiPrompt::getPromptFor($key, null); // Get system fallback
+            $promptText = LmsAiPrompt::getPromptFor($key, $teacherId);
+            $defaultPrompt = LmsAiPrompt::getPromptFor($key, null);
 
             $results[] = [
                 'key' => $key,
@@ -87,11 +88,17 @@ class LmsPromptController extends Controller
     }
 
     /**
-     * Save custom prompt for the teacher.
+     * Save custom prompt for the teacher or system default for admin.
      */
     public function store(Request $request)
     {
-        $teacher = Auth::user()->teacher;
+        $user = Auth::user();
+        $teacher = $user->teacher ?? \App\Models\Teacher::where('user_id', $user->id)->first();
+        $teacherId = $teacher?->id;
+
+        if (!$teacherId && $user->role !== 'admin') {
+            abort(403);
+        }
 
         $validated = $request->validate([
             'key' => 'required|string',
@@ -99,7 +106,7 @@ class LmsPromptController extends Controller
         ]);
 
         $prompt = LmsAiPrompt::updateOrCreate(
-            ['key' => $validated['key'], 'teacher_id' => $teacher->id],
+            ['key' => $validated['key'], 'teacher_id' => $teacherId],
             ['prompt_text' => $validated['prompt_text']]
         );
 
@@ -107,19 +114,23 @@ class LmsPromptController extends Controller
     }
 
     /**
-     * Reset prompt to system default (delete custom prompt for the teacher).
+     * Reset prompt to system default.
      */
     public function reset(Request $request)
     {
-        $teacher = Auth::user()->teacher;
+        $user = Auth::user();
+        $teacher = $user->teacher ?? \App\Models\Teacher::where('user_id', $user->id)->first();
+        $teacherId = $teacher?->id;
 
         $validated = $request->validate([
             'key' => 'required|string'
         ]);
 
-        LmsAiPrompt::where('key', $validated['key'])
-            ->where('teacher_id', $teacher->id)
-            ->delete();
+        if ($teacherId || $user->role === 'admin') {
+            LmsAiPrompt::where('key', $validated['key'])
+                ->where('teacher_id', $teacherId)
+                ->delete();
+        }
 
         return response()->json(['success' => true]);
     }

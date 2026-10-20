@@ -172,8 +172,10 @@ class AnnouncementController extends Controller
         $user = Auth::user();
         $teacher = $user->teacher ?? Teacher::where('user_id', $user->id)->first();
 
-        if ($teacher && $announcement->teacher_id && $announcement->teacher_id !== $teacher->id && $user->role !== 'admin') {
-            abort(403, 'Anda tidak memiliki hak untuk mengedit pengumuman ini.');
+        if ($user->role !== 'admin') {
+            if (!$teacher || (int)$announcement->teacher_id !== (int)$teacher->id) {
+                abort(403, 'Anda tidak memiliki hak untuk mengedit pengumuman ini.');
+            }
         }
 
         $classes = $this->getTeacherClasses($user);
@@ -189,8 +191,10 @@ class AnnouncementController extends Controller
         $user = Auth::user();
         $teacher = $user->teacher ?? Teacher::where('user_id', $user->id)->first();
 
-        if ($teacher && $announcement->teacher_id && $announcement->teacher_id !== $teacher->id && $user->role !== 'admin') {
-            abort(403, 'Anda tidak memiliki hak untuk mengubah pengumuman ini.');
+        if ($user->role !== 'admin') {
+            if (!$teacher || (int)$announcement->teacher_id !== (int)$teacher->id) {
+                abort(403, 'Anda tidak memiliki hak untuk mengubah pengumuman ini.');
+            }
         }
 
         $validated = $request->validate([
@@ -219,8 +223,10 @@ class AnnouncementController extends Controller
         $user = Auth::user();
         $teacher = $user->teacher ?? Teacher::where('user_id', $user->id)->first();
 
-        if ($teacher && $announcement->teacher_id && $announcement->teacher_id !== $teacher->id && $user->role !== 'admin') {
-            abort(403, 'Anda tidak memiliki hak untuk menghapus pengumuman ini.');
+        if ($user->role !== 'admin') {
+            if (!$teacher || (int)$announcement->teacher_id !== (int)$teacher->id) {
+                abort(403, 'Anda tidak memiliki hak untuk menghapus pengumuman ini.');
+            }
         }
 
         $announcement->delete();

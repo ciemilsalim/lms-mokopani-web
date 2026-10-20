@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('lms_announcements', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('teacher_id');
+            $table->foreignId('teacher_id')->nullable();
             $table->foreignId('school_class_id')->nullable();
             $table->string('title');
             $table->text('content');

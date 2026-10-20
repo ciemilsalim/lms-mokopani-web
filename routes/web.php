@@ -330,10 +330,6 @@ Route::middleware(['auth'])->group(function () {
         Route::get('rapor/{id}/export/pdf', [\App\Http\Controllers\RaporReportController::class, 'exportPdf'])->name('rapor.export-pdf');
         Route::get('rapor/{id}/export/csv', [\App\Http\Controllers\RaporReportController::class, 'exportCsv'])->name('rapor.export-csv');
         Route::post('api/rapor/generate-description', [\App\Http\Controllers\RaporReportController::class, 'generateAiDescription'])->name('api.rapor.generate-description');
-
-        // Admin AI Analytics & Weighting Settings
-        Route::get('admin/ai-analytics', [\App\Http\Controllers\AdminAiAnalyticsController::class, 'index'])->name('admin.ai-analytics.index');
-        Route::post('admin/ai-analytics/settings', [\App\Http\Controllers\AdminAiAnalyticsController::class, 'updateSettings'])->name('admin.ai-analytics.update-settings');
     });
 
     // ── Parent-only ─────────────────────────────────────────────────
@@ -350,6 +346,8 @@ Route::middleware(['auth'])->group(function () {
     // ── Admin-only ──────────────────────────────────────────────────
     Route::middleware(['role:admin'])->group(function () {
         Route::get('teachers', [\App\Http\Controllers\TeacherController::class, 'index'])->name('teachers.index');
+        Route::get('admin/ai-analytics', [\App\Http\Controllers\AdminAiAnalyticsController::class, 'index'])->name('admin.ai-analytics.index');
+        Route::post('admin/ai-analytics/settings', [\App\Http\Controllers\AdminAiAnalyticsController::class, 'updateSettings'])->name('admin.ai-analytics.update-settings');
     });
 });
 

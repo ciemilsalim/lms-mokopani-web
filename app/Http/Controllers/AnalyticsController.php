@@ -128,6 +128,21 @@ class AnalyticsController extends Controller
 
     public function show(int $subjectId, int $classId, Request $request, AnalyticsService $analytics, EarlyWarningService $earlyWarning)
     {
+        $user = Auth::user();
+        if ($user->role !== 'admin') {
+            $teacher = $user->teacher ?? \App\Models\Teacher::where('user_id', $user->id)->first();
+            if (!$teacher) {
+                abort(403, 'Akses khusus guru mata pelajaran.');
+            }
+            $isAssigned = TeachingAssignment::where('teacher_id', $teacher->id)
+                ->where('subject_id', $subjectId)
+                ->where('school_class_id', $classId)
+                ->exists();
+            if (!$isAssigned) {
+                abort(403, 'Anda tidak memiliki penugasan mengajar untuk mata pelajaran dan kelas ini.');
+            }
+        }
+
         $subject = Subject::findOrFail($subjectId);
         $class = \App\Models\SchoolClass::findOrFail($classId);
 
