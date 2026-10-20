@@ -83,7 +83,7 @@ export default function ReportLearning({ subject, class: cls, tps, reportData, p
                         <thead>
                             <tr className="border-b border-border">
                                 <th className="px-6 py-4 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground">No</th>
-                                <th className="px-6 py-4 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Nama Siswa</th>
+                                <th className="sticky left-0 z-10 bg-card px-6 py-4 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground shadow-[1px_0_0_0_hsl(var(--border))] whitespace-nowrap">Nama Siswa</th>
                                 {tps.map((tp) => (
                                     <th key={tp.id} className="px-4 py-4 text-center text-[10px] font-bold uppercase tracking-widest text-muted-foreground min-w-[80px]">
                                         <div title={tp.description}>{tp.code || `TP ${tp.id}`}</div>
@@ -98,7 +98,7 @@ export default function ReportLearning({ subject, class: cls, tps, reportData, p
                             {reportData.map((row, index) => (
                                 <tr key={row.student_id} className="transition hover:bg-muted/30">
                                     <td className="px-6 py-3 text-muted-foreground">{index + 1}</td>
-                                    <td className="px-6 py-3 font-medium text-foreground">{row.student_name}</td>
+                                    <td className="sticky left-0 z-10 bg-card px-6 py-3 font-medium text-foreground shadow-[1px_0_0_0_hsl(var(--border))] whitespace-nowrap">{row.student_name}</td>
                                     {tps.map((tp) => {
                                         const s = row.tp_scores[tp.id];
                                         return (

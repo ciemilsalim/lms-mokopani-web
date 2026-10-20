@@ -22,8 +22,10 @@ class AnalyticsController extends Controller
         $activeYear = AcademicYear::getActive();
         $activeSemester = Semester::getActive();
         
-        $query = TeachingAssignment::with(['subject', 'schoolClass.students'])
-            ->whereHas('schoolClass');
+        $query = TeachingAssignment::with([
+            'subject',
+            'schoolClass' => fn($q) => $q->withCount('students')
+        ])->whereHas('schoolClass');
         
         if ($user->role !== 'admin') {
             $teacher = $user->teacher;
@@ -57,7 +59,7 @@ class AnalyticsController extends Controller
                 'subject_name'  => $t->subject->name,
                 'class_id'      => $t->school_class_id,
                 'class_name'    => $t->schoolClass->name,
-                'student_count' => $t->schoolClass->students?->count() ?? 0,
+                'student_count' => $t->schoolClass->students_count ?? 0,
             ])
             ->sortByDesc('student_count')
             ->unique(fn($t) => $t['subject_id'] . '-' . strtolower(trim($t['class_name'])));
