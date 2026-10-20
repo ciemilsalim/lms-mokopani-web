@@ -78,4 +78,14 @@ class SecurityP1Test extends TestCase
         $response->assertSessionHasErrors('sso');
         $this->assertGuest();
     }
+
+    public function test_media_proxy_allows_legitimate_path()
+    {
+        $response = $this->get('/media-proxy/student_photos/avatar.png');
+        // If file does not exist locally, it redirects to SIPADA storage
+        $this->assertTrue(in_array($response->status(), [200, 302]));
+        if ($response->status() === 302) {
+            $this->assertStringContainsString('student_photos/avatar.png', $response->headers->get('Location'));
+        }
+    }
 }
