@@ -10,3 +10,4 @@ export * from './assessment-form';
 export * from './submission-card';
 export * from './student-switcher';
 export * from './teacher-grading-workspace';
+export * from './concept-map-canvas';
