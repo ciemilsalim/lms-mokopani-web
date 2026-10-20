@@ -19,7 +19,7 @@ interface SubjectReport {
     assignments: AssignmentItem[];
     average: number;
     description: string;
-    attendance_percentage: number;
+    attendance_percentage: number | null;
     total_meetings: number;
 }
 
@@ -51,8 +51,9 @@ export default function ParentChild({ student, report = [], period }: ParentChil
     const submittedAssignments = allAssignments.filter(a => a.status === 'Selesai').length;
     const pendingAssignments = totalAssignments - submittedAssignments;
 
-    const overallAttendance = report.length > 0
-        ? Math.round(report.reduce((sum, s) => sum + s.attendance_percentage, 0) / report.length)
+    const subjectsWithAttendance = report.filter(s => s.attendance_percentage !== null && s.attendance_percentage !== undefined);
+    const overallAttendance = subjectsWithAttendance.length > 0
+        ? Math.round(subjectsWithAttendance.reduce((sum, s) => sum + Number(s.attendance_percentage), 0) / subjectsWithAttendance.length)
         : null;
 
     return (

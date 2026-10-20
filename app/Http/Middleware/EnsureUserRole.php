@@ -22,7 +22,7 @@ class EnsureUserRole
             return redirect()->route('login');
         }
 
-        $userRole = $user->role ?? ($user->teacher ? 'teacher' : ($user->student ? 'student' : 'guest'));
+        $userRole = ($user->role && $user->role !== 'user') ? $user->role : ($user->teacher ? 'teacher' : ($user->student ? 'student' : ($user->parent ? 'parent' : 'guest')));
 
         if (!in_array($userRole, $roles)) {
             abort(403, 'Anda tidak memiliki akses ke halaman ini.');

@@ -23,40 +23,70 @@ class ParentController extends Controller
         $activeYear = AcademicYear::getActive();
         $activeSemester = Semester::getActive();
 
-        $childrenData = $children->map(function ($child) use ($activeYear, $activeSemester) {
-            $assignments = LmsAssignment::whereHas('schoolClasses', function ($q) use ($child) { $q->where('school_classes.id', $child->school_class_id); })
-                ->where('academic_year_id', $activeYear?->id)
-                ->where('semester_id', $activeSemester?->id)
-                ->get();
+        $childClassIds = $children->pluck('school_class_id')->filter()->unique();
+        $childIds = $children->pluck('id');
 
-            $submissions = LmsSubmission::whereIn('assignment_id', $assignments->pluck('id'))
-                ->where('student_id', $child->id)
-                ->get();
+        // T4 & T6: Batch prefetch assignments excluding teacher-only instruments
+        $assignmentsQuery = LmsAssignment::whereHas('schoolClasses', function ($q) use ($childClassIds) {
+                $q->whereIn('school_classes.id', $childClassIds);
+            })
+            ->whereNotIn('instrument_type', LmsAssignment::teacherOnlyInstruments());
+
+        if ($activeYear && $activeSemester) {
+            $assignmentsQuery->where(function ($q) use ($activeYear, $activeSemester) {
+                $q->where(function ($sub) use ($activeYear, $activeSemester) {
+                    $sub->where('academic_year_id', $activeYear->id)
+                        ->where('semester_id', $activeSemester->id);
+                })->orWhere(function ($sub) {
+                    $sub->whereNull('academic_year_id')
+                        ->whereNull('semester_id');
+                });
+            });
+        } elseif ($activeYear) {
+            $assignmentsQuery->where(function ($q) use ($activeYear) {
+                $q->where('academic_year_id', $activeYear->id)
+                    ->orWhereNull('academic_year_id');
+            });
+        }
+
+        $allAssignments = $assignmentsQuery->with('schoolClasses:id')->get();
+
+        $allSubmissions = LmsSubmission::whereIn('student_id', $childIds)
+            ->whereIn('assignment_id', $allAssignments->pluck('id'))
+            ->get();
+
+        $attendancesQuery = SubjectAttendance::whereIn('student_id', $childIds);
+
+        if ($activeYear && $activeSemester) {
+            $attendancesQuery->where(function ($q) use ($activeYear, $activeSemester) {
+                $q->where(function ($sub) use ($activeYear, $activeSemester) {
+                    $sub->where('academic_year_id', $activeYear->id)
+                        ->where('semester_id', $activeSemester->id);
+                })->orWhere(function ($sub) {
+                    $sub->whereNull('academic_year_id')
+                        ->whereNull('semester_id');
+                });
+            });
+        } elseif ($activeYear) {
+            $attendancesQuery->where(function ($q) use ($activeYear) {
+                $q->where('academic_year_id', $activeYear->id)
+                    ->orWhereNull('academic_year_id');
+            });
+        }
+
+        $allAttendances = $attendancesQuery->get();
+
+        $childrenData = $children->map(function ($child) use ($allAssignments, $allSubmissions, $allAttendances) {
+            $assignments = $allAssignments->filter(fn($a) => $a->schoolClasses->contains('id', $child->school_class_id));
+            $assignmentIds = $assignments->pluck('id');
+
+            $submissions = $allSubmissions->where('student_id', $child->id)->whereIn('assignment_id', $assignmentIds);
 
             $totalAssignments = $assignments->count();
             $submitted = $submissions->count();
             $avgScore = $submissions->whereNotNull('score')->avg('score');
 
-            $attendancesQuery = SubjectAttendance::where('student_id', $child->id);
-
-            if ($activeYear && $activeSemester) {
-                $attendancesQuery->where(function ($q) use ($activeYear, $activeSemester) {
-                    $q->where(function ($sub) use ($activeYear, $activeSemester) {
-                        $sub->where('academic_year_id', $activeYear->id)
-                            ->where('semester_id', $activeSemester->id);
-                    })->orWhere(function ($sub) {
-                        $sub->whereNull('academic_year_id')
-                            ->whereNull('semester_id');
-                    });
-                });
-            } elseif ($activeYear) {
-                $attendancesQuery->where(function ($q) use ($activeYear) {
-                    $q->where('academic_year_id', $activeYear->id)
-                        ->orWhereNull('academic_year_id');
-                });
-            }
-
-            $attendances = $attendancesQuery->get();
+            $attendances = $allAttendances->where('student_id', $child->id);
 
             $totalAttendance = $attendances->count();
             $present = $attendances->filter(fn($a) => in_array(strtolower(trim($a->status ?? '')), ['hadir', 'present', 'h']))->count();
@@ -92,7 +122,7 @@ class ParentController extends Controller
                 'class_name'           => $child->schoolClass?->name ?? '-',
                 'total_assignments'    => $totalAssignments,
                 'submitted'            => $submitted,
-                'pending'              => $totalAssignments - $submitted,
+                'pending'              => max(0, $totalAssignments - $submitted),
                 'avg_score'            => $avgScore ? round($avgScore, 1) : null,
                 'attendance_pct'       => $attendancePct,
                 'grade_trend'          => $gradeTrend,
@@ -132,13 +162,31 @@ class ParentController extends Controller
         $activeYear = AcademicYear::getActive();
         $activeSemester = Semester::getActive();
 
-        $assignments = LmsAssignment::with('subject')
+        // T4: Exclude teacher-only instruments
+        $assignmentsQuery = LmsAssignment::with('subject')
             ->whereHas('schoolClasses', function ($q) use ($student) {
                 $q->where('school_classes.id', $student->school_class_id);
             })
-            ->where('academic_year_id', $activeYear?->id)
-            ->where('semester_id', $activeSemester?->id)
-            ->get();
+            ->whereNotIn('instrument_type', LmsAssignment::teacherOnlyInstruments());
+
+        if ($activeYear && $activeSemester) {
+            $assignmentsQuery->where(function ($q) use ($activeYear, $activeSemester) {
+                $q->where(function ($sub) use ($activeYear, $activeSemester) {
+                    $sub->where('academic_year_id', $activeYear->id)
+                        ->where('semester_id', $activeSemester->id);
+                })->orWhere(function ($sub) {
+                    $sub->whereNull('academic_year_id')
+                        ->whereNull('semester_id');
+                });
+            });
+        } elseif ($activeYear) {
+            $assignmentsQuery->where(function ($q) use ($activeYear) {
+                $q->where('academic_year_id', $activeYear->id)
+                    ->orWhereNull('academic_year_id');
+            });
+        }
+
+        $assignments = $assignmentsQuery->get();
 
         $submissions = LmsSubmission::whereIn('assignment_id', $assignments->pluck('id'))
             ->where('student_id', $student->id)
@@ -172,10 +220,14 @@ class ParentController extends Controller
             ->get()
             ->keyBy('subject_id');
 
-        $report = $assignments->groupBy('subject_id')->map(function ($subjectAssignments) use ($submissions, $attendances, $student, $finalScores) {
+        // T6: Pre-fetch all TPs for assignments in 1 query to prevent N+1 queries in loop
+        $allTpIds = $assignments->pluck('learning_objective_id')->filter()->unique();
+        $learningObjectives = LmsLearningObjective::whereIn('id', $allTpIds)->get()->keyBy('id');
+
+        $report = $assignments->groupBy('subject_id')->map(function ($subjectAssignments) use ($submissions, $attendances, $student, $finalScores, $learningObjectives) {
             $subjectId = $subjectAssignments->first()->subject_id;
             $subjectKktp = get_kktp($subjectId);
-            $subjectName = $subjectAssignments->first()->subject->name;
+            $subjectName = $subjectAssignments->first()->subject?->name ?? 'Mata Pelajaran';
 
             $subjectAttendances = $attendances->filter(function ($a) use ($subjectId) {
                 return $a->schedule?->teachingAssignment?->subject_id == $subjectId;
@@ -183,7 +235,8 @@ class ParentController extends Controller
 
             $totalMeetings = $subjectAttendances->count();
             $presentCount = $subjectAttendances->filter(fn($a) => in_array(strtolower(trim($a->status ?? '')), ['hadir', 'present', 'h']))->count();
-            $attendancePercentage = $totalMeetings > 0 ? round(($presentCount / $totalMeetings) * 100) : 100;
+            // T5: Return null if total meetings is 0 to avoid false 100% attendance claim
+            $attendancePercentage = $totalMeetings > 0 ? round(($presentCount / $totalMeetings) * 100) : null;
 
             $items = $subjectAssignments->map(function ($assignment) use ($submissions) {
                 $submission = $submissions->where('assignment_id', $assignment->id)->first();
@@ -214,14 +267,15 @@ class ParentController extends Controller
                 $highest = $summativeItems->sortByDesc('score')->first();
                 $lowest = $summativeItems->sortBy('score')->first();
 
-                $highTp = LmsLearningObjective::find($highest['tp_id']);
-                $lowTp = LmsLearningObjective::find($lowest['tp_id']);
+                // T6: Keyed lookup instead of LmsLearningObjective::find() query inside loop
+                $highTp = $highest && !empty($highest['tp_id']) ? $learningObjectives->get($highest['tp_id']) : null;
+                $lowTp = $lowest && !empty($lowest['tp_id']) ? $learningObjectives->get($lowest['tp_id']) : null;
 
                 if ($highTp) {
                     $description = 'Menunjukkan penguasaan yang sangat baik dalam ' . $highTp->description . '.';
                 }
 
-                if ($lowTp && $lowest['score'] < $subjectKktp && $highest['id'] !== $lowest['id']) {
+                if ($lowTp && is_numeric($lowest['score']) && (float)$lowest['score'] < $subjectKktp && $highest['id'] !== $lowest['id']) {
                     $description .= ' Perlu peningkatan dalam ' . $lowTp->description . '.';
                 }
             }

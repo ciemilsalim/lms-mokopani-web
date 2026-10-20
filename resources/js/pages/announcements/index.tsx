@@ -34,7 +34,7 @@ interface Announcement {
 interface AnnouncementsProps {
     announcements: Announcement[];
     classes: { id: number; name: string }[];
-    user_role: 'teacher' | 'student' | 'admin';
+    user_role: 'teacher' | 'student' | 'admin' | 'parent';
 }
 
 export default function Announcements({ announcements, classes, user_role }: AnnouncementsProps) {

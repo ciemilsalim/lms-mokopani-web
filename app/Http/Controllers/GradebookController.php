@@ -102,6 +102,10 @@ class GradebookController extends Controller
             return $this->studentReport($user->student);
         }
 
+        if ($user->parent) {
+            return redirect()->route('parent.dashboard');
+        }
+
         abort(403);
     }
 

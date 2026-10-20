@@ -18,7 +18,8 @@ import {
     Sparkles,
     ChevronRight,
     User,
-    Compass
+    Compass,
+    Bell
 } from 'lucide-react';
 import { getNavSections } from './app-sidebar';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose } from './ui/sheet';
@@ -56,9 +57,8 @@ export function MobileBottomNav() {
                 ];
             case 'parent':
                 return [
-                    { title: 'Beranda', url: '/dashboard', icon: LayoutDashboard },
-                    { title: 'Progres', url: '/parent/dashboard', icon: UserCheck },
-                    { title: 'Rapor', url: '/gradebook', icon: FileSpreadsheet },
+                    { title: 'Beranda', url: '/parent/dashboard', icon: LayoutDashboard },
+                    { title: 'Pengumuman', url: '/announcements', icon: Bell },
                 ];
             default:
                 return [

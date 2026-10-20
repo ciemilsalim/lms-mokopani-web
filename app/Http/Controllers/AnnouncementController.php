@@ -86,6 +86,16 @@ class AnnouncementController extends Controller
                 $q->where('school_class_id', $user->student->school_class_id)
                   ->orWhereNull('school_class_id');
             });
+        } else if ($user->parent) {
+            $childClassIds = $user->parent->students->pluck('school_class_id')->filter()->unique()->toArray();
+            $query->where(function ($q) use ($childClassIds) {
+                if (!empty($childClassIds)) {
+                    $q->whereIn('school_class_id', $childClassIds)
+                      ->orWhereNull('school_class_id');
+                } else {
+                    $q->whereNull('school_class_id');
+                }
+            });
         }
 
         $announcements = $query->latest()->get()->map(fn ($a) => [
@@ -98,12 +108,12 @@ class AnnouncementController extends Controller
             'created_at'   => $a->created_at->diffForHumans(),
         ]);
 
-        $classes = $this->getTeacherClasses($user);
+        $classes = ($teacher || $user->role === 'admin') ? $this->getTeacherClasses($user) : [];
 
         return Inertia::render('announcements/index', [
             'announcements' => $announcements,
             'classes'       => $classes,
-            'user_role'     => $user->role ?? ($teacher ? 'teacher' : ($user->student ? 'student' : 'user'))
+            'user_role'     => $user->role ?? ($teacher ? 'teacher' : ($user->student ? 'student' : ($user->parent ? 'parent' : 'user')))
         ]);
     }
 

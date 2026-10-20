@@ -18,7 +18,7 @@ export interface SubjectReportItem {
     assignments: AssignmentItem[];
     average: number;
     description: string;
-    attendance_percentage: number;
+    attendance_percentage: number | null;
     total_meetings: number;
 }
 
@@ -60,7 +60,9 @@ export function ChildSubjectList({ reports = [], className = '' }: ChildSubjectL
                                     <h3 className="text-xs sm:text-sm font-bold text-foreground truncate">{subject.subject_name}</h3>
                                     <p className="text-[11px] text-muted-foreground font-medium flex items-center gap-1.5 mt-0.5">
                                         <Calendar className="h-3.5 w-3.5 text-sky-600" />
-                                        <span>Kehadiran: {subject.attendance_percentage}%</span>
+                                        <span>
+                                            Kehadiran: {subject.attendance_percentage !== null && subject.attendance_percentage !== undefined ? `${subject.attendance_percentage}%` : 'Belum Ada Presensi'}
+                                        </span>
                                         <span className="text-border">•</span>
                                         <span>{subject.total_meetings} Pertemuan</span>
                                     </p>
@@ -98,7 +100,7 @@ export function ChildSubjectList({ reports = [], className = '' }: ChildSubjectL
                                 )}
 
                                 {/* Assignments List */}
-                                {subject.assignments.length > 0 && (
+                                {subject.assignments.length > 0 ? (
                                     <div className="space-y-2">
                                         <h4 className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
                                             Daftar Tugas & Asesmen
@@ -120,6 +122,10 @@ export function ChildSubjectList({ reports = [], className = '' }: ChildSubjectL
                                                 </div>
                                             ))}
                                         </div>
+                                    </div>
+                                ) : (
+                                    <div className="p-3 rounded-xl bg-card border border-border/60 text-center">
+                                        <p className="text-xs text-muted-foreground italic">Belum ada tugas atau asesmen untuk mata pelajaran ini.</p>
                                     </div>
                                 )}
                             </div>
