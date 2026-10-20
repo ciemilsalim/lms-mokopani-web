@@ -8,6 +8,7 @@ use App\Models\LmsSubmission;
 use App\Models\TeachingAssignment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class FeedbackRevisionController extends Controller
@@ -85,15 +86,17 @@ class FeedbackRevisionController extends Controller
             }
         }
 
-        $revision = LmsFeedbackRevision::create([
-            'submission_id'  => $validated['submission_id'],
-            'teacher_id'     => $teacher?->id ?? $assignment?->teacher_id,
-            'feedback'       => $validated['feedback'],
-            'status'         => 'pending_revision',
-            'revision_count' => 0,
-        ]);
+        DB::transaction(function () use ($validated, $teacher, $assignment, $submission) {
+            LmsFeedbackRevision::create([
+                'submission_id'  => $validated['submission_id'],
+                'teacher_id'     => $teacher?->id ?? $assignment?->teacher_id,
+                'feedback'       => $validated['feedback'],
+                'status'         => 'pending_revision',
+                'revision_count' => 0,
+            ]);
 
-        $submission->update(['feedback' => $validated['feedback']]);
+            $submission->update(['feedback' => $validated['feedback']]);
+        });
 
         return redirect()->back()->with('success', 'Feedback revisi berhasil dikirim.');
     }

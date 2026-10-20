@@ -10,6 +10,7 @@ use App\Models\TeachingAssignment;
 use App\Services\PlanningService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class LearningObjectiveController extends Controller
@@ -229,14 +230,16 @@ class LearningObjectiveController extends Controller
             }
         }
 
-        foreach ($request->orders as $item) {
-            LmsLearningObjective::where('id', $item['id'])->update([
-                'order' => $item['order'],
-                'time_allocation' => $item['time_allocation'] ?? null,
-                'notes' => $item['notes'] ?? null,
-                'sequencing_method' => $item['sequencing_method'] ?? $request->sequencing_method
-            ]);
-        }
+        DB::transaction(function () use ($request) {
+            foreach ($request->orders as $item) {
+                LmsLearningObjective::where('id', $item['id'])->update([
+                    'order'             => $item['order'],
+                    'time_allocation'   => $item['time_allocation'] ?? null,
+                    'notes'             => $item['notes'] ?? null,
+                    'sequencing_method' => $item['sequencing_method'] ?? $request->sequencing_method,
+                ]);
+            }
+        });
 
         return back()->with('success', 'Urutan ATP berhasil diperbarui.');
     }
