@@ -101,7 +101,7 @@ class RaporReportTest extends TestCase
      */
     public function test_can_export_rapor_pdf_and_csv()
     {
-        $user = User::factory()->make(['role' => 'teacher']);
+        $user = User::factory()->create(['role' => 'teacher']);
 
         $report = LmsRaporReport::create([
             'student_id' => 1,
@@ -112,7 +112,7 @@ class RaporReportTest extends TestCase
                 'scores' => ['TP 7.1' => 85],
                 'details' => [['code' => 'TP 7.1', 'title' => 'Komputasional', 'score' => 85]],
             ],
-            'created_by' => 1,
+            'created_by' => $user->id,
         ]);
 
         $pdfResponse = $this->actingAs($user)->get("/rapor/{$report->id}/export/pdf");
