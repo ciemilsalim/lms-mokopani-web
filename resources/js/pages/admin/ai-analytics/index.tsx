@@ -1,10 +1,17 @@
 import React, { useState } from 'react';
 import { Head, router } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
+import { type BreadcrumbItem } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { CheckCircle2 } from 'lucide-react';
+
+const breadcrumbs: BreadcrumbItem[] = [
+    { title: 'Dashboard', href: '/dashboard' },
+    { title: 'Analitik AI & Konfigurasi', href: '/admin/ai-analytics' },
+];
 
 interface AdminAiAnalyticsProps {
     analytics: {
@@ -30,20 +37,26 @@ export default function AdminAiAnalyticsPage({ analytics, settings }: AdminAiAna
     const [weights, setWeights] = useState<number[]>(settings.rapor_default_weights || [0.2, 0.2, 0.2, 0.4]);
     const [threshold, setThreshold] = useState<number>(settings.kktp_default_threshold || 75.0);
     const [isSaving, setIsSaving] = useState(false);
+    const [savedSuccess, setSavedSuccess] = useState(false);
 
     const handleSaveSettings = (e: React.FormEvent) => {
         e.preventDefault();
         setIsSaving(true);
+        setSavedSuccess(false);
         router.post('/admin/ai-analytics/settings', {
             rapor_default_weights: weights,
             kktp_default_threshold: threshold,
         }, {
+            onSuccess: () => {
+                setSavedSuccess(true);
+                setTimeout(() => setSavedSuccess(false), 4000);
+            },
             onFinish: () => setIsSaving(false)
         });
     };
 
     return (
-        <AppLayout title="Analitik Penggunaan AI & Konfigurasi Sekolah">
+        <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Analitik Penggunaan AI & Konfigurasi Sekolah" />
 
             <div className="max-w-6xl mx-auto py-6 px-4 sm:px-6 space-y-6">
@@ -179,6 +192,13 @@ export default function AdminAiAnalyticsPage({ analytics, settings }: AdminAiAna
                                         className="text-xs font-bold font-mono"
                                     />
                                 </div>
+
+                                {savedSuccess && (
+                                    <div className="flex items-center gap-2 p-3 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-xs font-semibold animate-in fade-in duration-200">
+                                        <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" />
+                                        <span>Konfigurasi bobot dan threshold standar sekolah berhasil disimpan!</span>
+                                    </div>
+                                )}
 
                                 <Button
                                     type="submit"

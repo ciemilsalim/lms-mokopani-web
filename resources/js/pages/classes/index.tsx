@@ -1,13 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import AppLayout from '@/layouts/app-layout';
-import { type BreadcrumbItem } from '@/types';
-import { Head } from '@inertiajs/react';
+import { type BreadcrumbItem, type SharedData } from '@/types';
+import { Head, usePage } from '@inertiajs/react';
 import { GraduationCap, Search, Users, Sparkles } from 'lucide-react';
 import { ClassCard, type ClassItemProps } from '@/components/classes';
-
-const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Kelas Saya', href: '/classes' },
-];
 
 interface ClassIndexProps {
     classes: ClassItemProps[];
@@ -20,7 +16,13 @@ export function extractGrade(name: string): string {
 }
 
 export default function ClassIndex({ classes = [] }: ClassIndexProps) {
+    const { user_role } = usePage<SharedData>().props;
     const [searchQuery, setSearchQuery] = useState('');
+
+    const pageTitle = user_role === 'admin' ? 'Daftar Kelas Sekolah' : 'Kelas Saya';
+    const breadcrumbs: BreadcrumbItem[] = [
+        { title: pageTitle, href: '/classes' },
+    ];
 
     // Deduplicate / Clean invalid duplicate empty entries if populated class exists
     const sanitizedClasses = useMemo(() => {
@@ -64,15 +66,15 @@ export default function ClassIndex({ classes = [] }: ClassIndexProps) {
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Kelas Saya - LMS Mokopani" />
+            <Head title={`${pageTitle} - LMS Mokopani`} />
 
             <div className="space-y-4 sm:space-y-5 fade-in pb-16 md:pb-6 max-w-7xl mx-auto w-full min-w-0">
-                {/* Header: Kelas Saya + Compact Subtitle */}
+                {/* Header: Kelas + Compact Subtitle */}
                 <div className="flex items-center justify-between gap-3 pt-1">
                     <div className="min-w-0">
                         <h1 className="text-xl sm:text-2xl font-black text-foreground tracking-tight flex items-center gap-2">
                             <GraduationCap className="h-6 w-6 text-primary shrink-0" />
-                            <span>Kelas Saya</span>
+                            <span>{pageTitle}</span>
                         </h1>
                         <p className="text-xs sm:text-sm text-muted-foreground font-medium mt-0.5">
                             {sanitizedClasses.length} Kelas • {totalStudents} Siswa
@@ -97,11 +99,13 @@ export default function ClassIndex({ classes = [] }: ClassIndexProps) {
                     <div className="py-12 text-center text-muted-foreground flex flex-col items-center justify-center border border-dashed border-border/70 rounded-2xl p-6 bg-card/40">
                         <GraduationCap className="h-10 w-10 text-muted-foreground/40 mb-2" />
                         <h3 className="text-sm font-bold text-foreground">
-                            {searchQuery ? 'Kelas Tidak Ditemukan' : 'Belum Ada Kelas Diampu'}
+                            {searchQuery ? 'Kelas Tidak Ditemukan' : user_role === 'admin' ? 'Belum Ada Data Rombel Kelas' : 'Belum Ada Kelas Diampu'}
                         </h3>
                         <p className="text-xs text-muted-foreground mt-1 max-w-xs">
                             {searchQuery
                                 ? `Tidak ada kelas yang cocok dengan kata kunci "${searchQuery}".`
+                                : user_role === 'admin'
+                                ? 'Data rombel kelas sekolah akan tampil di sini.'
                                 : 'Daftar kelas yang ditugaskan kepada Anda akan tampil di sini.'}
                         </p>
                     </div>

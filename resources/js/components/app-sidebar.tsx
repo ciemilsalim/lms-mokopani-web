@@ -5,7 +5,7 @@ import { type NavItem, type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
 import {
     Book, BookOpen, ClipboardList, GraduationCap, LayoutDashboard, Library, Target, FileBarChart, Bell,
-    Heart, BarChart3, Users, ExternalLink, RotateCcw, School,
+    Heart, BarChart3, Users, ExternalLink, RotateCcw, School, Sparkles,
 } from 'lucide-react';
 import AppLogo from './app-logo';
 
@@ -82,6 +82,7 @@ const adminNavSections: NavSection[] = [
     {
         label: 'Data Master',
         items: [
+            { title: 'Daftar Kelas',        url: '/classes',   icon: School },
             { title: 'Capaian Pembelajaran', url: '/cp',       icon: Target },
             { title: 'Mata Pelajaran',      url: '/subjects',  icon: BookOpen },
             { title: 'Data Guru',           url: '/teachers',  icon: Users },
@@ -91,7 +92,8 @@ const adminNavSections: NavSection[] = [
     {
         label: 'Monitoring & Analitik',
         items: [
-            { title: 'Analitik Pembelajaran', url: '/analytics',      icon: BarChart3 },
+            { title: 'Analitik Pembelajaran',       url: '/analytics',          icon: BarChart3 },
+            { title: 'Analitik AI & Konfigurasi',  url: '/admin/ai-analytics', icon: Sparkles },
         ],
     },
     {

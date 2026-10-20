@@ -9,7 +9,7 @@ import { useInitials } from '@/hooks/use-initials';
 import { cn } from '@/lib/utils';
 import { type BreadcrumbItem, type NavItem, type SharedData } from '@/types';
 import { Link, usePage, router } from '@inertiajs/react';
-import { LayoutGrid, Menu, BookOpen, Library, ClipboardList, Target, FileBarChart, Bell, GraduationCap, Compass, BarChart3, Heart, ChevronDown } from 'lucide-react';
+import { LayoutGrid, Menu, BookOpen, Library, ClipboardList, Target, FileBarChart, Bell, GraduationCap, Compass, BarChart3, Heart, ChevronDown, Users, Sparkles } from 'lucide-react';
 import AppLogo from './app-logo';
 import AppLogoIcon from './app-logo-icon';
 import AppearanceToggleDropdown from './appearance-dropdown';
@@ -40,9 +40,21 @@ const studentMobileNavItems: NavItem[] = [
     { title: 'Pengumuman', url: '/announcements', icon: Bell },
 ];
 
+const adminMobileNavItems: NavItem[] = [
+    { title: 'Dashboard', url: '/dashboard', icon: LayoutGrid },
+    { title: 'Daftar Kelas', url: '/classes', icon: GraduationCap },
+    { title: 'Data Guru', url: '/teachers', icon: Users },
+    { title: 'Data Siswa', url: '/students', icon: GraduationCap },
+    { title: 'Mata Pelajaran', url: '/subjects', icon: BookOpen },
+    { title: 'Analitik Pembelajaran', url: '/analytics', icon: BarChart3 },
+    { title: 'Analitik AI & Konfigurasi', url: '/admin/ai-analytics', icon: Sparkles },
+    { title: 'Pengumuman', url: '/announcements', icon: Bell },
+];
+
 const parentMobileNavItems: NavItem[] = [
     { title: 'Dashboard', url: '/dashboard', icon: LayoutGrid },
     { title: 'Anak Saya', url: '/parent/dashboard', icon: Heart },
+    { title: 'Pengumuman', url: '/announcements', icon: Bell },
 ];
 
 const activeItemStyles = 'text-foreground dark:bg-muted dark:text-foreground font-bold';
@@ -56,7 +68,13 @@ export function AppHeader({ breadcrumbs = [] }: AppHeaderProps) {
     const { auth, user_role, semestersList, activeSemesterId } = page.props;
     const getInitials = useInitials();
 
-    const mobileItems = user_role === 'teacher' ? teacherMobileNavItems : user_role === 'parent' ? parentMobileNavItems : studentMobileNavItems;
+    const mobileItems = user_role === 'teacher' 
+        ? teacherMobileNavItems 
+        : user_role === 'admin'
+        ? adminMobileNavItems
+        : user_role === 'parent' 
+        ? parentMobileNavItems 
+        : studentMobileNavItems;
 
     const activeSemester = semestersList?.find(s => s.id === activeSemesterId);
     const activeSemesterName = activeSemester ? `${activeSemester.name} ${activeSemester.academic_year ? `(${activeSemester.academic_year})` : ''}` : 'Pilih Semester';

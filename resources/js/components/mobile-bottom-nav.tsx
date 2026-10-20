@@ -59,6 +59,7 @@ export function MobileBottomNav() {
                 return [
                     { title: 'Beranda', url: '/parent/dashboard', icon: LayoutDashboard },
                     { title: 'Pengumuman', url: '/announcements', icon: Bell },
+                    { title: 'Panduan', url: '/guide', icon: BookOpen },
                 ];
             default:
                 return [
@@ -253,7 +254,7 @@ export function MobileBottomNav() {
                                 <div className="grid grid-cols-1 gap-2">
                                     <SheetClose asChild>
                                         <Link
-                                            href="/profile"
+                                            href="/settings/profile"
                                             className="flex items-center justify-between p-3 rounded-2xl bg-muted/40 hover:bg-muted/70 border border-border/40 transition active:scale-98"
                                         >
                                             <div className="flex items-center gap-3">

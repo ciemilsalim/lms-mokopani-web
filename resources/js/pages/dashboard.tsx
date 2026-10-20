@@ -615,27 +615,8 @@ function StudentDashboard({
     );
 }
 
-export default function Dashboard(props: DashboardProps) {
-    const { stats, identity, subjects, classes, recentActivities, recentAnnouncements, todaySchedule, todayName } = props;
-    const { auth, user_role } = usePage<SharedData>().props;
-
-    if (user_role === 'student') {
-        return (
-            <StudentDashboard
-                {...props}
-                auth={auth}
-            />
-        );
-    }
-
-    if (user_role === 'teacher') {
-        return (
-            <TeacherDashboardView
-                {...props}
-                auth={auth}
-            />
-        );
-    }
+function AdminDashboardView(props: DashboardProps & { auth: any; user_role: string }) {
+    const { stats, identity, subjects, classes, recentActivities, recentAnnouncements, todaySchedule, todayName, auth, user_role } = props;
 
     useEffect(() => {
         console.group('[LMS Mokopani Dashboard Loaded]');
@@ -711,6 +692,30 @@ export default function Dashboard(props: DashboardProps) {
 
                 {/* Mobile Quick Action Buttons Bar */}
                 <div className="md:hidden flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
+                    {user_role === 'admin' && (
+                        <>
+                            <Link href="/classes" className="shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-primary/10 text-primary border border-primary/20 text-xs font-bold active:scale-95 transition">
+                                <GraduationCap className="h-3.5 w-3.5" />
+                                Daftar Kelas
+                            </Link>
+                            <Link href="/teachers" className="shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20 text-xs font-bold active:scale-95 transition">
+                                <Users className="h-3.5 w-3.5" />
+                                Data Guru
+                            </Link>
+                            <Link href="/students" className="shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-xs font-bold active:scale-95 transition">
+                                <GraduationCap className="h-3.5 w-3.5" />
+                                Data Siswa
+                            </Link>
+                            <Link href="/admin/ai-analytics" className="shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 text-xs font-bold active:scale-95 transition">
+                                <Sparkles className="h-3.5 w-3.5" />
+                                Analitik AI
+                            </Link>
+                            <Link href="/announcements" className="shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 text-xs font-bold active:scale-95 transition">
+                                <Bell className="h-3.5 w-3.5" />
+                                + Pengumuman
+                            </Link>
+                        </>
+                    )}
                     {user_role === 'teacher' && (
                         <>
                             <Link href="/materials/create" className="shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-primary/10 text-primary border border-primary/20 text-xs font-bold active:scale-95 transition">
@@ -1404,5 +1409,35 @@ export default function Dashboard(props: DashboardProps) {
                 </div>
             </div>
         </AppLayout>
+    );
+}
+
+export default function Dashboard(props: DashboardProps) {
+    const { auth, user_role } = usePage<SharedData>().props;
+
+    if (user_role === 'student') {
+        return (
+            <StudentDashboard
+                {...props}
+                auth={auth}
+            />
+        );
+    }
+
+    if (user_role === 'teacher') {
+        return (
+            <TeacherDashboardView
+                {...props}
+                auth={auth}
+            />
+        );
+    }
+
+    return (
+        <AdminDashboardView
+            {...props}
+            auth={auth}
+            user_role={user_role}
+        />
     );
 }
