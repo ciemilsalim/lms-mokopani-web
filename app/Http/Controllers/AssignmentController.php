@@ -855,12 +855,12 @@ class AssignmentController extends Controller
     public function uploadProof(Request $request, LmsAssignment $assignment)
     {
         $user = Auth::user();
-        if (!$user->teacher) {
-            abort(403, 'Hanya guru yang dapat mengunggah bukti fisik.');
+        if ($user->role !== 'admin' && $assignment->teacher_id !== $user->teacher?->id) {
+            abort(403, 'Anda tidak memiliki hak akses untuk mengunggah bukti fisik pada asesmen ini.');
         }
 
         $validated = $request->validate([
-            'student_id' => 'required|exists:mysql_absensi.students,id',
+            'student_id' => 'required|exists:students,id',
             'file'       => 'required|file|mimes:pdf,doc,docx,png,jpg,jpeg|max:10240',
         ]);
 
@@ -893,8 +893,8 @@ class AssignmentController extends Controller
     public function gradeView(Request $request, LmsAssignment $assignment)
     {
         $user = Auth::user();
-        if (!$user->teacher) {
-            abort(403, 'Hanya guru yang dapat mengakses halaman penilaian ini.');
+        if ($user->role !== 'admin' && $assignment->teacher_id !== $user->teacher?->id) {
+            abort(403, 'Anda tidak memiliki hak akses untuk mengakses halaman penilaian ini.');
         }
 
         $assignment->load(['subject', 'submissions.student', 'schoolClasses']);
@@ -969,13 +969,19 @@ class AssignmentController extends Controller
     {
         $validated = $request->validate([
             'assignment_id'     => 'required|exists:lms_assignments,id',
-            'student_id'        => 'required|exists:mysql_absensi.students,id',
+            'student_id'        => 'required|exists:students,id',
             'score'             => 'nullable|integer|min:0',
             'qualitative_score' => 'nullable|string',
             'kktp_details'      => 'nullable|array',
             'feedback'          => 'nullable|string',
             'content'           => 'nullable|string', // Untuk data observasi/kuis terstruktur
         ]);
+
+        $user = Auth::user();
+        $assignment = \App\Models\LmsAssignment::findOrFail($validated['assignment_id']);
+        if ($user->role !== 'admin' && $assignment->teacher_id !== $user->teacher?->id) {
+            abort(403, 'Anda tidak memiliki hak akses untuk menilai asesmen ini.');
+        }
 
         $submission = \App\Models\LmsSubmission::updateOrCreate(
             [
@@ -1004,8 +1010,7 @@ class AssignmentController extends Controller
         ]);
 
         // Auto-analyze diagnostic results for initial assessments
-        $assignment = \App\Models\LmsAssignment::find($validated['assignment_id']);
-        if ($assignment && $assignment->assessment_type === 'initial') {
+        if ($assignment->assessment_type === 'initial') {
             app(\App\Services\AdaptiveLearningService::class)->analyzeDiagnostic($submission);
         }
 
@@ -1016,8 +1021,14 @@ class AssignmentController extends Controller
     {
         $validated = $request->validate([
             'assignment_id' => 'required|exists:lms_assignments,id',
-            'student_id'    => 'required|exists:mysql_absensi.students,id',
+            'student_id'    => 'required|exists:students,id',
         ]);
+
+        $user = Auth::user();
+        $assignment = LmsAssignment::findOrFail($validated['assignment_id']);
+        if ($user->role !== 'admin' && $assignment->teacher_id !== $user->teacher?->id) {
+            abort(403, 'Anda tidak memiliki hak akses untuk membuka remedial pada asesmen ini.');
+        }
 
         $submission = \App\Models\LmsSubmission::where('assignment_id', $validated['assignment_id'])
             ->where('student_id', $validated['student_id'])
@@ -1028,7 +1039,6 @@ class AssignmentController extends Controller
                 'is_remedial_open' => true,
             ]);
 
-            $assignment = LmsAssignment::find($validated['assignment_id']);
             \App\Models\LmsRemedialRecord::updateOrCreate(
                 [
                     'assignment_id' => $validated['assignment_id'],
@@ -1049,17 +1059,17 @@ class AssignmentController extends Controller
 
     public function edit(LmsAssignment $assignment)
     {
-        $teacher = Auth::user()->teacher;
-
-        if ($assignment->teacher_id !== $teacher?->id) {
-            abort(403, 'Unauthorized action.');
+        $user = Auth::user();
+        if ($user->role !== 'admin' && $assignment->teacher_id !== $user->teacher?->id) {
+            abort(403, 'Anda tidak memiliki hak akses untuk mengubah asesmen ini.');
         }
 
+        $teacherId = $user->teacher?->id ?? $assignment->teacher_id;
         $activeYear = \App\Models\AcademicYear::getActive();
         $activeSemester = \App\Models\Semester::getActive();
 
         $teachings = \App\Models\TeachingAssignment::with(['subject', 'schoolClass'])
-            ->where('teacher_id', $teacher->id)
+            ->where('teacher_id', $teacherId)
             ->whereHas('schoolClass', function($q) use ($activeYear) {
                 $q->where('academic_year_id', $activeYear?->id);
             })
@@ -1071,7 +1081,7 @@ class AssignmentController extends Controller
                 'class_name'   => $t->schoolClass->name,
             ]);
 
-        $objectives = \App\Models\LmsLearningObjective::where('teacher_id', $teacher->id)
+        $objectives = \App\Models\LmsLearningObjective::where('teacher_id', $teacherId)
             ->where('academic_year_id', $activeYear?->id)
             ->where('semester_id', $activeSemester?->id)
             ->where(function ($query) use ($assignment) {
@@ -1146,10 +1156,9 @@ class AssignmentController extends Controller
 
     public function update(Request $request, LmsAssignment $assignment)
     {
-        $teacher = Auth::user()->teacher;
-
-        if ($assignment->teacher_id !== $teacher?->id) {
-            abort(403, 'Unauthorized action.');
+        $user = Auth::user();
+        if ($user->role !== 'admin' && $assignment->teacher_id !== $user->teacher?->id) {
+            abort(403, 'Anda tidak memiliki hak akses untuk mengubah asesmen ini.');
         }
 
         $validated = $request->validate([
@@ -1158,10 +1167,10 @@ class AssignmentController extends Controller
             'instrument_config'     => 'nullable|array',
             'scoring_tool'          => 'nullable|string|max:50',
             'scoring_tool_config'   => 'nullable|array',
-            'subject_id'            => 'required|exists:mysql_absensi.subjects,id',
+            'subject_id'            => 'required|exists:subjects,id',
             'learning_objective_id' => 'nullable|exists:lms_learning_objectives,id',
             'school_classes'        => 'required|array|min:1',
-            'school_classes.*'      => 'exists:mysql_absensi.school_classes,id',
+            'school_classes.*'      => 'exists:school_classes,id',
             'title'                 => 'required|string|max:255',
             'description'           => 'required|string',
             'due_date'              => 'required|date',
@@ -1177,6 +1186,11 @@ class AssignmentController extends Controller
 
     public function destroy(LmsAssignment $assignment)
     {
+        $user = Auth::user();
+        if ($user->role !== 'admin' && $assignment->teacher_id !== $user->teacher?->id) {
+            abort(403, 'Anda tidak memiliki hak akses untuk menghapus asesmen ini.');
+        }
+
         DB::transaction(function () use ($assignment) {
             \App\Models\StudentDiagnosticResult::where('assignment_id', $assignment->id)->delete();
             \App\Models\LmsRemedialRecord::where('assignment_id', $assignment->id)->delete();

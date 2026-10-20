@@ -132,6 +132,7 @@ class RaporReportController extends Controller
     public function show($id)
     {
         $report = LmsRaporReport::with(['student', 'modulAjar', 'subject', 'schoolClass'])->findOrFail($id);
+        $this->authorizeReportAccess($report);
 
         return Inertia::render('rapor/show', [
             'report' => $report
@@ -173,6 +174,7 @@ class RaporReportController extends Controller
     public function exportPdf($id)
     {
         $report = LmsRaporReport::with(['student', 'subject', 'schoolClass', 'creator'])->findOrFail($id);
+        $this->authorizeReportAccess($report);
 
         $pdf = Pdf::loadView('reports.rapor_pdf', [
             'report' => $report,
@@ -190,6 +192,7 @@ class RaporReportController extends Controller
     public function exportCsv($id)
     {
         $report = LmsRaporReport::with(['student', 'subject', 'schoolClass'])->findOrFail($id);
+        $this->authorizeReportAccess($report);
 
         $headers = [
             "Content-type"        => "text/csv",
@@ -226,5 +229,53 @@ class RaporReportController extends Controller
         };
 
         return response()->stream($callback, 200, $headers);
+    }
+
+    /**
+     * Authorize access to view or export a specific Rapor report.
+     */
+    protected function authorizeReportAccess(LmsRaporReport $report): void
+    {
+        $user = Auth::user();
+        if (!$user) {
+            abort(401);
+        }
+
+        if ($user->role === 'admin') {
+            return;
+        }
+
+        if ($report->created_by === $user->id) {
+            return;
+        }
+
+        if ($user->role === 'student' && $user->student && (int)$user->student->id === (int)$report->student_id) {
+            return;
+        }
+
+        if ($user->role === 'teacher' && $user->teacher) {
+            $teacherId = $user->teacher->id;
+
+            // Guru pengampu mata pelajaran pada kelas tersebut
+            $isSubjectTeacher = \App\Models\TeachingAssignment::where('teacher_id', $teacherId)
+                ->where('subject_id', $report->subject_id)
+                ->where('school_class_id', $report->school_class_id)
+                ->exists();
+
+            if ($isSubjectTeacher) {
+                return;
+            }
+
+            // Wali kelas dari kelas siswa tersebut
+            $isHomeroomTeacher = \App\Models\SchoolClass::where('id', $report->school_class_id)
+                ->where('teacher_id', $teacherId)
+                ->exists();
+
+            if ($isHomeroomTeacher) {
+                return;
+            }
+        }
+
+        abort(403, 'Anda tidak memiliki hak akses untuk mengakses laporan rapor ini.');
     }
 }

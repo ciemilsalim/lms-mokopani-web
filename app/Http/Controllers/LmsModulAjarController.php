@@ -24,15 +24,23 @@ class LmsModulAjarController extends Controller
      */
     public function index()
     {
-        $teacher = Auth::user()->teacher;
+        $user = Auth::user();
+        $teacher = $user->teacher;
         $activeYear = AcademicYear::getActive();
         $activeSemester = Semester::getActive();
 
-        $modulAjars = LmsModulAjar::with(['subject', 'schoolClasses', 'learningObjective', 'material'])
-            ->where('teacher_id', $teacher->id)
+        $query = LmsModulAjar::with(['subject', 'schoolClasses', 'learningObjective', 'material'])
             ->where('academic_year_id', $activeYear?->id)
-            ->where('semester_id', $activeSemester?->id)
-            ->latest()
+            ->where('semester_id', $activeSemester?->id);
+
+        if ($user->role !== 'admin') {
+            if (!$teacher) {
+                abort(403);
+            }
+            $query->where('teacher_id', $teacher->id);
+        }
+
+        $modulAjars = $query->latest()
             ->get()
             ->map(fn ($m) => [
                 'id' => $m->id,
@@ -311,14 +319,19 @@ class LmsModulAjarController extends Controller
      */
     public function store(Request $request)
     {
-        $teacher = Auth::user()->teacher;
+        $user = Auth::user();
+        $teacher = $user->teacher;
+        if ($user->role !== 'admin' && !$teacher) {
+            abort(403);
+        }
+        $teacherId = $teacher?->id ?? 1;
         $activeYear = AcademicYear::getActive();
         $activeSemester = Semester::getActive();
 
         $validated = $request->validate([
-            'subject_id'            => 'required|exists:mysql_absensi.subjects,id',
+            'subject_id'            => 'required|exists:subjects,id',
             'school_class_ids'      => 'required|array',
-            'school_class_ids.*'    => 'exists:mysql_absensi.school_classes,id',
+            'school_class_ids.*'    => 'exists:school_classes,id',
             'learning_objective_id' => 'nullable|exists:lms_learning_objectives,id',
             'material_id'           => 'nullable|exists:lms_materials,id',
             'pedagogical_model'     => 'nullable|string',
@@ -333,7 +346,7 @@ class LmsModulAjarController extends Controller
         ]);
 
         $modulAjar = LmsModulAjar::create(array_merge($validated, [
-            'teacher_id'       => $teacher->id,
+            'teacher_id'       => $teacherId,
             'academic_year_id' => $activeYear?->id,
             'semester_id'      => $activeSemester?->id,
         ]));
@@ -349,17 +362,23 @@ class LmsModulAjarController extends Controller
      */
     public function show($id)
     {
-        $teacher = Auth::user()->teacher;
+        $user = Auth::user();
+        $teacher = $user->teacher;
         $activeYear = AcademicYear::getActive();
         $activeSemester = Semester::getActive();
         
-        $modulAjar = LmsModulAjar::with(['subject', 'schoolClasses', 'learningObjective', 'material', 'material.resources'])
-            ->where('teacher_id', $teacher->id)
-            ->findOrFail($id);
+        $query = LmsModulAjar::with(['subject', 'schoolClasses', 'learningObjective', 'material', 'material.resources', 'teacher']);
+        if ($user->role !== 'admin') {
+            if (!$teacher) {
+                abort(403);
+            }
+            $query->where('teacher_id', $teacher->id);
+        }
+        $modulAjar = $query->findOrFail($id);
 
         $assignments = LmsAssignment::where('learning_objective_id', $modulAjar->learning_objective_id)
             ->where('subject_id', $modulAjar->subject_id)
-            ->where('teacher_id', $teacher->id)
+            ->where('teacher_id', $modulAjar->teacher_id)
             ->get();
 
         return Inertia::render('modul-ajar/show', [
@@ -400,8 +419,8 @@ class LmsModulAjarController extends Controller
                 'image_prompt' => $modulAjar->material?->image_prompt,
                 'thumbnail' => $modulAjar->material?->thumbnail ? asset('storage/' . $modulAjar->material->thumbnail) : null,
                 
-                'teacher_name' => $teacher->name,
-                'teacher_nip' => $teacher->nip ?? '-',
+                'teacher_name' => $modulAjar->teacher?->name ?? $teacher?->name ?? 'Guru Pengampu',
+                'teacher_nip' => $modulAjar->teacher?->nip ?? $teacher?->nip ?? '-',
                 'school_name' => school_setting('school_name', 'Nama Sekolah'),
                 'headmaster_name' => school_setting('school_headmaster_name', 'Nama Kepala Sekolah'),
                 'headmaster_nip' => school_setting('school_headmaster_nip', 'NIP Kepala Sekolah'),
@@ -417,16 +436,26 @@ class LmsModulAjarController extends Controller
      */
     public function edit($id)
     {
-        $teacher = Auth::user()->teacher;
+        $user = Auth::user();
+        $teacher = $user->teacher;
         $activeYear = AcademicYear::getActive();
         $activeSemester = Semester::getActive();
 
-        $modulAjar = LmsModulAjar::with('schoolClasses')->where('teacher_id', $teacher->id)->findOrFail($id);
+        $query = LmsModulAjar::with('schoolClasses');
+        if ($user->role !== 'admin') {
+            if (!$teacher) {
+                abort(403);
+            }
+            $query->where('teacher_id', $teacher->id);
+        }
+        $modulAjar = $query->findOrFail($id);
         $modulAjar->school_class_ids = $modulAjar->schoolClasses->pluck('id');
+
+        $targetTeacherId = $teacher?->id ?? $modulAjar->teacher_id;
 
         // Ambil data penugasan mengajar (Mapel & Kelas)
         $teachings = TeachingAssignment::with(['subject', 'schoolClass'])
-            ->where('teacher_id', $teacher->id)
+            ->where('teacher_id', $targetTeacherId)
             ->where('academic_year_id', $activeYear?->id)
             ->where('semester_id', $activeSemester?->id)
             ->get()
@@ -439,7 +468,7 @@ class LmsModulAjarController extends Controller
             ]);
 
         // Ambil Tujuan Pembelajaran (TP) yang tidak memiliki sub-TP (atau yang saat ini sedang dipilih)
-        $objectives = LmsLearningObjective::where('teacher_id', $teacher->id)
+        $objectives = LmsLearningObjective::where('teacher_id', $targetTeacherId)
             ->where('academic_year_id', $activeYear?->id)
             ->where('semester_id', $activeSemester?->id)
             ->where(function ($query) use ($modulAjar) {
@@ -449,7 +478,7 @@ class LmsModulAjarController extends Controller
             ->get();
 
         // Ambil materi pengajaran
-        $materials = LmsMaterial::where('teacher_id', $teacher->id)
+        $materials = LmsMaterial::where('teacher_id', $targetTeacherId)
             ->where('academic_year_id', $activeYear?->id)
             ->where('semester_id', $activeSemester?->id)
             ->get()
@@ -479,16 +508,25 @@ class LmsModulAjarController extends Controller
             'all_input' => $request->all(),
         ]);
 
-        $teacher = Auth::user()->teacher;
-        $modulAjar = LmsModulAjar::where('teacher_id', $teacher->id)->findOrFail($id);
+        $user = Auth::user();
+        $teacher = $user->teacher;
+        
+        $query = LmsModulAjar::query();
+        if ($user->role !== 'admin') {
+            if (!$teacher) {
+                abort(403);
+            }
+            $query->where('teacher_id', $teacher->id);
+        }
+        $modulAjar = $query->findOrFail($id);
 
         Log::info('ModulAjar found:', ['modul_ajar_id' => $modulAjar->id]);
 
         try {
             $validated = $request->validate([
-                'subject_id'            => 'required|exists:mysql_absensi.subjects,id',
+                'subject_id'            => 'required|exists:subjects,id',
                 'school_class_ids'      => 'required|array',
-                'school_class_ids.*'    => 'exists:mysql_absensi.school_classes,id',
+                'school_class_ids.*'    => 'exists:school_classes,id',
                 'learning_objective_id' => 'nullable|exists:lms_learning_objectives,id',
                 'material_id'           => 'nullable|exists:lms_materials,id',
                 'pedagogical_model'     => 'nullable|string',
@@ -522,8 +560,17 @@ class LmsModulAjarController extends Controller
      */
     public function destroy($id)
     {
-        $teacher = Auth::user()->teacher;
-        $modulAjar = LmsModulAjar::where('teacher_id', $teacher->id)->findOrFail($id);
+        $user = Auth::user();
+        $teacher = $user->teacher;
+        
+        $query = LmsModulAjar::query();
+        if ($user->role !== 'admin') {
+            if (!$teacher) {
+                abort(403);
+            }
+            $query->where('teacher_id', $teacher->id);
+        }
+        $modulAjar = $query->findOrFail($id);
         $modulAjar->delete();
 
         return redirect()->route('lesson-plans.index')

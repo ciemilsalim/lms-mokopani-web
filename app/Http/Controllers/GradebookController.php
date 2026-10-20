@@ -951,18 +951,30 @@ class GradebookController extends Controller
 
     public function updateFinalScore(Request $request)
     {
-        $teacher = Auth::user()->teacher;
+        $user = Auth::user();
+        $teacher = $user?->teacher;
 
-        if (!$teacher) {
+        if ($user?->role !== 'admin' && !$teacher) {
             abort(403);
         }
 
         $validated = $request->validate([
-            'student_id'  => 'required|exists:mysql_absensi.students,id',
-            'subject_id'  => 'required|exists:mysql_absensi.subjects,id',
-            'class_id'    => 'required|exists:mysql_absensi.school_classes,id',
+            'student_id'  => 'required|exists:students,id',
+            'subject_id'  => 'required|exists:subjects,id',
+            'class_id'    => 'required|exists:school_classes,id',
             'score'       => 'required|integer|min:0',
         ]);
+
+        if ($user->role !== 'admin' && $teacher) {
+            $isAssigned = TeachingAssignment::where('teacher_id', $teacher->id)
+                ->where('subject_id', $validated['subject_id'])
+                ->where('school_class_id', $validated['class_id'])
+                ->exists();
+
+            if (!$isAssigned) {
+                abort(403, 'Anda tidak memiliki hak akses untuk menginput nilai pada kelas dan mata pelajaran ini.');
+            }
+        }
 
         $activeYear = AcademicYear::getActive();
         $activeSemester = Semester::getActive();

@@ -181,15 +181,20 @@ class MaterialController extends Controller
     public function store(Request $request)
     {
         \Illuminate\Support\Facades\Log::info('Store Material Request: ', $request->all());
-        $teacher = Auth::user()->teacher;
+        $user = Auth::user();
+        $teacher = $user->teacher;
+        if ($user->role !== 'admin' && !$teacher) {
+            abort(403, 'Unauthorized action.');
+        }
+        $teacherId = $teacher?->id ?? 1;
         $activeYear = \App\Models\AcademicYear::getActive();
         $activeSemester = \App\Models\Semester::getActive();
 
         try {
             $validated = $request->validate([
-                'subject_id'            => 'required|exists:mysql_absensi.subjects,id',
+                'subject_id'            => 'required|exists:subjects,id',
                 'school_classes'        => 'required|array|min:1',
-                'school_classes.*'      => 'exists:mysql_absensi.school_classes,id',
+                'school_classes.*'      => 'exists:school_classes,id',
                 'learning_objective_id' => 'nullable|exists:lms_learning_objectives,id',
                 'title'                 => 'required|string|max:255',
                 'content'               => 'nullable|string',
@@ -254,7 +259,7 @@ class MaterialController extends Controller
         }
 
         $material = \App\Models\LmsMaterial::create([
-            'teacher_id'            => $teacher->id,
+            'teacher_id'            => $teacherId,
             'subject_id'            => $validated['subject_id'],
             'learning_objective_id' => $validated['learning_objective_id'] ?? null,
             'academic_year_id'      => $activeYear?->id,
@@ -555,19 +560,23 @@ class MaterialController extends Controller
 
     public function edit(LmsMaterial $material)
     {
-        $teacher = Auth::user()->teacher;
+        $user = Auth::user();
+        $teacher = $user->teacher;
         
-        // Ensure user owns this material
-        if ($material->teacher_id !== $teacher->id) {
-            abort(403, 'Unauthorized action.');
+        // Ensure user owns this material (or is admin)
+        if ($user->role !== 'admin') {
+            if (!$teacher || (int)$material->teacher_id !== (int)$teacher->id) {
+                abort(403, 'Unauthorized action.');
+            }
         }
 
         $activeYear = \App\Models\AcademicYear::getActive();
         $activeSemester = \App\Models\Semester::getActive();
+        $targetTeacherId = $teacher?->id ?? $material->teacher_id;
 
         // Ambil data pengampuan
         $teachings = \App\Models\TeachingAssignment::with(['subject', 'schoolClass'])
-            ->where('teacher_id', $teacher->id)
+            ->where('teacher_id', $targetTeacherId)
             ->where('academic_year_id', $activeYear?->id)
             ->where('semester_id', $activeSemester?->id)
             ->whereHas('schoolClass', function($q) use ($activeYear) {
@@ -576,7 +585,7 @@ class MaterialController extends Controller
             ->get();
 
         // Ambil TP
-        $objectives = \App\Models\LmsLearningObjective::where('teacher_id', $teacher->id)
+        $objectives = \App\Models\LmsLearningObjective::where('teacher_id', $targetTeacherId)
             ->where('academic_year_id', $activeYear?->id)
             ->where('semester_id', $activeSemester?->id)
             ->where(function ($query) use ($material) {
@@ -610,16 +619,19 @@ class MaterialController extends Controller
 
     public function update(Request $request, LmsMaterial $material)
     {
-        $teacher = Auth::user()->teacher;
+        $user = Auth::user();
+        $teacher = $user->teacher;
         
-        if ($material->teacher_id !== $teacher->id) {
-            abort(403, 'Unauthorized action.');
+        if ($user->role !== 'admin') {
+            if (!$teacher || (int)$material->teacher_id !== (int)$teacher->id) {
+                abort(403, 'Unauthorized action.');
+            }
         }
 
         $validated = $request->validate([
-            'subject_id'            => 'required|exists:mysql_absensi.subjects,id',
+            'subject_id'            => 'required|exists:subjects,id',
             'school_classes'        => 'required|array|min:1',
-            'school_classes.*'      => 'exists:mysql_absensi.school_classes,id',
+            'school_classes.*'      => 'exists:school_classes,id',
             'learning_objective_id' => 'nullable|exists:lms_learning_objectives,id',
             'title'                 => 'required|string|max:255',
             'content'               => 'nullable|string',
@@ -790,8 +802,12 @@ class MaterialController extends Controller
 
     public function destroy(LmsMaterial $material)
     {
-        if ($material->teacher_id !== Auth::user()->teacher?->id) {
-            abort(403, 'Unauthorized action.');
+        $user = Auth::user();
+        if ($user->role !== 'admin') {
+            $teacher = $user->teacher;
+            if (!$teacher || (int)$material->teacher_id !== (int)$teacher->id) {
+                abort(403, 'Unauthorized action.');
+            }
         }
 
         DB::transaction(function () use ($material) {
@@ -829,8 +845,12 @@ class MaterialController extends Controller
 
     public function toggleLock(Request $request, LmsMaterial $material)
     {
-        if (!Auth::user()->teacher && Auth::user()->role !== 'admin') {
-            abort(403);
+        $user = Auth::user();
+        if ($user->role !== 'admin') {
+            $teacher = $user->teacher;
+            if (!$teacher || (int)$material->teacher_id !== (int)$teacher->id) {
+                abort(403, 'Unauthorized action.');
+            }
         }
 
         $validated = $request->validate([
