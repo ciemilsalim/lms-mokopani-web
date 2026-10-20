@@ -355,6 +355,11 @@ class MaterialController extends Controller
         ];
 
         if ($user->student) {
+            // S4: Enforce cross-class boundary authorization for students
+            if (!$user->student->school_class_id || !$material->schoolClasses->contains('id', $user->student->school_class_id)) {
+                abort(403, 'Materi ini tidak ditugaskan untuk kelas Anda.');
+            }
+
             if ($material->access_status === 'locked') {
                 abort(403, 'Maaf, materi ini sedang dikunci oleh guru.');
             }

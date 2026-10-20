@@ -383,6 +383,14 @@ class AssignmentController extends Controller
         $assignedClasses = $assignment->schoolClasses;
         $assignedClassIds = $assignedClasses->pluck('id')->toArray();
 
+        // S4: Enforce cross-class boundary authorization for students
+        if ($user->student) {
+            $studentClassId = $user->student->school_class_id;
+            if (!$studentClassId || !in_array($studentClassId, $assignedClassIds)) {
+                abort(403, 'Asesmen ini tidak ditugaskan untuk kelas Anda.');
+            }
+        }
+
         // Determine active class filter (e.g. from query param or default to the first class if multiple classes exist)
         $classParam = $request->query('class_id');
         $subjectParam = $request->query('subject_id');
@@ -566,7 +574,103 @@ class AssignmentController extends Controller
                 unset($q);
             }
 
+            // S1: Sanitize quiz/test answer keys if student hasn't submitted yet or remedial is open
+            // or if summative test due date hasn't passed
+            $shouldHideAnswers = !$mySubmission 
+                || (bool) $mySubmission->is_remedial_open 
+                || ($assignment->assessment_type === 'summative' && $assignment->due_date && now()->lt($assignment->due_date));
+
+            if ($shouldHideAnswers) {
+                foreach ($questions as &$q) {
+                    unset($q['answer'], $q['correct_answer'], $q['answer_guide'], $q['rubric']);
+                    if (!empty($q['options']) && is_array($q['options'])) {
+                        foreach ($q['options'] as &$opt) {
+                            unset($opt['is_correct']);
+                        }
+                        unset($opt);
+                    }
+                }
+                unset($q);
+            }
+
             $instrumentConfig['questions'] = $questions;
+        }
+
+        // S2: Filter submissions so students only see their own submission (via 'my_submission'), protecting classmate data
+        $submissionsData = [];
+        if (!$user->student) {
+            $submissionsData = $assignment->submissions->map(function ($s) use ($assignment, $getIsPassed) {
+                $score = $s->score;
+                if ($score === null && in_array($assignment->instrument_type, ['written_test', 'formative_quiz', 'quiz_survey']) && !empty($s->content)) {
+                    $config = is_array($assignment->instrument_config) ? $assignment->instrument_config : json_decode($assignment->instrument_config ?? '[]', true);
+                    $questions = $config['questions'] ?? [];
+                    $submittedData = json_decode($s->content, true) ?: [];
+                    $answers = $submittedData['answers'] ?? [];
+
+                    if (isset($submittedData['auto_score']) && is_numeric($submittedData['auto_score'])) {
+                        $score = (int) $submittedData['auto_score'];
+                    } else if (!empty($questions) && !empty($answers)) {
+                        $calculatedScore = 0;
+                        $maxScore = 0;
+                        foreach ($questions as $q) {
+                            $points = (int) ($q['points'] ?? 20);
+                            $maxScore += $points;
+                            $studentAnswer = $answers[$q['id'] ?? ''] ?? null;
+
+                            if (($q['type'] ?? '') === 'multiple_choice') {
+                                $correctAnswerId = $q['answer'] ?? null;
+                                if (!$correctAnswerId) {
+                                    $correctOption = collect($q['options'] ?? [])->firstWhere('is_correct', true);
+                                    $correctAnswerId = $correctOption['id'] ?? null;
+                                }
+                                if ($correctAnswerId !== null && $studentAnswer !== null) {
+                                    $normStudent = strtolower(trim((string)$studentAnswer));
+                                    $normCorrect = strtolower(trim((string)$correctAnswerId));
+                                    if (
+                                        $normStudent === $normCorrect ||
+                                        (strlen($normStudent) === 1 && str_starts_with($normCorrect, $normStudent)) ||
+                                        (strlen($normCorrect) === 1 && str_starts_with($normStudent, $normCorrect))
+                                    ) {
+                                        $calculatedScore += $points;
+                                    }
+                                }
+                            } else if (in_array($q['type'] ?? '', ['short_answer', 'essay'])) {
+                                $guide = $q['answer_guide'] ?? $q['rubric'] ?? null;
+                                $correct = $q['answer'] ?? $q['correct_answer'] ?? null;
+                                $calculatedScore += self::evaluateTextAnswer($studentAnswer, $guide, $correct, $points);
+                            }
+                        }
+                        if ($maxScore > 0) {
+                            $score = (int) round(($calculatedScore / $maxScore) * ($assignment->max_points ?: 100));
+                        } else {
+                            $score = (int) $calculatedScore;
+                        }
+                    }
+
+                    if ($score !== null) {
+                        $s->update(['score' => $score]);
+                        $s->score = $score;
+                    }
+                }
+
+                return [
+                    'id'               => $s->id,
+                    'student_id'       => $s->student_id,
+                    'student_name'     => $s->student?->name ?? 'Unknown',
+                    'student_photo_url'=> $s->student?->photo_url,
+                    'content'          => $s->content,
+                    'file_path'        => $s->file_path,
+                    'score'            => $score,
+                    'kktp_details'     => $s->kktp_details,
+                    'qualitative_score'=> $s->qualitative_score,
+                    'attempts'         => $s->attempts,
+                    'is_remedial_open' => (bool) $s->is_remedial_open,
+                    'remedial_history' => $s->remedial_history,
+                    'is_passed'        => $getIsPassed($s),
+                    'feedback'         => $s->feedback,
+                    'submitted_at'     => $s->created_at->format('d M Y, H:i'),
+                ];
+            });
         }
 
         return Inertia::render('assignments/show', [
@@ -584,80 +688,9 @@ class AssignmentController extends Controller
                 'instrument_config' => $instrumentConfig,
                 'scoring_tool'      => $assignment->scoring_tool,
                 'scoring_tool_config' => $assignment->scoring_tool_config,
-                'submissions'       => $assignment->submissions->map(function ($s) use ($assignment, $getIsPassed) {
-                    $score = $s->score;
-                    if ($score === null && in_array($assignment->instrument_type, ['written_test', 'formative_quiz', 'quiz_survey']) && !empty($s->content)) {
-                        $config = is_array($assignment->instrument_config) ? $assignment->instrument_config : json_decode($assignment->instrument_config ?? '[]', true);
-                        $questions = $config['questions'] ?? [];
-                        $submittedData = json_decode($s->content, true) ?: [];
-                        $answers = $submittedData['answers'] ?? [];
-
-                        if (isset($submittedData['auto_score']) && is_numeric($submittedData['auto_score'])) {
-                            $score = (int) $submittedData['auto_score'];
-                        } else if (!empty($questions) && !empty($answers)) {
-                            $calculatedScore = 0;
-                            $maxScore = 0;
-                            foreach ($questions as $q) {
-                                $points = (int) ($q['points'] ?? 20);
-                                $maxScore += $points;
-                                $studentAnswer = $answers[$q['id'] ?? ''] ?? null;
-
-                                if (($q['type'] ?? '') === 'multiple_choice') {
-                                    $correctAnswerId = $q['answer'] ?? null;
-                                    if (!$correctAnswerId) {
-                                        $correctOption = collect($q['options'] ?? [])->firstWhere('is_correct', true);
-                                        $correctAnswerId = $correctOption['id'] ?? null;
-                                    }
-                                    if ($correctAnswerId !== null && $studentAnswer !== null) {
-                                        $normStudent = strtolower(trim((string)$studentAnswer));
-                                        $normCorrect = strtolower(trim((string)$correctAnswerId));
-                                        if (
-                                            $normStudent === $normCorrect ||
-                                            (strlen($normStudent) === 1 && str_starts_with($normCorrect, $normStudent)) ||
-                                            (strlen($normCorrect) === 1 && str_starts_with($normStudent, $normCorrect))
-                                        ) {
-                                            $calculatedScore += $points;
-                                        }
-                                    }
-                                } else if (in_array($q['type'] ?? '', ['short_answer', 'essay'])) {
-                                    $guide = $q['answer_guide'] ?? $q['rubric'] ?? null;
-                                    $correct = $q['answer'] ?? $q['correct_answer'] ?? null;
-                                    $calculatedScore += self::evaluateTextAnswer($studentAnswer, $guide, $correct, $points);
-                                }
-                            }
-                            if ($maxScore > 0) {
-                                $score = (int) round(($calculatedScore / $maxScore) * ($assignment->max_points ?: 100));
-                            } else {
-                                $score = (int) $calculatedScore;
-                            }
-                        }
-
-                        if ($score !== null) {
-                            $s->update(['score' => $score]);
-                            $s->score = $score;
-                        }
-                    }
-
-                    return [
-                        'id'               => $s->id,
-                        'student_id'       => $s->student_id,
-                        'student_name'     => $s->student?->name ?? 'Unknown',
-                        'student_photo_url'=> $s->student?->photo_url,
-                        'content'          => $s->content,
-                        'file_path'        => $s->file_path,
-                        'score'            => $score,
-                        'kktp_details'     => $s->kktp_details,
-                        'qualitative_score'=> $s->qualitative_score,
-                        'attempts'         => $s->attempts,
-                        'is_remedial_open' => (bool) $s->is_remedial_open,
-                        'remedial_history' => $s->remedial_history,
-                        'is_passed'        => $getIsPassed($s),
-                        'feedback'         => $s->feedback,
-                        'submitted_at'     => $s->created_at->format('d M Y, H:i'),
-                    ];
-                }),
+                'submissions'       => $submissionsData,
             ],
-            'students'      => $students,
+            'students'      => $user->student ? [] : $students,
             'comments'      => $comments,
             'my_submission' => $mySubmission ? [
                 'id'                => $mySubmission->id,
@@ -692,6 +725,15 @@ class AssignmentController extends Controller
     public function submit(Request $request, LmsAssignment $assignment, AdaptiveLearningService $adaptiveService)
     {
         $student = Auth::user()->student;
+        if (!$student) {
+            abort(403, 'Hanya siswa yang dapat mengumpulkan tugas.');
+        }
+
+        // S4: Enforce cross-class boundary authorization for submissions
+        $assignedClassIds = $assignment->schoolClasses()->pluck('school_classes.id')->toArray();
+        if (!$student->school_class_id || !in_array($student->school_class_id, $assignedClassIds)) {
+            abort(403, 'Asesmen ini tidak ditugaskan untuk kelas Anda.');
+        }
 
         // Validasi batas akhir pengumpulan
         $isLate = false;
@@ -702,7 +744,6 @@ class AssignmentController extends Controller
         $validated = $request->validate([
             'content'               => 'nullable|string',
             'file'                  => 'nullable|file|mimes:pdf,doc,docx,png,jpg,jpeg|max:10240',
-            'score'                 => 'nullable|integer',
             'is_offline_submission' => 'nullable|boolean',
         ]);
 
@@ -727,7 +768,8 @@ class AssignmentController extends Controller
             return back()->withErrors(['content' => 'Anda tidak dapat memperbarui jawaban asesmen sumatif yang sudah dikirim kecuali remedial dibuka oleh guru.']);
         }
 
-        $score = $request->score;
+        // S3: Prevent arbitrary score injection. Students cannot supply their own score.
+        $score = null;
 
         // Auto-grade quizzes and written tests across all assessment types (initial, formative, summative)
         if (in_array($assignment->instrument_type, ['written_test', 'formative_quiz', 'quiz_survey'])) {
@@ -775,7 +817,7 @@ class AssignmentController extends Controller
 
             if (count($questions) > 0 && $maxScore > 0) {
                 $score = (int) round(($calculatedScore / $maxScore) * ($assignment->max_points ?: 100));
-            } else if ($score === null) {
+            } else {
                 $score = (int) $calculatedScore;
             }
         }

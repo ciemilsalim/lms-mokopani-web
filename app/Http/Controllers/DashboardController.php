@@ -417,13 +417,32 @@ class DashboardController extends Controller
                 $q->where('school_class_id', $student->school_class_id);
             })->get();
 
-            return $subjects->map(function ($subject) use ($student) {
-                $assignmentIds = LmsAssignment::where('subject_id', $subject->id)->whereHas('schoolClasses', function ($q) use ($student) { $q->where('school_classes.id', $student->school_class_id); })
-                    ->pluck('id');
-                $total = $assignmentIds->count();
-                $completed = LmsSubmission::where('student_id', $student->id)
-                    ->whereIn('assignment_id', $assignmentIds)
-                    ->whereNotNull('score')->count();
+            if ($subjects->isEmpty()) {
+                return [];
+            }
+
+            // S5: Batch pre-fetch all assignments for student's class to prevent N+1 queries
+            $assignments = LmsAssignment::whereIn('subject_id', $subjects->pluck('id'))
+                ->whereHas('schoolClasses', function ($q) use ($student) {
+                    $q->where('school_classes.id', $student->school_class_id);
+                })
+                ->select('id', 'subject_id')
+                ->get();
+
+            $assignmentsBySubject = $assignments->groupBy('subject_id');
+            $allAssignmentIds = $assignments->pluck('id');
+
+            // Pre-fetch completed submissions in 1 single query
+            $completedAssignmentIds = LmsSubmission::where('student_id', $student->id)
+                ->whereIn('assignment_id', $allAssignmentIds)
+                ->whereNotNull('score')
+                ->pluck('assignment_id')
+                ->flip();
+
+            return $subjects->map(function ($subject) use ($student, $assignmentsBySubject, $completedAssignmentIds) {
+                $subjectAssignmentIds = $assignmentsBySubject->get($subject->id, collect())->pluck('id');
+                $total = $subjectAssignmentIds->count();
+                $completed = $subjectAssignmentIds->filter(fn($id) => isset($completedAssignmentIds[$id]))->count();
 
                 return [
                     'student'    => $student->name,
@@ -694,12 +713,15 @@ class DashboardController extends Controller
 
     private function gradeTrend($studentId): array
     {
+        // S5: Fetch 10 most recent submissions and sort chronologically for trend analysis
         $submissions = LmsSubmission::where('student_id', $studentId)
             ->whereNotNull('score')
             ->with('assignment')
-            ->orderBy('submitted_at')
+            ->orderByDesc('submitted_at')
             ->take(10)
-            ->get();
+            ->get()
+            ->reverse()
+            ->values();
             
         return $submissions->map(fn($s, $i) => [
             'name' => 'Tugas ' . ($i + 1),
