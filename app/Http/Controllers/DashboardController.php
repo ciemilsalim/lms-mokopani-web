@@ -175,18 +175,27 @@ class DashboardController extends Controller
 
         $mapelList = $teacher->subjects ? $teacher->subjects->pluck('name')->join(', ') : '';
         $subjects = $teacher->subjects ? $teacher->subjects->values()->map(fn($s) => ['id' => $s->id, 'name' => $s->name]) : collect();
+
+        $studentCounts = Student::whereIn('school_class_id', $teachingClassIds)
+            ->selectRaw('school_class_id, count(*) as count')
+            ->groupBy('school_class_id')
+            ->pluck('count', 'school_class_id');
+
+        $teachingsByClass = TeachingAssignment::where('teacher_id', $teacher->id)
+            ->whereIn('school_class_id', $teachingClassIds)
+            ->with('subject')
+            ->get()
+            ->groupBy('school_class_id');
+
         $classes = \App\Models\SchoolClass::whereIn('id', $teachingClassIds)
             ->when($activeYear, fn($q) => $q->where(fn($sub) => $sub->where('academic_year_id', $activeYear->id)->orWhereNull('academic_year_id')))
             ->orderBy('name')
             ->get()
             ->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)
             ->values()
-            ->map(function ($c) use ($teacher) {
-                $studentCount = Student::where('school_class_id', $c->id)->count();
-                $subjectNames = TeachingAssignment::where('teacher_id', $teacher->id)
-                    ->where('school_class_id', $c->id)
-                    ->with('subject')
-                    ->get()
+            ->map(function ($c) use ($studentCounts, $teachingsByClass) {
+                $studentCount = (int) ($studentCounts->get($c->id) ?? 0);
+                $subjectNames = $teachingsByClass->get($c->id, collect())
                     ->map(fn($ta) => $ta->subject?->name)
                     ->filter()
                     ->values()
@@ -513,10 +522,12 @@ class DashboardController extends Controller
         return LmsAssignment::where('teacher_id', $teacherId)
             ->when($activeYearId, fn($q) => $q->where('academic_year_id', $activeYearId))
             ->when($activeSemesterId, fn($q) => $q->where('semester_id', $activeSemesterId))
+            ->whereHas('submissions', function ($query) {
+                $query->whereNull('score');
+            })
             ->withCount(['submissions as pending_count' => function ($query) {
                 $query->whereNull('score');
             }])
-            ->having('pending_count', '>', 0)
             ->with('subject', 'schoolClasses')
             ->orderByDesc('created_at')
             ->take(5)
@@ -547,31 +558,66 @@ class DashboardController extends Controller
             ->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)
             ->values();
 
-        $performanceList = $classes->map(function ($c, $i) use ($teacherId, $activeYear, $activeSemester) {
-            $studentIds = Student::where('school_class_id', $c->id)->pluck('id');
+        // Pre-fetch all students in these classes grouped by school_class_id
+        $studentsByClass = Student::whereIn('school_class_id', $classIds)
+            ->get(['id', 'school_class_id'])
+            ->groupBy('school_class_id');
+
+        // Pre-fetch all teaching assignments for this teacher across these classes
+        $teachingSubjectsByClass = TeachingAssignment::where('teacher_id', $teacherId)
+            ->whereIn('school_class_id', $classIds)
+            ->get(['school_class_id', 'subject_id'])
+            ->groupBy('school_class_id');
+
+        $allTeacherSubjectIds = $teachingSubjectsByClass->flatten()->pluck('subject_id')->unique();
+
+        // Pre-fetch all assignments for this teacher and active period across all classes
+        $allAssignments = LmsAssignment::where(function ($q) use ($teacherId, $allTeacherSubjectIds) {
+                $q->where('teacher_id', $teacherId);
+                if ($allTeacherSubjectIds->isNotEmpty()) {
+                    $q->orWhereIn('subject_id', $allTeacherSubjectIds);
+                }
+            })
+            ->whereHas('schoolClasses', fn($q) => $q->whereIn('school_classes.id', $classIds))
+            ->when($activeYear, fn($q) => $q->where(fn($sub) => $sub->where('academic_year_id', $activeYear->id)->orWhereNull('academic_year_id')))
+            ->when($activeSemester, fn($q) => $q->where(fn($sub) => $sub->where('semester_id', $activeSemester->id)->orWhereNull('semester_id')))
+            ->with(['schoolClasses:id'])
+            ->get(['id', 'teacher_id', 'subject_id', 'max_points']);
+
+        $allAssignmentIds = $allAssignments->pluck('id');
+        $allStudentIds = $studentsByClass->flatten()->pluck('id');
+
+        // Pre-fetch all submissions for all students in all these classes
+        $allSubmissions = ($allAssignmentIds->isNotEmpty() && $allStudentIds->isNotEmpty())
+            ? LmsSubmission::whereIn('student_id', $allStudentIds)
+                ->whereIn('assignment_id', $allAssignmentIds)
+                ->whereNotNull('score')
+                ->get(['student_id', 'assignment_id', 'score'])
+            : collect();
+
+        $submissionScores = [];
+        foreach ($allSubmissions as $sub) {
+            $key = $sub->student_id . '_' . $sub->assignment_id;
+            $currentScore = (float) $sub->score;
+            if (!isset($submissionScores[$key]) || $currentScore > $submissionScores[$key]) {
+                $submissionScores[$key] = $currentScore;
+            }
+        }
+
+        $performanceList = $classes->map(function ($c, $i) use ($teacherId, $studentsByClass, $teachingSubjectsByClass, $allAssignments, $submissionScores) {
+            $studentIds = $studentsByClass->get($c->id, collect())->pluck('id');
             $studentCount = $studentIds->count();
 
-            // Ambil mata pelajaran yang diampu oleh guru ini pada kelas ini
-            $teacherSubjectIds = TeachingAssignment::where('teacher_id', $teacherId)
-                ->where('school_class_id', $c->id)
-                ->pluck('subject_id')
-                ->unique();
+            $teacherSubjectIds = $teachingSubjectsByClass->get($c->id, collect())->pluck('subject_id')->unique();
 
-            // Deteksi semua penugasan / seluruh jenis asesmen (formatif, sumatif, dll) untuk kelas ini
-            $assignments = LmsAssignment::where(function ($q) use ($teacherId, $teacherSubjectIds) {
-                    $q->where('teacher_id', $teacherId);
-                    if ($teacherSubjectIds->isNotEmpty()) {
-                        $q->orWhereIn('subject_id', $teacherSubjectIds);
-                    }
-                })
-                ->whereHas('schoolClasses', fn($q) => $q->where('school_classes.id', $c->id))
-                ->when($activeYear, fn($q) => $q->where(fn($sub) => $sub->where('academic_year_id', $activeYear->id)->orWhereNull('academic_year_id')))
-                ->when($activeSemester, fn($q) => $q->where(fn($sub) => $sub->where('semester_id', $activeSemester->id)->orWhereNull('semester_id')))
-                ->get(['id', 'max_points']);
+            $assignments = $allAssignments->filter(function ($a) use ($c, $teacherId, $teacherSubjectIds) {
+                $matchesClass = $a->schoolClasses->contains('id', $c->id);
+                if (!$matchesClass) return false;
+                return $a->teacher_id == $teacherId || ($teacherSubjectIds->isNotEmpty() && $teacherSubjectIds->contains($a->subject_id));
+            });
 
             $assignmentCount = $assignments->count();
 
-            // Jika belum ada siswa atau belum ada asesmen sama sekali
             if ($studentCount === 0 || $assignmentCount === 0) {
                 return [
                     'id'               => $c->id,
@@ -584,25 +630,6 @@ class DashboardController extends Controller
                 ];
             }
 
-            // Ambil semua perolehan nilai siswa pada seluruh asesmen di kelas ini
-            $assignmentIds = $assignments->pluck('id');
-            $submissions = LmsSubmission::whereIn('student_id', $studentIds)
-                ->whereIn('assignment_id', $assignmentIds)
-                ->whereNotNull('score')
-                ->get(['student_id', 'assignment_id', 'score']);
-
-            // Simpan nilai perolehan per siswa per asesmen (ambil skor terbaik jika ada lebih dari 1)
-            $submissionScores = [];
-            foreach ($submissions as $sub) {
-                $key = $sub->student_id . '_' . $sub->assignment_id;
-                $currentScore = (float) $sub->score;
-                if (!isset($submissionScores[$key]) || $currentScore > $submissionScores[$key]) {
-                    $submissionScores[$key] = $currentScore;
-                }
-            }
-
-            // Akumulasi seluruh siswa pada semua asesmen:
-            // Siswa yang belum mengerjakan diberikan nilai 0
             $totalAccumulatedScore = 0;
             $totalSlots = $studentCount * $assignmentCount;
 
@@ -612,12 +639,8 @@ class DashboardController extends Controller
                     if (isset($submissionScores[$key])) {
                         $rawScore = $submissionScores[$key];
                         $maxPoints = (float) ($a->max_points ?: 100);
-                        // Normalisasi ke skala 100
                         $scoreOn100 = $maxPoints > 0 ? min(100, max(0, ($rawScore / $maxPoints) * 100)) : $rawScore;
                         $totalAccumulatedScore += $scoreOn100;
-                    } else {
-                        // Belum mengerjakan asesmen = nilai nol (0)
-                        $totalAccumulatedScore += 0;
                     }
                 }
             }

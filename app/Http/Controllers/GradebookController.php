@@ -296,8 +296,9 @@ class GradebookController extends Controller
         // 5. Ambil semua siswa di kelas ini
         $students = Student::where('school_class_id', $classId)->orderBy('name', 'asc')->get(['id', 'name', 'nis']);
 
-        // 6. Ambil semua nilai
+        // 6. Ambil semua nilai dan index untuk pencarian O(1)
         $submissions = LmsSubmission::whereIn('assignment_id', $allAssignments->pluck('id'))->get();
+        $submissionsByKey = $submissions->keyBy(fn($sub) => $sub->student_id . '_' . $sub->assignment_id);
 
         // 7. Load existing final scores
         $finalScores = GradebookFinalScore::where('subject_id', $subjectId)
@@ -308,10 +309,10 @@ class GradebookController extends Controller
             ->keyBy('student_id');
 
         // 8. Format data nilai per siswa
-        $gradeData = $students->map(function ($student) use ($summativeColumns, $summativeAssignments, $initialAssignments, $formativeAssignments, $submissions, $finalScores, $subjectId) {
-            $summativeScores = $summativeColumns->map(function ($col) use ($student, $submissions) {
+        $gradeData = $students->map(function ($student) use ($summativeColumns, $summativeAssignments, $initialAssignments, $formativeAssignments, $submissionsByKey, $finalScores, $subjectId) {
+            $summativeScores = $summativeColumns->map(function ($col) use ($student, $submissionsByKey) {
                 if ($col['type'] === 'assignment' && $col['assignment_id']) {
-                    $sub = $submissions->where('student_id', $student->id)->where('assignment_id', $col['assignment_id'])->first();
+                    $sub = $submissionsByKey->get($student->id . '_' . $col['assignment_id']);
                     $hasSubmittedWithScore = ($sub && $sub->score !== null && $sub->score !== '');
                     // Aturan: Jika sumatif sudah diterbitkan tapi siswa belum mengerjakan, nilainya 0 agar bisa diakumulasi
                     $score = $hasSubmittedWithScore ? (float) $sub->score : 0;
@@ -338,8 +339,8 @@ class GradebookController extends Controller
             });
 
             // Initial assessment scores
-            $initialScores = $initialAssignments->values()->map(function ($a) use ($student, $submissions) {
-                $sub = $submissions->where('student_id', $student->id)->where('assignment_id', $a->id)->first();
+            $initialScores = $initialAssignments->values()->map(function ($a) use ($student, $submissionsByKey) {
+                $sub = $submissionsByKey->get($student->id . '_' . $a->id);
                 return [
                     'id'    => $a->id,
                     'title' => $a->title,
@@ -349,8 +350,8 @@ class GradebookController extends Controller
             });
 
             // Formative assessment scores (Nilai formatif tidak perlu dijumlahkan)
-            $formativeScores = $formativeAssignments->values()->map(function ($a) use ($student, $submissions) {
-                $sub = $submissions->where('student_id', $student->id)->where('assignment_id', $a->id)->first();
+            $formativeScores = $formativeAssignments->values()->map(function ($a) use ($student, $submissionsByKey) {
+                $sub = $submissionsByKey->get($student->id . '_' . $a->id);
                 return [
                     'id'    => $a->id,
                     'title' => $a->title,
