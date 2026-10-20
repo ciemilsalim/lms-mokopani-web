@@ -259,4 +259,91 @@ class ParentPortalTest extends TestCase
         // Must succeed with 200, not 403 Forbidden!
         $response->assertStatus(200);
     }
+
+    public function test_parent_with_zero_children_renders_empty_state_without_crashing()
+    {
+        // Edge case: Parent with no linked children
+        $user = User::factory()->create(['role' => 'parent']);
+        ParentModel::create([
+            'user_id' => $user->id,
+            'name'    => 'Wali Murid Baru',
+        ]);
+
+        $response = $this->actingAs($user)->get('/parent/dashboard');
+        $response->assertStatus(200);
+        $response->assertInertia(fn (Assert $page) => $page
+            ->component('parent/dashboard')
+            ->has('children', 0)
+        );
+    }
+
+    public function test_parent_with_child_having_null_class_renders_without_crashing()
+    {
+        // Edge case: Child without school_class_id
+        $user = User::factory()->create(['role' => 'parent']);
+        $parent = ParentModel::create([
+            'user_id' => $user->id,
+            'name'    => 'Wali Murid',
+        ]);
+        $student = Student::create([
+            'name'            => 'Anak Tanpa Kelas',
+            'nis'             => 'NIS-NULL',
+            'unique_id'       => 'STU-NULL',
+            'school_class_id' => null,
+        ]);
+        $parent->students()->attach($student->id);
+
+        $response = $this->actingAs($user)->get('/parent/dashboard');
+        $response->assertStatus(200);
+        $response->assertInertia(fn (Assert $page) => $page
+            ->component('parent/dashboard')
+            ->has('children', 1)
+            ->where('children.0.class_name', '-')
+            ->where('children.0.total_assignments', 0)
+        );
+
+        $detailResponse = $this->actingAs($user)->get("/parent/child/{$student->id}");
+        $detailResponse->assertStatus(200);
+        $detailResponse->assertInertia(fn (Assert $page) => $page
+            ->component('parent/child')
+            ->where('student.class_name', '-')
+            ->has('report', 0)
+        );
+    }
+
+    public function test_parent_with_zero_children_sees_only_school_wide_announcements()
+    {
+        // Edge case: Announcements for parent with no linked children
+        $user = User::factory()->create(['role' => 'parent']);
+        ParentModel::create([
+            'user_id' => $user->id,
+            'name'    => 'Wali Murid Tanpa Anak',
+        ]);
+
+        $teacherUser = User::factory()->create(['role' => 'teacher']);
+        $teacher = Teacher::create(['user_id' => $teacherUser->id, 'name' => 'Guru']);
+        $class = SchoolClass::create(['name' => 'Kelas X']);
+
+        LmsAnnouncement::create([
+            'teacher_id'      => $teacher->id,
+            'school_class_id' => null,
+            'title'           => 'Pengumuman Umum Sekolah',
+            'content'         => 'Libur semester.',
+        ]);
+
+        LmsAnnouncement::create([
+            'teacher_id'      => $teacher->id,
+            'school_class_id' => $class->id,
+            'title'           => 'Pengumuman Kelas X',
+            'content'         => 'Khusus kelas X.',
+        ]);
+
+        $response = $this->actingAs($user)->get('/announcements');
+        $response->assertStatus(200);
+        $response->assertInertia(fn (Assert $page) => $page
+            ->component('announcements/index')
+            ->has('announcements', 1)
+            ->where('announcements.0.title', 'Pengumuman Umum Sekolah')
+        );
+    }
 }
