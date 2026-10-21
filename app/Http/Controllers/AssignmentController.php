@@ -944,7 +944,16 @@ class AssignmentController extends Controller
         $assignedClasses = $assignment->schoolClasses;
         $assignedClassIds = $assignedClasses->pluck('id')->toArray();
 
+        $targetStudentId = $request->query('student_id');
         $classParam = $request->query('class_id');
+
+        if ($targetStudentId) {
+            $targetStudent = \App\Models\Student::find($targetStudentId);
+            if ($targetStudent && in_array($targetStudent->school_class_id, $assignedClassIds) && !$classParam) {
+                $classParam = $targetStudent->school_class_id;
+            }
+        }
+
         if ($classParam && in_array((int)$classParam, $assignedClassIds)) {
             $selectedClassId = (int)$classParam;
         } elseif ($classParam === 'all') {
@@ -974,6 +983,20 @@ class AssignmentController extends Controller
                 'school_class'    => $s->schoolClass?->name,
             ]);
 
+        // If targetStudentId was not provided, auto-detect the first student with an ungraded submission
+        if (!$targetStudentId && $students->isNotEmpty()) {
+            $studentIdList = $students->pluck('id')->toArray();
+            $firstUngradedSubmission = $assignment->submissions
+                ->filter(function ($s) use ($studentIdList) {
+                    return $s->score === null && in_array($s->student_id, $studentIdList);
+                })
+                ->first();
+
+            if ($firstUngradedSubmission) {
+                $targetStudentId = $firstUngradedSubmission->student_id;
+            }
+        }
+
         return Inertia::render('assignments/grade-split', [
             'assignment' => [
                 'id'                => $assignment->id,
@@ -997,9 +1020,10 @@ class AssignmentController extends Controller
                     'submitted_at'     => $s->created_at->format('d M Y, H:i'),
                 ]),
             ],
-            'students'          => $students,
-            'selected_class_id' => $selectedClassId,
-            'assigned_classes'  => $assignedClasses->map(fn($c) => [
+            'students'           => $students,
+            'selected_class_id'  => $selectedClassId,
+            'initial_student_id' => $targetStudentId ? (int) $targetStudentId : null,
+            'assigned_classes'   => $assignedClasses->map(fn($c) => [
                 'id'             => $c->id,
                 'name'           => $c->name,
                 'students_count' => \App\Models\Student::where('school_class_id', $c->id)->count(),

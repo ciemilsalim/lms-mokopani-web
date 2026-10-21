@@ -24,6 +24,7 @@ interface GradeSplitProps {
     students: Student[];
     selected_class_id?: number | 'all';
     assigned_classes?: { id: number; name: string; students_count?: number }[];
+    initial_student_id?: number | null;
 }
 
 const QUICK_FEEDBACK_CHIPS = [
@@ -48,11 +49,87 @@ export default function GradeSplitPage({
     students = [],
     selected_class_id,
     assigned_classes = [],
+    initial_student_id,
 }: GradeSplitProps) {
-    const [currentStudentIndex, setCurrentStudentIndex] = useState(0);
-    const currentStudent = students[currentStudentIndex];
+    // Submissions map for switcher & auto-detection
+    const submissionsMap = useMemo(() => {
+        const map: Record<number, { score: number | null; submitted_at?: string; is_graded?: boolean }> = {};
+        (assignment.submissions || []).forEach((s: any) => {
+            map[s.student_id] = { 
+                score: s.score, 
+                submitted_at: s.submitted_at,
+                is_graded: s.score !== null && s.score !== undefined
+            };
+        });
+        return map;
+    }, [assignment.submissions]);
 
+    // Initial student calculation: explicit target OR first student with ungraded submission
+    const initialIndex = useMemo(() => {
+        if (initial_student_id) {
+            const idx = students.findIndex(s => s.id === Number(initial_student_id));
+            if (idx !== -1) return idx;
+        }
+        // Auto-select first student who submitted but has not been graded
+        const ungradedIdx = students.findIndex(s => {
+            const sub = submissionsMap[s.id];
+            return sub && !sub.is_graded;
+        });
+        return ungradedIdx !== -1 ? ungradedIdx : 0;
+    }, [initial_student_id, students, submissionsMap]);
+
+    const [currentStudentIndex, setCurrentStudentIndex] = useState(initialIndex);
+    const [filterUngradedOnly, setFilterUngradedOnly] = useState(false);
+
+    // Sync if initial_student_id changes
+    useEffect(() => {
+        if (initial_student_id) {
+            const idx = students.findIndex(s => s.id === Number(initial_student_id));
+            if (idx !== -1) {
+                setCurrentStudentIndex(idx);
+            }
+        }
+    }, [initial_student_id, students]);
+
+    const currentStudent = students[currentStudentIndex];
     const submission = assignment.submissions?.find((s: any) => s.student_id === currentStudent?.id);
+
+    // Count of students who have submitted but are not graded
+    const ungradedStudentsCount = useMemo(() => {
+        return students.filter(s => {
+            const sub = submissionsMap[s.id];
+            return sub && !sub.is_graded;
+        }).length;
+    }, [students, submissionsMap]);
+
+    // Navigation helpers
+    const handleNextStudent = (autoSave = false) => {
+        if (filterUngradedOnly) {
+            const nextIdx = students.findIndex((s, idx) => idx > currentStudentIndex && submissionsMap[s.id] && !submissionsMap[s.id].is_graded);
+            if (nextIdx !== -1) {
+                setCurrentStudentIndex(nextIdx);
+                return;
+            }
+        }
+        if (currentStudentIndex < students.length - 1) {
+            setCurrentStudentIndex(prev => prev + 1);
+        }
+    };
+
+    const handlePrevStudent = () => {
+        if (filterUngradedOnly) {
+            for (let i = currentStudentIndex - 1; i >= 0; i--) {
+                const s = students[i];
+                if (submissionsMap[s.id] && !submissionsMap[s.id].is_graded) {
+                    setCurrentStudentIndex(i);
+                    return;
+                }
+            }
+        }
+        if (currentStudentIndex > 0) {
+            setCurrentStudentIndex(prev => prev - 1);
+        }
+    };
 
     // Mobile View Context: 'work' (Karya Siswa) | 'grade' (Form Penilaian)
     const [mobileTab, setMobileTab] = useState<'work' | 'grade'>('work');
@@ -79,18 +156,7 @@ export default function GradeSplitPage({
         setTimeout(() => setToastMessage(null), 3500);
     };
 
-    // Submissions map for switcher
-    const submissionsMap = useMemo(() => {
-        const map: Record<number, { score: number | null; submitted_at?: string; is_graded?: boolean }> = {};
-        (assignment.submissions || []).forEach((s: any) => {
-            map[s.student_id] = { 
-                score: s.score, 
-                submitted_at: s.submitted_at,
-                is_graded: s.score !== null && s.score !== undefined
-            };
-        });
-        return map;
-    }, [assignment.submissions]);
+
 
     // Active class name
     const selectedClassName = useMemo(() => {
@@ -133,14 +199,10 @@ export default function GradeSplitPage({
             
             if (e.altKey && e.key === 'ArrowRight') {
                 e.preventDefault();
-                if (currentStudentIndex < students.length - 1) {
-                    handleSave(true);
-                }
+                handleSave(true);
             } else if (e.altKey && e.key === 'ArrowLeft') {
                 e.preventDefault();
-                if (currentStudentIndex > 0) {
-                    setCurrentStudentIndex(prev => prev - 1);
-                }
+                handlePrevStudent();
             }
         };
 
@@ -172,8 +234,8 @@ export default function GradeSplitPage({
             setSaveStatus('saved');
             showNotification('Nilai berhasil disimpan!', 'success');
 
-            if (autoNext && currentStudentIndex < students.length - 1) {
-                setCurrentStudentIndex(prev => prev + 1);
+            if (autoNext) {
+                handleNextStudent(true);
             } else {
                 router.reload({ only: ['assignment'], preserveScroll: true });
             }
@@ -850,24 +912,42 @@ export default function GradeSplitPage({
 
                 {/* 2. Student Switcher (64px target, clean dropdown + counter) */}
                 <div className="w-full max-w-full bg-card rounded-2xl border border-border/80 p-3 shadow-xs space-y-2 overflow-hidden">
-                    {/* Top Row: Navigation bar + Counter + Select */}
+                    {/* Top Row: Navigation bar + Counter + Filter & Select */}
                     <div className="flex items-center justify-between gap-2 w-full">
                         <button
                             type="button"
                             disabled={currentStudentIndex === 0}
-                            onClick={() => setCurrentStudentIndex(prev => prev - 1)}
+                            onClick={handlePrevStudent}
                             className="inline-flex items-center justify-center h-10 px-3 rounded-xl border border-border bg-background text-xs font-bold text-foreground hover:bg-muted disabled:opacity-30 disabled:pointer-events-none cursor-pointer shrink-0"
+                            title="Siswa Sebelumnya"
                         >
                             <ArrowLeft className="h-4 w-4" />
                             <span className="hidden sm:inline ml-1">Sebelumnya</span>
                         </button>
 
-                        <div className="flex items-center gap-2 min-w-0 flex-1 justify-center max-w-[calc(100%-80px)] sm:max-w-none">
-                            <span className="text-xs font-bold text-primary font-mono px-2.5 py-1 rounded-lg bg-primary/10 border border-primary/20 shrink-0">
+                        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1 justify-center max-w-[calc(100%-80px)] sm:max-w-none">
+                            <span className="text-xs font-bold text-primary font-mono px-2 py-1 rounded-lg bg-primary/10 border border-primary/20 shrink-0">
                                 {String(currentStudentIndex + 1).padStart(2, '0')} / {String(students.length).padStart(2, '0')}
                             </span>
 
-                            <div className="relative min-w-0 flex-1 max-w-[200px] sm:max-w-[280px]">
+                            {/* Ungraded Quick Filter Toggle */}
+                            {ungradedStudentsCount > 0 && (
+                                <button
+                                    type="button"
+                                    onClick={() => setFilterUngradedOnly(prev => !prev)}
+                                    className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-bold border transition cursor-pointer shrink-0 ${
+                                        filterUngradedOnly
+                                            ? 'bg-rose-500 text-white border-rose-600 shadow-xs'
+                                            : 'bg-rose-500/10 hover:bg-rose-500/20 text-rose-700 dark:text-rose-300 border-rose-500/30'
+                                    }`}
+                                    title="Tampilkan hanya siswa yang belum dinilai"
+                                >
+                                    <span className={`h-1.5 w-1.5 rounded-full ${filterUngradedOnly ? 'bg-white' : 'bg-rose-500 animate-pulse'}`} />
+                                    <span>Belum Dinilai ({ungradedStudentsCount})</span>
+                                </button>
+                            )}
+
+                            <div className="relative min-w-0 flex-1 max-w-[180px] sm:max-w-[280px]">
                                 <select
                                     value={currentStudentIndex}
                                     onChange={(e) => setCurrentStudentIndex(Number(e.target.value))}
@@ -876,7 +956,17 @@ export default function GradeSplitPage({
                                     {students.map((s, idx) => {
                                         const sub = submissionsMap[s.id];
                                         const scored = sub && sub.score !== null && sub.score !== undefined;
-                                        const statusLabel = scored ? `✓ ${sub.score}` : '○';
+                                        const hasSubmitted = !!sub;
+                                        const statusLabel = scored
+                                            ? `✓ Dinilai: ${sub.score}`
+                                            : hasSubmitted
+                                                ? '⚠️ Perlu Dinilai'
+                                                : '○ Belum Kumpul';
+
+                                        if (filterUngradedOnly && scored) {
+                                            if (idx !== currentStudentIndex) return null;
+                                        }
+
                                         return (
                                             <option key={s.id} value={idx}>
                                                 {String(idx + 1).padStart(2, '0')}. {s.name} ({statusLabel})
@@ -893,8 +983,9 @@ export default function GradeSplitPage({
                         <button
                             type="button"
                             disabled={currentStudentIndex === students.length - 1}
-                            onClick={() => setCurrentStudentIndex(prev => prev + 1)}
+                            onClick={() => handleNextStudent(false)}
                             className="inline-flex items-center justify-center h-10 px-3 rounded-xl border border-border bg-background text-xs font-bold text-foreground hover:bg-muted disabled:opacity-30 disabled:pointer-events-none cursor-pointer shrink-0"
+                            title="Siswa Berikutnya"
                         >
                             <span className="hidden sm:inline mr-1">Berikutnya</span>
                             <ArrowRight className="h-4 w-4" />
@@ -991,7 +1082,7 @@ export default function GradeSplitPage({
                     <button
                         type="button"
                         disabled={currentStudentIndex === 0 || isSaving}
-                        onClick={() => setCurrentStudentIndex(prev => prev - 1)}
+                        onClick={handlePrevStudent}
                         className="inline-flex items-center justify-center h-12 w-12 sm:w-auto sm:px-4 rounded-2xl border border-border bg-background text-xs font-bold text-foreground hover:bg-muted transition cursor-pointer disabled:opacity-30 disabled:pointer-events-none shrink-0"
                         title="Siswa Sebelumnya"
                     >
@@ -1028,7 +1119,7 @@ export default function GradeSplitPage({
                     <button
                         type="button"
                         disabled={currentStudentIndex === students.length - 1 || isSaving}
-                        onClick={() => setCurrentStudentIndex(prev => prev + 1)}
+                        onClick={() => handleNextStudent(false)}
                         className="inline-flex items-center justify-center h-12 w-12 sm:w-auto sm:px-4 rounded-2xl border border-border bg-background text-xs font-bold text-foreground hover:bg-muted transition cursor-pointer disabled:opacity-30 disabled:pointer-events-none shrink-0"
                         title="Siswa Berikutnya"
                     >

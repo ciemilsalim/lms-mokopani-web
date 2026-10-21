@@ -562,17 +562,47 @@ class DashboardController extends Controller
             ->withCount(['submissions as pending_count' => function ($query) {
                 $query->whereNull('score');
             }])
-            ->with('subject', 'schoolClasses')
+            ->with([
+                'subject',
+                'schoolClasses',
+                'submissions' => function ($query) {
+                    $query->whereNull('score')->with('student.schoolClass')->latest();
+                }
+            ])
             ->orderByDesc('created_at')
             ->take(5)
             ->get()
-            ->map(fn($a) => [
-                'id'            => $a->id,
-                'title'         => $a->title,
-                'subject'       => $a->subject?->name ?? 'Mata Pelajaran',
-                'class'         => $a->schoolClasses->pluck('name')->join(', '),
-                'pending_count' => $a->pending_count,
-            ])
+            ->map(function ($a) {
+                $pendingStudents = $a->submissions
+                    ->filter(fn($s) => $s->student !== null)
+                    ->map(fn($s) => [
+                        'submission_id' => $s->id,
+                        'student_id'    => $s->student_id,
+                        'student_name'  => $s->student?->name ?? 'Siswa',
+                        'nis'           => $s->student?->nis,
+                        'class_id'      => $s->student?->school_class_id,
+                        'class_name'    => $s->student?->schoolClass?->name,
+                        'submitted_at'  => $s->created_at ? $s->created_at->diffForHumans() : null,
+                        'grade_url'     => route('assignments.grade-view', [
+                            'assignment' => $a->id,
+                            'student_id' => $s->student_id,
+                            'class_id'   => $s->student?->school_class_id,
+                        ]),
+                    ])
+                    ->values();
+
+                $firstStudent = $pendingStudents->first();
+
+                return [
+                    'id'                 => $a->id,
+                    'title'              => $a->title,
+                    'subject'            => $a->subject?->name ?? 'Mata Pelajaran',
+                    'class'              => $a->schoolClasses->pluck('name')->join(', '),
+                    'pending_count'      => $a->pending_count,
+                    'pending_students'   => $pendingStudents->toArray(),
+                    'first_ungraded_url' => $firstStudent ? $firstStudent['grade_url'] : route('assignments.grade-view', $a->id),
+                ];
+            })
             ->toArray();
     }
 

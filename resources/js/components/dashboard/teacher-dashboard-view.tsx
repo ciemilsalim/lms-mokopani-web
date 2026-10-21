@@ -38,7 +38,7 @@ export interface TeacherDashboardViewProps {
         total_materials: number;
         total_assignments: number;
         pending_submissions: number;
-        pending_grading_list?: { id: number; title: string; subject: string; class: string; pending_count: number }[];
+        pending_grading_list?: import('./pending-task-list').PendingTaskItem[];
         class_performance?: { id?: number; name: string; value: number; student_count?: number; color?: string }[];
         course_progress?: {
             student_id?: number;

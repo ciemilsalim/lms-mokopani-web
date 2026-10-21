@@ -30,7 +30,24 @@ interface DashboardStats {
     p5_total?: number;
     p5_scored?: number;
     p5_progress?: number;
-    pending_grading_list?: { id: number; title: string; subject: string; class: string; pending_count: number }[];
+    pending_grading_list?: {
+        id: number;
+        title: string;
+        subject: string;
+        class: string;
+        pending_count: number;
+        first_ungraded_url?: string;
+        pending_students?: {
+            submission_id: number;
+            student_id: number;
+            student_name: string;
+            nis?: string;
+            class_id?: number;
+            class_name?: string;
+            submitted_at?: string;
+            grade_url: string;
+        }[];
+    }[];
     class_performance?: { id?: number; name: string; value: number; student_count?: number; color?: string }[];
     upcoming_deadlines?: { id: number; title: string; subject: string; due_date: string; is_urgent: boolean }[];
     grade_trend?: { name: string; title: string; score: number }[];
@@ -959,15 +976,54 @@ function AdminDashboardView(props: DashboardProps & { auth: any; user_role: stri
                             <CardContent className="p-0">
                                 {(safeStats.pending_grading_list ?? []).length > 0 ? (
                                     <div className="divide-y divide-border/60">
-                                        {(safeStats.pending_grading_list ?? []).map((item, i) => (
-                                            <Link key={i} href="/assignments" className="flex items-center gap-3 p-4 transition hover:bg-muted/30 active:bg-muted/60">
-                                                <div className="flex-1 min-w-0">
-                                                    <p className="text-xs sm:text-sm font-bold text-foreground truncate">{item.title}</p>
-                                                    <p className="text-[11px] text-muted-foreground truncate">{item.class} &bull; {item.subject}</p>
+                                        {(safeStats.pending_grading_list ?? []).map((item, i) => {
+                                            const targetUrl = item.first_ungraded_url || `/assignments/${item.id}/grade-view`;
+                                            const studentList = item.pending_students || [];
+
+                                            return (
+                                                <div key={i} className="p-4 hover:bg-muted/30 transition space-y-2">
+                                                    <div className="flex items-start justify-between gap-3">
+                                                        <Link href={targetUrl} className="flex-1 min-w-0 group" title="Buka penilaian tugas">
+                                                            <p className="text-xs sm:text-sm font-bold text-foreground truncate group-hover:text-primary transition-colors">{item.title}</p>
+                                                            <p className="text-[11px] text-muted-foreground truncate mt-0.5">{item.class} &bull; {item.subject}</p>
+                                                        </Link>
+                                                        <Link href={targetUrl}>
+                                                            <Badge variant="destructive" className="shrink-0 text-[10px] font-bold rounded-lg cursor-pointer hover:opacity-90">
+                                                                {item.pending_count} Perlu Dinilai
+                                                            </Badge>
+                                                        </Link>
+                                                    </div>
+
+                                                    {studentList.length > 0 && (
+                                                        <div className="pt-1.5 border-t border-border/40 space-y-1">
+                                                            <p className="text-[10px] font-semibold text-muted-foreground">Siswa Belum Dinilai:</p>
+                                                            <div className="flex flex-wrap gap-1.5">
+                                                                {studentList.slice(0, 4).map((s) => (
+                                                                    <Link
+                                                                        key={s.student_id}
+                                                                        href={s.grade_url}
+                                                                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900/40 hover:bg-rose-100 transition"
+                                                                        title={`Nilai ${s.student_name} (${s.class_name || ''})`}
+                                                                    >
+                                                                        <span className="font-bold">{s.student_name}</span>
+                                                                        {s.class_name && <span className="text-[9px] opacity-75">({s.class_name})</span>}
+                                                                        <span className="text-[9px] text-rose-600 font-bold">&rarr;</span>
+                                                                    </Link>
+                                                                ))}
+                                                                {studentList.length > 4 && (
+                                                                    <Link
+                                                                        href={targetUrl}
+                                                                        className="text-[10px] font-bold text-muted-foreground hover:text-foreground self-center px-1"
+                                                                    >
+                                                                        +{studentList.length - 4} lainnya
+                                                                    </Link>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                 </div>
-                                                <Badge variant="destructive" className="shrink-0 text-[10px] font-bold rounded-lg">{item.pending_count} Perlu Dinilai</Badge>
-                                            </Link>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 ) : (
                                     <div className="py-12 text-center text-muted-foreground">
