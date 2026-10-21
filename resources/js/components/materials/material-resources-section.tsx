@@ -69,6 +69,12 @@ function isVideoFile(pathOrType?: string | null): boolean {
     );
 }
 
+function isPdfFile(pathOrType?: string | null): boolean {
+    if (!pathOrType) return false;
+    const lower = pathOrType.toLowerCase();
+    return lower.endsWith('.pdf') || lower.includes('pdf');
+}
+
 export function MaterialResourcesSection({
     resources = [],
     mainFilePath,
@@ -84,6 +90,7 @@ export function MaterialResourcesSection({
     const mainFileUrl = mainFilePath ? (mainFilePath.startsWith('http') ? mainFilePath : `/storage/${mainFilePath}`) : null;
     const isMainFileImage = isImageFile(mainFilePath) || isImageFile(mainFileType);
     const isMainFileVideo = isVideoFile(mainFilePath) || isVideoFile(mainFileType);
+    const isMainFilePdf = isPdfFile(mainFilePath) || isPdfFile(mainFileType);
 
     return (
         <div className="space-y-4 fade-in w-full min-w-0 max-w-full overflow-hidden">
@@ -194,10 +201,47 @@ export function MaterialResourcesSection({
                 </div>
             )}
 
+            {mainFileUrl && isMainFilePdf && (
+                <div className="space-y-3 p-4 sm:p-5 rounded-3xl bg-card border border-border/70 shadow-xs w-full min-w-0 max-w-full overflow-hidden">
+                    <div className="flex items-center justify-between gap-2 flex-wrap pb-1 border-b border-border/40">
+                        <div className="flex items-center gap-2 text-xs font-bold text-foreground">
+                            <FileText className="h-4 w-4 text-rose-600" />
+                            <span>Dokumen Modul / PDF Pembelajaran</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <a
+                                href={mainFileUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-1 text-[11px] font-bold text-primary hover:underline"
+                            >
+                                <ExternalLink className="h-3 w-3" />
+                                <span>Buka Tab Baru</span>
+                            </a>
+                            <a
+                                href={mainFileUrl}
+                                download
+                                className="inline-flex items-center gap-1 text-[11px] font-bold text-muted-foreground hover:text-foreground"
+                            >
+                                <Download className="h-3 w-3" />
+                                <span>Unduh PDF</span>
+                            </a>
+                        </div>
+                    </div>
+                    <div className="w-full rounded-2xl overflow-hidden border border-border/60 bg-muted/20 shadow-inner">
+                        <iframe
+                            src={`${mainFileUrl}#toolbar=1`}
+                            title="Dokumen Modul PDF Pembelajaran"
+                            className="w-full h-[500px] sm:h-[650px] border-0 rounded-2xl bg-white"
+                        />
+                    </div>
+                </div>
+            )}
+
             {/* Grid of File Cards and Links */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {/* Main File Attachment (if not already rendered as image/video preview) */}
-                {mainFilePath && !isMainFileImage && !isMainFileVideo && (
+                {/* Main File Attachment (if not already rendered as image/video/pdf preview) */}
+                {mainFilePath && !isMainFileImage && !isMainFileVideo && !isMainFilePdf && (
                     <a
                         href={mainFileUrl || '#'}
                         target="_blank"

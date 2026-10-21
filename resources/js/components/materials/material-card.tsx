@@ -2,7 +2,8 @@ import React from 'react';
 import { Link, router } from '@inertiajs/react';
 import {
     FileText, FileImage, FileVideo, FileArchive, FileCode,
-    Lock, Unlock, ArrowRight, Trash2, Edit, Sparkles, MoreVertical, ExternalLink
+    Lock, Unlock, ArrowRight, Trash2, Edit, Sparkles, MoreVertical, ExternalLink,
+    CheckCircle2, Clock
 } from 'lucide-react';
 import {
     DropdownMenu,
@@ -19,6 +20,7 @@ export interface MaterialItemProps {
     file_type: string | null;
     created_at: string;
     is_accessible?: boolean;
+    is_completed?: boolean;
     access_status?: 'auto' | 'open' | 'locked';
     tp_code?: string;
     class_name?: string;
@@ -77,24 +79,42 @@ export function MaterialCard({ material, isTeacher = false, onDelete }: Material
                     </div>
 
                     <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
-                        {/* Status Badge */}
-                        {material.access_status === 'open' && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-[10px] font-extrabold">
-                                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
-                                Diterbitkan
-                            </span>
-                        )}
-                        {material.access_status === 'locked' && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 text-[10px] font-extrabold">
-                                <span className="h-1.5 w-1.5 rounded-full bg-rose-500"></span>
-                                Terkunci
-                            </span>
-                        )}
-                        {(!material.access_status || material.access_status === 'auto') && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20 text-[10px] font-extrabold">
-                                <span className="h-1.5 w-1.5 rounded-full bg-sky-500"></span>
-                                Otomatis
-                            </span>
+                        {/* Status Badge: Teacher sees publish status; Student sees learning completion */}
+                        {isTeacher ? (
+                            <>
+                                {material.access_status === 'open' && (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-[10px] font-extrabold">
+                                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+                                        Diterbitkan
+                                    </span>
+                                )}
+                                {material.access_status === 'locked' && (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 text-[10px] font-extrabold">
+                                        <span className="h-1.5 w-1.5 rounded-full bg-rose-500"></span>
+                                        Terkunci
+                                    </span>
+                                )}
+                                {(!material.access_status || material.access_status === 'auto') && (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20 text-[10px] font-extrabold">
+                                        <span className="h-1.5 w-1.5 rounded-full bg-sky-500"></span>
+                                        Otomatis
+                                    </span>
+                                )}
+                            </>
+                        ) : (
+                            <>
+                                {material.is_completed ? (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-[10px] font-extrabold">
+                                        <CheckCircle2 className="h-3 w-3 text-emerald-500" />
+                                        Selesai
+                                    </span>
+                                ) : (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-muted text-muted-foreground border border-border/60 text-[10px] font-bold">
+                                        <Clock className="h-3 w-3 text-muted-foreground/70" />
+                                        Belum Selesai
+                                    </span>
+                                )}
+                            </>
                         )}
 
                         {/* Teacher Dropdown Action Menu */}

@@ -100,15 +100,23 @@ class MaterialController extends Controller
 
         // ── Student (and admin): group by subject ────────────────────
         $accessibleTpIds = [];
+        $completedMaterialIds = collect();
         if ($user->role === 'student' && $user->student) {
             $accessibleTpIds = app(AdaptiveLearningService::class)->getStudentAccessibleTpIds($user->student->id, $user->student->school_class_id);
+            $completedFromLogs = LmsStudentMaterial::where('student_id', $user->student->id)
+                ->whereNotNull('completed_at')
+                ->pluck('material_id');
+            $completedFromReflections = \App\Models\LmsReflection::where('student_id', $user->student->id)
+                ->whereNotNull('material_id')
+                ->pluck('material_id');
+            $completedMaterialIds = $completedFromLogs->merge($completedFromReflections)->unique();
         }
 
-        $grouped = $models->groupBy('subject_id')->map(function ($items, $subjectId) use ($accessibleTpIds, $user) {
+        $grouped = $models->groupBy('subject_id')->map(function ($items, $subjectId) use ($accessibleTpIds, $completedMaterialIds, $user) {
             $first = $items->first();
             
             $tpGroups = $items->groupBy('learning_objective_id');
-            $tps = $tpGroups->map(function ($tpItems, $tpId) use ($accessibleTpIds, $user) {
+            $tps = $tpGroups->map(function ($tpItems, $tpId) use ($accessibleTpIds, $completedMaterialIds, $user) {
                 $firstTpItem = collect($tpItems)->first();
                 $tp = $firstTpItem->learningObjective;
                 return [
@@ -124,6 +132,7 @@ class MaterialController extends Controller
                         'created_at'   => $m->created_at->format('d M Y'),
                         'access_status'=> $m->access_status ?? 'auto',
                         'is_accessible'=> $user->role === 'admin' || ($m->access_status === 'open') || ($m->access_status !== 'locked' && (!$m->learning_objective_id || in_array($m->learning_objective_id, $accessibleTpIds))),
+                        'is_completed' => $completedMaterialIds->contains($m->id),
                     ])->values(),
                 ];
             })->values();
@@ -471,6 +480,44 @@ class MaterialController extends Controller
                 ]);
         }
 
+        // M6: Hitung statistik keterlibatan & penyelesaian kelas untuk guru
+        $classStats = null;
+        if ($user->teacher || $user->role === 'admin') {
+            $materialClassIds = $material->schoolClasses->pluck('id');
+            if ($materialClassIds->isNotEmpty()) {
+                $studentsInClasses = \App\Models\Student::whereIn('school_class_id', $materialClassIds)
+                    ->select('id', 'name', 'nis', 'photo', 'school_class_id')
+                    ->with('schoolClass:id,name')
+                    ->orderBy('name')
+                    ->get();
+
+                $completedStudentIds = \App\Models\LmsStudentMaterial::where('material_id', $material->id)
+                    ->whereNotNull('completed_at')
+                    ->pluck('student_id')
+                    ->merge(
+                        \App\Models\LmsReflection::where('material_id', $material->id)->pluck('student_id')
+                    )->unique();
+
+                $totalStudents = $studentsInClasses->count();
+                $completedCount = $studentsInClasses->whereIn('id', $completedStudentIds)->count();
+                $percentage = $totalStudents > 0 ? round(($completedCount / $totalStudents) * 100) : 0;
+
+                $classStats = [
+                    'total_students'     => $totalStudents,
+                    'completed_students' => $completedCount,
+                    'percentage'         => $percentage,
+                    'students'           => $studentsInClasses->map(fn($s) => [
+                        'id'           => $s->id,
+                        'name'         => $s->name,
+                        'nis'          => $s->nis,
+                        'photo'        => $s->photo ? asset('storage/' . $s->photo) : null,
+                        'class_name'   => $s->schoolClass?->name ?? '-',
+                        'is_completed' => $completedStudentIds->contains($s->id),
+                    ])->values(),
+                ];
+            }
+        }
+
         // Ambil semua asesmen terkait materi ini (initial, formative, summative)
         $classId = $user->student ? $user->student->school_class_id : null;
         $assignmentsQuery = \App\Models\LmsAssignment::where('subject_id', $material->subject_id)
@@ -550,6 +597,7 @@ class MaterialController extends Controller
             'comments'        => $comments,
             'my_reflection'   => $myReflection,
             'all_reflections' => $allReflections,
+            'class_stats'     => $classStats,
             'is_completed'    => $isCompleted,
             'user_role'       => $user->role ?? ($user->teacher ? 'teacher' : 'student'),
             'auth_id'         => $user->id,
@@ -838,6 +886,15 @@ class MaterialController extends Controller
         $student = Auth::user()->student;
         if (!$student) {
             return back()->with('error', 'Hanya siswa yang dapat menandai materi sebagai selesai.');
+        }
+
+        // S4: Enforce cross-class boundary authorization for students
+        if (!$student->school_class_id || !$material->schoolClasses()->where('school_classes.id', $student->school_class_id)->exists()) {
+            abort(403, 'Materi ini tidak ditugaskan untuk kelas Anda.');
+        }
+
+        if ($material->access_status === 'locked') {
+            abort(403, 'Maaf, materi ini sedang dikunci oleh guru.');
         }
 
         LmsStudentMaterial::updateOrCreate(

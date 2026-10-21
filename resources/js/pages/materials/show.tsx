@@ -5,7 +5,8 @@ import { Head, Link, router } from '@inertiajs/react';
 import {
     BookOpen, CheckCircle2, FileText, Sparkles, MessageSquare, Download,
     ExternalLink, Trash2, Edit, User, Calendar, Lock, Unlock, ChevronLeft,
-    Maximize2, Minimize2, ZoomIn, ZoomOut, X
+    Maximize2, Minimize2, ZoomIn, ZoomOut, X, BarChart3, Users, ChevronDown,
+    ChevronUp, Star, Smile, HelpCircle, Zap, Clock, ThumbsUp
 } from 'lucide-react';
 import {
     MaterialDetailHeader,
@@ -47,11 +48,38 @@ interface Material {
     access_status?: 'auto' | 'open' | 'locked';
 }
 
+interface ClassStudent {
+    id: number;
+    name: string;
+    nis: string;
+    photo: string | null;
+    class_name: string;
+    is_completed: boolean;
+}
+
+interface ClassStats {
+    total_students: number;
+    completed_students: number;
+    percentage: number;
+    students: ClassStudent[];
+}
+
+interface StudentReflection {
+    id: number;
+    student_name: string;
+    student_photo: string | null;
+    understanding_level: number;
+    interesting_thing: string | null;
+    difficulty: string | null;
+    created_at: string;
+}
+
 interface ShowMaterialProps {
     material: Material;
     comments?: any[];
     my_reflection?: any;
-    all_reflections?: any[];
+    all_reflections?: StudentReflection[];
+    class_stats?: ClassStats | null;
     is_completed?: boolean;
     user_role: string;
     auth_id: number;
@@ -66,6 +94,7 @@ export default function MaterialShow({
     comments = [],
     my_reflection,
     all_reflections = [],
+    class_stats,
     is_completed = false,
     user_role = 'student',
     auth_id,
@@ -77,9 +106,28 @@ export default function MaterialShow({
     const [isDeleting, setIsDeleting] = useState(false);
     const [isFocusMode, setIsFocusMode] = useState(false);
     const [focusFontSize, setFocusFontSize] = useState<'normal' | 'large' | 'xlarge'>('normal');
+    const [showStudentList, setShowStudentList] = useState(false);
+    const [studentFilter, setStudentFilter] = useState<'all' | 'completed' | 'pending'>('all');
 
     const isTeacher = user_role === 'teacher' || user_role === 'admin';
     const isStudent = user_role === 'student';
+
+    // Rata-rata bintang refleksi pemahaman siswa untuk guru
+    const averageUnderstanding = React.useMemo(() => {
+        if (!all_reflections || all_reflections.length === 0) return 0;
+        const total = all_reflections.reduce((sum, r) => sum + (r.understanding_level || 0), 0);
+        return Math.round((total / all_reflections.length) * 10) / 10;
+    }, [all_reflections]);
+
+    // Filter daftar siswa kelas
+    const filteredClassStudents = React.useMemo(() => {
+        if (!class_stats?.students) return [];
+        return class_stats.students.filter((s) => {
+            if (studentFilter === 'completed') return s.is_completed;
+            if (studentFilter === 'pending') return !s.is_completed;
+            return true;
+        });
+    }, [class_stats, studentFilter]);
 
     // Keyboard shortcut Escape untuk keluar dari Mode Fokus
     useEffect(() => {
@@ -154,9 +202,9 @@ export default function MaterialShow({
                     backUrl={backUrl}
                 />
 
-                {/* Quick Reading Actions & Focus Mode Trigger */}
+                {/* Quick Reading Actions & Navigation */}
                 <div className="flex flex-wrap items-center justify-between gap-2.5 p-3 rounded-2xl bg-card border border-border/70 shadow-2xs">
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                         <button
                             type="button"
                             onClick={() => setIsFocusMode(true)}
@@ -164,8 +212,28 @@ export default function MaterialShow({
                             title="Buka Mode Membaca Fokus (Bebas Gangguan)"
                         >
                             <Maximize2 className="h-4 w-4" />
-                            <span>Mode Fokus Membaca</span>
+                            <span>Mode Fokus</span>
                         </button>
+
+                        {isStudent && (
+                            <a
+                                href="#refleksi"
+                                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 text-xs font-semibold transition min-h-[40px] border border-amber-500/20"
+                            >
+                                <Sparkles className="h-3.5 w-3.5 text-amber-600" />
+                                <span>Jurnal Refleksi {my_reflection ? '✅' : ''}</span>
+                            </a>
+                        )}
+
+                        {isTeacher && all_reflections && all_reflections.length > 0 && (
+                            <a
+                                href="#refleksi-guru"
+                                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 text-xs font-semibold transition min-h-[40px] border border-amber-500/20"
+                            >
+                                <Star className="h-3.5 w-3.5 fill-amber-500 text-amber-500" />
+                                <span>Refleksi Siswa ({all_reflections.length})</span>
+                            </a>
+                        )}
 
                         <a
                             href="#diskusi"
@@ -240,6 +308,209 @@ export default function MaterialShow({
                     mainFileType={material.file_type}
                     externalLink={material.external_link}
                 />
+
+                {/* M6: Teacher Class Progress & Completion Monitoring Card */}
+                {isTeacher && class_stats && (
+                    <div className="p-4 sm:p-5 rounded-3xl bg-card border border-border/70 shadow-xs space-y-3 fade-in w-full min-w-0 max-w-full">
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                            <div className="flex items-center gap-2">
+                                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                                    <BarChart3 className="h-4 w-4" />
+                                </div>
+                                <div>
+                                    <h3 className="text-xs sm:text-sm font-black text-foreground">
+                                        Monitoring Penyelesaian Siswa Kelas
+                                    </h3>
+                                    <p className="text-[11px] text-muted-foreground font-medium">
+                                        {class_stats.completed_students} dari {class_stats.total_students} siswa telah menyelesaikan materi ({class_stats.percentage}%)
+                                    </p>
+                                </div>
+                            </div>
+
+                            <button
+                                type="button"
+                                onClick={() => setShowStudentList(!showStudentList)}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-muted/70 hover:bg-muted text-foreground font-bold text-xs transition cursor-pointer"
+                            >
+                                <Users className="h-3.5 w-3.5 text-primary" />
+                                <span>{showStudentList ? 'Tutup Daftar Siswa' : 'Lihat Daftar Siswa'}</span>
+                                {showStudentList ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                            </button>
+                        </div>
+
+                        {/* Progress Bar */}
+                        <div className="w-full bg-muted/60 rounded-full h-2.5 overflow-hidden">
+                            <div
+                                className="bg-primary h-2.5 rounded-full transition-all duration-500 ease-out"
+                                style={{ width: `${Math.min(100, class_stats.percentage)}%` }}
+                            />
+                        </div>
+
+                        {/* Expandable Student List Breakdown */}
+                        {showStudentList && (
+                            <div className="space-y-3 pt-2 border-t border-border/40 fade-in">
+                                <div className="flex items-center gap-1.5 text-xs">
+                                    <button
+                                        type="button"
+                                        onClick={() => setStudentFilter('all')}
+                                        className={`px-2.5 py-1 rounded-lg font-bold transition text-xs ${studentFilter === 'all' ? 'bg-primary text-primary-foreground shadow-2xs' : 'bg-muted text-muted-foreground'}`}
+                                    >
+                                        Semua ({class_stats.total_students})
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setStudentFilter('completed')}
+                                        className={`px-2.5 py-1 rounded-lg font-bold transition text-xs ${studentFilter === 'completed' ? 'bg-emerald-600 text-white shadow-2xs' : 'bg-muted text-muted-foreground'}`}
+                                    >
+                                        Selesai ({class_stats.completed_students})
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setStudentFilter('pending')}
+                                        className={`px-2.5 py-1 rounded-lg font-bold transition text-xs ${studentFilter === 'pending' ? 'bg-amber-600 text-white shadow-2xs' : 'bg-muted text-muted-foreground'}`}
+                                    >
+                                        Belum ({class_stats.total_students - class_stats.completed_students})
+                                    </button>
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 max-h-72 overflow-y-auto p-1">
+                                    {filteredClassStudents.map((s) => (
+                                        <div
+                                            key={s.id}
+                                            className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-muted/30 border border-border/50 text-xs"
+                                        >
+                                            <div className="min-w-0">
+                                                <p className="font-bold text-foreground truncate">{s.name}</p>
+                                                <p className="text-[10px] text-muted-foreground font-medium">
+                                                    NIS {s.nis} • {s.class_name}
+                                                </p>
+                                            </div>
+                                            {s.is_completed ? (
+                                                <span className="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-extrabold border border-emerald-500/20">
+                                                    <CheckCircle2 className="h-3 w-3" />
+                                                    Selesai
+                                                </span>
+                                            ) : (
+                                                <span className="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-muted text-muted-foreground text-[10px] font-medium border border-border/40">
+                                                    <Clock className="h-3 w-3" />
+                                                    Belum
+                                                </span>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* M1: Student Reflection Form Section */}
+                {isStudent && (
+                    <div id="refleksi" className="space-y-3 pt-2 scroll-mt-16">
+                        <ReflectionForm
+                            materialId={material.id}
+                            existingReflection={my_reflection}
+                        />
+                    </div>
+                )}
+
+                {/* M2: Teacher Student Reflections Feed Section */}
+                {isTeacher && (
+                    <div id="refleksi-guru" className="space-y-3 pt-2 scroll-mt-16">
+                        <div className="p-4 sm:p-5 rounded-3xl bg-card border border-border/70 shadow-xs space-y-4">
+                            <div className="flex items-center justify-between gap-2 flex-wrap pb-2 border-b border-border/40">
+                                <div className="flex items-center gap-2">
+                                    <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600">
+                                        <Sparkles className="h-4 w-4" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-xs sm:text-sm font-black text-foreground">
+                                            Jurnal Refleksi Mandiri Siswa
+                                        </h3>
+                                        <p className="text-[11px] text-muted-foreground font-medium">
+                                            {all_reflections.length} tanggapan refleksi dari siswa
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {all_reflections.length > 0 && (
+                                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-300 text-xs font-black">
+                                        <Star className="h-4 w-4 fill-amber-500 text-amber-500" />
+                                        <span>Rata-rata Pemahaman: {averageUnderstanding} / 5</span>
+                                    </div>
+                                )}
+                            </div>
+
+                            {all_reflections.length === 0 ? (
+                                <div className="text-center py-8 text-muted-foreground space-y-1">
+                                    <Smile className="h-8 w-8 mx-auto text-muted-foreground/50" />
+                                    <p className="text-xs font-bold text-foreground/80">Belum Ada Refleksi Siswa</p>
+                                    <p className="text-[11px]">Siswa yang menyelesaikan materi dan mengisi jurnal refleksi akan tampil di sini.</p>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    {all_reflections.map((r) => (
+                                        <div
+                                            key={r.id}
+                                            className="p-3.5 rounded-2xl bg-muted/30 border border-border/50 space-y-2 text-xs"
+                                        >
+                                            <div className="flex items-center justify-between gap-2">
+                                                <div className="flex items-center gap-2 min-w-0">
+                                                    {r.student_photo ? (
+                                                        <img
+                                                            src={r.student_photo}
+                                                            alt={r.student_name}
+                                                            className="h-7 w-7 rounded-full object-cover shrink-0 border border-border"
+                                                        />
+                                                    ) : (
+                                                        <div className="h-7 w-7 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-[11px] shrink-0">
+                                                            {r.student_name.charAt(0)}
+                                                        </div>
+                                                    )}
+                                                    <div className="min-w-0">
+                                                        <p className="font-bold text-foreground truncate">{r.student_name}</p>
+                                                        <p className="text-[10px] text-muted-foreground">{r.created_at}</p>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex items-center gap-0.5 shrink-0">
+                                                    {[1, 2, 3, 4, 5].map((star) => (
+                                                        <Star
+                                                            key={star}
+                                                            className={`h-3.5 w-3.5 ${
+                                                                star <= r.understanding_level
+                                                                    ? 'fill-amber-400 text-amber-400'
+                                                                    : 'text-muted-foreground/30'
+                                                            }`}
+                                                        />
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            {r.interesting_thing && (
+                                                <div className="p-2 rounded-xl bg-card border border-border/40 text-[11px] space-y-0.5">
+                                                    <span className="font-bold text-primary flex items-center gap-1">
+                                                        <ThumbsUp className="h-3 w-3" /> Hal Menarik:
+                                                    </span>
+                                                    <p className="text-foreground/90 leading-relaxed pl-4">{r.interesting_thing}</p>
+                                                </div>
+                                            )}
+
+                                            {r.difficulty && (
+                                                <div className="p-2 rounded-xl bg-card border border-border/40 text-[11px] space-y-0.5">
+                                                    <span className="font-bold text-rose-500 flex items-center gap-1">
+                                                        <HelpCircle className="h-3 w-3" /> Kendala / Kesulitan:
+                                                    </span>
+                                                    <p className="text-foreground/90 leading-relaxed pl-4">{r.difficulty}</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
 
                 {/* Student Action Bar (Mark Complete) */}
                 {isStudent && (
@@ -391,6 +662,16 @@ export default function MaterialShow({
                             mainFileType={material.file_type}
                             externalLink={material.external_link}
                         />
+
+                        {/* Student Reflection in Focus Mode */}
+                        {isStudent && (
+                            <div className="pt-2">
+                                <ReflectionForm
+                                    materialId={material.id}
+                                    existingReflection={my_reflection}
+                                />
+                            </div>
+                        )}
 
                         {/* Bottom Focus Mode Actions */}
                         <div className="pt-6 pb-12 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-border/60">

@@ -55,9 +55,28 @@ class CommentController extends Controller
 
     public function destroy(LmsComment $comment)
     {
-        // Only owner or teacher can delete
-        if (Auth::id() !== $comment->user_id && !Auth::user()->teacher) {
-            abort(403);
+        $user = Auth::user();
+        $isOwner = $user->id === $comment->user_id;
+        $isAdmin = $user->role === 'admin';
+
+        $isTeachingTeacher = false;
+        if ($user->teacher) {
+            $teacherId = $user->teacher->id;
+            if ($comment->material_id) {
+                $material = \App\Models\LmsMaterial::find($comment->material_id);
+                if ($material && (int) $material->teacher_id === (int) $teacherId) {
+                    $isTeachingTeacher = true;
+                }
+            } elseif ($comment->assignment_id) {
+                $assignment = \App\Models\LmsAssignment::find($comment->assignment_id);
+                if ($assignment && (int) $assignment->teacher_id === (int) $teacherId) {
+                    $isTeachingTeacher = true;
+                }
+            }
+        }
+
+        if (!$isOwner && !$isAdmin && !$isTeachingTeacher) {
+            abort(403, 'Anda tidak memiliki hak untuk menghapus komentar ini.');
         }
 
         $comment->delete();

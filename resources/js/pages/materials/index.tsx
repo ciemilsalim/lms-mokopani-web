@@ -51,6 +51,7 @@ export default function MaterialsIndex({
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedSubject, setSelectedSubject] = useState<string>('all');
     const [selectedClass, setSelectedClass] = useState<string>('all');
+    const [selectedStatus, setSelectedStatus] = useState<string>('all');
     const [deleteId, setDeleteId] = useState<number | null>(null);
 
     const isTeacher = user_role === 'teacher' || user_role === 'admin';
@@ -112,7 +113,7 @@ export default function MaterialsIndex({
         return Array.from(set);
     }, [allMaterials]);
 
-    // Unique Class options for filter
+    // Unique Class options for filter (for teachers)
     const classOptions = useMemo(() => {
         const set = new Set<string>();
         allMaterials.forEach((m) => {
@@ -136,13 +137,18 @@ export default function MaterialsIndex({
             const matchesSubject =
                 selectedSubject === 'all' || m.subject_name === selectedSubject;
 
-            const matchesClass =
-                selectedClass === 'all' ||
-                (m.class_name && m.class_name.includes(selectedClass));
+            // Role-specific secondary filter: class for teachers, completion status for students
+            const matchesSecondary = isTeacher
+                ? selectedClass === 'all' || (m.class_name && m.class_name.includes(selectedClass))
+                : selectedStatus === 'all'
+                ? true
+                : selectedStatus === 'completed'
+                ? m.is_completed === true
+                : !m.is_completed;
 
-            return matchesSearch && matchesSubject && matchesClass;
+            return matchesSearch && matchesSubject && matchesSecondary;
         });
-    }, [allMaterials, searchQuery, selectedSubject, selectedClass]);
+    }, [allMaterials, searchQuery, selectedSubject, selectedClass, selectedStatus, isTeacher]);
 
     const handleDeleteConfirm = () => {
         if (deleteId) {
@@ -152,6 +158,8 @@ export default function MaterialsIndex({
             });
         }
     };
+
+    const hasActiveFilters = searchQuery || selectedSubject !== 'all' || (isTeacher ? selectedClass !== 'all' : selectedStatus !== 'all');
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -194,7 +202,7 @@ export default function MaterialsIndex({
                         />
                     </div>
 
-                    {/* Filter Row: Mapel & Kelas Side-by-Side */}
+                    {/* Filter Row: Mapel & (Kelas untuk Guru / Status Belajar untuk Siswa) Side-by-Side */}
                     <div className="grid grid-cols-2 gap-2">
                         {/* Filter Mapel */}
                         <select
@@ -211,20 +219,33 @@ export default function MaterialsIndex({
                             ))}
                         </select>
 
-                        {/* Filter Kelas */}
-                        <select
-                            aria-label="Filter Kelas"
-                            value={selectedClass}
-                            onChange={(e) => setSelectedClass(e.target.value)}
-                            className="h-10 px-3 text-xs rounded-xl bg-card border border-border/70 text-foreground font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20 transition shadow-2xs cursor-pointer w-full"
-                        >
-                            <option value="all">Semua Kelas</option>
-                            {classOptions.map((cName) => (
-                                <option key={cName} value={cName}>
-                                    Kelas {cName}
-                                </option>
-                            ))}
-                        </select>
+                        {/* Filter Role-Specific: Kelas (Guru) atau Status Belajar (Siswa) */}
+                        {isTeacher ? (
+                            <select
+                                aria-label="Filter Kelas"
+                                value={selectedClass}
+                                onChange={(e) => setSelectedClass(e.target.value)}
+                                className="h-10 px-3 text-xs rounded-xl bg-card border border-border/70 text-foreground font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20 transition shadow-2xs cursor-pointer w-full"
+                            >
+                                <option value="all">Semua Kelas</option>
+                                {classOptions.map((cName) => (
+                                    <option key={cName} value={cName}>
+                                        Kelas {cName}
+                                    </option>
+                                ))}
+                            </select>
+                        ) : (
+                            <select
+                                aria-label="Filter Status Belajar"
+                                value={selectedStatus}
+                                onChange={(e) => setSelectedStatus(e.target.value)}
+                                className="h-10 px-3 text-xs rounded-xl bg-card border border-border/70 text-foreground font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20 transition shadow-2xs cursor-pointer w-full"
+                            >
+                                <option value="all">Semua Status Belajar</option>
+                                <option value="pending">⏳ Belum Selesai</option>
+                                <option value="completed">✅ Selesai Dipelajari</option>
+                            </select>
+                        )}
                     </div>
                 </div>
 
@@ -233,13 +254,14 @@ export default function MaterialsIndex({
                     <span className="text-[11px] font-black uppercase tracking-wider text-muted-foreground">
                         Daftar Materi ({filteredMaterials.length})
                     </span>
-                    {(searchQuery || selectedSubject !== 'all' || selectedClass !== 'all') && (
+                    {hasActiveFilters && (
                         <button
                             type="button"
                             onClick={() => {
                                 setSearchQuery('');
                                 setSelectedSubject('all');
                                 setSelectedClass('all');
+                                setSelectedStatus('all');
                             }}
                             className="text-[11px] font-bold text-primary hover:underline"
                         >
