@@ -344,6 +344,9 @@ class AssignmentController extends Controller
         $validated['teacher_id'] = $teacher->id;
         $validated['academic_year_id'] = $activeYear?->id;
         $validated['semester_id'] = $activeSemester?->id;
+        if (($validated['assessment_type'] ?? '') === 'formative' && empty($validated['passing_grade'])) {
+            $validated['passing_grade'] = 80;
+        }
 
         $assignment = LmsAssignment::create($validated);
         $assignment->schoolClasses()->sync($validated['school_classes']);
@@ -682,7 +685,7 @@ class AssignmentController extends Controller
                 'school_classes'    => $assignment->schoolClasses->map(fn($c) => ['id' => $c->id, 'name' => $c->name]),
                 'due_date'          => $assignment->due_date?->format('d M Y, H:i'),
                 'max_points'        => $assignment->max_points,
-                'passing_grade'     => $assignment->passing_grade,
+                'passing_grade'     => $assignment->assessment_type === 'formative' ? 80 : ($assignment->passing_grade ?? get_kktp($assignment->subject_id)),
                 'assessment_type'   => $assignment->assessment_type,
                 'instrument_type'   => $assignment->instrument_type,
                 'instrument_config' => $instrumentConfig,
@@ -1004,7 +1007,7 @@ class AssignmentController extends Controller
                 'description'       => $assignment->description,
                 'subject'           => $assignment->subject?->name,
                 'max_points'        => $assignment->max_points,
-                'passing_grade'     => $assignment->passing_grade ?? get_kktp($assignment->subject_id),
+                'passing_grade'     => $assignment->assessment_type === 'formative' ? 80 : ($assignment->passing_grade ?? get_kktp($assignment->subject_id)),
                 'assessment_type'   => $assignment->assessment_type,
                 'instrument_type'   => $assignment->instrument_type,
                 'instrument_config' => $assignment->instrument_config,
@@ -1248,6 +1251,10 @@ class AssignmentController extends Controller
             'max_points'            => 'required|integer|min:0',
             'passing_grade'         => 'nullable|integer|min:0',
         ]);
+
+        if (($validated['assessment_type'] ?? $assignment->assessment_type) === 'formative' && empty($validated['passing_grade'])) {
+            $validated['passing_grade'] = 80;
+        }
 
         $assignment->update($validated);
         $assignment->schoolClasses()->sync($validated['school_classes']);

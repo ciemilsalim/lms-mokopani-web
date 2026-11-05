@@ -63,9 +63,10 @@ export default function GradeSplitPage({
         }> = {};
         (assignment.submissions || []).forEach((s: any) => {
             const hasScore = s.score !== null && s.score !== undefined && s.score !== '';
+            const effectiveThreshold = assignment.assessment_type === 'formative' ? 80 : (assignment.passing_grade ?? 75);
             const isPassed = s.is_passed !== undefined 
                 ? Boolean(s.is_passed) 
-                : (hasScore && assignment.passing_grade ? Number(s.score) >= assignment.passing_grade : false);
+                : (hasScore ? Number(s.score) >= effectiveThreshold : false);
 
             map[s.student_id] = { 
                 score: s.score, 
@@ -772,8 +773,9 @@ export default function GradeSplitPage({
 
     // Grading Form Component (Right Panel)
     const renderGradingForm = () => {
-        const isPassed = score !== '' && score !== undefined && score !== null && assignment.passing_grade !== null
-            ? Number(score) >= assignment.passing_grade
+        const effectivePassingGrade = assignment.assessment_type === 'formative' ? 80 : (assignment.passing_grade ?? 75);
+        const isPassed = score !== '' && score !== undefined && score !== null
+            ? Number(score) >= effectivePassingGrade
             : true;
 
         return (

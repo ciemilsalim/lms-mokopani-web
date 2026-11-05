@@ -182,4 +182,42 @@ class StudentAssessmentAuditAndPortfolioTest extends TestCase
             ->where('assignment.submissions.0.is_passed', true)
         );
     }
+
+    public function test_formative_assessment_remedial_and_tuntas_thresholds(): void
+    {
+        $formative = LmsAssignment::create([
+            'teacher_id'       => $this->teacher->id,
+            'subject_id'       => $this->subject->id,
+            'academic_year_id' => $this->academicYear->id,
+            'semester_id'      => $this->semester->id,
+            'title'            => 'Formatif Kuis Algoritma',
+            'description'      => 'Kuis formatif algoritma dasar',
+            'type'             => 'quiz',
+            'assessment_type'  => 'formative',
+            'max_points'       => 100,
+            'status'           => 'published',
+            'due_date'         => now()->addDays(3),
+        ]);
+        $formative->schoolClasses()->attach($this->classA->id);
+
+        // Nilai 0 - 79 adalah Remedial
+        $this->assertFalse($formative->evaluateKetuntasan(null, 0));
+        $this->assertFalse($formative->evaluateKetuntasan(null, 50));
+        $this->assertFalse($formative->evaluateKetuntasan(null, 79));
+        $this->assertFalse($formative->evaluateKetuntasan(null, 79.9));
+
+        // Nilai 80 - 100 adalah Tuntas
+        $this->assertTrue($formative->evaluateKetuntasan(null, 80));
+        $this->assertTrue($formative->evaluateKetuntasan(null, 85));
+        $this->assertTrue($formative->evaluateKetuntasan(null, 100));
+
+        // Response grade-view & show automatically set passing_grade to 80 for formative
+        $response = $this->actingAs($this->teacherUser)
+            ->get(route('assignments.grade-view', $formative));
+        $response->assertStatus(200);
+        $response->assertInertia(fn (Assert $page) => $page
+            ->where('assignment.passing_grade', 80)
+            ->where('assignment.assessment_type', 'formative')
+        );
+    }
 }

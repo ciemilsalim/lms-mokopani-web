@@ -571,14 +571,18 @@ export default function GradebookShow({
                                                                             title: s.title || (formative_headers[sIdx]?.title ?? 'Formatif'),
                                                                             type: 'Formatif',
                                                                             score: s.score,
-                                                                            kktp: kktp,
+                                                                            kktp: s.kktp ?? 80,
                                                                             submittedAt: s.submitted_at,
                                                                             feedback: s.feedback,
                                                                             filePath: s.file_path,
                                                                             classId: effectiveClassId,
                                                                         })}
-                                                                        className="inline-flex items-center justify-center min-w-[34px] px-1.5 py-0.5 rounded-lg text-xs font-bold text-amber-700 dark:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 transition cursor-pointer"
-                                                                        title="Lihat Detail Formatif"
+                                                                        className={`inline-flex items-center justify-center min-w-[34px] px-1.5 py-0.5 rounded-lg text-xs font-bold transition cursor-pointer border ${
+                                                                            Number(s.score) >= 80
+                                                                                ? 'text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20 border-emerald-500/30'
+                                                                                : 'text-rose-700 dark:text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 border-rose-500/30 font-extrabold'
+                                                                        }`}
+                                                                        title={`Nilai Formatif: ${s.score} (${Number(s.score) >= 80 ? 'Tuntas' : 'Remedial'})`}
                                                                     >
                                                                         {s.score}
                                                                     </button>
@@ -729,7 +733,7 @@ export default function GradebookShow({
                                                                         title: s.title || (getCurrentHeaders()[sIdx]?.title ?? 'Asesmen'),
                                                                         type: viewMode === 'initial' ? 'Asesmen Awal' : 'Formatif',
                                                                         score: s.score,
-                                                                        kktp: kktp,
+                                                                        kktp: viewMode === 'formative' ? 80 : kktp,
                                                                         submittedAt: s.submitted_at,
                                                                         feedback: s.feedback,
                                                                         filePath: s.file_path,

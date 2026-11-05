@@ -108,6 +108,12 @@ class LmsAssignment extends Model
         }
 
         $score = $scoreVal ?? ($submission && $submission->score !== null ? (float) $submission->score : null);
+
+        // Aturan Khusus Asesmen Formatif: Nilai 0 - 79 adalah Remedial, sedangkan 80 - 100 adalah Tuntas
+        if ($this->assessment_type === 'formative' && $score !== null) {
+            return (float) $score >= 80;
+        }
+
         $config = $this->instrument_config ?? [];
         if (is_string($config)) {
             $config = json_decode($config, true) ?? [];
@@ -255,6 +261,9 @@ class LmsAssignment extends Model
 
         // Final fallback: numeric score check
         if ($score !== null) {
+            if ($this->assessment_type === 'formative') {
+                return (float) $score >= 80;
+            }
             $threshold = (float) ($kktp['threshold'] ?? $this->passing_grade ?? $config['pass_threshold'] ?? 70);
             return (float) $score >= $threshold;
         }

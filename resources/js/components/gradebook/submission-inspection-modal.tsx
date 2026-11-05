@@ -47,7 +47,8 @@ export function SubmissionInspectionModal({
 
     const hasScore = data.score !== '-' && data.score !== null && data.score !== undefined;
     const numScore = hasScore ? Number(data.score) : null;
-    const kktpThreshold = data.kktp ?? 75;
+    const isFormative = data.type?.toLowerCase().includes('formatif');
+    const kktpThreshold = isFormative ? 80 : (data.kktp ?? 75);
     const isPassed = numScore !== null ? numScore >= kktpThreshold : null;
 
     const handleGoToGrading = () => {

@@ -297,12 +297,15 @@ class GradebookController extends Controller
             // Formative assessment scores (Nilai formatif tidak perlu dijumlahkan)
             $formativeScores = $formativeAssignments->values()->map(function ($a) use ($student, $submissionsByKey) {
                 $sub = $submissionsByKey->get($student->id . '_' . $a->id);
+                $hasScore = ($sub && $sub->score !== null && $sub->score !== '');
                 return [
                     'id'            => $a->id,
                     'assignment_id' => $a->id,
                     'submission_id' => $sub?->id,
                     'title'         => $a->title,
-                    'score'         => ($sub && $sub->score !== null && $sub->score !== '') ? (float) $sub->score : '-',
+                    'score'         => $hasScore ? (float) $sub->score : '-',
+                    'kktp'          => 80,
+                    'is_passed'     => $hasScore ? $a->evaluateKetuntasan($sub) : null,
                     'type'          => $a->assessment_type,
                     'has_content'   => (bool) ($sub && ($sub->content || $sub->file_path)),
                     'file_path'     => $sub?->file_path,
@@ -930,7 +933,7 @@ class GradebookController extends Controller
                 'tp_description'   => $asm->learningObjective?->description ?? '-',
                 'due_date'         => $asm->due_date?->format('d M Y'),
                 'max_points'       => $asm->max_points,
-                'kktp'             => $asm->passing_grade ?? $kktp,
+                'kktp'             => $asm->assessment_type === 'formative' ? 80 : ($asm->passing_grade ?? $kktp),
                 'score'            => $score,
                 'is_passed'        => $isPassed,
                 'submitted_at'     => $sub?->created_at?->format('d M Y, H:i'),

@@ -175,7 +175,7 @@ export function TeacherGradingWorkspace({
 
     // Summary calculations
     const totalStudents = students.length;
-    const passingGrade = assignment.passing_grade ?? 75;
+    const passingGrade = assignment.assessment_type === 'formative' ? 80 : (assignment.passing_grade ?? 75);
 
     // Hitung siswa yang sudah mengumpulkan tugas tapi belum dinilai
     const pendingGradingCount = useMemo(() => {
