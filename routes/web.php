@@ -252,6 +252,7 @@ Route::middleware(['auth'])->group(function () {
 
         // Laporan Capaian Pembelajaran (read-only report)
         Route::get('gradebook/learning-report/{class_id}/{subject_id}', [GradebookController::class, 'learningReport'])->name('gradebook.learning-report');
+        Route::get('gradebook/student-portfolio/{student}', [GradebookController::class, 'studentPortfolio'])->name('gradebook.student-portfolio');
 
         // E-Rapor (PDF)
         Route::get('rapor/preview', [RaporController::class, 'preview'])->name('rapor.preview');

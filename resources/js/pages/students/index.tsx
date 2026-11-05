@@ -22,6 +22,7 @@ import {
     AlertCircle,
     UserCheck,
 } from 'lucide-react';
+import { StudentPortfolioDrawer } from '@/components/gradebook';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: '/dashboard' },
@@ -173,6 +174,7 @@ export default function Students({
     const [filterPhoto, setFilterPhoto] = useState<'all' | 'with_photo' | 'no_photo'>('all');
     const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+    const [portfolioStudentId, setPortfolioStudentId] = useState<number | null>(null);
     const [copiedNis, setCopiedNis] = useState<string | null>(null);
 
     // Compute unique class list fallback if not supplied
@@ -551,14 +553,28 @@ export default function Students({
                                     </div>
                                 </div>
 
-                                {/* Card Footer: Quick Details */}
-                                <div className="mt-4 pt-3 border-t border-border/40 flex items-center justify-between text-xs text-muted-foreground">
-                                    <span className="truncate max-w-[150px]">
+                                {/* Card Footer: Quick Details & Learning Portfolio */}
+                                <div className="mt-4 pt-3 border-t border-border/40 flex items-center justify-between text-xs">
+                                    <span className="truncate max-w-[120px] text-muted-foreground text-[11px]">
                                         {student.email || 'Email belum diatur'}
                                     </span>
-                                    <span className="text-[11px] font-semibold text-primary opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5">
-                                        Detail
-                                    </span>
+                                    <div className="flex items-center gap-1.5">
+                                        <button
+                                            type="button"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setPortfolioStudentId(student.id);
+                                            }}
+                                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-primary/10 hover:bg-primary text-primary hover:text-primary-foreground font-bold text-[11px] transition cursor-pointer"
+                                            title="Buka Portofolio Capaian Belajar Siswa"
+                                        >
+                                            <GraduationCap className="h-3 w-3" />
+                                            <span>Hasil Belajar</span>
+                                        </button>
+                                        <span className="text-[11px] font-semibold text-primary opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5">
+                                            Detail
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
                         ))}
@@ -678,16 +694,30 @@ export default function Students({
                                                 )}
                                             </td>
                                             <td className="px-4 py-3 text-right">
-                                                <button
-                                                    type="button"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        setSelectedStudent(student);
-                                                    }}
-                                                    className="px-2.5 py-1 rounded-lg text-xs font-bold text-primary hover:bg-primary/10 transition cursor-pointer"
-                                                >
-                                                    Detail
-                                                </button>
+                                                <div className="flex items-center justify-end gap-1.5">
+                                                    <button
+                                                        type="button"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setPortfolioStudentId(student.id);
+                                                        }}
+                                                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-primary/10 hover:bg-primary text-primary hover:text-primary-foreground font-bold text-xs transition cursor-pointer"
+                                                        title="Buka Portofolio Capaian Belajar Siswa"
+                                                    >
+                                                        <GraduationCap className="h-3.5 w-3.5" />
+                                                        <span className="hidden sm:inline">Hasil Belajar</span>
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setSelectedStudent(student);
+                                                        }}
+                                                        className="px-2.5 py-1 rounded-lg text-xs font-bold text-muted-foreground hover:bg-muted transition cursor-pointer"
+                                                    >
+                                                        Detail
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     ))}
@@ -814,11 +844,23 @@ export default function Students({
                             </div>
 
                             {/* Action Buttons */}
-                            <div className="flex items-center justify-end gap-2 pt-2">
+                            <div className="flex items-center gap-2 pt-2">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        const sid = selectedStudent.id;
+                                        setSelectedStudent(null);
+                                        setPortfolioStudentId(sid);
+                                    }}
+                                    className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-primary text-primary-foreground font-bold text-xs shadow-xs hover:bg-primary/90 transition cursor-pointer"
+                                >
+                                    <GraduationCap className="h-4 w-4" />
+                                    <span>Lihat Portofolio Hasil Belajar</span>
+                                </button>
                                 <button
                                     type="button"
                                     onClick={() => setSelectedStudent(null)}
-                                    className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground font-bold text-xs shadow-xs hover:bg-primary/90 transition cursor-pointer"
+                                    className="py-2.5 px-4 rounded-xl border border-border text-foreground font-bold text-xs hover:bg-muted transition cursor-pointer"
                                 >
                                     Tutup
                                 </button>
@@ -826,6 +868,12 @@ export default function Students({
                         </div>
                     </div>
                 )}
+
+                {/* 6. Student Individual Learning Portfolio Drawer (Pilar 3) */}
+                <StudentPortfolioDrawer
+                    studentId={portfolioStudentId}
+                    onClose={() => setPortfolioStudentId(null)}
+                />
             </div>
         </AppLayout>
     );

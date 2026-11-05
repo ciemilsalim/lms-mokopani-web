@@ -13,9 +13,17 @@ import {
     Award,
     Printer,
     FileSpreadsheet,
-    Calculator
+    Calculator,
+    Download,
+    Eye
 } from 'lucide-react';
-import { StudentGradeCard, GradeSummary } from '@/components/gradebook';
+import { 
+    StudentGradeCard, 
+    GradeSummary,
+    SubmissionInspectionModal,
+    StudentPortfolioDrawer,
+    type InspectionData
+} from '@/components/gradebook';
 
 interface Header {
     id: number | string;
@@ -31,9 +39,43 @@ interface StudentGrade {
     student_id: number;
     student_name: string;
     student_nis?: string;
-    summative: { tp_id: number | string; score: any; tp_code: string; title?: string; submitted?: boolean; has_assignment?: boolean }[];
-    initial: { id: number; score: any; type: string; title?: string }[];
-    formative: { id: number; score: any; type: string; title?: string }[];
+    summative: { 
+        tp_id: number | string; 
+        score: any; 
+        tp_code: string; 
+        title?: string; 
+        submitted?: boolean; 
+        has_assignment?: boolean;
+        assignment_id?: number | null;
+        submission_id?: number | null;
+        submitted_at?: string | null;
+        feedback?: string | null;
+        file_path?: string | null;
+        has_content?: boolean;
+        is_remedial_open?: boolean;
+    }[];
+    initial: { 
+        id: number; 
+        score: any; 
+        type: string; 
+        title?: string;
+        assignment_id?: number | null;
+        submission_id?: number | null;
+        submitted_at?: string | null;
+        feedback?: string | null;
+        file_path?: string | null;
+    }[];
+    formative: { 
+        id: number; 
+        score: any; 
+        type: string; 
+        title?: string;
+        assignment_id?: number | null;
+        submission_id?: number | null;
+        submitted_at?: string | null;
+        feedback?: string | null;
+        file_path?: string | null;
+    }[];
     total_sumatif?: number;
     sumatif_akhir: number;
     average: number;
@@ -104,6 +146,68 @@ export default function GradebookShow({
                 score: value,
             }),
         });
+    };
+
+    const [inspectingSubmission, setInspectingSubmission] = useState<InspectionData | null>(null);
+    const [selectedStudentForPortfolio, setSelectedStudentForPortfolio] = useState<number | null>(null);
+
+    const handleOpenRemedial = async (assignmentId: number, studentId: number) => {
+        try {
+            const token = decodeURIComponent((document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]*)/) || [])[1] || '');
+            await fetch(route('assignments.open_remedial'), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-XSRF-TOKEN': token },
+                body: JSON.stringify({ assignment_id: assignmentId, student_id: studentId })
+            });
+            if (inspectingSubmission) {
+                setInspectingSubmission(prev => prev ? { ...prev, isRemedialOpen: true } : null);
+            }
+        } catch(err) {
+            console.error('Failed to open remedial', err);
+        }
+    };
+
+    const exportCsv = () => {
+        const headers = ['No', 'Nama Siswa', 'NIS'];
+        if (viewMode === 'summative') {
+            summative_headers.forEach(h => headers.push(`"${h.tp || ''} - ${(h.title || '').replace(/"/g, '""')}"`));
+            headers.push('Total Sumatif', 'Sumatif Akhir', 'Deskripsi Capaian');
+        } else if (viewMode === 'formative') {
+            formative_headers.forEach(h => headers.push(`"${(h.title || '').replace(/"/g, '""')}"`));
+        } else if (viewMode === 'initial') {
+            initial_headers.forEach(h => headers.push(`"${(h.title || '').replace(/"/g, '""')}"`));
+        } else {
+            formative_headers.forEach((h, i) => headers.push(`"F${i+1}: ${(h.title || '').replace(/"/g, '""')}"`));
+            summative_headers.forEach((h, i) => headers.push(`"S${i+1}: ${(h.tp || h.title || '').replace(/"/g, '""')}"`));
+            headers.push('Rata-rata');
+        }
+
+        const rows = filteredData.map((d, index) => {
+            const row: (string | number)[] = [index + 1, `"${d.student_name.replace(/"/g, '""')}"`, `"${d.student_nis || '-'}"`];
+            if (viewMode === 'summative') {
+                d.summative.forEach(s => row.push(s.score));
+                row.push(Math.round(d.average), localScores[d.student_id] ?? d.sumatif_akhir, `"${(d.description || '').replace(/"/g, '""')}"`);
+            } else if (viewMode === 'formative') {
+                d.formative.forEach(s => row.push(s.score));
+            } else if (viewMode === 'initial') {
+                d.initial.forEach(s => row.push(s.score));
+            } else {
+                d.formative.forEach(s => row.push(s.score));
+                d.summative.forEach(s => row.push(s.score));
+                row.push(Math.round(d.average));
+            }
+            return row.join(',');
+        });
+
+        const csvContent = '\uFEFF' + [headers.join(','), ...rows].join('\r\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `Nilai_${subject_name || 'Mapel'}_${class_name || 'Kelas'}_${viewMode}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     };
 
     const filteredData = gradeData.filter(d => 
@@ -222,6 +326,17 @@ export default function GradebookShow({
                                 <span>Rapor Akhir</span>
                             </Link>
                         </div>
+
+                        {/* Button Ekspor CSV */}
+                        <button
+                            type="button"
+                            onClick={exportCsv}
+                            className="inline-flex items-center justify-center gap-1.5 h-10 px-3.5 rounded-xl border border-border bg-card text-foreground hover:bg-muted text-xs font-bold shadow-2xs transition active:scale-95 cursor-pointer min-h-[40px]"
+                            title="Unduh Rekap Nilai Format CSV / Excel"
+                        >
+                            <Download className="h-4 w-4 text-primary" />
+                            <span className="hidden sm:inline">Ekspor CSV</span>
+                        </button>
 
                         {/* Button Cetak Nilai */}
                         <button
@@ -417,36 +532,109 @@ export default function GradebookShow({
                                     filteredData.map((d, idx) => (
                                         <tr key={d.student_id} className={`group transition-colors hover:bg-muted/30 ${idx % 2 === 1 ? 'bg-muted/10' : ''}`}>
                                             <td className="sticky left-0 z-20 px-4 py-3 font-medium bg-card border-r border-border">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary font-bold text-xs shrink-0">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setSelectedStudentForPortfolio(d.student_id)}
+                                                    className="flex items-center gap-3 text-left hover:opacity-80 transition group/btn cursor-pointer w-full"
+                                                    title="Buka Portofolio Capaian Belajar Siswa"
+                                                >
+                                                    <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary font-bold text-xs shrink-0 group-hover/btn:bg-primary group-hover/btn:text-primary-foreground transition">
                                                         {d.student_name.slice(0, 2).toUpperCase()}
                                                     </div>
                                                     <div className="flex flex-col min-w-0">
-                                                        <span className="font-bold text-foreground text-xs sm:text-sm truncate">{d.student_name}</span>
-                                                        <span className="text-[10px] font-mono font-semibold text-muted-foreground">NIS: {d.student_nis || '-'}</span>
+                                                        <span className="font-bold text-foreground text-xs sm:text-sm truncate group-hover/btn:text-primary transition">{d.student_name}</span>
+                                                        <span className="text-[10px] font-mono font-semibold text-muted-foreground flex items-center gap-1">
+                                                            <span>NIS: {d.student_nis || '-'}</span>
+                                                            <span className="text-primary font-bold hidden sm:inline">· Portofolio</span>
+                                                        </span>
                                                     </div>
-                                                </div>
+                                                </button>
                                             </td>
 
                                             {/* Mode: Rekap Nilai Formatif & Sumatif */}
                                             {viewMode === 'recap' ? (
                                                 <>
                                                     {/* Nilai Formatif (Tidak Dijumlahkan) */}
-                                                    {d.formative.map((s, sIdx) => (
-                                                        <td key={`rf_${sIdx}`} className="px-3 py-3 text-center border-r border-border/40 bg-amber-500/2">
-                                                            <span className={`text-xs font-bold ${s.score === '-' ? 'text-muted-foreground/40' : 'text-foreground'}`}>
-                                                                {s.score}
-                                                            </span>
-                                                        </td>
-                                                    ))}
-                                                    {/* Nilai Sumatif (Jika belum dikerjakan = 0) */}
-                                                    {d.summative.map((s, sIdx) => (
-                                                        <td key={`rs_${sIdx}`} className="px-3 py-3 text-center border-r border-border/40 bg-primary/2">
-                                                            <span className={`text-xs font-bold ${s.score === '-' ? 'text-muted-foreground/40' : s.score === 0 ? 'text-amber-600 font-extrabold' : 'text-foreground'}`}>
-                                                                {s.score}
-                                                            </span>
-                                                        </td>
-                                                    ))}
+                                                    {d.formative.map((s, sIdx) => {
+                                                        const hasVal = s.score !== '-' && s.score !== null && s.score !== undefined;
+                                                        return (
+                                                            <td key={`rf_${sIdx}`} className="px-3 py-3 text-center border-r border-border/40 bg-amber-500/2">
+                                                                {hasVal ? (
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => setInspectingSubmission({
+                                                                            studentId: d.student_id,
+                                                                            studentName: d.student_name,
+                                                                            studentNis: d.student_nis,
+                                                                            assignmentId: s.assignment_id,
+                                                                            submissionId: s.submission_id,
+                                                                            title: s.title || (formative_headers[sIdx]?.title ?? 'Formatif'),
+                                                                            type: 'Formatif',
+                                                                            score: s.score,
+                                                                            kktp: kktp,
+                                                                            submittedAt: s.submitted_at,
+                                                                            feedback: s.feedback,
+                                                                            filePath: s.file_path,
+                                                                            classId: effectiveClassId,
+                                                                        })}
+                                                                        className="inline-flex items-center justify-center min-w-[34px] px-1.5 py-0.5 rounded-lg text-xs font-bold text-amber-700 dark:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 transition cursor-pointer"
+                                                                        title="Lihat Detail Formatif"
+                                                                    >
+                                                                        {s.score}
+                                                                    </button>
+                                                                ) : (
+                                                                    <span className="text-xs font-bold text-muted-foreground/30">-</span>
+                                                                )}
+                                                            </td>
+                                                        );
+                                                    })}
+                                                    {/* Nilai Sumatif */}
+                                                    {d.summative.map((s, sIdx) => {
+                                                        const num = s.score !== '-' ? Number(s.score) : null;
+                                                        const isZero = num === 0;
+                                                        const isUnder = num !== null && num < kktp && num > 0;
+                                                        return (
+                                                            <td key={`rs_${sIdx}`} className="px-3 py-3 text-center border-r border-border/40 bg-primary/2">
+                                                                {s.has_assignment ? (
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => setInspectingSubmission({
+                                                                            studentId: d.student_id,
+                                                                            studentName: d.student_name,
+                                                                            studentNis: d.student_nis,
+                                                                            assignmentId: s.assignment_id,
+                                                                            submissionId: s.submission_id,
+                                                                            title: s.title || (summative_headers[sIdx]?.title ?? 'Sumatif'),
+                                                                            tpCode: s.tp_code,
+                                                                            type: 'Sumatif',
+                                                                            score: s.score,
+                                                                            kktp: kktp,
+                                                                            submittedAt: s.submitted_at,
+                                                                            feedback: s.feedback,
+                                                                            filePath: s.file_path,
+                                                                            hasContent: s.has_content,
+                                                                            isRemedialOpen: s.is_remedial_open,
+                                                                            classId: effectiveClassId,
+                                                                        })}
+                                                                        className={`inline-flex items-center justify-center min-w-[34px] px-1.5 py-0.5 rounded-lg text-xs font-bold transition cursor-pointer border ${
+                                                                            s.score === '-'
+                                                                                ? 'text-muted-foreground/40 hover:bg-muted border-transparent'
+                                                                                : isZero
+                                                                                    ? 'bg-amber-500/10 text-amber-700 dark:text-amber-300 font-extrabold border-amber-500/30'
+                                                                                    : isUnder
+                                                                                        ? 'bg-rose-500/10 text-rose-700 dark:text-rose-300 font-extrabold border-rose-500/30'
+                                                                                        : 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30'
+                                                                        }`}
+                                                                        title="Lihat Detail Sumatif"
+                                                                    >
+                                                                        {s.score}
+                                                                    </button>
+                                                                ) : (
+                                                                    <span className="text-xs font-bold text-muted-foreground/40">{s.score}</span>
+                                                                )}
+                                                            </td>
+                                                        );
+                                                    })}
                                                     {/* Total Sumatif (Rata-rata Nilai Sumatif) */}
                                                     <td className="px-3 py-3 text-center bg-primary/10 border-r border-border/40">
                                                         <span className="text-xs sm:text-sm font-black text-primary">
@@ -456,13 +644,52 @@ export default function GradebookShow({
                                                 </>
                                             ) : viewMode === 'summative' ? (
                                                 <>
-                                                    {d.summative.map((s, sIdx) => (
-                                                        <td key={sIdx} className="px-3 py-3 text-center border-r border-border/40">
-                                                            <span className={`text-xs font-bold ${s.score === '-' ? 'text-muted-foreground/30' : s.score === 0 ? 'text-amber-600 font-black' : 'text-foreground'}`}>
-                                                                {s.score}
-                                                            </span>
-                                                        </td>
-                                                    ))}
+                                                    {d.summative.map((s, sIdx) => {
+                                                        const num = s.score !== '-' ? Number(s.score) : null;
+                                                        const isZero = num === 0;
+                                                        const isUnder = num !== null && num < kktp && num > 0;
+                                                        return (
+                                                            <td key={sIdx} className="px-3 py-3 text-center border-r border-border/40">
+                                                                {s.has_assignment ? (
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => setInspectingSubmission({
+                                                                            studentId: d.student_id,
+                                                                            studentName: d.student_name,
+                                                                            studentNis: d.student_nis,
+                                                                            assignmentId: s.assignment_id,
+                                                                            submissionId: s.submission_id,
+                                                                            title: s.title || (summative_headers[sIdx]?.title ?? 'Sumatif'),
+                                                                            tpCode: s.tp_code,
+                                                                            type: 'Sumatif',
+                                                                            score: s.score,
+                                                                            kktp: kktp,
+                                                                            submittedAt: s.submitted_at,
+                                                                            feedback: s.feedback,
+                                                                            filePath: s.file_path,
+                                                                            hasContent: s.has_content,
+                                                                            isRemedialOpen: s.is_remedial_open,
+                                                                            classId: effectiveClassId,
+                                                                        })}
+                                                                        className={`inline-flex items-center justify-center min-w-[34px] px-2 py-0.5 rounded-lg text-xs font-bold transition cursor-pointer border ${
+                                                                            s.score === '-'
+                                                                                ? 'text-muted-foreground/30 hover:bg-muted border-transparent'
+                                                                                : isZero
+                                                                                    ? 'bg-amber-500/10 text-amber-700 dark:text-amber-300 font-extrabold border-amber-500/30'
+                                                                                    : isUnder
+                                                                                        ? 'bg-rose-500/10 text-rose-700 dark:text-rose-300 font-extrabold border-rose-500/30'
+                                                                                        : 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30'
+                                                                        }`}
+                                                                        title="Klik untuk detail & bukti tugas siswa"
+                                                                    >
+                                                                        {s.score}
+                                                                    </button>
+                                                                ) : (
+                                                                    <span className="text-xs font-bold text-muted-foreground/30">{s.score}</span>
+                                                                )}
+                                                            </td>
+                                                        );
+                                                    })}
                                                     {/* Total Sumatif (Rata-rata Nilai Sumatif) */}
                                                     <td className="px-3 py-3 text-center bg-primary/10 border-r border-border/40">
                                                         <span className="text-xs sm:text-sm font-black text-primary">
@@ -486,13 +713,39 @@ export default function GradebookShow({
                                                     </td>
                                                 </>
                                             ) : (
-                                                getCurrentScores(d).map((s, sIdx) => (
-                                                    <td key={sIdx} className="px-3 py-3 text-center border-r border-border/40">
-                                                        <span className={`text-xs font-bold ${s.score === '-' ? 'text-muted-foreground/30' : 'text-foreground'}`}>
-                                                            {s.score}
-                                                        </span>
-                                                    </td>
-                                                ))
+                                                getCurrentScores(d).map((s, sIdx) => {
+                                                    const hasVal = s.score !== '-' && s.score !== null && s.score !== undefined;
+                                                    return (
+                                                        <td key={sIdx} className="px-3 py-3 text-center border-r border-border/40">
+                                                            {hasVal ? (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => setInspectingSubmission({
+                                                                        studentId: d.student_id,
+                                                                        studentName: d.student_name,
+                                                                        studentNis: d.student_nis,
+                                                                        assignmentId: s.assignment_id,
+                                                                        submissionId: s.submission_id,
+                                                                        title: s.title || (getCurrentHeaders()[sIdx]?.title ?? 'Asesmen'),
+                                                                        type: viewMode === 'initial' ? 'Asesmen Awal' : 'Formatif',
+                                                                        score: s.score,
+                                                                        kktp: kktp,
+                                                                        submittedAt: s.submitted_at,
+                                                                        feedback: s.feedback,
+                                                                        filePath: s.file_path,
+                                                                        classId: effectiveClassId,
+                                                                    })}
+                                                                    className="inline-flex items-center justify-center min-w-[34px] px-1.5 py-0.5 rounded-lg text-xs font-bold text-foreground bg-muted/60 hover:bg-muted border border-border transition cursor-pointer"
+                                                                    title="Lihat Detail Asesmen"
+                                                                >
+                                                                    {s.score}
+                                                                </button>
+                                                            ) : (
+                                                                <span className="text-xs font-bold text-muted-foreground/30">{s.score}</span>
+                                                            )}
+                                                        </td>
+                                                    );
+                                                })
                                             )}
                                         </tr>
                                     ))
@@ -677,6 +930,20 @@ export default function GradebookShow({
                     </div>
                 </div>
             </div>
+
+            {/* Submission Inspection Modal (Pilar 2) */}
+            <SubmissionInspectionModal
+                data={inspectingSubmission}
+                onClose={() => setInspectingSubmission(null)}
+                onOpenRemedial={handleOpenRemedial}
+            />
+
+            {/* Student Individual Learning Portfolio Drawer (Pilar 3) */}
+            <StudentPortfolioDrawer
+                studentId={selectedStudentForPortfolio}
+                initialSubjectId={typeof effectiveSubjectId === 'number' ? effectiveSubjectId : (Number(effectiveSubjectId) || null)}
+                onClose={() => setSelectedStudentForPortfolio(null)}
+            />
         </AppLayout>
     );
 }

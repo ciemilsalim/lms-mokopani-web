@@ -242,23 +242,37 @@ class GradebookController extends Controller
                     // Aturan: Jika sumatif sudah diterbitkan tapi siswa belum mengerjakan, nilainya 0 agar bisa diakumulasi
                     $score = $hasSubmittedWithScore ? (float) $sub->score : 0;
                     return [
-                        'tp_id'          => $col['tp_id'],
-                        'tp_code'        => $col['tp'],
-                        'title'          => $col['title'],
-                        'score'          => $score,
-                        'submitted'      => $hasSubmittedWithScore,
-                        'is_top_level'   => true,
-                        'has_assignment' => true,
+                        'tp_id'            => $col['tp_id'],
+                        'assignment_id'    => $col['assignment_id'],
+                        'submission_id'    => $sub?->id,
+                        'tp_code'          => $col['tp'],
+                        'title'            => $col['title'],
+                        'score'            => $score,
+                        'submitted'        => $hasSubmittedWithScore,
+                        'has_content'      => (bool) ($sub && ($sub->content || $sub->file_path)),
+                        'file_path'        => $sub?->file_path,
+                        'feedback'         => $sub?->feedback,
+                        'submitted_at'     => $sub?->created_at?->format('d M Y, H:i'),
+                        'is_remedial_open' => (bool) $sub?->is_remedial_open,
+                        'is_top_level'     => true,
+                        'has_assignment'   => true,
                     ];
                 } else {
                     return [
-                        'tp_id'          => $col['tp_id'],
-                        'tp_code'        => $col['tp'],
-                        'title'          => $col['title'],
-                        'score'          => '-',
-                        'submitted'      => false,
-                        'is_top_level'   => true,
-                        'has_assignment' => false,
+                        'tp_id'            => $col['tp_id'],
+                        'assignment_id'    => null,
+                        'submission_id'    => null,
+                        'tp_code'          => $col['tp'],
+                        'title'            => $col['title'],
+                        'score'            => '-',
+                        'submitted'        => false,
+                        'has_content'      => false,
+                        'file_path'        => null,
+                        'feedback'         => null,
+                        'submitted_at'     => null,
+                        'is_remedial_open' => false,
+                        'is_top_level'     => true,
+                        'has_assignment'   => false,
                     ];
                 }
             });
@@ -267,10 +281,16 @@ class GradebookController extends Controller
             $initialScores = $initialAssignments->values()->map(function ($a) use ($student, $submissionsByKey) {
                 $sub = $submissionsByKey->get($student->id . '_' . $a->id);
                 return [
-                    'id'    => $a->id,
-                    'title' => $a->title,
-                    'score' => ($sub && $sub->score !== null && $sub->score !== '') ? (float) $sub->score : '-',
-                    'type'  => $a->assessment_type,
+                    'id'            => $a->id,
+                    'assignment_id' => $a->id,
+                    'submission_id' => $sub?->id,
+                    'title'         => $a->title,
+                    'score'         => ($sub && $sub->score !== null && $sub->score !== '') ? (float) $sub->score : '-',
+                    'type'          => $a->assessment_type,
+                    'has_content'   => (bool) ($sub && ($sub->content || $sub->file_path)),
+                    'file_path'     => $sub?->file_path,
+                    'feedback'      => $sub?->feedback,
+                    'submitted_at'  => $sub?->created_at?->format('d M Y, H:i'),
                 ];
             });
 
@@ -278,10 +298,16 @@ class GradebookController extends Controller
             $formativeScores = $formativeAssignments->values()->map(function ($a) use ($student, $submissionsByKey) {
                 $sub = $submissionsByKey->get($student->id . '_' . $a->id);
                 return [
-                    'id'    => $a->id,
-                    'title' => $a->title,
-                    'score' => ($sub && $sub->score !== null && $sub->score !== '') ? (float) $sub->score : '-',
-                    'type'  => $a->assessment_type,
+                    'id'            => $a->id,
+                    'assignment_id' => $a->id,
+                    'submission_id' => $sub?->id,
+                    'title'         => $a->title,
+                    'score'         => ($sub && $sub->score !== null && $sub->score !== '') ? (float) $sub->score : '-',
+                    'type'          => $a->assessment_type,
+                    'has_content'   => (bool) ($sub && ($sub->content || $sub->file_path)),
+                    'file_path'     => $sub?->file_path,
+                    'feedback'      => $sub?->feedback,
+                    'submitted_at'  => $sub?->created_at?->format('d M Y, H:i'),
                 ];
             });
 
@@ -828,5 +854,120 @@ class GradebookController extends Controller
         );
 
         return response()->json(['success' => true]);
+    }
+
+    public function studentPortfolio(Request $request, Student $student)
+    {
+        $user = Auth::user();
+        $activeYear = AcademicYear::getActive();
+        $activeSemester = Semester::getActive();
+
+        // 1. Authorize: Ensure logged-in teacher teaches in this student's class (or user is admin)
+        if ($user->role !== 'admin') {
+            $teacher = $user->teacher ?? \App\Models\Teacher::where('user_id', $user->id)->first();
+            if (!$teacher) {
+                abort(403, 'Akses khusus guru.');
+            }
+            $teachesStudent = TeachingAssignment::where('teacher_id', $teacher->id)
+                ->where('school_class_id', $student->school_class_id)
+                ->exists();
+            if (!$teachesStudent) {
+                abort(403, 'Anda tidak memiliki penugasan mengajar untuk kelas siswa ini.');
+            }
+        }
+
+        $subjectId = $request->query('subject_id');
+
+        $teachingQuery = TeachingAssignment::with('subject')
+            ->where('school_class_id', $student->school_class_id);
+        if ($user->role !== 'admin' && $user->teacher) {
+            $teachingQuery->where('teacher_id', $user->teacher->id);
+        }
+        $teachings = $teachingQuery->get();
+        $subjects = $teachings->pluck('subject')->filter()->unique('id')->values();
+
+        $activeSubjectId = $subjectId ? (int)$subjectId : ($subjects->first()?->id ?? null);
+        $activeSubject = $subjects->firstWhere('id', $activeSubjectId);
+
+        // Ambil semua asesmen untuk kelas dan mapel ini pada periode aktif
+        $assignmentsQuery = LmsAssignment::with(['learningObjective', 'schoolClasses'])
+            ->whereHas('schoolClasses', function ($q) use ($student) {
+                $q->where('school_classes.id', $student->school_class_id);
+            })
+            ->where('academic_year_id', $activeYear?->id)
+            ->where('semester_id', $activeSemester?->id);
+
+        if ($activeSubjectId) {
+            $assignmentsQuery->where('subject_id', $activeSubjectId);
+        }
+
+        $allAssignments = $assignmentsQuery->latest()->get();
+
+        $submissions = LmsSubmission::whereIn('assignment_id', $allAssignments->pluck('id'))
+            ->where('student_id', $student->id)
+            ->get()
+            ->keyBy('assignment_id');
+
+        $remedials = \App\Models\LmsRemedialRecord::where('student_id', $student->id)
+            ->whereIn('assignment_id', $allAssignments->pluck('id'))
+            ->get()
+            ->keyBy('assignment_id');
+
+        $kktp = $activeSubjectId ? get_kktp($activeSubjectId) : 75;
+
+        $portfolioItems = $allAssignments->map(function ($asm) use ($submissions, $remedials, $kktp) {
+            $sub = $submissions->get($asm->id);
+            $rem = $remedials->get($asm->id);
+            $score = ($sub && $sub->score !== null && $sub->score !== '') ? (float) $sub->score : null;
+            $isPassed = $score !== null ? $asm->evaluateKetuntasan($sub) : null;
+
+            return [
+                'id'               => $asm->id,
+                'title'            => $asm->title,
+                'assessment_type'  => $asm->assessment_type,
+                'instrument_type'  => $asm->instrument_type,
+                'tp_code'          => $asm->learningObjective?->code ?: ('TP ' . ($asm->learningObjective?->order ?? '-')),
+                'tp_description'   => $asm->learningObjective?->description ?? '-',
+                'due_date'         => $asm->due_date?->format('d M Y'),
+                'max_points'       => $asm->max_points,
+                'kktp'             => $asm->passing_grade ?? $kktp,
+                'score'            => $score,
+                'is_passed'        => $isPassed,
+                'submitted_at'     => $sub?->created_at?->format('d M Y, H:i'),
+                'feedback'         => $sub?->feedback,
+                'has_submission'   => (bool) ($sub && ($sub->content || $sub->file_path)),
+                'file_path'        => $sub?->file_path,
+                'is_remedial_open' => (bool) ($sub && $sub->is_remedial_open),
+                'remedial_status'  => $rem?->status,
+                'remedial_score'   => $rem?->remedial_score,
+            ];
+        });
+
+        $scoredSubmissions = $portfolioItems->whereNotNull('score');
+
+        return response()->json([
+            'student' => [
+                'id'         => $student->id,
+                'name'       => $student->name,
+                'nis'        => $student->nis,
+                'photo_url'  => $student->photo_url,
+                'class_name' => $student->schoolClass?->name ?? '-',
+                'class_id'   => $student->school_class_id,
+            ],
+            'subjects'       => $subjects->map(fn($s) => ['id' => $s->id, 'name' => $s->name]),
+            'active_subject' => $activeSubject ? ['id' => $activeSubject->id, 'name' => $activeSubject->name] : null,
+            'kktp'           => $kktp,
+            'period'         => ($activeYear?->name ?? '') . ($activeSemester ? ' - ' . $activeSemester->name : ''),
+            'portfolio'      => $portfolioItems->values(),
+            'summary'        => [
+                'total_assignments'  => $allAssignments->count(),
+                'total_submitted'    => $submissions->count(),
+                'total_graded'       => $scoredSubmissions->count(),
+                'average_score'      => $scoredSubmissions->count() > 0 ? round($scoredSubmissions->avg('score')) : 0,
+                'passed_count'       => $portfolioItems->where('is_passed', true)->count(),
+                'remedial_count'     => $portfolioItems->where('is_passed', false)->whereNotNull('score')->count(),
+                'unsubmitted_count'  => $allAssignments->count() - $submissions->count(),
+            ],
+        ]);
     }
 }

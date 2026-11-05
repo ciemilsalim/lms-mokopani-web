@@ -53,16 +53,31 @@ export default function GradeSplitPage({
 }: GradeSplitProps) {
     // Submissions map for switcher & auto-detection
     const submissionsMap = useMemo(() => {
-        const map: Record<number, { score: number | null; submitted_at?: string; is_graded?: boolean }> = {};
+        const map: Record<number, { 
+            score: number | null; 
+            submitted_at?: string; 
+            is_graded?: boolean;
+            is_passed?: boolean;
+            is_remedial_open?: boolean;
+            has_content?: boolean;
+        }> = {};
         (assignment.submissions || []).forEach((s: any) => {
+            const hasScore = s.score !== null && s.score !== undefined && s.score !== '';
+            const isPassed = s.is_passed !== undefined 
+                ? Boolean(s.is_passed) 
+                : (hasScore && assignment.passing_grade ? Number(s.score) >= assignment.passing_grade : false);
+
             map[s.student_id] = { 
                 score: s.score, 
                 submitted_at: s.submitted_at,
-                is_graded: s.score !== null && s.score !== undefined
+                is_graded: hasScore,
+                is_passed: isPassed,
+                is_remedial_open: Boolean(s.is_remedial_open),
+                has_content: Boolean(s.content || s.file_path || s.submitted_at)
             };
         });
         return map;
-    }, [assignment.submissions]);
+    }, [assignment.submissions, assignment.passing_grade]);
 
     // Initial student calculation: explicit target OR first student with ungraded submission
     const initialIndex = useMemo(() => {
@@ -73,13 +88,77 @@ export default function GradeSplitPage({
         // Auto-select first student who submitted but has not been graded
         const ungradedIdx = students.findIndex(s => {
             const sub = submissionsMap[s.id];
-            return sub && !sub.is_graded;
+            return sub && !sub.is_graded && sub.has_content;
         });
         return ungradedIdx !== -1 ? ungradedIdx : 0;
     }, [initial_student_id, students, submissionsMap]);
 
     const [currentStudentIndex, setCurrentStudentIndex] = useState(initialIndex);
-    const [filterUngradedOnly, setFilterUngradedOnly] = useState(false);
+    const [statusFilter, setStatusFilter] = useState<'all' | 'needs_grading' | 'unsubmitted' | 'needs_remedial' | 'passed'>('all');
+
+    // Counts across all status categories
+    const statusCounts = useMemo(() => {
+        let needsGrading = 0;
+        let unsubmitted = 0;
+        let needsRemedial = 0;
+        let passed = 0;
+        let totalScored = 0;
+        let totalScoreSum = 0;
+
+        students.forEach(s => {
+            const sub = submissionsMap[s.id];
+            if (sub && sub.is_graded) {
+                totalScored++;
+                totalScoreSum += Number(sub.score || 0);
+                if (sub.is_passed && !sub.is_remedial_open) {
+                    passed++;
+                } else {
+                    needsRemedial++;
+                }
+            } else if (sub && sub.has_content) {
+                needsGrading++;
+            } else {
+                unsubmitted++;
+            }
+        });
+
+        const avgScore = totalScored > 0 ? Math.round(totalScoreSum / totalScored) : 0;
+        const progressPct = students.length > 0 ? Math.round((totalScored / students.length) * 100) : 0;
+
+        return {
+            all: students.length,
+            needs_grading: needsGrading,
+            unsubmitted,
+            needs_remedial: needsRemedial,
+            passed,
+            totalScored,
+            avgScore,
+            progressPct,
+        };
+    }, [students, submissionsMap]);
+
+    // Filtered student indices according to active tab
+    const filteredStudentIndices = useMemo(() => {
+        return students
+            .map((s, idx) => ({ s, idx }))
+            .filter(({ s }) => {
+                const sub = submissionsMap[s.id];
+                if (statusFilter === 'all') return true;
+                if (statusFilter === 'needs_grading') return sub && !sub.is_graded && sub.has_content;
+                if (statusFilter === 'unsubmitted') return !sub || (!sub.has_content && !sub.is_graded);
+                if (statusFilter === 'needs_remedial') return sub && sub.is_graded && (!sub.is_passed || sub.is_remedial_open);
+                if (statusFilter === 'passed') return sub && sub.is_graded && sub.is_passed && !sub.is_remedial_open;
+                return true;
+            })
+            .map(({ idx }) => idx);
+    }, [students, submissionsMap, statusFilter]);
+
+    // When status filter changes, make sure current index is within the filtered subset
+    useEffect(() => {
+        if (filteredStudentIndices.length > 0 && !filteredStudentIndices.includes(currentStudentIndex)) {
+            setCurrentStudentIndex(filteredStudentIndices[0]);
+        }
+    }, [statusFilter, filteredStudentIndices]);
 
     // Sync if initial_student_id changes
     useEffect(() => {
@@ -94,39 +173,21 @@ export default function GradeSplitPage({
     const currentStudent = students[currentStudentIndex];
     const submission = assignment.submissions?.find((s: any) => s.student_id === currentStudent?.id);
 
-    // Count of students who have submitted but are not graded
-    const ungradedStudentsCount = useMemo(() => {
-        return students.filter(s => {
-            const sub = submissionsMap[s.id];
-            return sub && !sub.is_graded;
-        }).length;
-    }, [students, submissionsMap]);
-
-    // Navigation helpers
+    // Navigation helpers navigating inside the active filter subset
     const handleNextStudent = (autoSave = false) => {
-        if (filterUngradedOnly) {
-            const nextIdx = students.findIndex((s, idx) => idx > currentStudentIndex && submissionsMap[s.id] && !submissionsMap[s.id].is_graded);
-            if (nextIdx !== -1) {
-                setCurrentStudentIndex(nextIdx);
-                return;
-            }
-        }
-        if (currentStudentIndex < students.length - 1) {
+        const curPos = filteredStudentIndices.indexOf(currentStudentIndex);
+        if (curPos !== -1 && curPos < filteredStudentIndices.length - 1) {
+            setCurrentStudentIndex(filteredStudentIndices[curPos + 1]);
+        } else if (statusFilter === 'all' && currentStudentIndex < students.length - 1) {
             setCurrentStudentIndex(prev => prev + 1);
         }
     };
 
     const handlePrevStudent = () => {
-        if (filterUngradedOnly) {
-            for (let i = currentStudentIndex - 1; i >= 0; i--) {
-                const s = students[i];
-                if (submissionsMap[s.id] && !submissionsMap[s.id].is_graded) {
-                    setCurrentStudentIndex(i);
-                    return;
-                }
-            }
-        }
-        if (currentStudentIndex > 0) {
+        const curPos = filteredStudentIndices.indexOf(currentStudentIndex);
+        if (curPos > 0) {
+            setCurrentStudentIndex(filteredStudentIndices[curPos - 1]);
+        } else if (statusFilter === 'all' && currentStudentIndex > 0) {
             setCurrentStudentIndex(prev => prev - 1);
         }
     };
@@ -910,13 +971,78 @@ export default function GradeSplitPage({
                     </div>
                 </div>
 
-                {/* 2. Student Switcher (64px target, clean dropdown + counter) */}
-                <div className="w-full max-w-full bg-card rounded-2xl border border-border/80 p-3 shadow-xs space-y-2 overflow-hidden">
-                    {/* Top Row: Navigation bar + Counter + Filter & Select */}
-                    <div className="flex items-center justify-between gap-2 w-full">
+                {/* 2. Class Progress Bar & Status Pill Summary */}
+                <div className="w-full bg-card rounded-2xl border border-border/80 p-3 sm:p-4 shadow-xs space-y-3 overflow-hidden">
+                    {/* Progress Metrics Row */}
+                    <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                        <div className="flex items-center gap-2">
+                            <span className="font-bold text-foreground">Progres Penilaian:</span>
+                            <span className="font-black text-primary font-mono">{statusCounts.totalScored} / {statusCounts.all} Siswa ({statusCounts.progressPct}%)</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-muted-foreground font-medium">Rata-rata Kelas: <strong className="text-foreground font-bold">{statusCounts.avgScore}</strong></span>
+                            {assignment.passing_grade && (
+                                <span className="text-muted-foreground font-medium">· KKTP: <strong className="text-primary font-bold">{assignment.passing_grade}</strong></span>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Progress Bar */}
+                    <div className="w-full bg-muted/60 h-2 rounded-full overflow-hidden flex">
+                        <div 
+                            className="bg-emerald-500 h-full transition-all duration-300" 
+                            style={{ width: `${statusCounts.all > 0 ? (statusCounts.passed / statusCounts.all) * 100 : 0}%` }}
+                            title={`Tuntas: ${statusCounts.passed}`}
+                        />
+                        <div 
+                            className="bg-amber-500 h-full transition-all duration-300" 
+                            style={{ width: `${statusCounts.all > 0 ? (statusCounts.needs_remedial / statusCounts.all) * 100 : 0}%` }}
+                            title={`Perlu Remedial: ${statusCounts.needs_remedial}`}
+                        />
+                        <div 
+                            className="bg-primary/50 h-full transition-all duration-300" 
+                            style={{ width: `${statusCounts.all > 0 ? (statusCounts.needs_grading / statusCounts.all) * 100 : 0}%` }}
+                            title={`Perlu Dinilai: ${statusCounts.needs_grading}`}
+                        />
+                    </div>
+
+                    {/* 5-Tab Segmented Filter Pills */}
+                    <div className="flex items-center gap-1.5 overflow-x-auto pb-1 pt-0.5 no-scrollbar w-full text-xs">
+                        {[
+                            { id: 'all' as const, label: 'Semua Siswa', count: statusCounts.all },
+                            { id: 'needs_grading' as const, label: 'Perlu Dinilai', count: statusCounts.needs_grading },
+                            { id: 'unsubmitted' as const, label: 'Belum Kumpul', count: statusCounts.unsubmitted },
+                            { id: 'needs_remedial' as const, label: 'Perlu Remedial', count: statusCounts.needs_remedial },
+                            { id: 'passed' as const, label: 'Tuntas', count: statusCounts.passed },
+                        ].map((tab) => {
+                            const isActive = statusFilter === tab.id;
+                            return (
+                                <button
+                                    key={tab.id}
+                                    type="button"
+                                    onClick={() => setStatusFilter(tab.id)}
+                                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold transition shrink-0 cursor-pointer border ${
+                                        isActive
+                                            ? 'bg-primary text-primary-foreground border-primary shadow-xs'
+                                            : 'bg-background hover:bg-muted text-muted-foreground border-border/80'
+                                    }`}
+                                >
+                                    <span>{tab.label}</span>
+                                    <span className={`px-1.5 py-0.2 rounded-md text-[10px] font-mono ${
+                                        isActive ? 'bg-primary-foreground/20 text-primary-foreground' : 'bg-muted font-bold text-foreground'
+                                    }`}>
+                                        {tab.count}
+                                    </span>
+                                </button>
+                            );
+                        })}
+                    </div>
+
+                    {/* Navigation bar + Counter + Select */}
+                    <div className="flex items-center justify-between gap-2 w-full pt-1">
                         <button
                             type="button"
-                            disabled={currentStudentIndex === 0}
+                            disabled={filteredStudentIndices.indexOf(currentStudentIndex) <= 0}
                             onClick={handlePrevStudent}
                             className="inline-flex items-center justify-center h-10 px-3 rounded-xl border border-border bg-background text-xs font-bold text-foreground hover:bg-muted disabled:opacity-30 disabled:pointer-events-none cursor-pointer shrink-0"
                             title="Siswa Sebelumnya"
@@ -927,45 +1053,22 @@ export default function GradeSplitPage({
 
                         <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1 justify-center max-w-[calc(100%-80px)] sm:max-w-none">
                             <span className="text-xs font-bold text-primary font-mono px-2 py-1 rounded-lg bg-primary/10 border border-primary/20 shrink-0">
-                                {String(currentStudentIndex + 1).padStart(2, '0')} / {String(students.length).padStart(2, '0')}
+                                {String(Math.max(1, filteredStudentIndices.indexOf(currentStudentIndex) + 1)).padStart(2, '0')} / {String(filteredStudentIndices.length).padStart(2, '0')}
                             </span>
 
-                            {/* Ungraded Quick Filter Toggle */}
-                            {ungradedStudentsCount > 0 && (
-                                <button
-                                    type="button"
-                                    onClick={() => setFilterUngradedOnly(prev => !prev)}
-                                    className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-bold border transition cursor-pointer shrink-0 ${
-                                        filterUngradedOnly
-                                            ? 'bg-rose-500 text-white border-rose-600 shadow-xs'
-                                            : 'bg-rose-500/10 hover:bg-rose-500/20 text-rose-700 dark:text-rose-300 border-rose-500/30'
-                                    }`}
-                                    title="Tampilkan hanya siswa yang belum dinilai"
-                                >
-                                    <span className={`h-1.5 w-1.5 rounded-full ${filterUngradedOnly ? 'bg-white' : 'bg-rose-500 animate-pulse'}`} />
-                                    <span>Belum Dinilai ({ungradedStudentsCount})</span>
-                                </button>
-                            )}
-
-                            <div className="relative min-w-0 flex-1 max-w-[180px] sm:max-w-[280px]">
+                            <div className="relative min-w-0 flex-1 max-w-[220px] sm:max-w-[340px]">
                                 <select
                                     value={currentStudentIndex}
                                     onChange={(e) => setCurrentStudentIndex(Number(e.target.value))}
                                     className="w-full rounded-xl border border-border bg-background pl-2.5 pr-7 py-1.5 text-xs font-bold text-foreground outline-none focus:ring-2 focus:ring-primary/20 truncate cursor-pointer h-10 appearance-none"
                                 >
-                                    {students.map((s, idx) => {
+                                    {filteredStudentIndices.map((idx) => {
+                                        const s = students[idx];
                                         const sub = submissionsMap[s.id];
-                                        const scored = sub && sub.score !== null && sub.score !== undefined;
-                                        const hasSubmitted = !!sub;
+                                        const scored = sub && sub.is_graded;
                                         const statusLabel = scored
-                                            ? `✓ Dinilai: ${sub.score}`
-                                            : hasSubmitted
-                                                ? '⚠️ Perlu Dinilai'
-                                                : '○ Belum Kumpul';
-
-                                        if (filterUngradedOnly && scored) {
-                                            if (idx !== currentStudentIndex) return null;
-                                        }
+                                            ? (sub.is_passed ? `✓ Tuntas: ${sub.score}` : `⚠️ Remedial: ${sub.score}`)
+                                            : (sub && sub.has_content ? '📝 Perlu Dinilai' : '○ Belum Kumpul');
 
                                         return (
                                             <option key={s.id} value={idx}>
@@ -982,7 +1085,7 @@ export default function GradeSplitPage({
 
                         <button
                             type="button"
-                            disabled={currentStudentIndex === students.length - 1}
+                            disabled={filteredStudentIndices.indexOf(currentStudentIndex) >= filteredStudentIndices.length - 1}
                             onClick={() => handleNextStudent(false)}
                             className="inline-flex items-center justify-center h-10 px-3 rounded-xl border border-border bg-background text-xs font-bold text-foreground hover:bg-muted disabled:opacity-30 disabled:pointer-events-none cursor-pointer shrink-0"
                             title="Siswa Berikutnya"

@@ -6,7 +6,8 @@ import {
     Activity, ListChecks, Mic, FileText, CheckSquare, RotateCcw,
     MessageSquare, Award, ArrowUpDown, Filter, Eye, Check, Loader2,
     SlidersHorizontal, UserCheck, UserX, Star, Info, ChevronDown, ChevronUp,
-    ExternalLink, Send, CheckCheck, ArrowRight, ArrowLeft
+    ExternalLink, Send, CheckCheck, ArrowRight, ArrowLeft, Download,
+    LayoutList, Table as TableIcon
 } from 'lucide-react';
 import { StudentAvatar } from '@/components/student-avatar';
 
@@ -76,7 +77,8 @@ export function TeacherGradingWorkspace({
     onOpenRemedial,
 }: TeacherGradingWorkspaceProps) {
     const [searchQuery, setSearchQuery] = useState('');
-    const [statusFilter, setStatusFilter] = useState<'all' | 'unscored' | 'scored'>('all');
+    const [statusFilter, setStatusFilter] = useState<'all' | 'unscored' | 'scored' | 'remedial' | 'passed'>('all');
+    const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
     const [showInstructions, setShowInstructions] = useState(false);
     const [globalSaveStatus, setGlobalSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
     const [lastSavedTime, setLastSavedTime] = useState<string | null>(null);
@@ -151,6 +153,8 @@ export function TeacherGradingWorkspace({
 
     // Summary calculations
     const totalStudents = students.length;
+    const passingGrade = assignment.passing_grade ?? 75;
+
     const scoredCount = useMemo(() => {
         return students.filter(student => {
             const sub = submissionMap[student.id];
@@ -160,8 +164,67 @@ export function TeacherGradingWorkspace({
         }).length;
     }, [students, submissionMap, localScores]);
 
+    const passedCount = useMemo(() => {
+        return students.filter(student => {
+            const sub = submissionMap[student.id];
+            const subScore = getSubmissionScore(sub);
+            const local = localScores[student.id];
+            const isScored = (subScore !== null && subScore !== undefined) || (local !== '' && local !== undefined && local !== null);
+            if (!isScored) return false;
+            const effective = (local !== '' && local !== undefined && local !== null) ? Number(local) : Number(subScore);
+            return effective >= passingGrade;
+        }).length;
+    }, [students, submissionMap, localScores, passingGrade]);
+
+    const remedialCount = useMemo(() => {
+        return students.filter(student => {
+            const sub = submissionMap[student.id];
+            const subScore = getSubmissionScore(sub);
+            const local = localScores[student.id];
+            const isScored = (subScore !== null && subScore !== undefined) || (local !== '' && local !== undefined && local !== null);
+            if (!isScored) return false;
+            const effective = (local !== '' && local !== undefined && local !== null) ? Number(local) : Number(subScore);
+            return effective < passingGrade;
+        }).length;
+    }, [students, submissionMap, localScores, passingGrade]);
+
     const unscoredCount = Math.max(0, totalStudents - scoredCount);
     const progressPercentage = totalStudents > 0 ? Math.round((scoredCount / totalStudents) * 100) : 0;
+
+    const handleExportCsv = () => {
+        const headers = ['No', 'NIS', 'Nama Siswa', 'Kelas', 'Nilai', 'Status KKTP', 'Pengerjaan', 'Umpan Balik'];
+        const rows = students.map((student, idx) => {
+            const sub = submissionMap[student.id];
+            const subScore = getSubmissionScore(sub);
+            const local = localScores[student.id];
+            const isScored = (subScore !== null && subScore !== undefined) || (local !== '' && local !== undefined && local !== null);
+            const effScore = isScored ? (local !== '' && local !== undefined && local !== null ? local : subScore) : '';
+            const kktpStatus = !isScored ? 'Belum Dinilai' : Number(effScore) >= passingGrade ? 'Tuntas' : 'Perlu Remedial';
+            const workStatus = sub ? (sub.submitted_at ? 'Terkumpul' : 'Draf') : 'Belum Kumpul';
+            const feedback = sub?.feedback ? `"${sub.feedback.replace(/"/g, '""')}"` : '';
+            return [
+                idx + 1,
+                `"${student.nis || '-'}"`,
+                `"${student.name.replace(/"/g, '""')}"`,
+                `"${selectedClassName}"`,
+                effScore !== '' ? effScore : '-',
+                `"${kktpStatus}"`,
+                `"${workStatus}"`,
+                feedback,
+            ].join(',');
+        });
+
+        const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + [headers.join(','), ...rows].join('\n');
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement('a');
+        link.setAttribute('href', encodedUri);
+        const safeTitle = (assignment.title || 'asesmen').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+        const safeClass = selectedClassName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+        link.setAttribute('download', `nilai-${safeTitle}-${safeClass}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
 
     // Detect scroll for compact sticky header
     useEffect(() => {
@@ -185,10 +248,13 @@ export function TeacherGradingWorkspace({
                 const subScore = getSubmissionScore(sub);
                 const local = localScores[student.id];
                 const isScored = (subScore !== null && subScore !== undefined) || (local !== '' && local !== undefined && local !== null);
+                const effective = isScored ? ((local !== '' && local !== undefined && local !== null) ? Number(local) : Number(subScore)) : null;
 
-                // Status filtering: 'all' | 'unscored' | 'scored'
+                // Status filtering: 'all' | 'unscored' | 'scored' | 'remedial' | 'passed'
                 if (statusFilter === 'scored' && !isScored) return false;
                 if (statusFilter === 'unscored' && isScored) return false;
+                if (statusFilter === 'remedial' && (!isScored || effective === null || effective >= passingGrade)) return false;
+                if (statusFilter === 'passed' && (!isScored || effective === null || effective < passingGrade)) return false;
 
                 // Search query
                 if (searchQuery.trim()) {
@@ -201,7 +267,7 @@ export function TeacherGradingWorkspace({
                 return true;
             })
             .sort((a, b) => a.name.localeCompare(b.name));
-    }, [students, submissionMap, localScores, statusFilter, searchQuery]);
+    }, [students, submissionMap, localScores, statusFilter, searchQuery, passingGrade]);
 
     // Handle inline quick score save
     const handleScoreBlurOrEnter = async (studentId: number) => {
@@ -387,6 +453,24 @@ export function TeacherGradingWorkspace({
                         )}
                         <button
                             type="button"
+                            onClick={handleExportCsv}
+                            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-border bg-background hover:bg-muted text-xs font-bold text-foreground transition cursor-pointer min-h-[44px]"
+                            title="Ekspor nilai ke format CSV"
+                        >
+                            <Download className="h-4 w-4 text-primary" />
+                            <span className="hidden sm:inline">Ekspor CSV</span>
+                        </button>
+                        <button
+                            type="button"
+                            onClick={handleExportCsv}
+                            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-border bg-background hover:bg-muted text-xs font-bold text-foreground transition cursor-pointer min-h-[44px]"
+                            title="Ekspor daftar nilai ke format CSV"
+                        >
+                            <Download className="h-4 w-4 text-primary" />
+                            <span className="hidden sm:inline">Ekspor CSV</span>
+                        </button>
+                        <button
+                            type="button"
                             onClick={() => router.visit(route('assignments.grade-view', selectedClassId && selectedClassId !== 'all' ? { assignment: assignment.id, class_id: selectedClassId } : assignment.id))}
                             className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-bold shadow-xs hover:bg-primary/90 transition cursor-pointer min-h-[44px]"
                         >
@@ -454,7 +538,112 @@ export function TeacherGradingWorkspace({
                                 <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
                                 <span>{unscoredCount} siswa belum dinilai</span>
                             </div>
-                        ) : (
+                        ) : viewMode === 'table' ? (
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse text-xs">
+                            <thead>
+                                <tr className="border-b border-border/80 bg-muted/30 text-muted-foreground font-semibold">
+                                    <th className="py-3 px-3.5 text-center w-12">#</th>
+                                    <th className="py-3 px-3.5">Siswa</th>
+                                    <th className="py-3 px-3.5 text-center">Status Pengerjaan</th>
+                                    <th className="py-3 px-3.5 text-center">KKTP</th>
+                                    <th className="py-3 px-3.5 text-center w-32">Nilai Cepat</th>
+                                    <th className="py-3 px-3.5 text-right">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-border/60">
+                                {filteredStudents.map((student, idx) => {
+                                    const sub = submissionMap[student.id];
+                                    const subScore = getSubmissionScore(sub);
+                                    const currentScore = localScores[student.id] ?? '';
+                                    const isScored = (subScore !== null && subScore !== undefined) || (currentScore !== '' && currentScore !== undefined);
+                                    const effectiveScore = currentScore !== '' && currentScore !== undefined ? currentScore : (subScore ?? '');
+                                    const isPassed = isScored && assignment.passing_grade !== null && assignment.passing_grade !== undefined
+                                        ? Number(effectiveScore) >= assignment.passing_grade
+                                        : true;
+                                    const savingState = savingStates[student.id] || 'idle';
+
+                                    return (
+                                        <tr key={student.id} className="hover:bg-muted/20 transition-colors">
+                                            <td className="py-3 px-3.5 text-center font-mono font-bold text-muted-foreground">
+                                                {idx + 1}
+                                            </td>
+                                            <td className="py-3 px-3.5">
+                                                <div className="flex items-center gap-2.5">
+                                                    <StudentAvatar
+                                                        photoUrl={student.photo_url}
+                                                        name={student.name}
+                                                        className="h-8 w-8 rounded-lg shrink-0"
+                                                    />
+                                                    <div className="min-w-0">
+                                                        <p className="font-bold text-foreground truncate">{student.name}</p>
+                                                        <p className="text-[10px] font-mono text-muted-foreground">{student.nis || '-'}</p>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="py-3 px-3.5 text-center">
+                                                {sub ? (
+                                                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+                                                        <CheckCircle2 className="h-3.5 w-3.5" />
+                                                        <span>Terkumpul</span>
+                                                    </span>
+                                                ) : (
+                                                    <span className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
+                                                        <Clock className="h-3.5 w-3.5 text-muted-foreground/60" />
+                                                        <span>Belum</span>
+                                                    </span>
+                                                )}
+                                            </td>
+                                            <td className="py-3 px-3.5 text-center">
+                                                {isScored ? (
+                                                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${
+                                                        isPassed
+                                                            ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20'
+                                                            : 'bg-rose-500/10 text-rose-600 border border-rose-500/20'
+                                                    }`}>
+                                                        {isPassed ? 'Tuntas' : 'Remedial'}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-[11px] text-muted-foreground">—</span>
+                                                )}
+                                            </td>
+                                            <td className="py-3 px-3.5 text-center">
+                                                <div className="flex items-center justify-center gap-1.5">
+                                                    <input
+                                                        type="number"
+                                                        min="0"
+                                                        max={assignment.max_points || 100}
+                                                        value={localScores[student.id] ?? ''}
+                                                        onChange={(e) => {
+                                                            const val = e.target.value;
+                                                            setLocalScores((prev) => ({ ...prev, [student.id]: val }));
+                                                        }}
+                                                        onBlur={() => handleScoreBlurOrEnter(student.id)}
+                                                        onKeyDown={(e) => handleKeyDown(e, idx, student.id)}
+                                                        placeholder="—"
+                                                        className="w-16 h-8 text-center text-xs font-bold rounded-lg border border-border bg-card text-foreground transition focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                                    />
+                                                    {savingState === 'saving' && <Loader2 className="h-3 w-3 animate-spin text-primary shrink-0" />}
+                                                    {savingState === 'saved' && <Check className="h-3 w-3 text-emerald-500 shrink-0" />}
+                                                </div>
+                                            </td>
+                                            <td className="py-3 px-3.5 text-right">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleOpenDetailModal(student)}
+                                                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-border bg-background hover:bg-muted text-xs font-semibold text-foreground transition cursor-pointer"
+                                                >
+                                                    <span>Buka</span>
+                                                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                ) : (
                             <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 text-xs font-bold min-h-[36px]">
                                 <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                                 <span>Semua siswa telah dinilai</span>
@@ -486,51 +675,208 @@ export function TeacherGradingWorkspace({
                     />
                 </div>
 
-                {/* Filter Tabs (40-44px height) */}
-                <div className="flex items-center gap-1.5 shrink-0 overflow-x-auto pb-1 sm:pb-0 scrollbar-hide">
-                    <button
-                        type="button"
-                        onClick={() => setStatusFilter('all')}
-                        className={`px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer min-h-[44px] flex items-center justify-center ${
-                            statusFilter === 'all'
-                                ? 'bg-primary text-primary-foreground shadow-xs font-black'
-                                : 'bg-card border border-border text-muted-foreground hover:text-foreground'
-                        }`}
-                    >
-                        Semua ({totalStudents})
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => setStatusFilter('unscored')}
-                        className={`px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer min-h-[44px] flex items-center justify-center ${
-                            statusFilter === 'unscored'
-                                ? 'bg-amber-600 text-white shadow-xs font-black'
-                                : 'bg-card border border-border text-amber-600 dark:text-amber-400 hover:bg-amber-500/10'
-                        }`}
-                    >
-                        Belum ({unscoredCount})
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => setStatusFilter('scored')}
-                        className={`px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer min-h-[44px] flex items-center justify-center ${
-                            statusFilter === 'scored'
-                                ? 'bg-emerald-600 text-white shadow-xs font-black'
-                                : 'bg-card border border-border text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10'
-                        }`}
-                    >
-                        Selesai ({scoredCount})
-                    </button>
+                {/* Filter Tabs & View Mode Toggle */}
+                <div className="flex items-center gap-2 shrink-0 overflow-x-auto pb-1 sm:pb-0 scrollbar-hide">
+                    <div className="flex items-center gap-1.5">
+                        <button
+                            type="button"
+                            onClick={() => setStatusFilter('all')}
+                            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer min-h-[44px] flex items-center justify-center ${
+                                statusFilter === 'all'
+                                    ? 'bg-primary text-primary-foreground shadow-xs font-black'
+                                    : 'bg-card border border-border text-muted-foreground hover:text-foreground'
+                            }`}
+                        >
+                            Semua ({totalStudents})
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setStatusFilter('unscored')}
+                            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer min-h-[44px] flex items-center justify-center ${
+                                statusFilter === 'unscored'
+                                    ? 'bg-amber-600 text-white shadow-xs font-black'
+                                    : 'bg-card border border-border text-amber-600 dark:text-amber-400 hover:bg-amber-500/10'
+                            }`}
+                        >
+                            Belum ({unscoredCount})
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setStatusFilter('scored')}
+                            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer min-h-[44px] flex items-center justify-center ${
+                                statusFilter === 'scored'
+                                    ? 'bg-emerald-600 text-white shadow-xs font-black'
+                                    : 'bg-card border border-border text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10'
+                            }`}
+                        >
+                            Selesai ({scoredCount})
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setStatusFilter('passed')}
+                            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer min-h-[44px] flex items-center justify-center ${
+                                statusFilter === 'passed'
+                                    ? 'bg-emerald-700 text-white shadow-xs font-black'
+                                    : 'bg-card border border-border text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/10'
+                            }`}
+                        >
+                            Tuntas ({passedCount})
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setStatusFilter('remedial')}
+                            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer min-h-[44px] flex items-center justify-center ${
+                                statusFilter === 'remedial'
+                                    ? 'bg-rose-600 text-white shadow-xs font-black'
+                                    : 'bg-card border border-border text-rose-600 dark:text-rose-400 hover:bg-rose-500/10'
+                            }`}
+                        >
+                            Remedial ({remedialCount})
+                        </button>
+                    </div>
+
+                    {/* View Mode Toggle */}
+                    <div className="flex items-center rounded-xl border border-border bg-card p-1 shrink-0 ml-1">
+                        <button
+                            type="button"
+                            onClick={() => setViewMode('cards')}
+                            className={`p-2 rounded-lg transition cursor-pointer ${
+                                viewMode === 'cards'
+                                    ? 'bg-primary text-primary-foreground shadow-xs font-bold'
+                                    : 'text-muted-foreground hover:text-foreground'
+                            }`}
+                            title="Tampilan Kartu Siswa"
+                        >
+                            <LayoutList className="h-4 w-4" />
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setViewMode('table')}
+                            className={`p-2 rounded-lg transition cursor-pointer ${
+                                viewMode === 'table'
+                                    ? 'bg-primary text-primary-foreground shadow-xs font-bold'
+                                    : 'text-muted-foreground hover:text-foreground'
+                            }`}
+                            title="Tampilan Matriks Tabel"
+                        >
+                            <TableIcon className="h-4 w-4" />
+                        </button>
+                    </div>
                 </div>
             </div>
 
-            {/* 4. Primary Work Area: Compact Mobile Student Cards (72-92px height, full card tap) */}
+            {/* 4. Primary Work Area: Compact Mobile Student Cards or Matrix Table */}
             <div className="rounded-2xl border border-border/80 bg-card shadow-xs overflow-hidden w-full min-w-0 box-border">
                 {filteredStudents.length === 0 ? (
                     <div className="p-8 text-center space-y-2">
                         <UserX className="h-8 w-8 text-muted-foreground mx-auto opacity-50" />
                         <p className="text-sm font-bold text-foreground">Tidak ada siswa yang sesuai filter.</p>
                         <p className="text-xs text-muted-foreground">Coba ubah kata kunci atau pilih tab 'Semua'.</p>
+                    </div>
+                ) : viewMode === 'table' ? (
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse text-xs">
+                            <thead>
+                                <tr className="border-b border-border/80 bg-muted/30 text-muted-foreground font-semibold">
+                                    <th className="py-3 px-3.5 text-center w-12">#</th>
+                                    <th className="py-3 px-3.5">Siswa</th>
+                                    <th className="py-3 px-3.5 text-center">Status Pengerjaan</th>
+                                    <th className="py-3 px-3.5 text-center">KKTP</th>
+                                    <th className="py-3 px-3.5 text-center w-32">Nilai Cepat</th>
+                                    <th className="py-3 px-3.5 text-right">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-border/60">
+                                {filteredStudents.map((student, idx) => {
+                                    const sub = submissionMap[student.id];
+                                    const subScore = getSubmissionScore(sub);
+                                    const currentScore = localScores[student.id] ?? '';
+                                    const isScored = (subScore !== null && subScore !== undefined) || (currentScore !== '' && currentScore !== undefined);
+                                    const effectiveScore = currentScore !== '' && currentScore !== undefined ? currentScore : (subScore ?? '');
+                                    const isPassed = isScored && assignment.passing_grade !== null && assignment.passing_grade !== undefined
+                                        ? Number(effectiveScore) >= assignment.passing_grade
+                                        : true;
+                                    const savingState = savingStates[student.id] || 'idle';
+
+                                    return (
+                                        <tr key={student.id} className="hover:bg-muted/20 transition-colors">
+                                            <td className="py-3 px-3.5 text-center font-mono font-bold text-muted-foreground">
+                                                {idx + 1}
+                                            </td>
+                                            <td className="py-3 px-3.5">
+                                                <div className="flex items-center gap-2.5">
+                                                    <StudentAvatar
+                                                        photoUrl={student.photo_url}
+                                                        name={student.name}
+                                                        className="h-8 w-8 rounded-lg shrink-0"
+                                                    />
+                                                    <div className="min-w-0">
+                                                        <p className="font-bold text-foreground truncate">{student.name}</p>
+                                                        <p className="text-[10px] font-mono text-muted-foreground">{student.nis || '-'}</p>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="py-3 px-3.5 text-center">
+                                                {sub ? (
+                                                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+                                                        <CheckCircle2 className="h-3.5 w-3.5" />
+                                                        <span>Terkumpul</span>
+                                                    </span>
+                                                ) : (
+                                                    <span className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
+                                                        <Clock className="h-3.5 w-3.5 text-muted-foreground/60" />
+                                                        <span>Belum</span>
+                                                    </span>
+                                                )}
+                                            </td>
+                                            <td className="py-3 px-3.5 text-center">
+                                                {isScored ? (
+                                                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${
+                                                        isPassed
+                                                            ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20'
+                                                            : 'bg-rose-500/10 text-rose-600 border border-rose-500/20'
+                                                    }`}>
+                                                        {isPassed ? 'Tuntas' : 'Remedial'}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-[11px] text-muted-foreground">—</span>
+                                                )}
+                                            </td>
+                                            <td className="py-3 px-3.5 text-center">
+                                                <div className="flex items-center justify-center gap-1.5">
+                                                    <input
+                                                        type="number"
+                                                        min="0"
+                                                        max={assignment.max_points || 100}
+                                                        value={localScores[student.id] ?? ''}
+                                                        onChange={(e) => {
+                                                            const val = e.target.value;
+                                                            setLocalScores((prev) => ({ ...prev, [student.id]: val }));
+                                                        }}
+                                                        onBlur={() => handleScoreBlurOrEnter(student.id)}
+                                                        onKeyDown={(e) => handleKeyDown(e, idx, student.id)}
+                                                        placeholder="—"
+                                                        className="w-16 h-8 text-center text-xs font-bold rounded-lg border border-border bg-card text-foreground transition focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                                    />
+                                                    {savingState === 'saving' && <Loader2 className="h-3 w-3 animate-spin text-primary shrink-0" />}
+                                                    {savingState === 'saved' && <Check className="h-3 w-3 text-emerald-500 shrink-0" />}
+                                                </div>
+                                            </td>
+                                            <td className="py-3 px-3.5 text-right">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleOpenDetailModal(student)}
+                                                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-border bg-background hover:bg-muted text-xs font-semibold text-foreground transition cursor-pointer"
+                                                >
+                                                    <span>Buka</span>
+                                                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
                     </div>
                 ) : (
                     <div className="divide-y divide-border/60">
@@ -589,7 +935,112 @@ export function TeacherGradingWorkspace({
                                                         <Check className="h-3.5 w-3.5 stroke-[3]" />
                                                         <span>Dinilai</span>
                                                     </span>
+                                                ) : viewMode === 'table' ? (
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse text-xs">
+                            <thead>
+                                <tr className="border-b border-border/80 bg-muted/30 text-muted-foreground font-semibold">
+                                    <th className="py-3 px-3.5 text-center w-12">#</th>
+                                    <th className="py-3 px-3.5">Siswa</th>
+                                    <th className="py-3 px-3.5 text-center">Status Pengerjaan</th>
+                                    <th className="py-3 px-3.5 text-center">KKTP</th>
+                                    <th className="py-3 px-3.5 text-center w-32">Nilai Cepat</th>
+                                    <th className="py-3 px-3.5 text-right">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-border/60">
+                                {filteredStudents.map((student, idx) => {
+                                    const sub = submissionMap[student.id];
+                                    const subScore = getSubmissionScore(sub);
+                                    const currentScore = localScores[student.id] ?? '';
+                                    const isScored = (subScore !== null && subScore !== undefined) || (currentScore !== '' && currentScore !== undefined);
+                                    const effectiveScore = currentScore !== '' && currentScore !== undefined ? currentScore : (subScore ?? '');
+                                    const isPassed = isScored && assignment.passing_grade !== null && assignment.passing_grade !== undefined
+                                        ? Number(effectiveScore) >= assignment.passing_grade
+                                        : true;
+                                    const savingState = savingStates[student.id] || 'idle';
+
+                                    return (
+                                        <tr key={student.id} className="hover:bg-muted/20 transition-colors">
+                                            <td className="py-3 px-3.5 text-center font-mono font-bold text-muted-foreground">
+                                                {idx + 1}
+                                            </td>
+                                            <td className="py-3 px-3.5">
+                                                <div className="flex items-center gap-2.5">
+                                                    <StudentAvatar
+                                                        photoUrl={student.photo_url}
+                                                        name={student.name}
+                                                        className="h-8 w-8 rounded-lg shrink-0"
+                                                    />
+                                                    <div className="min-w-0">
+                                                        <p className="font-bold text-foreground truncate">{student.name}</p>
+                                                        <p className="text-[10px] font-mono text-muted-foreground">{student.nis || '-'}</p>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="py-3 px-3.5 text-center">
+                                                {sub ? (
+                                                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+                                                        <CheckCircle2 className="h-3.5 w-3.5" />
+                                                        <span>Terkumpul</span>
+                                                    </span>
                                                 ) : (
+                                                    <span className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
+                                                        <Clock className="h-3.5 w-3.5 text-muted-foreground/60" />
+                                                        <span>Belum</span>
+                                                    </span>
+                                                )}
+                                            </td>
+                                            <td className="py-3 px-3.5 text-center">
+                                                {isScored ? (
+                                                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${
+                                                        isPassed
+                                                            ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20'
+                                                            : 'bg-rose-500/10 text-rose-600 border border-rose-500/20'
+                                                    }`}>
+                                                        {isPassed ? 'Tuntas' : 'Remedial'}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-[11px] text-muted-foreground">—</span>
+                                                )}
+                                            </td>
+                                            <td className="py-3 px-3.5 text-center">
+                                                <div className="flex items-center justify-center gap-1.5">
+                                                    <input
+                                                        type="number"
+                                                        min="0"
+                                                        max={assignment.max_points || 100}
+                                                        value={localScores[student.id] ?? ''}
+                                                        onChange={(e) => {
+                                                            const val = e.target.value;
+                                                            setLocalScores((prev) => ({ ...prev, [student.id]: val }));
+                                                        }}
+                                                        onBlur={() => handleScoreBlurOrEnter(student.id)}
+                                                        onKeyDown={(e) => handleKeyDown(e, idx, student.id)}
+                                                        placeholder="—"
+                                                        className="w-16 h-8 text-center text-xs font-bold rounded-lg border border-border bg-card text-foreground transition focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                                    />
+                                                    {savingState === 'saving' && <Loader2 className="h-3 w-3 animate-spin text-primary shrink-0" />}
+                                                    {savingState === 'saved' && <Check className="h-3 w-3 text-emerald-500 shrink-0" />}
+                                                </div>
+                                            </td>
+                                            <td className="py-3 px-3.5 text-right">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleOpenDetailModal(student)}
+                                                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-border bg-background hover:bg-muted text-xs font-semibold text-foreground transition cursor-pointer"
+                                                >
+                                                    <span>Buka</span>
+                                                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                ) : (
                                                     <span className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground/80">
                                                         <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/50" />
                                                         <span>Belum dinilai</span>
@@ -617,7 +1068,112 @@ export function TeacherGradingWorkspace({
                                                     </span>
                                                 )}
                                             </div>
-                                        ) : (
+                                        ) : viewMode === 'table' ? (
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse text-xs">
+                            <thead>
+                                <tr className="border-b border-border/80 bg-muted/30 text-muted-foreground font-semibold">
+                                    <th className="py-3 px-3.5 text-center w-12">#</th>
+                                    <th className="py-3 px-3.5">Siswa</th>
+                                    <th className="py-3 px-3.5 text-center">Status Pengerjaan</th>
+                                    <th className="py-3 px-3.5 text-center">KKTP</th>
+                                    <th className="py-3 px-3.5 text-center w-32">Nilai Cepat</th>
+                                    <th className="py-3 px-3.5 text-right">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-border/60">
+                                {filteredStudents.map((student, idx) => {
+                                    const sub = submissionMap[student.id];
+                                    const subScore = getSubmissionScore(sub);
+                                    const currentScore = localScores[student.id] ?? '';
+                                    const isScored = (subScore !== null && subScore !== undefined) || (currentScore !== '' && currentScore !== undefined);
+                                    const effectiveScore = currentScore !== '' && currentScore !== undefined ? currentScore : (subScore ?? '');
+                                    const isPassed = isScored && assignment.passing_grade !== null && assignment.passing_grade !== undefined
+                                        ? Number(effectiveScore) >= assignment.passing_grade
+                                        : true;
+                                    const savingState = savingStates[student.id] || 'idle';
+
+                                    return (
+                                        <tr key={student.id} className="hover:bg-muted/20 transition-colors">
+                                            <td className="py-3 px-3.5 text-center font-mono font-bold text-muted-foreground">
+                                                {idx + 1}
+                                            </td>
+                                            <td className="py-3 px-3.5">
+                                                <div className="flex items-center gap-2.5">
+                                                    <StudentAvatar
+                                                        photoUrl={student.photo_url}
+                                                        name={student.name}
+                                                        className="h-8 w-8 rounded-lg shrink-0"
+                                                    />
+                                                    <div className="min-w-0">
+                                                        <p className="font-bold text-foreground truncate">{student.name}</p>
+                                                        <p className="text-[10px] font-mono text-muted-foreground">{student.nis || '-'}</p>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="py-3 px-3.5 text-center">
+                                                {sub ? (
+                                                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+                                                        <CheckCircle2 className="h-3.5 w-3.5" />
+                                                        <span>Terkumpul</span>
+                                                    </span>
+                                                ) : (
+                                                    <span className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
+                                                        <Clock className="h-3.5 w-3.5 text-muted-foreground/60" />
+                                                        <span>Belum</span>
+                                                    </span>
+                                                )}
+                                            </td>
+                                            <td className="py-3 px-3.5 text-center">
+                                                {isScored ? (
+                                                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${
+                                                        isPassed
+                                                            ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20'
+                                                            : 'bg-rose-500/10 text-rose-600 border border-rose-500/20'
+                                                    }`}>
+                                                        {isPassed ? 'Tuntas' : 'Remedial'}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-[11px] text-muted-foreground">—</span>
+                                                )}
+                                            </td>
+                                            <td className="py-3 px-3.5 text-center">
+                                                <div className="flex items-center justify-center gap-1.5">
+                                                    <input
+                                                        type="number"
+                                                        min="0"
+                                                        max={assignment.max_points || 100}
+                                                        value={localScores[student.id] ?? ''}
+                                                        onChange={(e) => {
+                                                            const val = e.target.value;
+                                                            setLocalScores((prev) => ({ ...prev, [student.id]: val }));
+                                                        }}
+                                                        onBlur={() => handleScoreBlurOrEnter(student.id)}
+                                                        onKeyDown={(e) => handleKeyDown(e, idx, student.id)}
+                                                        placeholder="—"
+                                                        className="w-16 h-8 text-center text-xs font-bold rounded-lg border border-border bg-card text-foreground transition focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                                    />
+                                                    {savingState === 'saving' && <Loader2 className="h-3 w-3 animate-spin text-primary shrink-0" />}
+                                                    {savingState === 'saved' && <Check className="h-3 w-3 text-emerald-500 shrink-0" />}
+                                                </div>
+                                            </td>
+                                            <td className="py-3 px-3.5 text-right">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleOpenDetailModal(student)}
+                                                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-border bg-background hover:bg-muted text-xs font-semibold text-foreground transition cursor-pointer"
+                                                >
+                                                    <span>Buka</span>
+                                                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                ) : (
                                             <button
                                                 type="button"
                                                 onClick={() => handleOpenDetailModal(student)}
@@ -663,7 +1219,112 @@ export function TeacherGradingWorkspace({
                             <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
                             <span className="truncate">Menyimpan nilai...</span>
                         </span>
-                    ) : (
+                    ) : viewMode === 'table' ? (
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse text-xs">
+                            <thead>
+                                <tr className="border-b border-border/80 bg-muted/30 text-muted-foreground font-semibold">
+                                    <th className="py-3 px-3.5 text-center w-12">#</th>
+                                    <th className="py-3 px-3.5">Siswa</th>
+                                    <th className="py-3 px-3.5 text-center">Status Pengerjaan</th>
+                                    <th className="py-3 px-3.5 text-center">KKTP</th>
+                                    <th className="py-3 px-3.5 text-center w-32">Nilai Cepat</th>
+                                    <th className="py-3 px-3.5 text-right">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-border/60">
+                                {filteredStudents.map((student, idx) => {
+                                    const sub = submissionMap[student.id];
+                                    const subScore = getSubmissionScore(sub);
+                                    const currentScore = localScores[student.id] ?? '';
+                                    const isScored = (subScore !== null && subScore !== undefined) || (currentScore !== '' && currentScore !== undefined);
+                                    const effectiveScore = currentScore !== '' && currentScore !== undefined ? currentScore : (subScore ?? '');
+                                    const isPassed = isScored && assignment.passing_grade !== null && assignment.passing_grade !== undefined
+                                        ? Number(effectiveScore) >= assignment.passing_grade
+                                        : true;
+                                    const savingState = savingStates[student.id] || 'idle';
+
+                                    return (
+                                        <tr key={student.id} className="hover:bg-muted/20 transition-colors">
+                                            <td className="py-3 px-3.5 text-center font-mono font-bold text-muted-foreground">
+                                                {idx + 1}
+                                            </td>
+                                            <td className="py-3 px-3.5">
+                                                <div className="flex items-center gap-2.5">
+                                                    <StudentAvatar
+                                                        photoUrl={student.photo_url}
+                                                        name={student.name}
+                                                        className="h-8 w-8 rounded-lg shrink-0"
+                                                    />
+                                                    <div className="min-w-0">
+                                                        <p className="font-bold text-foreground truncate">{student.name}</p>
+                                                        <p className="text-[10px] font-mono text-muted-foreground">{student.nis || '-'}</p>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="py-3 px-3.5 text-center">
+                                                {sub ? (
+                                                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+                                                        <CheckCircle2 className="h-3.5 w-3.5" />
+                                                        <span>Terkumpul</span>
+                                                    </span>
+                                                ) : (
+                                                    <span className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
+                                                        <Clock className="h-3.5 w-3.5 text-muted-foreground/60" />
+                                                        <span>Belum</span>
+                                                    </span>
+                                                )}
+                                            </td>
+                                            <td className="py-3 px-3.5 text-center">
+                                                {isScored ? (
+                                                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${
+                                                        isPassed
+                                                            ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20'
+                                                            : 'bg-rose-500/10 text-rose-600 border border-rose-500/20'
+                                                    }`}>
+                                                        {isPassed ? 'Tuntas' : 'Remedial'}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-[11px] text-muted-foreground">—</span>
+                                                )}
+                                            </td>
+                                            <td className="py-3 px-3.5 text-center">
+                                                <div className="flex items-center justify-center gap-1.5">
+                                                    <input
+                                                        type="number"
+                                                        min="0"
+                                                        max={assignment.max_points || 100}
+                                                        value={localScores[student.id] ?? ''}
+                                                        onChange={(e) => {
+                                                            const val = e.target.value;
+                                                            setLocalScores((prev) => ({ ...prev, [student.id]: val }));
+                                                        }}
+                                                        onBlur={() => handleScoreBlurOrEnter(student.id)}
+                                                        onKeyDown={(e) => handleKeyDown(e, idx, student.id)}
+                                                        placeholder="—"
+                                                        className="w-16 h-8 text-center text-xs font-bold rounded-lg border border-border bg-card text-foreground transition focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                                    />
+                                                    {savingState === 'saving' && <Loader2 className="h-3 w-3 animate-spin text-primary shrink-0" />}
+                                                    {savingState === 'saved' && <Check className="h-3 w-3 text-emerald-500 shrink-0" />}
+                                                </div>
+                                            </td>
+                                            <td className="py-3 px-3.5 text-right">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleOpenDetailModal(student)}
+                                                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-border bg-background hover:bg-muted text-xs font-semibold text-foreground transition cursor-pointer"
+                                                >
+                                                    <span>Buka</span>
+                                                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                ) : (
                         <span className="inline-flex items-center gap-1.5 text-muted-foreground font-medium truncate">
                             <CheckCheck className="h-4 w-4 text-emerald-500 shrink-0" />
                             <span className="truncate">
