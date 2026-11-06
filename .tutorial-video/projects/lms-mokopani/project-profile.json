@@ -1,0 +1,50 @@
+{
+  "version": "1.0.0",
+  "project_id": "lms-mokopani",
+  "project_name": "LMS Mokopani",
+  "framework": "laravel",
+  "app_type": "web",
+  "base_url": "http://127.0.0.1:8001",
+  "local_server_cmd": "php artisan serve --host=127.0.0.1 --port=8001",
+  "mode": "desktop",
+  "viewport": {
+    "width": 1920,
+    "height": 1080
+  },
+  "target_resolution": [
+    1920,
+    1080
+  ],
+  "fps": 60,
+  "voice": {
+    "name": "id-ID-ArdiNeural",
+    "rate": "+0%",
+    "pitch": "+0Hz"
+  },
+  "reaction_delay_ms": 300,
+  "result_hold_ms": 1200,
+  "color_scheme": "light",
+  "auth": {
+    "type": "form_login",
+    "login_url": "http://127.0.0.1:8001/login",
+    "email_selector": "#email",
+    "password_selector": "#password",
+    "submit_selector": "button[type='submit']",
+    "email_env": "TUTORIAL_EMAIL",
+    "password_env": "TUTORIAL_PASSWORD",
+    "default_email": "adi@gmail.com",
+    "default_password": "password",
+    "available_test_accounts": [
+      {
+        "email": "adi@gmail.com",
+        "password": "password",
+        "role": "teacher",
+        "name": "Adi, S.Pd"
+      }
+    ]
+  },
+  "navigation_rules": {
+    "default_wait_selector": "body",
+    "page_load_timeout_ms": 20000
+  }
+}

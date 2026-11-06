@@ -1,0 +1,261 @@
+{
+  "version": "4.5.0",
+  "engine": "TRUE_CONTINUOUS_BROWSER_VIDEO_V4",
+  "project_id": "lms-mokopani",
+  "title": "Panduan Login & Mengenal Dashboard Guru — LMS Mokopani",
+  "mode": "desktop",
+  "fps": 60,
+  "target_resolution": [
+    1920,
+    1080
+  ],
+  "viewport": {
+    "width": 1920,
+    "height": 1080
+  },
+  "voice": {
+    "name": "id-ID-ArdiNeural",
+    "rate": "+0%",
+    "pitch": "+0Hz"
+  },
+  "music": {
+    "enabled": true,
+    "genre": "upbeat_jazz"
+  },
+  "data_safety": {
+    "isolation_method": "ephemeral_test_tracking",
+    "cleanup_policy": "tracked_created_ids_only",
+    "allow_production_mutations": false
+  },
+  "reaction_delay_ms": 300,
+  "color_scheme": "light",
+  "setup": [
+    {
+      "do": "goto",
+      "url": "http://127.0.0.1:8001/login"
+    },
+    {
+      "do": "wait_for",
+      "selector": "#email"
+    }
+  ],
+  "scenes": [
+    {
+      "scene_id": "scene_01_login",
+      "title": "Cara Login Akun Guru",
+      "purpose": "Panduan masuk ke LMS Mokopani menggunakan akun guru",
+      "narration": "Halo Bapak dan Ibu Guru, selamat datang di panduan aplikasi LMS Mokopani. Hari ini kita bersama-sama akan mempelajari langkah mudah melakukan login, serta mengenal fitur-fitur penting di dashboard guru. Pertama, ketikkan alamat email guru Anda pada kolom yang tersedia, kemudian masukkan kata sandi dengan teliti. Setelah memastikan data benar, klik tombol Masuk untuk membuka ruang kerja pembelajaran Anda.",
+      "narration_segments": [
+        {
+          "text": "Halo Bapak dan Ibu Guru, selamat datang di panduan aplikasi LMS Mokopani.",
+          "pause_after_ms": 350
+        },
+        {
+          "text": "Hari ini kita bersama-sama akan mempelajari langkah mudah melakukan login, serta mengenal fitur-fitur penting di dashboard guru.",
+          "pause_after_ms": 350
+        },
+        {
+          "text": "Pertama, ketikkan alamat email guru Anda pada kolom yang tersedia, kemudian masukkan kata sandi dengan teliti.",
+          "pause_after_ms": 350
+        },
+        {
+          "text": "Setelah memastikan data benar, klik tombol Masuk untuk membuka ruang kerja pembelajaran Anda.",
+          "pause_after_ms": 250
+        }
+      ],
+      "steps": [
+        {
+          "do": "move",
+          "target": "#email",
+          "hold_ms": 300
+        },
+        {
+          "do": "type",
+          "target": "#email",
+          "text": "adi@gmail.com"
+        },
+        {
+          "do": "move",
+          "target": "#password",
+          "hold_ms": 250
+        },
+        {
+          "do": "type",
+          "target": "#password",
+          "text": "password"
+        },
+        {
+          "do": "move",
+          "target": "button[type='submit']",
+          "hold_ms": 350
+        },
+        {
+          "do": "click",
+          "target": "button[type='submit']"
+        },
+        {
+          "do": "wait_for",
+          "selector": "text=Ringkasan Pembelajaran",
+          "budget_ms": 12000,
+          "settle_ms": 600
+        },
+        {
+          "do": "hold",
+          "ms": 800
+        }
+      ],
+      "result_hold_ms": 1200
+    },
+    {
+      "scene_id": "scene_02_dashboard_overview",
+      "title": "Eksplorasi Dashboard & Ringkasan Pembelajaran",
+      "purpose": "Mengenal informasi ringkasan guru dan statistik mengajar",
+      "narration": "Setelah berhasil masuk, kita langsung disambut oleh halaman utama Dashboard Guru. Di bagian atas, kartu sambutan menampilkan identitas mengajar Anda secara lengkap, bersama tahun ajaran dan semester aktif. Pada bagian Ringkasan Pembelajaran, Bapak dan Ibu Guru dapat memantau jumlah siswa, kelas binaan, materi ajar, asesmen, serta tugas yang perlu dinilai.",
+      "narration_segments": [
+        {
+          "text": "Setelah berhasil masuk, kita langsung disambut oleh halaman utama Dashboard Guru.",
+          "pause_after_ms": 350
+        },
+        {
+          "text": "Di bagian atas, kartu sambutan menampilkan identitas mengajar Anda secara lengkap, bersama tahun ajaran dan semester aktif.",
+          "pause_after_ms": 350
+        },
+        {
+          "text": "Pada bagian Ringkasan Pembelajaran, Bapak dan Ibu Guru dapat memantau jumlah siswa, kelas binaan, materi ajar, asesmen, serta tugas yang perlu dinilai.",
+          "pause_after_ms": 250
+        }
+      ],
+      "steps": [
+        {
+          "do": "move",
+          "target": "text=Ringkasan Pembelajaran",
+          "hold_ms": 400
+        },
+        {
+          "do": "move",
+          "target": "a[href='/students']",
+          "hold_ms": 500
+        },
+        {
+          "do": "move",
+          "target": "a[href='/classes']",
+          "hold_ms": 500
+        },
+        {
+          "do": "move",
+          "target": "a[href='/materials']",
+          "hold_ms": 500
+        },
+        {
+          "do": "move",
+          "target": "a[href='/assignments']",
+          "hold_ms": 500
+        },
+        {
+          "do": "hold",
+          "ms": 600
+        }
+      ],
+      "result_hold_ms": 1200
+    },
+    {
+      "scene_id": "scene_03_agenda_aksi_cepat",
+      "title": "Agenda Hari Ini & Aksi Cepat Guru",
+      "purpose": "Memantau jadwal kelas dan pintasan cepat pembuatan konten",
+      "narration": "Selanjutnya, kita dapat memeriksa jadwal tatap muka pada widget Agenda Hari Ini agar sesi kelas selalu tepat waktu. LMS Mokopani juga menyediakan menu Aksi Cepat Guru untuk mempercepat pekerjaan harian. Cukup dengan satu klik, Anda dapat langsung membuat materi ajar baru, menyusun lembar asesmen, maupun mengelola buku nilai.",
+      "narration_segments": [
+        {
+          "text": "Selanjutnya, kita dapat memeriksa jadwal tatap muka pada widget Agenda Hari Ini agar sesi kelas selalu tepat waktu.",
+          "pause_after_ms": 350
+        },
+        {
+          "text": "LMS Mokopani juga menyediakan menu Aksi Cepat Guru untuk mempercepat pekerjaan harian.",
+          "pause_after_ms": 300
+        },
+        {
+          "text": "Cukup dengan satu klik, Anda dapat langsung membuat materi ajar baru, menyusun lembar asesmen, maupun mengelola buku nilai.",
+          "pause_after_ms": 250
+        }
+      ],
+      "steps": [
+        {
+          "do": "move",
+          "target": "text=Agenda Hari Ini",
+          "hold_ms": 500
+        },
+        {
+          "do": "move",
+          "target": "text=Aksi Cepat Guru",
+          "hold_ms": 400
+        },
+        {
+          "do": "move",
+          "target": "a[href='/materials/create']",
+          "hold_ms": 600
+        },
+        {
+          "do": "move",
+          "target": "a[href='/assignments/create']",
+          "hold_ms": 600
+        },
+        {
+          "do": "move",
+          "target": "a[href='/gradebook']",
+          "hold_ms": 600
+        },
+        {
+          "do": "hold",
+          "ms": 500
+        }
+      ],
+      "result_hold_ms": 1200
+    },
+    {
+      "scene_id": "scene_04_perlu_tindakan_navigasi",
+      "title": "Tugas Perlu Dinilai & Bilah Navigasi",
+      "purpose": "Mengecek pengumpulan yang belum dinilai dan menu navigasi samping",
+      "narration": "Pada panel Perlu Tindakan, sistem secara cerdas merangkum tugas siswa yang siap diperiksa, sehingga tidak ada pengumpulan yang terlewat. Semua menu perencanaan, bahan materi, dan analitik dapat diakses dengan mudah melalui bilah navigasi di sisi kiri. Selamat mendampingi dan menginspirasi siswa bersama LMS Mokopani!",
+      "narration_segments": [
+        {
+          "text": "Pada panel Perlu Tindakan, sistem secara cerdas merangkum tugas siswa yang siap diperiksa, sehingga tidak ada pengumpulan yang terlewat.",
+          "pause_after_ms": 350
+        },
+        {
+          "text": "Semua menu perencanaan, bahan materi, dan analitik dapat diakses dengan mudah melalui bilah navigasi di sisi kiri.",
+          "pause_after_ms": 350
+        },
+        {
+          "text": "Selamat mendampingi dan menginspirasi siswa bersama LMS Mokopani!",
+          "pause_after_ms": 250
+        }
+      ],
+      "steps": [
+        {
+          "do": "move",
+          "target": "text=Perlu Tindakan",
+          "hold_ms": 700
+        },
+        {
+          "do": "move",
+          "target": "a[href='/materials']",
+          "hold_ms": 600
+        },
+        {
+          "do": "move",
+          "target": "a[href='/assignments']",
+          "hold_ms": 600
+        },
+        {
+          "do": "move",
+          "target": "a[href='/dashboard']",
+          "hold_ms": 800
+        },
+        {
+          "do": "hold",
+          "ms": 800
+        }
+      ],
+      "result_hold_ms": 1400
+    }
+  ]
+}
