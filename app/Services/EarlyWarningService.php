@@ -172,8 +172,14 @@ class EarlyWarningService
     /**
      * Optimized batch calculation of class risk summary without N+1 queries.
      */
-    public function getClassRiskSummary(int $classId, int $subjectId): array
-    {
+    public function getClassRiskSummary(
+        int $classId,
+        int $subjectId,
+        ?int $semesterId = null,
+        ?string $startDate = null,
+        ?string $endDate = null,
+        bool $allSemesters = false
+    ): array {
         $students = Student::where('school_class_id', $classId)->get(['id', 'name', 'nis']);
         $total = $students->count();
         if ($total === 0) {
@@ -189,13 +195,30 @@ class EarlyWarningService
         $studentIds = $students->pluck('id');
         $activeYear = AcademicYear::getActive();
         $activeSemester = Semester::getActive();
+        $targetSemesterId = $allSemesters ? null : ($semesterId ?? $activeSemester?->id);
 
-        // 1. Single query: Assignments for this subject in the active period
-        $assignments = LmsAssignment::where('subject_id', $subjectId)
-            ->where('academic_year_id', $activeYear?->id)
-            ->where('semester_id', $activeSemester?->id)
-            ->orderBy('id')
-            ->get();
+        // 1. Single query: Assignments for this subject & class in the selected period
+        $assignmentsQuery = LmsAssignment::where('subject_id', $subjectId)
+            ->whereHas('schoolClasses', function ($q) use ($classId) {
+                $q->where('school_classes.id', $classId);
+            });
+
+        if (!$allSemesters) {
+            if ($semesterId !== null) {
+                $assignmentsQuery->where('semester_id', $semesterId);
+            } else {
+                $assignmentsQuery->where('academic_year_id', $activeYear?->id)
+                    ->where('semester_id', $targetSemesterId);
+            }
+        }
+        if ($startDate) {
+            $assignmentsQuery->whereDate('due_date', '>=', $startDate);
+        }
+        if ($endDate) {
+            $assignmentsQuery->whereDate('due_date', '<=', $endDate);
+        }
+
+        $assignments = $assignmentsQuery->orderBy('id')->get();
         $assignmentIds = $assignments->pluck('id');
 
         // 2. Single query: Submissions for all students in this class for these assignments
@@ -207,13 +230,21 @@ class EarlyWarningService
             : collect();
 
         // 3. Single query: Materials for this subject & class
-        $materialIds = LmsMaterial::where('subject_id', $subjectId)
+        $materialsQuery = LmsMaterial::where('subject_id', $subjectId)
             ->whereHas('schoolClasses', function ($q) use ($classId) {
                 $q->where('school_classes.id', $classId);
-            })
-            ->where('academic_year_id', $activeYear?->id)
-            ->where('semester_id', $activeSemester?->id)
-            ->pluck('id');
+            });
+
+        if (!$allSemesters) {
+            if ($semesterId !== null) {
+                $materialsQuery->where('semester_id', $semesterId);
+            } else {
+                $materialsQuery->where('academic_year_id', $activeYear?->id)
+                    ->where('semester_id', $targetSemesterId);
+            }
+        }
+
+        $materialIds = $materialsQuery->pluck('id');
 
         // 4. Single query: Reflections for all students in this class for these materials
         $reflections = $materialIds->isNotEmpty()

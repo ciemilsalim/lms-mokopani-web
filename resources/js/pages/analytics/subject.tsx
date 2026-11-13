@@ -47,6 +47,7 @@ interface DistributionItem {
 }
 
 interface Performance {
+    kktp?: number;
     total_assignments: number;
     total_students: number;
     class_avg_score: number | null;
@@ -121,10 +122,13 @@ export default function SubjectAnalytics({
     const [showMobileFilter, setShowMobileFilter] = useState(false);
 
     const [filterData, setFilterData] = useState({
-        semester_id: filters?.semester_id || '',
+        semester_id: filters?.semester_id ?? '',
         start_date: filters?.start_date || '',
         end_date: filters?.end_date || '',
     });
+
+    const kktp = performance.kktp ?? 70;
+    const midThreshold = Math.round(kktp * 0.7);
 
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Dashboard', href: '/dashboard' },
@@ -150,8 +154,9 @@ export default function SubjectAnalytics({
         const newData = { ...filterData, [key]: value };
         setFilterData(newData);
 
-        const params: Record<string, string> = {};
-        if (newData.semester_id) params.semester_id = newData.semester_id.toString();
+        const params: Record<string, string> = {
+            semester_id: newData.semester_id !== '' ? newData.semester_id.toString() : '',
+        };
         if (newData.start_date) params.start_date = newData.start_date;
         if (newData.end_date) params.end_date = newData.end_date;
 
@@ -159,6 +164,21 @@ export default function SubjectAnalytics({
             preserveState: true,
             preserveScroll: true,
         });
+    };
+
+    const sanitizeCsvCell = (value: unknown): string => {
+        const str = String(value ?? '');
+        const safe = /^[=+\-@\t\r]/.test(str) ? `'${str}` : str;
+        return `"${safe.replace(/"/g, '""')}"`;
+    };
+
+    const escapeHtml = (value: unknown): string => {
+        return String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
     };
 
     const exportToExcel = () => {
@@ -173,7 +193,7 @@ export default function SubjectAnalytics({
         });
         const csvContent =
             '\uFEFF' +
-            [headers.join(','), ...rows.map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))].join('\n');
+            [headers.map(sanitizeCsvCell).join(','), ...rows.map((row) => row.map(sanitizeCsvCell).join(','))].join('\n');
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
@@ -182,6 +202,7 @@ export default function SubjectAnalytics({
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+        URL.revokeObjectURL(url);
     };
 
     const exportToWord = () => {
@@ -190,7 +211,7 @@ export default function SubjectAnalytics({
         const fontSize = numAssignments > 12 ? '7.5pt' : numAssignments > 8 ? '8.5pt' : '9.5pt';
 
         let html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">`;
-        html += `<head><meta charset="utf-8"><title>${title}</title>`;
+        html += `<head><meta charset="utf-8"><title>${escapeHtml(title)}</title>`;
         html += `<style>
             @page Section1 { size: 29.7cm 21.0cm; margin: 1.5cm; }
             div.Section1 { page: Section1; font-family: Calibri, sans-serif; font-size: ${fontSize}; }
@@ -204,25 +225,25 @@ export default function SubjectAnalytics({
             .fail { color: #dc2626; font-weight: bold; }
         </style></head><body><div class="Section1">`;
 
-        html += `<h2>${title}</h2>`;
-        html += `<p class="meta">Waktu Ekspor: ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>`;
+        html += `<h2>${escapeHtml(title)}</h2>`;
+        html += `<p class="meta">Waktu Ekspor: ${escapeHtml(new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }))}</p>`;
 
         html += `<table><thead><tr><th style="width:28px;">No</th><th class="left">Nama Siswa</th><th>NIS</th>`;
         score_matrix.assignments.forEach((a) => {
-            html += `<th>${a.title}</th>`;
+            html += `<th>${escapeHtml(a.title)}</th>`;
         });
         html += `<th>Rata-rata</th></tr></thead><tbody>`;
 
         score_matrix.students.forEach((s, idx) => {
-            html += `<tr><td>${idx + 1}</td><td class="left">${s.name}</td><td>${s.nis}</td>`;
+            html += `<tr><td>${idx + 1}</td><td class="left">${escapeHtml(s.name)}</td><td>${escapeHtml(s.nis)}</td>`;
             s.scores.forEach((sc) => {
                 if (sc.score === null) {
                     html += `<td>-</td>`;
                 } else {
-                    html += `<td class="${sc.is_passed ? 'pass' : 'fail'}">${sc.score}</td>`;
+                    html += `<td class="${sc.is_passed ? 'pass' : 'fail'}">${escapeHtml(sc.score)}</td>`;
                 }
             });
-            html += `<td style="font-weight:bold;">${s.average !== null ? s.average : '-'}</td></tr>`;
+            html += `<td style="font-weight:bold;">${s.average !== null ? escapeHtml(s.average) : '-'}</td></tr>`;
         });
 
         html += `</tbody></table></div></body></html>`;
@@ -235,6 +256,7 @@ export default function SubjectAnalytics({
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+        URL.revokeObjectURL(url);
     };
 
     return (
@@ -268,19 +290,38 @@ export default function SubjectAnalytics({
                         </div>
 
                         {/* Filter Trigger / Quick Filters */}
-                        <div className="flex items-center gap-2 self-start sm:self-auto">
+                        <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
                             <select
                                 value={filterData.semester_id}
                                 onChange={(e) => applyFilters('semester_id', e.target.value)}
+                                aria-label="Filter Semester"
                                 className="h-9 rounded-xl border border-border bg-card px-3 text-xs font-semibold text-foreground shadow-xs focus:outline-none focus:ring-2 focus:ring-primary/20"
                             >
                                 <option value="">Semua Semester</option>
                                 {semesters.map((s) => (
                                     <option key={s.id} value={s.id}>
-                                        {s.name} {s.is_active ? '(Aktif)' : ''}
+                                        {s.academic_year ? `${s.academic_year} - ` : ''}{s.name} {s.is_active ? '(Aktif)' : ''}
                                     </option>
                                 ))}
                             </select>
+
+                            <div className="hidden sm:flex items-center gap-1.5">
+                                <input
+                                    type="date"
+                                    aria-label="Dari Tanggal"
+                                    value={filterData.start_date}
+                                    onChange={(e) => applyFilters('start_date', e.target.value)}
+                                    className="h-9 px-2.5 text-xs rounded-xl border border-border bg-card text-foreground shadow-xs focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                />
+                                <span className="text-xs text-muted-foreground">–</span>
+                                <input
+                                    type="date"
+                                    aria-label="Sampai Tanggal"
+                                    value={filterData.end_date}
+                                    onChange={(e) => applyFilters('end_date', e.target.value)}
+                                    className="h-9 px-2.5 text-xs rounded-xl border border-border bg-card text-foreground shadow-xs focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                />
+                            </div>
 
                             <button
                                 onClick={() => setShowMobileFilter(!showMobileFilter)}
@@ -547,9 +588,9 @@ export default function SubjectAnalytics({
                                                             <p className="text-[10px] uppercase font-bold text-muted-foreground">Rata-rata</p>
                                                             <p
                                                                 className={`text-sm font-black ${
-                                                                    (matrixInfo.average ?? 0) >= 70
+                                                                    (matrixInfo.average ?? 0) >= kktp
                                                                         ? 'text-emerald-600'
-                                                                        : (matrixInfo.average ?? 0) >= 50
+                                                                        : (matrixInfo.average ?? 0) >= midThreshold
                                                                         ? 'text-amber-600'
                                                                         : 'text-rose-600'
                                                                 }`}
@@ -642,7 +683,7 @@ export default function SubjectAnalytics({
                                         Perkembangan hasil belajar dari tugas awal hingga sumatif akhir
                                     </p>
                                 </div>
-                                <PerformanceTrendChart data={performance.assignment_scores} />
+                                <PerformanceTrendChart data={performance.assignment_scores} kktp={kktp} />
                             </div>
 
                             {/* Score Distribution */}
@@ -802,9 +843,9 @@ export default function SubjectAnalytics({
                                                     <span className="text-[10px] text-muted-foreground block">Rata-rata</span>
                                                     <span
                                                         className={`text-sm font-black ${
-                                                            (student.average ?? 0) >= 70
+                                                            (student.average ?? 0) >= kktp
                                                                 ? 'text-emerald-600'
-                                                                : (student.average ?? 0) >= 50
+                                                                : (student.average ?? 0) >= midThreshold
                                                                 ? 'text-amber-600'
                                                                 : 'text-rose-600'
                                                         }`}
@@ -929,9 +970,9 @@ export default function SubjectAnalytics({
                                                 <td className="sticky right-0 z-1 bg-card px-4 py-2.5 text-center font-black text-sm">
                                                     <span
                                                         className={
-                                                            (student.average ?? 0) >= 70
+                                                            (student.average ?? 0) >= kktp
                                                                 ? 'text-emerald-600'
-                                                                : (student.average ?? 0) >= 50
+                                                                : (student.average ?? 0) >= midThreshold
                                                                 ? 'text-amber-600'
                                                                 : 'text-rose-600'
                                                         }

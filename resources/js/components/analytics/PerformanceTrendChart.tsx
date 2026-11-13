@@ -12,7 +12,7 @@ interface AssignmentScore {
     due_date: string | null;
 }
 
-export default function PerformanceTrendChart({ data }: { data: AssignmentScore[] }) {
+export default function PerformanceTrendChart({ data, kktp = 70 }: { data: AssignmentScore[]; kktp?: number }) {
     const chartData = data.map((a, i) => ({
         name: a.title.length > 20 ? a.title.substring(0, 20) + '…' : a.title,
         avg: a.avg_score,
@@ -63,12 +63,12 @@ export default function PerformanceTrendChart({ data }: { data: AssignmentScore[
                         }}
                     />
                     <ReferenceLine
-                        y={70}
+                        y={kktp}
                         stroke="hsl(var(--destructive))"
                         strokeDasharray="4 4"
                         strokeOpacity={0.5}
                         label={{
-                            value: 'KKTP',
+                            value: `KKTP (${kktp})`,
                             position: 'right',
                             fontSize: 10,
                             fill: 'hsl(var(--destructive))',

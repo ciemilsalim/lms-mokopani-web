@@ -86,15 +86,17 @@ class AnalyticsController extends Controller
         
         $allAssignments = $assignmentsQuery->count();
 
-        $totalAtRisk = 0;
-        $totalHighRisk = 0;
-        $totalMediumRisk = 0;
+        $uniqueRiskLevels = [];
 
-        $teachingsWithRisk = $teachings->map(function ($t) use ($earlyWarning, &$totalAtRisk, &$totalHighRisk, &$totalMediumRisk) {
+        $teachingsWithRisk = $teachings->map(function ($t) use ($earlyWarning, &$uniqueRiskLevels) {
             $risk = $earlyWarning->getClassRiskSummary($t['class_id'], $t['subject_id']);
-            $totalAtRisk += $risk['at_risk_count'];
-            $totalHighRisk += $risk['high_risk_count'];
-            $totalMediumRisk += $risk['medium_risk_count'];
+            foreach ($risk['students'] ?? [] as $rs) {
+                $sid = $rs['id'];
+                $lvl = $rs['highest_risk'] ?? 'medium';
+                if (!isset($uniqueRiskLevels[$sid]) || $lvl === 'high') {
+                    $uniqueRiskLevels[$sid] = $lvl;
+                }
+            }
 
             return array_merge($t, [
                 'at_risk_count'     => $risk['at_risk_count'],
@@ -107,6 +109,10 @@ class AnalyticsController extends Controller
             if ($classCmp !== 0) return $classCmp;
             return strnatcasecmp($a['subject_name'] ?? '', $b['subject_name'] ?? '');
         })->values();
+
+        $totalAtRisk = count($uniqueRiskLevels);
+        $totalHighRisk = count(array_filter($uniqueRiskLevels, fn ($lvl) => $lvl === 'high'));
+        $totalMediumRisk = count(array_filter($uniqueRiskLevels, fn ($lvl) => $lvl === 'medium'));
 
         return Inertia::render('analytics/index', [
             'teachings'      => $teachingsWithRisk,
@@ -146,13 +152,19 @@ class AnalyticsController extends Controller
         $subject = Subject::findOrFail($subjectId);
         $class = \App\Models\SchoolClass::findOrFail($classId);
 
-        $semesterId = $request->input('semester_id') ? (int) $request->input('semester_id') : null;
+        $activeYear = AcademicYear::getActive();
+        $activeSemester = Semester::getActive();
+
+        $allSemesters = $request->has('semester_id') && ($request->input('semester_id') === '' || $request->input('semester_id') === null);
+        $semesterId = $allSemesters
+            ? null
+            : ($request->input('semester_id') ? (int) $request->input('semester_id') : $activeSemester?->id);
         $startDate = $request->input('start_date');
         $endDate = $request->input('end_date');
 
-        $performance = $analytics->getClassPerformance($subjectId, $classId, $semesterId, $startDate, $endDate);
-        $scoreMatrix = $analytics->getStudentScoresMatrix($subjectId, $classId, $semesterId, $startDate, $endDate);
-        $riskSummary = $earlyWarning->getClassRiskSummary($classId, $subjectId);
+        $performance = $analytics->getClassPerformance($subjectId, $classId, $semesterId, $startDate, $endDate, $allSemesters);
+        $scoreMatrix = $analytics->getStudentScoresMatrix($subjectId, $classId, $semesterId, $startDate, $endDate, $allSemesters);
+        $riskSummary = $earlyWarning->getClassRiskSummary($classId, $subjectId, $semesterId, $startDate, $endDate, $allSemesters);
 
         $semesters = Semester::with('academicYear')->orderByDesc('id')->get()->map(fn($s) => [
             'id' => $s->id,
@@ -167,8 +179,15 @@ class AnalyticsController extends Controller
                 $q->where('school_classes.id', $classId);
             })
             ->whereIn('instrument_type', ['quiz_survey', 'written_test']);
-            
-        if ($semesterId) $queryAssignments->where('semester_id', $semesterId);
+
+        if (!$allSemesters) {
+            if ($request->input('semester_id')) {
+                $queryAssignments->where('semester_id', $semesterId);
+            } else {
+                $queryAssignments->where('academic_year_id', $activeYear?->id)
+                    ->where('semester_id', $semesterId);
+            }
+        }
         if ($startDate) $queryAssignments->whereDate('due_date', '>=', $startDate);
         if ($endDate) $queryAssignments->whereDate('due_date', '<=', $endDate);
 
@@ -195,7 +214,7 @@ class AnalyticsController extends Controller
             'question_analysis'  => $questionAnalysis,
             'semesters'          => $semesters,
             'filters'            => [
-                'semester_id' => $semesterId ?? Semester::getActive()?->id,
+                'semester_id' => $allSemesters ? '' : $semesterId,
                 'start_date'  => $startDate,
                 'end_date'    => $endDate,
             ]
