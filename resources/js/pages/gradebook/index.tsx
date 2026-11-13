@@ -1,18 +1,16 @@
 import React, { useMemo, useState } from 'react';
 import AppLayout from '@/layouts/app-layout';
-import { type BreadcrumbItem } from '@/types';
-import { Head, Link } from '@inertiajs/react';
-import { 
-    FileSpreadsheet, 
-    ChevronRight, 
-    BookOpen, 
+import { type BreadcrumbItem, type SharedData } from '@/types';
+import { Head, Link, usePage } from '@inertiajs/react';
+import {
+    FileSpreadsheet,
+    ChevronRight,
     Users,
-    TrendingUp,
     Award,
     SlidersHorizontal,
     Search,
     GraduationCap,
-    CheckCircle2
+    Table2,
 } from 'lucide-react';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -47,6 +45,7 @@ export default function GradebookIndex({
     selected_class_id = null,
     period = ''
 }: GradebookIndexProps) {
+    const { is_homeroom_teacher, homeroom_class } = usePage<SharedData>().props;
     const [selectedClass, setSelectedClass] = useState<number | 'all'>(selected_class_id || 'all');
     const [search, setSearch] = useState('');
 
@@ -88,6 +87,33 @@ export default function GradebookIndex({
                         </div>
                     )}
                 </div>
+
+                {/* Wali Kelas Leger Nilai Banner */}
+                {is_homeroom_teacher && homeroom_class && (
+                    <div className="rounded-2xl border border-primary/25 bg-primary/5 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary">
+                                <Table2 className="h-5 w-5" />
+                            </div>
+                            <div>
+                                <h2 className="text-sm font-bold text-foreground">
+                                    Leger Nilai Wali Kelas — {homeroom_class.name}
+                                </h2>
+                                <p className="text-xs text-muted-foreground">
+                                    Lihat rekap nilai seluruh mata pelajaran untuk siswa di kelas perwalian Anda.
+                                </p>
+                            </div>
+                        </div>
+                        <Link
+                            href="/gradebook/leger"
+                            className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-xs font-bold shadow-xs hover:bg-primary/90 transition shrink-0 min-h-[40px]"
+                        >
+                            <Table2 className="h-4 w-4" />
+                            <span>Buka Leger Nilai</span>
+                            <ChevronRight className="h-3.5 w-3.5" />
+                        </Link>
+                    </div>
+                )}
 
                 {/* 2. Filter & Search Controls */}
                 <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">

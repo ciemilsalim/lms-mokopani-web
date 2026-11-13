@@ -5,7 +5,7 @@ import { type NavItem, type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
 import {
     Book, BookOpen, ClipboardList, GraduationCap, LayoutDashboard, Library, Target, FileBarChart, Bell,
-    Heart, BarChart3, Users, ExternalLink, RotateCcw, School, Sparkles,
+    Heart, BarChart3, Users, ExternalLink, RotateCcw, School, Sparkles, Table2,
 } from 'lucide-react';
 import AppLogo from './app-logo';
 
@@ -120,9 +120,21 @@ const parentNavSections: NavSection[] = [
     },
 ];
 
-export function getNavSections(role: string): NavSection[] {
+export function getNavSections(role: string, isHomeroomTeacher = false): NavSection[] {
     switch (role) {
-        case 'teacher': return teacherNavSections;
+        case 'teacher':
+            return teacherNavSections.map((section) => {
+                if (section.label === 'Pengolahan' && isHomeroomTeacher) {
+                    return {
+                        ...section,
+                        items: [
+                            ...section.items,
+                            { title: 'Leger Nilai', url: '/gradebook/leger', icon: Table2 },
+                        ],
+                    };
+                }
+                return section;
+            });
         case 'student': return studentNavSections;
         case 'admin':   return adminNavSections;
         case 'parent':  return parentNavSections;
@@ -131,8 +143,8 @@ export function getNavSections(role: string): NavSection[] {
 }
 
 export function AppSidebar() {
-    const { user_role, sipada_url } = usePage<SharedData>().props;
-    const sections = getNavSections(user_role);
+    const { user_role, is_homeroom_teacher } = usePage<SharedData>().props;
+    const sections = getNavSections(user_role, Boolean(is_homeroom_teacher));
 
     return (
         <Sidebar collapsible="icon" variant="sidebar">

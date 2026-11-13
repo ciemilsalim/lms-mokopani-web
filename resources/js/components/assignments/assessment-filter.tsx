@@ -34,17 +34,23 @@ export function AssessmentFilter({
         <div className={`flex flex-col gap-3 w-full min-w-0 ${className}`}>
             {/* Filter Tabs */}
             {isStudent ? (
-                <div className="flex p-1 bg-muted/80 rounded-2xl w-full overflow-x-auto scrollbar-hide border border-border/60 shrink-0 gap-1 min-h-[50px] items-center">
-                    {[
+                <div
+                    role="tablist"
+                    aria-label="Filter status asesmen"
+                    className="flex p-1 bg-muted/80 rounded-2xl w-full overflow-x-auto scrollbar-hide border border-border/60 shrink-0 gap-1 min-h-[50px] items-center"
+                >
+                    {([
                         { id: 'all', label: 'Semua' },
                         { id: 'pending', label: 'Perlu Dikerjakan' },
                         { id: 'submitted', label: 'Menunggu Nilai' },
                         { id: 'graded', label: 'Selesai' },
-                    ].map(f => (
+                    ] as const).map(f => (
                         <button
                             key={f.id}
                             type="button"
-                            onClick={() => onStudentStatusFilterChange && onStudentStatusFilterChange(f.id as any)}
+                            role="tab"
+                            aria-selected={studentStatusFilter === f.id}
+                            onClick={() => onStudentStatusFilterChange && onStudentStatusFilterChange(f.id)}
                             className={`shrink-0 px-3.5 py-2 rounded-xl text-xs font-bold transition active:scale-95 cursor-pointer min-h-[44px] flex items-center justify-center ${
                                 studentStatusFilter === f.id
                                     ? 'bg-primary text-primary-foreground shadow-xs'
@@ -56,7 +62,11 @@ export function AssessmentFilter({
                     ))}
                 </div>
             ) : (
-                <div className="flex p-1 bg-muted/80 rounded-2xl w-full overflow-x-auto scrollbar-hide border border-border/60 shrink-0 gap-1 min-h-[50px] items-center">
+                <div
+                    role="tablist"
+                    aria-label="Filter jenis asesmen"
+                    className="flex p-1 bg-muted/80 rounded-2xl w-full overflow-x-auto scrollbar-hide border border-border/60 shrink-0 gap-1 min-h-[50px] items-center"
+                >
                     {[
                         { id: 'all', label: 'Semua', count: countsByType?.all },
                         { id: 'initial', label: 'Awal', count: countsByType?.initial },
@@ -68,6 +78,8 @@ export function AssessmentFilter({
                             <button
                                 key={f.id}
                                 type="button"
+                                role="tab"
+                                aria-selected={isActive}
                                 onClick={() => onFilterTypeChange && onFilterTypeChange(f.id)}
                                 className={`inline-flex items-center justify-center gap-1.5 shrink-0 px-4 py-2 rounded-xl text-xs font-bold transition active:scale-95 cursor-pointer min-h-[44px] ${
                                     isActive
@@ -96,6 +108,7 @@ export function AssessmentFilter({
                 <Search className="absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                 <input
                     type="text"
+                    aria-label="Cari asesmen, kelas, atau mapel"
                     placeholder="Cari asesmen, kelas, atau mapel..."
                     value={search}
                     onChange={(e) => onSearchChange(e.target.value)}

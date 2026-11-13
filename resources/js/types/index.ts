@@ -29,6 +29,8 @@ export interface SharedData {
     quote: { message: string; author: string };
     auth: Auth;
     user_role: 'admin' | 'teacher' | 'student' | 'parent' | 'user' | 'guest';
+    is_homeroom_teacher?: boolean;
+    homeroom_class?: { id: number; name: string } | null;
     unread_count: number;
     sipada_url?: string;
     activeSemesterId?: number;

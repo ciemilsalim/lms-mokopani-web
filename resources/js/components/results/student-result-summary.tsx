@@ -6,6 +6,8 @@ export interface StudentResultSummaryProps {
     overallAverage: number;
     totalSubjects: number;
     periodStr: string;
+    kktpThreshold?: number;
+    hasAssessedSubjects?: boolean;
     className?: string;
 }
 
@@ -13,13 +15,17 @@ export function StudentResultSummary({
     overallAverage,
     totalSubjects,
     periodStr,
+    kktpThreshold = 75,
+    hasAssessedSubjects = true,
     className = '',
 }: StudentResultSummaryProps) {
-    let statusLabel = 'Prestasi Sangat Baik';
-    if (overallAverage >= 90) statusLabel = 'Prestasi Istimewa';
-    else if (overallAverage >= 80) statusLabel = 'Prestasi Sangat Baik';
-    else if (overallAverage >= 75) statusLabel = 'Tercapai Baik';
-    else statusLabel = 'Perlu Peningkatan';
+    let statusLabel = 'Belum Ada Nilai Sumatif';
+    if (hasAssessedSubjects) {
+        if (overallAverage >= 90) statusLabel = 'Prestasi Istimewa';
+        else if (overallAverage >= 80) statusLabel = 'Prestasi Sangat Baik';
+        else if (overallAverage >= kktpThreshold) statusLabel = 'Tercapai Baik';
+        else statusLabel = 'Perlu Peningkatan';
+    }
 
     return (
         <div className={cn('rounded-3xl bg-gradient-to-br from-primary via-primary/90 to-indigo-600 p-5 sm:p-6 text-primary-foreground shadow-md space-y-4', className)}>
@@ -54,7 +60,9 @@ export function StudentResultSummary({
                         <TrendingUp className="h-3.5 w-3.5" />
                         <span>Rata-Rata Nilai</span>
                     </p>
-                    <p className="text-xl sm:text-2xl font-black text-amber-200 mt-1">{overallAverage}</p>
+                    <p className="text-xl sm:text-2xl font-black text-amber-200 mt-1">
+                        {hasAssessedSubjects ? overallAverage : '-'}
+                    </p>
                 </div>
             </div>
         </div>

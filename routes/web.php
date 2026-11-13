@@ -249,6 +249,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('gradebook/show', [\App\Http\Controllers\GradebookController::class, 'show'])->name('gradebook.show');
         Route::get('gradebook/final-report', [\App\Http\Controllers\GradebookController::class, 'finalReport'])->name('gradebook.final-report');
         Route::post('gradebook/final-score', [\App\Http\Controllers\GradebookController::class, 'updateFinalScore'])->name('gradebook.final-score.update');
+        Route::get('gradebook/leger', [\App\Http\Controllers\GradebookController::class, 'leger'])->name('gradebook.leger');
+        Route::get('gradebook/leger/export-csv', [\App\Http\Controllers\GradebookController::class, 'exportLegerCsv'])->name('gradebook.leger.export-csv');
 
         // Laporan Capaian Pembelajaran (read-only report)
         Route::get('gradebook/learning-report/{class_id}/{subject_id}', [GradebookController::class, 'learningReport'])->name('gradebook.learning-report');

@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { router } from '@inertiajs/react';
 import {
-    Clock, CheckCircle2, Pencil, Trash2, ChevronRight, FileText, AlertCircle,
-    MoreVertical, PenTool, BarChart3, ExternalLink, ArrowRight
+    Clock, Pencil, Trash2, ChevronRight,
+    MoreVertical, PenTool, BarChart3, ArrowRight
 } from 'lucide-react';
 import { ConfirmDialog } from '@/components/confirm-dialog';
-import { AssessmentTypeBadge, StudentSubmissionBadge } from './assessment-status-badge';
+import { StudentSubmissionBadge } from './assessment-status-badge';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -21,6 +21,7 @@ export interface AssignmentItem {
     subject_name: string;
     subject_id?: number;
     due_date: string | null;
+    is_overdue?: boolean;
     max_points: number;
     assessment_type: string | null;
     instrument_type: string | null;
@@ -33,6 +34,7 @@ export interface AssignmentItem {
     is_accessible?: boolean;
     student_submission?: { id: number; is_graded: boolean } | null;
     topic?: string;
+    topicCode?: string;
 }
 
 const isOverdue = (due: string | null): boolean => {
@@ -78,7 +80,7 @@ export function AssessmentCard({
     classId,
     onDelete,
 }: AssessmentCardProps) {
-    const overdue = isOverdue(assignment.due_date);
+    const overdue = assignment.is_overdue ?? isOverdue(assignment.due_date);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
     const handleEdit = (e?: React.MouseEvent) => {
@@ -104,7 +106,7 @@ export function AssessmentCard({
 
     const handleOpenGrading = (e: React.MouseEvent) => {
         e.stopPropagation();
-        if (classId) {
+        if (classId && classId > 0) {
             router.visit(route('assignments.grade-view', { assignment: assignment.id, class_id: classId }));
         } else {
             router.visit(route('assignments.grade-view', assignment.id));
@@ -174,7 +176,15 @@ export function AssessmentCard({
         return (
             <div
                 onClick={handleNavigate}
-                className="group p-3.5 sm:p-4 bg-card hover:bg-muted/20 transition-colors cursor-pointer border-b last:border-b-0 border-border/50 flex flex-col justify-between min-h-[96px] sm:min-h-[104px] gap-2.5 w-full min-w-0 box-border"
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        handleNavigate();
+                    }
+                }}
+                className="group p-3.5 sm:p-4 bg-card hover:bg-muted/20 transition-colors cursor-pointer border-b last:border-b-0 border-border/50 flex flex-col justify-between min-h-[96px] sm:min-h-[104px] gap-2.5 w-full min-w-0 box-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/40"
             >
                 {/* Top Row: Type Dot + Title & 44x44px Ghost Ellipsis */}
                 <div className="flex items-start justify-between gap-2 w-full min-w-0">
@@ -189,8 +199,8 @@ export function AssessmentCard({
                             </h3>
                         </div>
 
-                        {/* Subject, Instrument & Type label */}
-                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground pl-4.5 truncate">
+                        {/* Subject, Instrument, Type & TP/Due Date label */}
+                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground pl-4.5 flex-wrap">
                             <span className="font-semibold text-foreground/85">{assignment.subject_name}</span>
                             <span>•</span>
                             <span className="font-medium text-muted-foreground">{instrumentLabels[assignment.instrument_type || ''] || 'Asesmen'}</span>
@@ -202,8 +212,17 @@ export function AssessmentCard({
                             )}
                             {assignment.topic && (
                                 <span className="hidden md:inline text-[11px] text-muted-foreground/80 truncate max-w-xs">
-                                    • {assignment.topic}
+                                    • {assignment.topicCode ? `${assignment.topicCode}: ` : ''}{assignment.topic}
                                 </span>
+                            )}
+                            {assignment.due_date && (
+                                <>
+                                    <span>•</span>
+                                    <span className={`inline-flex items-center gap-1 text-[11px] font-medium ${overdue ? 'text-rose-600 dark:text-rose-400 font-bold' : ''}`}>
+                                        <Clock className="h-3 w-3 shrink-0" />
+                                        {assignment.due_date}
+                                    </span>
+                                </>
                             )}
                         </div>
                     </div>
@@ -301,7 +320,16 @@ export function AssessmentCard({
                                 <span>Lihat Rekap</span>
                                 <ArrowRight className="h-3.5 w-3.5 ml-0.5 text-muted-foreground" />
                             </button>
-                        ) : null}
+                        ) : (
+                            <button
+                                type="button"
+                                onClick={handleOpenGrading}
+                                className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-border bg-card hover:bg-muted text-xs font-bold text-muted-foreground hover:text-foreground transition active:scale-95 cursor-pointer min-h-[44px]"
+                            >
+                                <PenTool className="h-3.5 w-3.5" />
+                                <span>Nilai</span>
+                            </button>
+                        )}
                     </div>
                 </div>
 

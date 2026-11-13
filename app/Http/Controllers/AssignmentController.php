@@ -25,10 +25,26 @@ class AssignmentController extends Controller
                 $q->withCount('students');
             },
             'learningObjective',
-            'submissions.student'
-        ])
-            ->where('academic_year_id', $activeYear?->id)
-            ->where('semester_id', $activeSemester?->id);
+            'submissions:id,assignment_id,student_id,score',
+            'submissions.student:id,school_class_id',
+        ]);
+
+        if ($activeYear && $activeSemester) {
+            $query->where(function ($q) use ($activeYear, $activeSemester) {
+                $q->where(function ($sub) use ($activeYear, $activeSemester) {
+                    $sub->where('academic_year_id', $activeYear->id)
+                        ->where('semester_id', $activeSemester->id);
+                })->orWhere(function ($sub) {
+                    $sub->whereNull('academic_year_id')
+                        ->whereNull('semester_id');
+                });
+            });
+        } elseif ($activeYear) {
+            $query->where(function ($q) use ($activeYear) {
+                $q->where('academic_year_id', $activeYear->id)
+                    ->orWhereNull('academic_year_id');
+            });
+        }
 
         if ($user->role === 'admin') {
             // admin can see all
@@ -57,9 +73,20 @@ class AssignmentController extends Controller
                 ->keyBy('assignment_id');
         }
 
-        if ($user->teacher) {
+        if ($user->teacher || $user->role === 'admin') {
             $classAssignments = [];
             foreach ($models as $a) {
+                if ($a->schoolClasses->isEmpty()) {
+                    if (!isset($classAssignments[0])) {
+                        $classAssignments[0] = [
+                            'class' => null,
+                            'assignments' => [],
+                        ];
+                    }
+                    $classAssignments[0]['assignments'][] = $a;
+                    continue;
+                }
+
                 foreach ($a->schoolClasses as $c) {
                     if (!isset($classAssignments[$c->id])) {
                         $classAssignments[$c->id] = [
@@ -73,24 +100,25 @@ class AssignmentController extends Controller
 
             $teacherGrouped = collect($classAssignments)->map(function ($item, $classId) use (&$totalPendingGrading) {
                 $classItems = collect($item['assignments']);
-                $firstClassItem = $classItems->first();
-                $classStudentsCount = $item['class']->students_count ?? 0;
-                
+                $classStudentsCount = $item['class']?->students_count ?? 0;
+
                 $subjectGroups = $classItems->groupBy('subject_id')->map(function ($subjectItems, $subjectId) use ($classId, $classStudentsCount, &$totalPendingGrading) {
                     $firstSubjectItem = $subjectItems->first();
-                    
+
                     $tpGroups = $subjectItems->groupBy(function ($item) {
                         return $item->learning_objective_id ?? 'null';
                     });
-                    
-                    $objectives = $tpGroups->map(function ($tpItems, $tpId) use ($classId, $classStudentsCount, &$totalPendingGrading) {
+
+                    $objectives = $tpGroups->map(function ($tpItems) use ($classId, $classStudentsCount, &$totalPendingGrading) {
                         $firstTp = $tpItems->first();
                         return [
                             'objective_id'          => $firstTp->learning_objective_id,
                             'objective_code'        => $firstTp->learningObjective?->code ?: ('TP ' . ($firstTp->learningObjective?->order ?? '?')),
                             'objective_description' => $firstTp->learningObjective?->description ?? 'Tanpa TP',
                             'assignments'           => $tpItems->map(function ($a) use ($classId, $classStudentsCount, &$totalPendingGrading) {
-                                $classSubmissions = $a->submissions->filter(fn ($s) => $s->student?->school_class_id == $classId);
+                                $classSubmissions = $classId === 0
+                                    ? $a->submissions
+                                    : $a->submissions->filter(fn ($s) => $s->student?->school_class_id == $classId);
                                 $classPending = $classSubmissions->whereNull('score')->count();
                                 $classGraded = $classSubmissions->whereNotNull('score')->count();
                                 $totalPendingGrading += $classPending;
@@ -102,6 +130,7 @@ class AssignmentController extends Controller
                                     'subject_name'          => $a->subject?->name ?? '-',
                                     'subject_id'            => $a->subject_id,
                                     'due_date'              => $a->due_date?->format('d M Y'),
+                                    'is_overdue'            => (bool) ($a->due_date && $a->due_date->isPast()),
                                     'max_points'            => $a->max_points,
                                     'assessment_type'       => $a->assessment_type,
                                     'instrument_type'       => $a->instrument_type,
@@ -114,7 +143,7 @@ class AssignmentController extends Controller
                             })->values(),
                         ];
                     })->values();
-                    
+
                     return [
                         'subject_id'   => (int) $subjectId,
                         'subject_name' => $firstSubjectItem->subject?->name ?? 'Mata Pelajaran',
@@ -124,7 +153,7 @@ class AssignmentController extends Controller
 
                 return [
                     'class_id'       => (int) $classId,
-                    'class_name'     => $item['class']->name ?? 'Kelas',
+                    'class_name'     => $item['class']?->name ?? 'Belum Ada Kelas',
                     'students_count' => $classStudentsCount,
                     'subjects'       => $subjectGroups,
                 ];
@@ -138,14 +167,17 @@ class AssignmentController extends Controller
                 'summative' => $models->where('assessment_type', 'summative')->count(),
             ];
 
+            $totalOverdue = $models->filter(fn ($a) => $a->due_date && $a->due_date->isPast())->count();
+
             return Inertia::render('assignments/index', [
                 'teacher_grouped'  => $teacherGrouped,
                 'active_year'      => $activeYear?->name,
                 'active_semester'  => $activeSemester?->name,
-                'user_role'        => 'teacher',
+                'user_role'        => $user->role === 'admin' ? 'admin' : 'teacher',
                 'stats'            => [
                     'total_pending_grading' => $totalPendingGrading,
                     'total_active'          => $totalActiveAssessments,
+                    'total_overdue'         => $totalOverdue,
                 ],
                 'counts_by_type'   => $countsByType,
             ]);

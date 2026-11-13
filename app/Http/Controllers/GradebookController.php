@@ -488,11 +488,27 @@ class GradebookController extends Controller
         $activeSemester = Semester::getActive();
 
         // Ambil semua tugas untuk kelas siswa ini di periode aktif
-        $assignments = LmsAssignment::with('subject')
-            ->whereHas('schoolClasses', function ($q) use ($student) { $q->where('school_classes.id', $student->school_class_id); })
-            ->where('academic_year_id', $activeYear?->id)
-            ->where('semester_id', $activeSemester?->id)
-            ->get();
+        $assignmentsQuery = LmsAssignment::with('subject')
+            ->whereHas('schoolClasses', function ($q) use ($student) { $q->where('school_classes.id', $student->school_class_id); });
+
+        if ($activeYear && $activeSemester) {
+            $assignmentsQuery->where(function ($q) use ($activeYear, $activeSemester) {
+                $q->where(function ($sub) use ($activeYear, $activeSemester) {
+                    $sub->where('academic_year_id', $activeYear->id)
+                        ->where('semester_id', $activeSemester->id);
+                })->orWhere(function ($sub) {
+                    $sub->whereNull('academic_year_id')
+                        ->whereNull('semester_id');
+                });
+            });
+        } elseif ($activeYear) {
+            $assignmentsQuery->where(function ($q) use ($activeYear) {
+                $q->where('academic_year_id', $activeYear->id)
+                    ->orWhereNull('academic_year_id');
+            });
+        }
+
+        $assignments = $assignmentsQuery->get();
 
         // Ambil nilai siswa
         $submissions = \App\Models\LmsSubmission::whereIn('assignment_id', $assignments->pluck('id'))
@@ -533,16 +549,22 @@ class GradebookController extends Controller
         $allTps = \App\Models\LmsLearningObjective::with('capaianPembelajaran')->whereIn('id', $allTpIds)->get()->keyBy('id');
 
         // Pre-fetch Final Scores (SAS/ASAT) untuk siswa ini
-        $finalScores = GradebookFinalScore::where('student_id', $student->id)
+        $finalScores = GradebookFinalScore::with('subject')
+            ->where('student_id', $student->id)
             ->where('academic_year_id', $activeYear?->id)
             ->where('semester_id', $activeSemester?->id)
             ->get()
             ->keyBy('subject_id');
 
-        $report = $assignments->groupBy('subject_id')->map(function ($subjectAssignments) use ($submissions, $remedialRecords, $attendances, $student, $allTps, $finalScores, $activeYear, $activeSemester) {
-            $subjectId = $subjectAssignments->first()->subject_id;
-            $subjectName = $subjectAssignments->first()->subject->name;
-            $subjectKktp = get_kktp($subjectId);
+        $defaultKktp = (int) school_setting('kktp', 70);
+        $assignmentsBySubject = $assignments->groupBy('subject_id');
+        $allSubjectIds = $assignmentsBySubject->keys()->merge($finalScores->keys())->unique()->values();
+
+        $report = $allSubjectIds->map(function ($subjectId) use ($assignmentsBySubject, $submissions, $remedialRecords, $attendances, $student, $allTps, $finalScores, $activeYear, $activeSemester, $defaultKktp) {
+            $subjectAssignments = $assignmentsBySubject->get($subjectId, collect());
+            $subject = $subjectAssignments->first()?->subject ?? $finalScores->get($subjectId)?->subject;
+            $subjectName = $subject?->name ?? 'Mata Pelajaran';
+            $subjectKktp = ($subject && $subject->kktp) ? (int) $subject->kktp : $defaultKktp;
             
             // Hitung Absensi untuk Mapel ini
             $subjectAttendances = $attendances->filter(function($a) use ($subjectId) {
@@ -564,12 +586,14 @@ class GradebookController extends Controller
                 // ATAU ada LmsRemedialRecord dengan status 'assigned' atau 'in_progress'
                 $isRemedial = $isRemedialOpen || ($remedial && in_array($remedialStatus, ['assigned', 'in_progress']));
 
+                $hasScore = $submission && $submission->score !== null && $submission->score !== '';
+
                 return [
                     'id'               => $assignment->id,
                     'title'            => $assignment->title,
-                    'score'            => $submission?->score ?? '-',
+                    'score'            => $hasScore ? $submission->score : '-',
                     'max_points'       => $assignment->max_points,
-                    'status'           => $submission ? 'Selesai' : 'Belum Mengerjakan',
+                    'status'           => $submission ? ($hasScore ? 'Dinilai' : 'Menunggu Penilaian') : 'Belum Mengerjakan',
                     'type'             => $assignment->assessment_type,
                     'tp_id'            => $assignment->learning_objective_id,
                     'is_remedial'      => $isRemedial,
@@ -650,6 +674,8 @@ class GradebookController extends Controller
             return [
                 'subject_id'            => $subjectId,
                 'subject_name'          => $subjectName,
+                'kktp'                  => $subjectKktp,
+                'has_summative_data'    => $calc['tp_average'] !== null || $calc['sas_score'] !== null,
                 'cps'                   => $cpGroups,
                 'average'               => $finalScore,
                 'tp_average'            => $average,
@@ -684,31 +710,43 @@ class GradebookController extends Controller
                 ->where('student_id', $student->id)
                 ->keyBy('sub_element_id');
 
+            $allowedSubElementIds = collect($project->sub_element_ids ?? [])->filter()->values();
+
             $dimensiData = $dimensi
-                ->map(fn($d) => [
-                    'id'       => $d->id,
-                    'kode'     => $d->kode,
-                    'nama'     => $d->nama,
-                    'elements' => $d->elements
-                        ->map(fn($e) => [
+                ->map(function ($d) use ($studentScores, $allowedSubElementIds) {
+                    $elements = $d->elements->map(function ($e) use ($studentScores, $allowedSubElementIds) {
+                        $subElements = $e->subElements;
+                        if ($allowedSubElementIds->isNotEmpty()) {
+                            $subElements = $subElements->whereIn('id', $allowedSubElementIds);
+                        }
+
+                        return [
                             'id'           => $e->id,
                             'nama'         => $e->nama,
-                            'sub_elements' => $e->subElements
+                            'sub_elements' => $subElements
                                 ->map(fn($se) => [
                                     'id'      => $se->id,
                                     'nama'    => $se->nama,
                                     'nilai'   => $studentScores->get($se->id)?->nilai ?? '-',
                                     'catatan' => $studentScores->get($se->id)?->catatan ?? '',
                                 ])->values()->all(),
-                        ])->values()->all(),
-                ])->values()->all();
+                        ];
+                    })->filter(fn($e) => !empty($e['sub_elements']))->values()->all();
+
+                    return [
+                        'id'       => $d->id,
+                        'kode'     => $d->kode,
+                        'nama'     => $d->nama,
+                        'elements' => $elements,
+                    ];
+                })->filter(fn($d) => !empty($d['elements']))->values()->all();
 
             return [
                 'id'            => $project->id,
-                'judul'         => $project->title,
-                'deskripsi'     => $project->description,
-                'tema'          => $project->theme,
-                'alokasi_waktu' => $project->duration_hours,
+                'judul'         => $project->judul,
+                'deskripsi'     => $project->deskripsi,
+                'tema'          => $project->tema,
+                'alokasi_waktu' => $project->alokasi_waktu,
                 'status'        => $project->status,
                 'dimensi'       => $dimensiData,
             ];
@@ -972,5 +1010,334 @@ class GradebookController extends Controller
                 'unsubmitted_count'  => $allAssignments->count() - $submissions->count(),
             ],
         ]);
+    }
+
+    /**
+     * Leger Nilai untuk Wali Kelas (dan Admin): rekap nilai semua mapel untuk seluruh siswa di kelas perwalian.
+     */
+    public function leger(Request $request)
+    {
+        $user = Auth::user();
+        $activeYear = AcademicYear::getActive();
+        $activeSemester = Semester::getActive();
+
+        $schoolClass = $this->resolveHomeroomClass($request, $user);
+        $adminClasses = $user->role === 'admin'
+            ? SchoolClass::orderBy('name')->get(['id', 'name'])
+            : collect();
+
+        if (!$schoolClass) {
+            return Inertia::render('gradebook/leger', [
+                'school_class'     => null,
+                'homeroom_teacher' => null,
+                'period'           => ($activeYear?->name ?? '') . ($activeSemester ? ' - ' . $activeSemester->name : ''),
+                'subjects'         => [],
+                'rows'             => [],
+                'subject_averages' => [],
+                'summary'          => [
+                    'total_students'          => 0,
+                    'total_subjects'          => 0,
+                    'class_average'           => 0,
+                    'students_need_attention' => 0,
+                ],
+                'admin_classes'    => $adminClasses,
+            ]);
+        }
+
+        $legerData = $this->buildClassLegerData($schoolClass, $activeYear, $activeSemester);
+        $homeroomTeacher = $schoolClass->teacher_id
+            ? \App\Models\Teacher::find($schoolClass->teacher_id)
+            : null;
+
+        return Inertia::render('gradebook/leger', [
+            'school_class' => [
+                'id'   => $schoolClass->id,
+                'name' => $schoolClass->name,
+            ],
+            'homeroom_teacher' => $homeroomTeacher ? [
+                'name' => $homeroomTeacher->name,
+                'nip'  => $homeroomTeacher->nip,
+            ] : null,
+            'period'           => ($activeYear?->name ?? '') . ($activeSemester ? ' - ' . $activeSemester->name : ''),
+            'subjects'         => $legerData['subjects'],
+            'rows'             => $legerData['rows'],
+            'subject_averages' => $legerData['subject_averages'],
+            'summary'          => $legerData['summary'],
+            'admin_classes'    => $adminClasses,
+        ]);
+    }
+
+    /**
+     * Ekspor Leger Nilai kelas perwalian ke format CSV (UTF-8 BOM).
+     */
+    public function exportLegerCsv(Request $request)
+    {
+        $user = Auth::user();
+        $activeYear = AcademicYear::getActive();
+        $activeSemester = Semester::getActive();
+
+        $schoolClass = $this->resolveHomeroomClass($request, $user);
+        if (!$schoolClass) {
+            abort(404, 'Kelas tidak ditemukan.');
+        }
+
+        $legerData = $this->buildClassLegerData($schoolClass, $activeYear, $activeSemester);
+        $subjects = $legerData['subjects'];
+        $rows = $legerData['rows'];
+        $subjectAverages = $legerData['subject_averages'];
+
+        $safeClassName = preg_replace('/[^A-Za-z0-9_-]+/', '_', $schoolClass->name);
+        $filename = "leger_nilai_{$safeClassName}.csv";
+
+        return response()->streamDownload(function () use ($subjects, $rows, $subjectAverages, $legerData) {
+            $handle = fopen('php://output', 'w');
+            // UTF-8 BOM for Excel compatibility
+            fwrite($handle, "\xEF\xBB\xBF");
+
+            $header = ['No', 'NIS', 'Nama Siswa'];
+            foreach ($subjects as $sub) {
+                $header[] = $sub['name'] . ' (KKTP ' . $sub['kktp'] . ')';
+            }
+            $header[] = 'Rata-Rata';
+            $header[] = 'Tuntas';
+            fputcsv($handle, $header);
+
+            foreach ($rows as $idx => $row) {
+                $line = [$idx + 1, $row['nis'], $row['name']];
+                foreach ($subjects as $sub) {
+                    $cell = $row['scores'][$sub['id']] ?? null;
+                    $line[] = ($cell && $cell['has_summative_data']) ? $cell['final_score'] : '-';
+                }
+                $line[] = $row['assessed_count'] > 0 ? $row['overall_average'] : '-';
+                $line[] = $row['assessed_count'] > 0 ? ($row['passed_count'] . '/' . $row['assessed_count']) : '-';
+                fputcsv($handle, $line);
+            }
+
+            $avgRow = ['', '', 'Rata-Rata Kelas'];
+            foreach ($subjects as $sub) {
+                $avg = $subjectAverages[$sub['id']] ?? null;
+                $avgRow[] = $avg !== null ? $avg : '-';
+            }
+            $avgRow[] = $legerData['summary']['class_average'];
+            $avgRow[] = '';
+            fputcsv($handle, $avgRow);
+
+            fclose($handle);
+        }, $filename, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+        ]);
+    }
+
+    /**
+     * Resolve and authorize the homeroom class for the current user.
+     */
+    protected function resolveHomeroomClass(Request $request, $user): ?SchoolClass
+    {
+        $requestedClassId = $request->query('class_id') ? (int) $request->query('class_id') : null;
+
+        if ($user->role === 'admin') {
+            if ($requestedClassId) {
+                return SchoolClass::findOrFail($requestedClassId);
+            }
+            return SchoolClass::orderBy('name')->first();
+        }
+
+        if ($user->teacher) {
+            $homeroomClass = SchoolClass::where('teacher_id', $user->teacher->id)->first();
+            if (!$homeroomClass) {
+                abort(403, 'Fitur Leger Nilai hanya tersedia untuk Wali Kelas.');
+            }
+            if ($requestedClassId && $requestedClassId !== $homeroomClass->id) {
+                abort(403, 'Anda tidak memiliki hak akses ke leger kelas ini.');
+            }
+            return $homeroomClass;
+        }
+
+        abort(403, 'Anda tidak memiliki hak akses ke halaman ini.');
+    }
+
+    /**
+     * Build the full subject-by-student grade ledger for a homeroom class.
+     */
+    protected function buildClassLegerData(SchoolClass $schoolClass, $activeYear, $activeSemester): array
+    {
+        $students = Student::where('school_class_id', $schoolClass->id)
+            ->orderBy('name')
+            ->get();
+
+        // Discover all subjects for this class in the active period
+        $teachingQuery = TeachingAssignment::where('school_class_id', $schoolClass->id);
+        if ($activeYear && $activeSemester) {
+            $teachingQuery->where(function ($q) use ($activeYear, $activeSemester) {
+                $q->where(function ($sub) use ($activeYear, $activeSemester) {
+                    $sub->where('academic_year_id', $activeYear->id)
+                        ->where('semester_id', $activeSemester->id);
+                })->orWhere(function ($sub) {
+                    $sub->whereNull('academic_year_id')
+                        ->whereNull('semester_id');
+                });
+            });
+        }
+        $teachingSubjectIds = $teachingQuery->pluck('subject_id');
+
+        $summativeQuery = LmsAssignment::where('assessment_type', 'summative')
+            ->whereHas('schoolClasses', fn ($q) => $q->where('school_classes.id', $schoolClass->id));
+        if ($activeYear && $activeSemester) {
+            $summativeQuery->where(function ($q) use ($activeYear, $activeSemester) {
+                $q->where(function ($sub) use ($activeYear, $activeSemester) {
+                    $sub->where('academic_year_id', $activeYear->id)
+                        ->where('semester_id', $activeSemester->id);
+                })->orWhere(function ($sub) {
+                    $sub->whereNull('academic_year_id')
+                        ->whereNull('semester_id');
+                });
+            });
+        }
+        $summativeAssignments = $summativeQuery->get();
+
+        $finalScoresQuery = GradebookFinalScore::where('school_class_id', $schoolClass->id)
+            ->where('academic_year_id', $activeYear?->id)
+            ->where('semester_id', $activeSemester?->id);
+        $finalScores = $finalScoresQuery->get();
+
+        $subjectIds = $teachingSubjectIds
+            ->merge($summativeAssignments->pluck('subject_id'))
+            ->merge($finalScores->pluck('subject_id'))
+            ->unique()
+            ->filter()
+            ->values();
+
+        $subjects = Subject::whereIn('id', $subjectIds)
+            ->orderBy('name')
+            ->get();
+
+        $defaultKktp = (int) school_setting('kktp', 70);
+
+        $submissions = LmsSubmission::whereIn('assignment_id', $summativeAssignments->pluck('id'))
+            ->whereIn('student_id', $students->pluck('id'))
+            ->get();
+
+        $submissionsByStudent = $submissions->groupBy('student_id');
+        $assignmentsBySubject = $summativeAssignments->groupBy('subject_id');
+        $finalScoresByKey = $finalScores->keyBy(fn ($fs) => $fs->student_id . '_' . $fs->subject_id);
+
+        $evaluatedTpsBySubject = [];
+        $subjectKktpMap = [];
+        foreach ($subjects as $subject) {
+            $evaluatedTpsBySubject[$subject->id] = $this->calculationService->getEvaluatedTpsForClass(
+                $subject->id,
+                $schoolClass->id,
+                $activeYear,
+                $activeSemester
+            );
+            $subjectKktpMap[$subject->id] = $subject->kktp ? (int) $subject->kktp : $defaultKktp;
+        }
+
+        $subjectScoreBuckets = [];
+        $studentsNeedAttention = 0;
+
+        $rows = $students->map(function ($student) use (
+            $subjects,
+            $submissionsByStudent,
+            $assignmentsBySubject,
+            $finalScoresByKey,
+            $evaluatedTpsBySubject,
+            $subjectKktpMap,
+            &$subjectScoreBuckets,
+            &$studentsNeedAttention
+        ) {
+            $studentSubs = $submissionsByStudent->get($student->id, collect());
+            $scores = [];
+            $assessedScores = [];
+            $passedCount = 0;
+            $belowKktpCount = 0;
+
+            foreach ($subjects as $subject) {
+                $kktp = $subjectKktpMap[$subject->id];
+                $subjectSummative = $assignmentsBySubject->get($subject->id, collect());
+                $sasScore = $finalScoresByKey->get($student->id . '_' . $subject->id)?->score;
+
+                $calc = $this->calculationService->calculateStudentSubjectReport(
+                    $student->id,
+                    $subject->id,
+                    $evaluatedTpsBySubject[$subject->id],
+                    $subjectSummative,
+                    $studentSubs,
+                    $sasScore,
+                    $kktp
+                );
+
+                $hasSummativeData = $calc['tp_average'] !== null || $calc['sas_score'] !== null;
+                $finalScore = $calc['final_score'];
+                $passed = $hasSummativeData ? ($finalScore >= $kktp) : null;
+
+                if ($hasSummativeData) {
+                    $assessedScores[] = $finalScore;
+                    $subjectScoreBuckets[$subject->id][] = $finalScore;
+                    if ($passed) {
+                        $passedCount++;
+                    } else {
+                        $belowKktpCount++;
+                    }
+                }
+
+                $scores[$subject->id] = [
+                    'final_score'        => $finalScore,
+                    'tp_average'         => $calc['tp_average'],
+                    'sas_score'          => $calc['sas_score'],
+                    'has_summative_data' => $hasSummativeData,
+                    'passed'             => $passed,
+                ];
+            }
+
+            if ($belowKktpCount > 0) {
+                $studentsNeedAttention++;
+            }
+
+            $assessedCount = count($assessedScores);
+            $overallAverage = $assessedCount > 0 ? round(array_sum($assessedScores) / $assessedCount, 1) : 0;
+
+            return [
+                'id'               => $student->id,
+                'name'             => $student->name,
+                'nis'              => $student->nis ?? '-',
+                'photo_url'        => $student->photo_url,
+                'scores'           => $scores,
+                'overall_average'  => $overallAverage,
+                'assessed_count'   => $assessedCount,
+                'passed_count'     => $passedCount,
+                'below_kktp_count' => $belowKktpCount,
+            ];
+        })->values();
+
+        $subjectAverages = [];
+        foreach ($subjects as $subject) {
+            $bucket = $subjectScoreBuckets[$subject->id] ?? [];
+            $subjectAverages[$subject->id] = count($bucket) > 0
+                ? round(array_sum($bucket) / count($bucket), 1)
+                : null;
+        }
+
+        $assessedRows = $rows->filter(fn ($r) => $r['assessed_count'] > 0);
+        $classAverage = $assessedRows->isNotEmpty()
+            ? round($assessedRows->avg('overall_average'), 1)
+            : 0;
+
+        return [
+            'subjects' => $subjects->map(fn ($s) => [
+                'id'   => $s->id,
+                'name' => $s->name,
+                'code' => $s->code,
+                'kktp' => $subjectKktpMap[$s->id],
+            ])->values()->all(),
+            'rows'             => $rows->all(),
+            'subject_averages' => $subjectAverages,
+            'summary'          => [
+                'total_students'          => $students->count(),
+                'total_subjects'          => $subjects->count(),
+                'class_average'           => $classAverage,
+                'students_need_attention' => $studentsNeedAttention,
+            ],
+        ];
     }
 }

@@ -39,8 +39,14 @@ class HandleInertiaRequests extends Middleware
         [$message, $author] = str(Inspiring::quotes()->random())->explode('-');
 
         $user = $request->user();
+        $homeroomClass = null;
         if ($user) {
             $user->loadMissing(['teacher', 'student.schoolClass', 'parent.students.schoolClass']);
+            if ($user->teacher) {
+                $homeroomClass = \App\Models\SchoolClass::where('teacher_id', $user->teacher->id)
+                    ->select('id', 'name')
+                    ->first();
+            }
         }
 
         return array_merge(parent::share($request), [
@@ -52,6 +58,8 @@ class HandleInertiaRequests extends Middleware
                 'user' => $user,
             ],
             'user_role' => ($user?->role && $user->role !== 'user') ? $user->role : ($user?->teacher ? 'teacher' : ($user?->student ? 'student' : ($user?->parent ? 'parent' : 'guest'))),
+            'is_homeroom_teacher' => (bool) $homeroomClass,
+            'homeroom_class' => $homeroomClass ? ['id' => $homeroomClass->id, 'name' => $homeroomClass->name] : null,
             'unread_count' => $user ? \App\Models\Notification::where('user_id', $user->id)->unread()->count() : 0,
             'sipada_url' => env('SIPADA_URL', env('VITE_SIPADA_URL', 'http://localhost:8000')),
             'activeSemesterId' => session('active_semester_id') ?? \App\Models\Semester::where('is_active', true)->value('id'),

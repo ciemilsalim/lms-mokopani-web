@@ -1,12 +1,8 @@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router, usePage } from '@inertiajs/react';
-import {
-    ClipboardList, Plus, Users, BookOpen, ChevronDown, ChevronRight,
-    Sparkles, CheckCircle2, AlertCircle, Clock, X
-} from 'lucide-react';
+import { ClipboardList, Plus, Users, ChevronDown, X } from 'lucide-react';
 import { useState, useEffect, useMemo } from 'react';
-import { EmptyState } from '@/components/dashboard/empty-state';
 import {
     AssessmentCard,
     AssessmentFilter,
@@ -222,26 +218,39 @@ function TeacherGroupedView({
     };
 
     const visible = useMemo(() => {
+        const q = search.trim().toLowerCase();
         return groups
-            .map(cls => ({
-                ...cls,
-                subjects: (cls.subjects || [])
-                    .map(sub => ({
-                        ...sub,
-                        objectives: (sub.objectives || [])
-                            .map(obj => ({
-                                ...obj,
-                                assignments: sortAssignments(obj.assignments.filter(a => {
-                                    const matchSearch = a.title.toLowerCase().includes(search.toLowerCase()) ||
-                                        a.subject_name.toLowerCase().includes(search.toLowerCase());
-                                    const matchType = filterType === 'all' || a.assessment_type === filterType;
-                                    return matchSearch && matchType;
-                                })),
-                            }))
-                            .filter(obj => obj.assignments.length > 0),
-                    }))
-                    .filter(sub => sub.objectives.length > 0),
-            }))
+            .map(cls => {
+                const classMatches = q !== '' && (cls.class_name || '').toLowerCase().includes(q);
+                return {
+                    ...cls,
+                    subjects: (cls.subjects || [])
+                        .map(sub => ({
+                            ...sub,
+                            objectives: (sub.objectives || [])
+                                .map(obj => {
+                                    const tpMatches = q !== '' && (
+                                        (obj.objective_code || '').toLowerCase().includes(q) ||
+                                        (obj.objective_description || '').toLowerCase().includes(q)
+                                    );
+                                    return {
+                                        ...obj,
+                                        assignments: sortAssignments(obj.assignments.filter(a => {
+                                            const matchSearch = q === '' ||
+                                                classMatches ||
+                                                tpMatches ||
+                                                a.title.toLowerCase().includes(q) ||
+                                                a.subject_name.toLowerCase().includes(q);
+                                            const matchType = filterType === 'all' || a.assessment_type === filterType;
+                                            return matchSearch && matchType;
+                                        })),
+                                    };
+                                })
+                                .filter(obj => obj.assignments.length > 0),
+                        }))
+                        .filter(sub => sub.objectives.length > 0),
+                };
+            })
             .filter(cls => cls.subjects.length > 0)
             .sort((a, b) => (a.class_name || '').localeCompare(b.class_name || '', undefined, { numeric: true, sensitivity: 'base' }));
     }, [groups, search, filterType]);
@@ -249,7 +258,10 @@ function TeacherGroupedView({
     // Check if all are currently expanded
     const areAllExpanded = useMemo(() => {
         if (visible.length === 0) return false;
-        return visible.every(cls => getClassExpanded(cls.class_id));
+        const isSearching = Boolean(search.trim());
+        return visible.every(cls =>
+            expandedClasses[cls.class_id] !== undefined ? expandedClasses[cls.class_id] : isSearching
+        );
     }, [visible, expandedClasses, search]);
 
     const handleToggleAll = () => {
@@ -326,8 +338,6 @@ function TeacherGroupedView({
                     const totalAsgnInClass = cls.subjects.reduce((acc, sub) => acc + sub.objectives.reduce((oAcc, obj) => oAcc + obj.assignments.length, 0), 0);
                     
                     let classPendingGrading = 0;
-                    let classGradedCount = 0;
-                    let classSubmissionsCount = 0;
                     const studentCount = cls.students_count || 0;
 
                     const flatAssignments: (AssignmentItem & { topicCode?: string })[] = [];
@@ -342,12 +352,6 @@ function TeacherGroupedView({
                                 });
                                 if (a.pending_grading_count && a.pending_grading_count > 0) {
                                     classPendingGrading += a.pending_grading_count;
-                                }
-                                if (a.graded_count) {
-                                    classGradedCount += a.graded_count;
-                                }
-                                if (a.submissions_count) {
-                                    classSubmissionsCount += a.submissions_count;
                                 }
                             });
                         });
@@ -512,9 +516,16 @@ export default function Assignments({
                 
                 {/* 1. Page Header (Title: 24px, Subtitle: 13-14px) */}
                 <div className="w-full min-w-0 space-y-1">
-                    <h1 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight leading-tight">
-                        {user_role === 'student' ? 'Asesmen & Tugas' : 'Asesmen'}
-                    </h1>
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <h1 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight leading-tight">
+                            {user_role === 'student' ? 'Asesmen & Tugas' : 'Bank Asesmen'}
+                        </h1>
+                        {(active_year || active_semester) && (
+                            <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-muted text-muted-foreground text-[11px] font-bold uppercase tracking-wider border border-border/60">
+                                {[active_year, active_semester].filter(Boolean).join(' • ')}
+                            </span>
+                        )}
+                    </div>
                     <p className="text-xs sm:text-sm text-muted-foreground font-medium leading-relaxed">
                         {user_role === 'student'
                             ? 'Pantau dan kerjakan tugas serta asesmen belajarmu tepat waktu.'
@@ -576,7 +587,7 @@ export default function Assignments({
 
                 {/* 5. Role-based Assessment List (Default: Collapsed Class Cards) */}
                 <div className="w-full min-w-0">
-                    {user_role === 'teacher' ? (
+                    {isTeacher ? (
                         <TeacherGroupedView
                             groups={teacher_grouped ?? []}
                             search={search}
