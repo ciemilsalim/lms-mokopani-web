@@ -274,4 +274,58 @@ class HomeroomLegerTest extends TestCase
 
         $this->actingAs($studentUser)->get('/gradebook/leger')->assertStatus(403);
     }
+
+    public function test_homeroom_teacher_with_multi_year_classes_automatically_detects_active_year_class(): void
+    {
+        $pastYear = AcademicYear::create([
+            'name'      => '2025/2026',
+            'is_active' => false,
+        ]);
+
+        $waliUser = User::factory()->create(['role' => 'teacher', 'name' => 'Ibu Delmiyanti, SE']);
+        $waliTeacher = Teacher::create([
+            'user_id' => $waliUser->id,
+            'name'    => 'Ibu Delmiyanti, SE',
+            'nip'     => '198205082022212012',
+        ]);
+
+        // Class 7C di tahun ajaran lampau (ID lebih kecil)
+        $class7C = SchoolClass::create([
+            'name'             => 'Kelas 7C',
+            'teacher_id'       => $waliTeacher->id,
+            'academic_year_id' => $pastYear->id,
+        ]);
+
+        // Class 8C di tahun ajaran aktif ($this->academicYear: 2026/2027)
+        $class8C = SchoolClass::create([
+            'name'             => 'Kelas 8C',
+            'teacher_id'       => $waliTeacher->id,
+            'academic_year_id' => $this->academicYear->id,
+        ]);
+
+        // 1. Shared props Inertia harus mendeteksi Kelas 8C
+        $response = $this->actingAs($waliUser)->get('/gradebook');
+        $response->assertStatus(200);
+        $response->assertInertia(fn (Assert $page) => $page
+            ->where('is_homeroom_teacher', true)
+            ->where('homeroom_class.id', $class8C->id)
+            ->where('homeroom_class.name', 'Kelas 8C')
+        );
+
+        // 2. Endpoint Leger tanpa query param harus otomatis membuka Kelas 8C
+        $legerResponse = $this->actingAs($waliUser)->get('/gradebook/leger');
+        $legerResponse->assertStatus(200);
+        $legerResponse->assertInertia(fn (Assert $page) => $page
+            ->where('school_class.id', $class8C->id)
+            ->where('school_class.name', 'Kelas 8C')
+        );
+
+        // 3. Akses eksplisit ke kelas lampau 7C tetap diizinkan karena merupakan kelas perwaliannya
+        $pastResponse = $this->actingAs($waliUser)->get("/gradebook/leger?class_id={$class7C->id}");
+        $pastResponse->assertStatus(200);
+        $pastResponse->assertInertia(fn (Assert $page) => $page
+            ->where('school_class.id', $class7C->id)
+            ->where('school_class.name', 'Kelas 7C')
+        );
+    }
 }

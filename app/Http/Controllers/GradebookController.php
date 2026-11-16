@@ -1143,13 +1143,23 @@ class GradebookController extends Controller
         }
 
         if ($user->teacher) {
-            $homeroomClass = SchoolClass::where('teacher_id', $user->teacher->id)->first();
+            $teacherClassesQuery = SchoolClass::where('teacher_id', $user->teacher->id);
+
+            // Jika ada requestedClassId spesifik, pastikan kelas tersebut perwalian guru ini
+            if ($requestedClassId) {
+                $requestedClass = (clone $teacherClassesQuery)->where('id', $requestedClassId)->first();
+                if (!$requestedClass) {
+                    abort(403, 'Anda tidak memiliki hak akses ke leger kelas ini.');
+                }
+                return $requestedClass;
+            }
+
+            // Jika tanpa parameter class_id, deteksi kelas perwalian aktif (mengutamakan tahun ajaran aktif)
+            $homeroomClass = $user->teacher->getActiveHomeroomClass();
             if (!$homeroomClass) {
                 abort(403, 'Fitur Leger Nilai hanya tersedia untuk Wali Kelas.');
             }
-            if ($requestedClassId && $requestedClassId !== $homeroomClass->id) {
-                abort(403, 'Anda tidak memiliki hak akses ke leger kelas ini.');
-            }
+
             return $homeroomClass;
         }
 

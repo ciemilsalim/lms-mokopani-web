@@ -43,9 +43,7 @@ class HandleInertiaRequests extends Middleware
         if ($user) {
             $user->loadMissing(['teacher', 'student.schoolClass', 'parent.students.schoolClass']);
             if ($user->teacher) {
-                $homeroomClass = \App\Models\SchoolClass::where('teacher_id', $user->teacher->id)
-                    ->select('id', 'name')
-                    ->first();
+                $homeroomClass = $user->teacher->getActiveHomeroomClass();
             }
         }
 

@@ -63,6 +63,38 @@ class Teacher extends Model
         return $this->belongsTo(User::class);
     }
 
+    public function schoolClasses()
+    {
+        return $this->hasMany(SchoolClass::class, 'teacher_id');
+    }
+
+    /**
+     * Dapatkan kelas perwalian aktif untuk guru ini.
+     * Mengutamakan kelas pada tahun ajaran aktif saat ini,
+     * dengan fallback ke kelas perwalian terbaru (tahun ajaran tertinggi / id tertinggi).
+     */
+    public function getActiveHomeroomClass(?AcademicYear $academicYear = null): ?SchoolClass
+    {
+        $activeYear = $academicYear ?: AcademicYear::getActive();
+
+        if ($activeYear) {
+            $class = SchoolClass::where('teacher_id', $this->id)
+                ->where('academic_year_id', $activeYear->id)
+                ->orderByDesc('id')
+                ->first();
+
+            if ($class) {
+                return $class;
+            }
+        }
+
+        // Fallback jika belum di-set pada tahun ajaran aktif: ambil riwayat kelas terbaru
+        return SchoolClass::where('teacher_id', $this->id)
+            ->orderByDesc('academic_year_id')
+            ->orderByDesc('id')
+            ->first();
+    }
+
     public function subjects()
     {
         return $this->belongsToMany(Subject::class, 'subject_teacher');
