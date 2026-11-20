@@ -147,7 +147,7 @@ class OfflineExamGeneratorService
         $classKey = implode('_', $classIds);
         $tpKey = $tpList->pluck('id')->sort()->implode('_');
         $levelInfo = $this->resolveEducationLevel($classList, $classNames);
-        $cacheHash = md5("offline_exam_v11_{$tpKey}_{$classKey}_{$questionType}_{$questionCount}_{$generationEngine}_{$cognitiveLevel}_{$levelInfo['grade_label']}");
+        $cacheHash = md5("offline_exam_v12_{$tpKey}_{$classKey}_{$questionType}_{$questionCount}_{$generationEngine}_{$cognitiveLevel}_{$levelInfo['grade_label']}");
 
         if (!$regenerate) {
             $cachedJson = LmsAiCache::getCache($cacheHash);
@@ -518,6 +518,9 @@ ATURAN WAJIB & SANGAT KETAT:
       - Kalimat stem pertanyaan maupun pilihan jawaban (opsi A, B, C, D) WAJIB sederhana, ramah, dan mudah dipahami siswa seperti halnya soal esai.
       - DILARANG KERAS menggunakan frasa abstrak atau kaku bergaya buku panduan teknis pada opsi jawaban (seperti: "bentuk penerapan dasar...", "pengenalan konsep secara utuh dan sistematis", "pedoman normatif", dll.).
       - Pilihan jawaban harus singkat, konkret, jelas, dan menyajikan tindakan/pemahaman riil yang biasa didengar dan dialami siswa di kelas.
+   h. SOAL WAJIB LUGAS TERKAIT INTI MATERI PEMBELAJARAN (BUKAN DAMPAK/SIKAP BELAJAR):
+      - Soal dan pilihan jawaban WAJIB menanyakan langsung substansi ilmu, fakta, konsep teknis, alur kerja, fungsi komponen, istilah kunci, keamanan, atau pemecahan masalah materi tersebut.
+      - DILARANG KERAS membuat soal tentang motivasi belajar atau sikap belajar umum di sekolah (contoh yang DILARANG: "Tujuan mempelajari materi ini di sekolah agar kita mandiri...", "Sikap saat bekerja sama di kelas...", "Mencari jalan pintas belajar...", dll.). Semua soal harus menguji penguasaan materi pelajaran secara lugas!
 5. RINCIAN KUNCI JAWABAN & RUBRIK (WAJIB SANGAT LENGKAP & JELAS):
    - Untuk Pilihan Ganda (PG):
      Field 'explanation' WAJIB memuat:
@@ -837,6 +840,1787 @@ PROMPT;
         ];
     }
 
+    protected function detectTpDomain(array $analysis, string $subjectName): string
+    {
+        $haystack = mb_strtolower(
+            ($analysis['raw_description'] ?? '') . ' ' .
+            ($analysis['cleaned_description'] ?? '') . ' ' .
+            ($analysis['full_concept'] ?? '') . ' ' .
+            ($analysis['concept'] ?? '') . ' ' .
+            ($analysis['core_noun'] ?? '') . ' ' .
+            $subjectName
+        );
+
+        // 1. Digital Security, Privacy & Ethics (check first so TP with security & ethics takes precedence)
+        if (preg_match('/(?:keamanan|etika|kewargaan\s+digital|privasi|jejak\s+digital|cyber|siber|phishing|hoaks|hak\s+cipta|haki|lisensi|password|kata\s+sandi|perlindungan\s+data|data\s+pribadi)/iu', $haystack)) {
+            return 'security_ethics';
+        }
+
+        // 2. Digital Content, Multimedia, Presentation & Graphic Design
+        if (preg_match('/(?:konten\s+digital|konten|multimedia|desain\s+presentasi|presentasi|visual|infografis|video|audio|gambar|publikasi|diseminasi|poster|grafis|teks\s+dan\s+data)/iu', $haystack)) {
+            return 'digital_content';
+        }
+
+        // 3. Computer Systems, Hardware, Architecture & Input-Process-Output
+        if (preg_match('/(?:sistem\s+komputer|komponen\s+komputer|perangkat\s+keras|hardware|perangkat\s+lunak|software|input-proses-output|siklus\s+input|input|proses|output|cpu|processor|prosesor|ram|motherboard|storage|memori)/iu', $haystack)) {
+            return 'computer_system';
+        }
+
+        // 4. Algorithm & Programming / Computational Thinking
+        if (preg_match('/(?:algoritma|pemrograman|coding|koding|program|flowchart|bagan\s+alir|pseudocode|variabel|percabangan|perulangan|looping|struktur\s+kontrol|debugging|berpikir\s+komputasional)/iu', $haystack)) {
+            return 'algorithm_coding';
+        }
+
+        // 5. Data Analysis, Spreadsheet & Visualization
+        if (preg_match('/(?:analisis\s+data|pengolahan\s+data|spreadsheet|lembar\s+sebar|excel|tabel|grafik|chart|rumus|fungsi\s+sum|average|filter|sorting|basis\s+data|database)/iu', $haystack)) {
+            return 'data_analysis';
+        }
+
+        // 6. Computer Network & Internet
+        if (preg_match('/(?:jaringan|internet|intranet|wifi|wi-fi|lan|ip\s+address|protokol|browser|peramban|web|url|surel|email|modem|router)/iu', $haystack)) {
+            return 'network_internet';
+        }
+
+        return 'generic';
+    }
+
+    protected function getDomainMcAngles(
+        string $domain,
+        string $effectiveLevel,
+        bool $isSmp,
+        string $coreNoun,
+        string $subjectName,
+        string $subLevel
+    ): array {
+        if ($domain === 'security_ethics') {
+            if ($effectiveLevel === 'lots') {
+                return [
+                    [
+                        'stem' => "Informasi pribadi di bawah ini yang termasuk kategori data sensitif dan tidak boleh disebarkan secara sembarangan di media sosial adalah...",
+                        'correct' => "Nomor Induk Kependudukan (NIK) dan kata sandi akun pribadi.",
+                        'distractors' => [
+                            "Hobi berolahraga di akhir pekan.",
+                            "Judul buku pelajaran yang sedang dibaca.",
+                            "Warna seragam sekolah yang digunakan.",
+                        ],
+                        'indicator' => "Disajikan klasifikasi data, peserta didik mampu mengidentifikasi data pribadi sensitif.",
+                        'sub_level' => "{$subLevel} - LOTS (Pemahaman Dasar)",
+                        'explanation_correct' => "NIK dan kata sandi merupakan data sensitif privat yang berisiko disalahgunakan jika disebar ke publik.",
+                        'explanation_distractors' => "Pilihan lainnya merupakan informasi umum yang tidak berisiko membahayakan identitas atau keamanan finansial.",
+                    ],
+                    [
+                        'stem' => "Apa yang dimaksud dengan jejak digital (digital footprint) dalam dunia internet?",
+                        'correct' => "Rekam jejak seluruh aktivitas, pesan, dan unggahan yang kita tinggalkan saat beraktivitas di internet.",
+                        'distractors' => [
+                            "Kabel penghubung antara perangkat komputer dengan stopkontak listrik.",
+                            "Waktu yang diperlukan laptop untuk menyala dari posisi mati.",
+                            "Kapasitas penyimpanan yang tersisa pada kartu memori smartphone.",
+                        ],
+                        'indicator' => "Disajikan konsep jejak digital, peserta didik mampu menjelaskan pengertian rekam jejak digital.",
+                        'sub_level' => "{$subLevel} - LOTS (Pemahaman Dasar)",
+                        'explanation_correct' => "Jejak digital adalah seluruh jejak riwayat aktivitas online yang tertinggal dan dapat dilacak di dunia maya.",
+                        'explanation_distractors' => "Pilihan lainnya merujuk pada perangkat keras atau indikator fisik komputer.",
+                    ],
+                    [
+                        'stem' => "Tindakan mencantumkan sumber asli saat kita menggunakan karya tulisan atau foto orang lain bertujuan untuk...",
+                        'correct' => "Menghormati hak cipta pencipta karya dan menghindari perbuatan plagiarisme.",
+                        'distractors' => [
+                            "Mengurangi kecepatan pengiriman data pada koneksi jaringan internet.",
+                            "Membuat berkas dokumen terkunci sehingga tidak bisa dibuka pengguna lain.",
+                            "Menghilangkan teks penjelasan utama dari dokumen yang kita susun.",
+                        ],
+                        'indicator' => "Disajikan etika berkarya, peserta didik mampu mengidentifikasi tujuan pencantuman atribusi hak cipta.",
+                        'sub_level' => "{$subLevel} - LOTS (Pemahaman Dasar)",
+                        'explanation_correct' => "Atribusi atau sitasi adalah bentuk penghargaan terhadap hak cipta pembuat karya dan mencegah plagiasi.",
+                        'explanation_distractors' => "Pilihan lainnya tidak memiliki kaitan dengan konsep hukum dan etika hak cipta.",
+                    ],
+                    [
+                        'stem' => "Salah satu ciri utama dari kata sandi (password) yang kuat dan aman dari ancaman peretasan adalah...",
+                        'correct' => "Mengombinasikan huruf besar, huruf kecil, angka, dan simbol khusus.",
+                        'distractors' => [
+                            "Hanya menggunakan tanggal lahir atau nomor telepon pribadi.",
+                            "Menggunakan kata yang sama berulang kali seperti '12345678'.",
+                            "Menuliskan kata sandi pada bio atau profil publik media sosial.",
+                        ],
+                        'indicator' => "Disajikan prinsip keamanan akun, peserta didik mampu mengenali karakteristik kata sandi yang aman.",
+                        'sub_level' => "{$subLevel} - LOTS (Pemahaman Dasar)",
+                        'explanation_correct' => "Kombinasi ragam karakter membuat kata sandi memiliki entropi tinggi dan sulit ditebak oleh serangan brute force.",
+                        'explanation_distractors' => "Pilihan pengecoh sangat rentan ditebak oleh pelaku kejahatan siber.",
+                    ],
+                    [
+                        'stem' => "Modus kejahatan siber berupa pesan tipuan yang berpura-pura menjadi pihak resmi untuk mencuri data pribadi disebut...",
+                        'correct' => "Phishing.",
+                        'distractors' => [
+                            "Browsing.",
+                            "Download.",
+                            "Formatting.",
+                        ],
+                        'indicator' => "Disajikan istilah ancaman siber, peserta didik mampu mengidentifikasi kejahatan phishing.",
+                        'sub_level' => "{$subLevel} - LOTS (Pemahaman Dasar)",
+                        'explanation_correct' => "Phishing adalah penipuan rekayasa sosial untuk memancing korban memberikan kredensial rahasia.",
+                        'explanation_distractors' => "Pilihan lainnya adalah aktivitas normal dalam pengoperasian komputer.",
+                    ],
+                    [
+                        'stem' => "Prinsip etika kewargaan digital yang paling tepat saat kita ingin membagikan ulang kiriman informasi di media sosial adalah...",
+                        'correct' => "Memastikan kebenaran informasi tersebut terlebih dahulu dan mempertimbangkan manfaatnya sebelum disebarkan.",
+                        'distractors' => [
+                            "Langsung membagikan informasi yang memicu kemarahan publik agar mendapat banyak tanggapan.",
+                            "Mengubah isi informasi tersebut agar terdengar lebih dramatis.",
+                            "Menyebarkan informasi tanpa membaca isinya sama sekali.",
+                        ],
+                        'indicator' => "Disajikan etika berbagi, peserta didik mampu menjelaskan prinsip saring sebelum sharing.",
+                        'sub_level' => "{$subLevel} - LOTS (Pemahaman Dasar)",
+                        'explanation_correct' => "Prinsip 'saring sebelum sharing' menjamin informasi yang disebarkan valid, tidak menyesatkan, dan bernilai positif.",
+                        'explanation_distractors' => "Pilihan lainnya memicu penyebaran hoaks dan konflik digital.",
+                    ],
+                ];
+            } elseif ($effectiveLevel === 'mots') {
+                return [
+                    [
+                        'stem' => "Ketika kamu menerima tautan (link) mencurigakan dari nomor tidak dikenal yang meminta kamu memasukkan kata sandi akun, tindakan paling aman adalah...",
+                        'correct' => "Mengabaikan tautan tersebut dan tidak memasukkan data pribadi apa pun.",
+                        'distractors' => [
+                            "Segera mengeklik tautan tersebut dan mengisi seluruh data pribadi.",
+                            "Meneruskan tautan mencurigakan tersebut ke seluruh grup pertemanan.",
+                            "Menonaktifkan pelindung antivirus pada perangkat komputer atau ponsel.",
+                        ],
+                        'indicator' => "Disajikan skenario tautan mencurigakan, peserta didik mampu menerapkan respons keamanan yang tepat.",
+                        'sub_level' => "C3 - MOTS (Penerapan Keamanan)",
+                        'explanation_correct' => "Mengabaikan dan tidak merespons tautan mencurigakan mencegah kebocoran data pada skenario phishing.",
+                        'explanation_distractors' => "Pilihan pengecoh membahayakan keamanan data pribadi dan memperluas penyebaran ancaman.",
+                    ],
+                    [
+                        'stem' => "Sebelum mengunggah foto kegiatan bersama teman-teman ke platform publik media sosial, etika digital yang wajib kamu lakukan adalah...",
+                        'correct' => "Meminta persetujuan atau izin dari teman-teman yang berada di dalam foto tersebut.",
+                        'distractors' => [
+                            "Menandai lokasi rumah tinggal setiap teman secara detail di peta publik.",
+                            "Mengunggah foto tanpa izin disertai komentar yang merendahkan.",
+                            "Menghapus nama akun pemilik foto yang asli sebelum diunggah.",
+                        ],
+                        'indicator' => "Disajikan skenario publikasi konten, peserta didik mampu menerapkan etika persetujuan privasi.",
+                        'sub_level' => "C3 - MOTS (Penerapan Etika)",
+                        'explanation_correct' => "Meminta izin merupakan bentuk penghormatan mendasar terhadap hak privasi orang lain di ruang publik.",
+                        'explanation_distractors' => "Pilihan lainnya melanggar privasi dan tata krama komunikasi digital.",
+                    ],
+                    [
+                        'stem' => "Langkah terbaik untuk mengamankan akun digital pribadi dari upaya pengambilalihan akun secara ilegal adalah...",
+                        'correct' => "Mengaktifkan fitur verifikasi dua langkah (two-factor authentication / 2FA).",
+                        'distractors' => [
+                            "Membagikan kata sandi kepada teman sebangku agar bisa saling menjaga akun.",
+                            "Menggunakan komputer umum warnet tanpa pernah melakukan logout akun.",
+                            "Menonaktifkan seluruh notifikasi keamanan pada pengaturan akun.",
+                        ],
+                        'indicator' => "Disajikan proteksi akun, peserta didik mampu mengaplikasikan perlindungan autentikasi ganda.",
+                        'sub_level' => "C3 - MOTS (Penerapan Keamanan)",
+                        'explanation_correct' => "Autentikasi dua langkah memberikan lapisan pertahanan ekstra meskipun kata sandi utama diketahui peretas.",
+                        'explanation_distractors' => "Pilihan lainnya memperbesar risiko pengambilalihan akun.",
+                    ],
+                    [
+                        'stem' => "Jika kamu ingin menambahkan lagu atau musik latar pada konten video yang akan dipublikasikan ke internet, tindakan yang benar adalah...",
+                        'correct' => "Memilih lagu bebas royalti (royalty-free) atau yang berlisensi Creative Commons dengan mencantumkan atribusi.",
+                        'distractors' => [
+                            "Mengunduh musik berbayar tanpa izin lalu mengklaimnya sebagai karya ciptaan sendiri.",
+                            "Menghapus judul lagu asli agar tidak terdeteksi oleh sistem hak cipta.",
+                            "Mengabaikan izin hak cipta karena menganggap video dibuat untuk tugas sekolah.",
+                        ],
+                        'indicator' => "Disajikan integrasi multimedia, peserta didik mampu menerapkan lisensi hak cipta musik.",
+                        'sub_level' => "C3 - MOTS (Penerapan Lisensi)",
+                        'explanation_correct' => "Karya berlisensi Creative Commons atau royalty-free sah digunakan secara legal dengan mengikuti ketentuan lisensinya.",
+                        'explanation_distractors' => "Penggunaan tanpa lisensi melanggar hak kekayaan intelektual pencipta.",
+                    ],
+                    [
+                        'stem' => "Setelah selesai menggunakan komputer di laboratorium sekolah atau fasilitas umum, tindakan perlindungan privasi yang wajib dilakukan adalah...",
+                        'correct' => "Keluar (log out) dari seluruh akun pribadi dan menghapus riwayat peramban (browser history).",
+                        'distractors' => [
+                            "Menyimpan kata sandi secara otomatis pada browser komputer umum.",
+                            "Membiarkan akun media sosial tetap terbuka di layar monitor laboratorium.",
+                            "Mematikan monitor tanpa menutup sesi login akun pada peramban.",
+                        ],
+                        'indicator' => "Disajikan penggunaan fasilitas umum, peserta didik mampu menerapkan prosedur penutupan sesi aman.",
+                        'sub_level' => "C3 - MOTS (Penerapan Privasi)",
+                        'explanation_correct' => "Melakukan logout dan membersihkan cache riwayat peramban mencegah pengguna berikutnya mengakses akun kita.",
+                        'explanation_distractors' => "Membiarkan sesi terbuka membuka celah penyalahgunaan akun secara langsung.",
+                    ],
+                    [
+                        'stem' => "Jika seorang teman mengirimkan pesan pribadi yang bersifat rahasia, etika kewargaan digital yang wajib kamu jaga adalah...",
+                        'correct' => "Menjaga kerahasiaan pesan tersebut dan tidak menyebarkannya ke ruang publik tanpa izin.",
+                        'distractors' => [
+                            "Menyebarkan tangkapan layar (screenshot) pesan tersebut ke media sosial untuk konsumsi umum.",
+                            "Menjual informasi rahasia tersebut kepada pihak ketiga.",
+                            "Mengubah isi pesan rahasia tersebut dan meneruskannya ke grup kelas.",
+                        ],
+                        'indicator' => "Disajikan komunikasi privat, peserta didik mampu menerapkan kerahasiaan informasi personal.",
+                        'sub_level' => "C3 - MOTS (Penerapan Etika)",
+                        'explanation_correct' => "Menjaga kerahasiaan komunikasi privat adalah kewajiban etis mendasar warga digital yang bertanggung jawab.",
+                        'explanation_distractors' => "Membagikan pesan privat tanpa izin merupakan pelanggaran etika serius.",
+                    ],
+                ];
+            } else {
+                return [
+                    [
+                        'stem' => "Seorang siswa menemukan bahwa akun emailnya mengirimkan pesan spam mencurigakan tanpa sepengetahuannya. Langkah analisis dan penanganan terbaik yang harus dilakukan adalah...",
+                        'correct' => "Segera mengganti kata sandi akun, memeriksa daftar sesi perangkat yang aktif, dan mengaktifkan verifikasi dua langkah (2FA).",
+                        'distractors' => [
+                            "Menghapus semua kontak di buku telepon dan tidak lagi menggunakan internet.",
+                            "Mengirimkan balasan permohonan maaf ke setiap alamat spam tersebut.",
+                            "Memformat ulang harddisk laptop tanpa pernah memperbarui kata sandi akun.",
+                        ],
+                        'indicator' => "Disajikan insiden kompromi akun, peserta didik mampu menganalisis titik kerentanan dan merumuskan mitigasi.",
+                        'sub_level' => "{$subLevel} - HOTS (Analisis Keamanan)",
+                        'explanation_correct' => "Penggantian kredensial, terminasi sesi liar, dan pengaktifan 2FA merupakan penanganan tuntas pada insiden pembajakan akun.",
+                        'explanation_distractors' => "Tindakan pengecoh tidak menyelesaikan akar masalah pembajakan kredensial.",
+                    ],
+                    [
+                        'stem' => "Mengapa mengunggah foto boarding pass pesawat atau tiket konser ke media sosial publik dinilai berbahaya bagi keselamatan data pribadi?",
+                        'correct' => "Karena barcode atau QR code pada tiket memuat kode reservasi dan data identitas pribadi yang dapat diekstrak oleh pelaku kejahatan.",
+                        'distractors' => [
+                            "Karena dapat menyebabkan baterai perangkat ponsel pintar langsung rusak permanen.",
+                            "Karena tiket tersebut otomatis menjadi tidak berlaku untuk digunakan bepergian.",
+                            "Karena warna foto tiket akan merusak tampilan estetika profil media sosial.",
+                        ],
+                        'indicator' => "Disajikan studi kasus publikasi tiket, peserta didik mampu menganalisis potensi kebocoran data tersembunyi.",
+                        'sub_level' => "{$subLevel} - HOTS (Analisis Privasi)",
+                        'explanation_correct' => "Barcode/QR code memuat data PII (Personally Identifiable Information) yang rentan dieksploitasi untuk pengambilalihan akun atau penipuan.",
+                        'explanation_distractors' => "Pilihan pengecoh mengasumsikan dampak fisik mustahil yang tidak berhubungan dengan data.",
+                    ],
+                    [
+                        'stem' => "Sebuah aplikasi permainan sederhana meminta izin akses ke daftar kontak telepon, kamera, mikrofon, dan lokasi GPS secara penuh. Evaluasi keamanan yang paling tepat adalah...",
+                        'correct' => "Permintaan izin tersebut tidak relevan dengan fungsi permainan sehingga berpotensi menyalahgunakan data pribadi dan sebaiknya ditolak.",
+                        'distractors' => [
+                            "Semua aplikasi permainan memang wajib meminta akses penuh ke kontak dan kamera pengguna.",
+                            "Izin harus segera diberikan agar permainan berjalan lebih cepat dan mendapat skor tinggi.",
+                            "Aplikasi tersebut pasti aman karena sudah terpasang di perangkat ponsel.",
+                        ],
+                        'indicator' => "Disajikan izin aplikasi (app permissions), peserta didik mampu mengevaluasi proporsionalitas hak akses data.",
+                        'sub_level' => "{$subLevel} - HOTS (Evaluasi Risiko)",
+                        'explanation_correct' => "Prinsip 'least privilege' menuntut aplikasi hanya meminta izin yang mutlak diperlukan untuk fungsionalitas intinya.",
+                        'explanation_distractors' => "Pilihan pengecoh menormalisasi izin berlebih yang membahayakan privasi pengguna.",
+                    ],
+                    [
+                        'stem' => "Jika kamu menerima pesan informasi mengejutkan yang disertai ajakan 'Sebarkan segera ke seluruh grup', langkah berpikir kritis yang harus kamu ambil adalah...",
+                        'correct' => "Memeriksa keaslian sumber berita, tanggal publikasi, serta memverifikasi informasinya melalui situs cek fakta resmi.",
+                        'distractors' => [
+                            "Langsung membagikan pesan tersebut ke semua grup pertemanan agar menjadi yang pertama memberi kabar.",
+                            "Mengubah judul pesan menjadi lebih heboh sebelum meneruskannya ke orang lain.",
+                            "Mempercayai pesan tersebut sepenuhnya karena dikirim oleh teman dekat.",
+                        ],
+                        'indicator' => "Disajikan fenomena disinformasi, peserta didik mampu mengevaluasi validitas informasi digital.",
+                        'sub_level' => "{$subLevel} - HOTS (Evaluasi Informasi)",
+                        'explanation_correct' => "Klarifikasi melalui sumber otoritatif dan uji silang fakta mencegah penyebaran disinformasi dan hoaks.",
+                        'explanation_distractors' => "Tindakan pengecoh merupakan pemicu utama penyebaran kabar bohong di masyarakat.",
+                    ],
+                    [
+                        'stem' => "Apa dampak jangka panjang dari rekam jejak digital (digital footprint) negatif yang ditinggalkan seseorang di media sosial?",
+                        'correct' => "Unggahan atau komentar negatif dapat tersimpan permanen dan berpotensi merugikan reputasi serta seleksi pendidikan atau karier di masa depan.",
+                        'distractors' => [
+                            "Resolusi layar komputer pengguna akan otomatis menurun kualitasnya secara drastis.",
+                            "Semua file dokumen di dalam laptop akan berubah format menjadi teks acak.",
+                            "Sinyal jaringan internet rumah akan terputus secara otomatis oleh penyedia layanan.",
+                        ],
+                        'indicator' => "Disajikan konsekuensi jejak digital, peserta didik mampu menganalisis dampak reputasi masa depan.",
+                        'sub_level' => "{$subLevel} - HOTS (Analisis Dampak)",
+                        'explanation_correct' => "Data di internet mudah diarsipkan pihak ketiga dan sering ditinjau dalam proses rekrutmen profesional maupun akademis.",
+                        'explanation_distractors' => "Pilihan pengecoh mengarang kerusakan perangkat fisik yang tidak masuk akal.",
+                    ],
+                    [
+                        'stem' => "Analisis risiko dari penggunaan kata sandi yang sama persis untuk semua akun media sosial, surel, dan perbankan digital adalah...",
+                        'correct' => "Jika salah satu layanan mengalami kebocoran data, pelaku peretasan dapat dengan mudah membobol seluruh akun lainnya secara bersamaan (credential stuffing).",
+                        'distractors' => [
+                            "Koneksi internet akan menjadi dua kali lebih lambat saat membuka browser.",
+                            "Setiap akun akan saling menggabungkan pesan obrolan secara otomatis.",
+                            "Akun-akun tersebut otomatis terhapus dalam waktu dua puluh empat jam.",
+                        ],
+                        'indicator' => "Disajikan manajemen kata sandi, peserta didik mampu menganalisis kerentanan 'credential stuffing'.",
+                        'sub_level' => "{$subLevel} - HOTS (Analisis Kerentanan)",
+                        'explanation_correct' => "Daur ulang kata sandi (password reuse) memperluas dampak kebocoran satu situs ke seluruh aset digital pengguna.",
+                        'explanation_distractors' => "Pilihan pengecoh tidak sesuai dengan cara kerja sistem keamanan digital.",
+                    ],
+                ];
+            }
+        }
+
+        if ($domain === 'digital_content') {
+            if ($effectiveLevel === 'lots') {
+                return [
+                    [
+                        'stem' => "Format berkas di bawah ini yang paling tepat digunakan untuk menyimpan dokumen siap cetak agar tata letak (layout) teks dan gambar tidak berubah adalah...",
+                        'correct' => "PDF (.pdf)",
+                        'distractors' => [
+                            "TXT (.txt)",
+                            "BMP (.bmp)",
+                            "HTML (.html)",
+                        ],
+                        'indicator' => "Disajikan ragam format berkas, peserta didik mampu mengidentifikasi format publikasi dokumen standar.",
+                        'sub_level' => "{$subLevel} - LOTS (Pemahaman Konten)",
+                        'explanation_correct' => "Format PDF mengunci tata letak, tipografi, dan elemen visual secara konsisten di berbagai perangkat.",
+                        'explanation_distractors' => "Format TXT tidak memuat tata letak, sedangkan HTML dan BMP kurang tepat untuk dokumen siap cetak.",
+                    ],
+                    [
+                        'stem' => "Prinsip utama dalam pemilihan warna teks pada slide presentasi agar mudah dibaca oleh penonton dari kejauhan adalah...",
+                        'correct' => "Memiliki kontras warna yang tinggi antara warna teks dan warna latar belakang slide.",
+                        'distractors' => [
+                            "Menggunakan warna teks yang sama persis dengan warna latar belakang.",
+                            "Memadukan minimal delapan warna cerah berbeda pada setiap baris kalimat.",
+                            "Menggunakan teks berukuran sangat kecil dengan warna abu-abu redup.",
+                        ],
+                        'indicator' => "Disajikan keterbacaan teks, peserta didik mampu mengidentifikasi prinsip kontras warna.",
+                        'sub_level' => "{$subLevel} - LOTS (Pemahaman Konten)",
+                        'explanation_correct' => "Kontras yang tinggi (seperti teks gelap di latar terang atau sebaliknya) menjamin keterbacaan optimal.",
+                        'explanation_distractors' => "Pilihan lainnya membuat teks menyatu dengan latar atau melelahkan mata pembaca.",
+                    ],
+                    [
+                        'stem' => "Elemen konten digital visual yang paling tepat digunakan untuk menyajikan perbandingan data angka secara ringkas dan menarik adalah...",
+                        'correct' => "Grafik atau diagram visual.",
+                        'distractors' => [
+                            "Paragraf teks yang sangat panjang tanpa tanda titik.",
+                            "Rekaman suara audio tanpa tampilan visual.",
+                            "Kumpulan tabel angka mentah tanpa judul kolom.",
+                        ],
+                        'indicator' => "Disajikan bentuk penyajian data, peserta didik mampu memilih elemen visual grafik yang tepat.",
+                        'sub_level' => "{$subLevel} - LOTS (Pemahaman Konten)",
+                        'explanation_correct' => "Grafik memvisualisasikan data kuantitatif menjadi pola visual yang mudah dan cepat dicerna oleh mata.",
+                        'explanation_distractors' => "Paragraf panjang atau tabel mentah membutuhkan waktu lama untuk dipahami pembaca.",
+                    ],
+                    [
+                        'stem' => "Tujuan utama penataan hierarki visual (judul utama besar, subjudul sedang, dan teks isi proporsional) dalam media presentasi adalah...",
+                        'correct' => "Membantu audiens mengenali urutan informasi penting dari poin utama hingga ke rincian pendukung.",
+                        'distractors' => [
+                            "Membuat ukuran tulisan di seluruh lembar slide menjadi seragam tanpa penekanan.",
+                            "Memenuhi seluruh bidang slide agar tidak menyisakan ruang kosong.",
+                            "Mengaburkan fokus perhatian pembaca agar membaca secara acak.",
+                        ],
+                        'indicator' => "Disajikan hierarki visual, peserta didik mampu mengidentifikasi fungsi urutan bobot visual.",
+                        'sub_level' => "{$subLevel} - LOTS (Pemahaman Konten)",
+                        'explanation_correct' => "Hierarki visual memandu arah pandang audiens dalam menyerap informasi secara berjenjang dan logis.",
+                        'explanation_distractors' => "Ukuran seragam atau slide yang terlalu padat menyulitkan audiens menangkap poin utama.",
+                    ],
+                    [
+                        'stem' => "Format berkas gambar yang mendukung latar belakang transparan (transparent background) pada desain grafis adalah...",
+                        'correct' => "PNG (.png)",
+                        'distractors' => [
+                            "JPEG (.jpg)",
+                            "MP3 (.mp3)",
+                            "CSV (.csv)",
+                        ],
+                        'indicator' => "Disajikan format gambar, peserta didik mampu mengidentifikasi format gambar beralur transparansi.",
+                        'sub_level' => "{$subLevel} - LOTS (Pemahaman Konten)",
+                        'explanation_correct' => "Format PNG memiliki kanal alfa (alpha channel) yang memungkinkan penyimpanan gambar berlatar transparan.",
+                        'explanation_distractors' => "JPEG selalu mengisi latar kosong dengan warna pekat (biasanya putih), sedangkan MP3 dan CSV bukan berkas gambar.",
+                    ],
+                    [
+                        'stem' => "Ciri desain slide presentasi yang terstruktur dan nyaman dipandang adalah...",
+                        'correct' => "Memiliki tata letak elemen yang konsisten, jarak antarelemen yang rapi, dan informasi yang terfokus.",
+                        'distractors' => [
+                            "Memuat semua kalimat dari buku teks secara lengkap tanpa diringkas.",
+                            "Menggunakan gambar latar belakang yang ramai sehingga teks sulit dibaca.",
+                            "Menggunakan huruf hiasan yang berliku-liku untuk seluruh paragraf.",
+                        ],
+                        'indicator' => "Disajikan karakteristik desain, peserta didik mampu mengenali ciri tata letak terstruktur.",
+                        'sub_level' => "{$subLevel} - LOTS (Pemahaman Konten)",
+                        'explanation_correct' => "Konsistensi tata letak dan kebersihan ruang visual menciptakan fokus pemahaman bagi penonton.",
+                        'explanation_distractors' => "Pilihan lainnya menurunkan mutu estetika dan mempersulit pemahaman audiens.",
+                    ],
+                ];
+            } elseif ($effectiveLevel === 'mots') {
+                return [
+                    [
+                        'stem' => "Saat kamu diminta menyajikan data kenaikan nilai rata-rata kelas dari semester satu ke semester dua, bentuk penyajian visual yang paling tepat adalah...",
+                        'correct' => "Grafik batang (bar chart) atau grafik garis (line chart).",
+                        'distractors' => [
+                            "Grafik sebaran acak tanpa sumbu keterangan data.",
+                            "Diagram lingkaran dengan seratus potongan warna-warni.",
+                            "Tabel teks mentah tanpa pengelompokan angka.",
+                        ],
+                        'indicator' => "Disajikan data berkala, peserta didik mampu menerapkan jenis grafik perbandingan data yang tepat.",
+                        'sub_level' => "C3 - MOTS (Penerapan Desain)",
+                        'explanation_correct' => "Grafik batang dan garis ideal untuk menunjukkan perbandingan kuantitatif dan tren perkembangan antartahap.",
+                        'explanation_distractors' => "Diagram lingkaran atau sebaran acak tidak tepat untuk memperlihatkan tren peningkatan nilai.",
+                    ],
+                    [
+                        'stem' => "Langkah terbaik saat menyisipkan gambar ilustrasi ke dalam slide presentasi agar desain tetap proporsional adalah...",
+                        'correct' => "Mengatur ukuran gambar dari sudut gambar secara proporsional dan tidak menutupi teks informasi penting.",
+                        'distractors' => [
+                            "Menarik gambar dari sisi samping secara paksa hingga bentuk objek menjadi gepeng dan terdistorsi.",
+                            "Menumpuk gambar di atas paragraf penjelasan hingga menutupi kalimat utama.",
+                            "Memperbesar gambar buram beresolusi rendah hingga menutupi seluruh halaman.",
+                        ],
+                        'indicator' => "Disajikan penataan gambar, peserta didik mampu menerapkan penskalaan proporsional.",
+                        'sub_level' => "C3 - MOTS (Penerapan Desain)",
+                        'explanation_correct' => "Penskalaan dari titik sudut (corner handles) menjaga rasio aspek (aspect ratio) gambar tetap utuh dan estetis.",
+                        'explanation_distractors' => "Menarik dari samping membuat gambar distorsi gepeng dan merusak keterbacaan materi.",
+                    ],
+                    [
+                        'stem' => "Jika materi presentasimu memuat beberapa poin penjelasan, teknik penyajian terbaik agar materi mudah ditangkap audiens adalah...",
+                        'correct' => "Mengemas materi dalam poin-poin ringkas (bullet points) disertai ikon atau gambar pendukung yang relevan.",
+                        'distractors' => [
+                            "Menyalin seluruh isi bab buku pelajaran ke dalam satu halaman slide.",
+                            "Memasang animasi gerakan yang berputar terus-menerus tanpa henti di setiap kata.",
+                            "Menghapus semua ilustrasi dan hanya menyisakan teks berwarna abu-abu.",
+                        ],
+                        'indicator' => "Disajikan materi padat, peserta didik mampu menerapkan teknik peringkasan visual.",
+                        'sub_level' => "C3 - MOTS (Penerapan Desain)",
+                        'explanation_correct' => "Poin ringkas dan ikon tematik mempercepat daya serap dan mencegah audiens terbebani membaca teks panjang.",
+                        'explanation_distractors' => "Teks dinding (wall of text) dan animasi berlebihan mengaburkan pesan utama materi.",
+                    ],
+                    [
+                        'stem' => "Cara paling efektif untuk memastikan materi presentasi multimedia dapat ditampilkan lancar di komputer sekolah tanpa kendala tautan terputus adalah...",
+                        'correct' => "Menyimpan file presentasi dan berkas media dalam satu folder terintegrasi serta menyiapkan salinan cadangan format PDF.",
+                        'distractors' => [
+                            "Hanya mengandalkan tautan online tanpa memeriksa ketersediaan jaringan internet di sekolah.",
+                            "Menyimpan file di memori sementara tanpa pernah menyimpan ke media penyimpanan permanen.",
+                            "Menghapus seluruh berkas gambar pendukung agar ukuran file presentasi sangat kecil.",
+                        ],
+                        'indicator' => "Disajikan portabilitas berkas, peserta didik mampu menerapkan pengemasan berkas presentasi terpadu.",
+                        'sub_level' => "C3 - MOTS (Penerapan Praktik)",
+                        'explanation_correct' => "Pengemasan berkas aset dalam satu folder dan cadangan PDF mengantisipasi masalah tautan hilang dan kompatibilitas sistem.",
+                        'explanation_distractors' => "Mengabaikan konektivitas atau menghapus aset visual menggagalkan presentasi.",
+                    ],
+                    [
+                        'stem' => "Kombinasi jenis huruf (font) yang paling rapi dan mudah dibaca untuk slide presentasi formal di depan kelas adalah...",
+                        'correct' => "Huruf Sans-serif yang bersih dan jelas untuk teks isi, seperti Calibri, Arial, atau Segoe UI.",
+                        'distractors' => [
+                            "Huruf sambung dekoratif berliku-liku untuk seluruh isi paragraf presentasi.",
+                            "Menggunakan lima jenis huruf yang berbeda gaya dalam satu halaman slide.",
+                            "Huruf berukuran sangat kecil di bawah 8pt agar memuat banyak kalimat.",
+                        ],
+                        'indicator' => "Disajikan tipografi slide, peserta didik mampu memilih keluarga font yang ergonomis.",
+                        'sub_level' => "C3 - MOTS (Penerapan Desain)",
+                        'explanation_correct' => "Huruf sans-serif memiliki keterbacaan tinggi di layar proyeksi digital berkat garis hurufnya yang bersih dan tegas.",
+                        'explanation_distractors' => "Font dekoratif atau kombinasi acak menyebabkan kelelahan mata penonton.",
+                    ],
+                    [
+                        'stem' => "Jika kamu ingin membuat infografis ringkas tentang siklus air, langkah penyusunan visual yang paling runtut adalah...",
+                        'correct' => "Menyusun alur tahapan secara berurutan dengan tanda panah pengarah dan teks penjelasan ringkas.",
+                        'distractors' => [
+                            "Menempatkan semua gambar tahapan secara acak tanpa tanda alur.",
+                            "Menuliskan seluruh teks tanpa menyertakan gambar atau ikon pendukung.",
+                            "Menumpuk semua gambar siklus dalam satu titik di sudut infografis.",
+                        ],
+                        'indicator' => "Disajikan penyusunan infografis, peserta didik mampu menerapkan alur visual sekuensial.",
+                        'sub_level' => "C3 - MOTS (Penerapan Desain)",
+                        'explanation_correct' => "Alur dengan indikator penunjuk arah mempermudah audiens memahami hubungan sebab-akibat antartahapan proses.",
+                        'explanation_distractors' => "Penempatan acak atau ketiadaan visual merusak esensi infografis informatif.",
+                    ],
+                ];
+            } else {
+                return [
+                    [
+                        'stem' => "Sebuah slide presentasi dikritik audiens karena terlihat sangat padat, membingungkan, dan melelahkan mata. Langkah evaluasi dan perbaikan desain yang paling tepat adalah...",
+                        'correct' => "Menerapkan ruang kosong (white space), membagi materi ke dalam beberapa slide, dan meringkas teks menjadi kata kunci inti.",
+                        'distractors' => [
+                            "Mengecilkan ukuran huruf menjadi setengahnya agar semua teks muat dalam satu slide.",
+                            "Menambahkan lebih banyak stiker animasi bergerak di setiap sudut slide.",
+                            "Mengubah warna latar belakang menjadi hitam pekat dengan teks warna merah gelap.",
+                        ],
+                        'indicator' => "Disajikan kasus kepadatan desain, peserta didik mampu mengevaluasi dan merumuskan perbaikan ergonomi visual.",
+                        'sub_level' => "{$subLevel} - HOTS (Evaluasi Desain)",
+                        'explanation_correct' => "Pemanfaatan white space dan chunking materi menurunkan beban kognitif (cognitive load) audiens.",
+                        'explanation_distractors' => "Mengecilkan huruf atau menambah stiker animasi justru memperparah kekacauan visual.",
+                    ],
+                    [
+                        'stem' => "Mengapa infografis dinilai jauh lebih efektif dalam menyampaikan informasi data kompleks dibandingkan teks narasi panjang?",
+                        'correct' => "Karena infografis memadukan data visual, struktur hierarki, dan ringkasan teks yang diproses otak secara visual lebih cepat.",
+                        'distractors' => [
+                            "Karena infografis tidak memuat informasi fakta yang membutuhkan pemikiran serius.",
+                            "Karena infografis hanya berfungsi sebagai hiasan dinding tanpa menyampaikan pesan penting.",
+                            "Karena ukuran file infografis selalu lebih kecil dibandingkan dokumen teks.",
+                        ],
+                        'indicator' => "Disajikan komunikasi visual, peserta didik mampu menganalisis keunggulan kognitif media infografis.",
+                        'sub_level' => "{$subLevel} - HOTS (Analisis Komunikasi)",
+                        'explanation_correct' => "Prinsip pemrosesan ganda (dual-coding theory) membuktikan visual dan teks ringkas meningkatkan retensi memori pemirsa.",
+                        'explanation_distractors' => "Pilihan lainnya meremehkan substansi ilmiah dan fakta dalam infografis.",
+                    ],
+                    [
+                        'stem' => "Kamu memiliki data persentase alokasi anggaran kas kelas untuk lima kegiatan yang berbeda. Bentuk penyajian visual yang paling tepat dan alasannya adalah...",
+                        'correct' => "Diagram lingkaran (pie chart), karena efektif memperlihatkan proporsi setiap bagian terhadap total keseluruhan seratus persen.",
+                        'distractors' => [
+                            "Grafik garis kontinyu, karena menunjukkan fluktuasi pergerakan data per detik.",
+                            "Diagram alur bercabang, karena menunjukkan alur pengambilan keputusan kode program.",
+                            "Tabel acak tanpa total persentase, karena tidak memerlukan ketepatan hitungan.",
+                        ],
+                        'indicator' => "Disajikan data persentase komponen, peserta didik mampu mengevaluasi dan memilih jenis visualisasi data yang tepat.",
+                        'sub_level' => "{$subLevel} - HOTS (Evaluasi Visualisasi)",
+                        'explanation_correct' => "Diagram lingkaran dirancang khusus untuk memvisualisasikan rasio bagian terhadap keseluruhan (part-to-whole comparison).",
+                        'explanation_distractors' => "Grafik garis untuk data waktu, sedangkan diagram alur untuk proses logika instruksi.",
+                    ],
+                    [
+                        'stem' => "Ketika merancang konten presentasi digital untuk audiens yang duduk di baris belakang ruang kelas, pertimbangan tipografi yang paling krusial adalah...",
+                        'correct' => "Ukuran font yang memadai (minimal 24–28 pt untuk teks isi) serta keterbacaan kontras yang tajam dari jarak jauh.",
+                        'distractors' => [
+                            "Warna tulisan yang menyatu dengan latar belakang agar tampak artistik dan samar.",
+                            "Penambahan efek bayangan berlapis pada semua kata sehingga huruf terlihat tebal.",
+                            "Penggunaan huruf dekoratif ukuran kecil agar slide terisi penuh teks.",
+                        ],
+                        'indicator' => "Disajikan skenario audiens jarak jauh, peserta didik mampu mengevaluasi kelayakan tipografi keterbacaan.",
+                        'sub_level' => "{$subLevel} - HOTS (Evaluasi Tipografi)",
+                        'explanation_correct' => "Skala keterbacaan ruang nyata menuntut ukuran font minimum dan kontras tinggi agar pesan sampai ke barisan terjauh.",
+                        'explanation_distractors' => "Teks samar atau huruf dekoratif kecil mustahil dibaca dari jarak jauh.",
+                    ],
+                    [
+                        'stem' => "Seorang siswa membuat poster digital tetapi penonton kesulitan membedakan mana pesan utama dan mana informasi tambahan. Analisis kelemahan desain poster tersebut terletak pada...",
+                        'correct' => "Kurangnya penegasan hierarki visual pada ukuran judul, tata letak, dan penekanan warna.",
+                        'distractors' => [
+                            "Penggunaan format penyimpanan file yang menggunakan kompresi standar.",
+                            "Pemilihan kertas cetak yang memiliki ukuran standar A4.",
+                            "Pencantuman nama pembuat karya di sudut bawah poster.",
+                        ],
+                        'indicator' => "Disajikan analisis poster gagal fokus, peserta didik mampu mendeteksi ketiadaan hierarki visual.",
+                        'sub_level' => "{$subLevel} - HOTS (Analisis Desain)",
+                        'explanation_correct' => "Ketiadaan kontras ukuran dan penataan fokal menyebabkan seluruh elemen tampak sama penting dan membingungkan pembaca.",
+                        'explanation_distractors' => "Pilihan lainnya adalah atribut teknis umum yang tidak menjadi akar masalah hierarki pesan.",
+                    ],
+                    [
+                        'stem' => "Dalam produksi konten digital terintegrasi, mengapa konsistensi palet warna dan gaya elemen visual di sepanjang slide presentasi sangat penting?",
+                        'correct' => "Menjaga kesatuan tema visual, memperkuat identitas pesan, dan mencegah kebingungan visual pada audiens.",
+                        'distractors' => [
+                            "Membuat ukuran file presentasi bertambah besar menjadi bergiga-gita byte.",
+                            "Membatasi kreativitas pembuat konten sehingga hasilnya monoton.",
+                            "Menjamin bahwa presentasi tidak bisa disunting oleh orang lain.",
+                        ],
+                        'indicator' => "Disajikan prinsip desain terpadu, peserta didik mampu mengevaluasi nilai konsistensi identitas visual.",
+                        'sub_level' => "{$subLevel} - HOTS (Evaluasi Desain)",
+                        'explanation_correct' => "Prinsip unity (kesatuan) memastikan seluruh slide dirasakan sebagai satu paket karya yang profesional dan terpadu.",
+                        'explanation_distractors' => "Konsistensi bukan pembatas kreativitas, melainkan fondasi kejelasan komunikasi visual.",
+                    ],
+                ];
+            }
+        }
+
+        if ($domain === 'computer_system') {
+            if ($effectiveLevel === 'lots') {
+                return [
+                    [
+                        'stem' => "Urutan siklus pemrosesan data yang benar pada sistem komputer adalah...",
+                        'correct' => "Masukan (Input) -> Pemrosesan (Process) -> Keluaran (Output) -> Penyimpanan (Storage).",
+                        'distractors' => [
+                            "Keluaran (Output) -> Masukan (Input) -> Pemrosesan (Process) -> Pembersihan.",
+                            "Penyimpanan -> Masukan -> Keluaran -> Penghapusan.",
+                            "Pemrosesan -> Masukan -> Penyimpanan -> Keluaran.",
+                        ],
+                        'indicator' => "Disajikan siklus komputer, peserta didik mampu mengurutkan tahapan siklus input-proses-output.",
+                        'sub_level' => "{$subLevel} - LOTS (Pemahaman Sistem)",
+                        'explanation_correct' => "Siklus I-P-O-S merupakan siklus fundamental komputer dalam mengolah data mentah menjadi informasi bermanfaat.",
+                        'explanation_distractors' => "Pilihan lainnya membalik alur logis pengolahan data.",
+                    ],
+                    [
+                        'stem' => "Perangkat keras komputer di bawah ini yang berfungsi sebagai perangkat masukan (input device) adalah...",
+                        'correct' => "Keyboard, mouse, dan scanner.",
+                        'distractors' => [
+                            "Monitor, printer, dan speaker.",
+                            "Processor, RAM, dan Motherboard.",
+                            "Harddisk, Flashdisk, dan SSD.",
+                        ],
+                        'indicator' => "Disajikan ragam hardware, peserta didik mampu mengelompokkan perangkat masukan (input).",
+                        'sub_level' => "{$subLevel} - LOTS (Pemahaman Sistem)",
+                        'explanation_correct' => "Keyboard, mouse, dan scanner bertugas memasukkan data atau instruksi dari pengguna ke sistem komputer.",
+                        'explanation_distractors' => "Monitor/printer adalah output, processor/RAM adalah pemroses/memori, dan SSD adalah media penyimpanan.",
+                    ],
+                    [
+                        'stem' => "Komponen utama komputer yang bertindak sebagai otak untuk mengendalikan instruksi dan memproses perhitungan matematika/logika adalah...",
+                        'correct' => "Central Processing Unit (CPU / Processor).",
+                        'distractors' => [
+                            "Power Supply Unit (PSU).",
+                            "Monitor LED.",
+                            "Casing Komputer.",
+                        ],
+                        'indicator' => "Disajikan fungsi komponen, peserta didik mampu mengidentifikasi peran CPU.",
+                        'sub_level' => "{$subLevel} - LOTS (Pemahaman Sistem)",
+                        'explanation_correct' => "CPU adalah unit pemroses pusat yang mengeksekusi instruksi aritmatika dan logika program.",
+                        'explanation_distractors' => "PSU menyalurkan daya listrik, monitor menampilkan gambar, dan casing melindungi fisik komponen.",
+                    ],
+                    [
+                        'stem' => "Memori utama komputer yang berfungsi menyimpan data dan instruksi sementara saat komputer sedang beroperasi adalah...",
+                        'correct' => "Random Access Memory (RAM).",
+                        'distractors' => [
+                            "Read Only Memory (ROM).",
+                            "Compact Disc (CD).",
+                            "Flashdisk USB.",
+                        ],
+                        'indicator' => "Disajikan jenis memori, peserta didik mampu mengidentifikasi karakteristik memori kerja RAM.",
+                        'sub_level' => "{$subLevel} - LOTS (Pemahaman Sistem)",
+                        'explanation_correct' => "RAM menyimpan data sementara (volatile) yang sedang diproses langsung oleh processor.",
+                        'explanation_distractors' => "ROM berisi instruksi booting permanen, sedangkan CD dan Flashdisk adalah penyimpanan eksternal.",
+                    ],
+                    [
+                        'stem' => "Perangkat keras yang bertugas menampilkan informasi visual hasil pengolahan data komputer kepada pengguna adalah...",
+                        'correct' => "Monitor.",
+                        'distractors' => [
+                            "Mikrofon.",
+                            "Motherboard.",
+                            "Harddisk internal.",
+                        ],
+                        'indicator' => "Disajikan perangkat keluaran, peserta didik mampu mengidentifikasi fungsi monitor.",
+                        'sub_level' => "{$subLevel} - LOTS (Pemahaman Sistem)",
+                        'explanation_correct' => "Monitor adalah perangkat output visual utama untuk menampilkan antarmuka grafis kepada pengguna.",
+                        'explanation_distractors' => "Mikrofon adalah input audio, motherboard papan sirkuit, dan harddisk media penyimpanan.",
+                    ],
+                    [
+                        'stem' => "Papan sirkuit utama yang menjadi tempat terhubungnya seluruh komponen komputer seperti CPU, RAM, dan kartu grafis disebut...",
+                        'correct' => "Motherboard (Mainboard).",
+                        'distractors' => [
+                            "Sound Card.",
+                            "Heatsink Fan.",
+                            "Optical Drive.",
+                        ],
+                        'indicator' => "Disajikan arsitektur komputer, peserta didik mampu mengenali motherboard sebagai papan induk.",
+                        'sub_level' => "{$subLevel} - LOTS (Pemahaman Sistem)",
+                        'explanation_correct' => "Motherboard menjadi tulang punggung penghubung jalur komunikasi data antarkomponen perangkat keras.",
+                        'explanation_distractors' => "Sound card mengolah suara, heatsink mendinginkan suhu, dan optical drive membaca piringan cakram.",
+                    ],
+                ];
+            } elseif ($effectiveLevel === 'mots') {
+                return [
+                    [
+                        'stem' => "Saat kamu mengetik huruf pada keyboard dan huruf tersebut langsung tampil di layar monitor, alur interaksi antarkomponen yang terjadi adalah...",
+                        'correct' => "Keyboard mengirim sinyal input -> CPU memproses kode karakter -> GPU/Monitor menampilkan output visual.",
+                        'distractors' => [
+                            "Monitor mengirim instruksi langsung ke keyboard tanpa melalui CPU.",
+                            "RAM langsung mencetak huruf ke printer tanpa melewati proses CPU.",
+                            "Power supply mengubah huruf menjadi gambar tanpa bantuan processor.",
+                        ],
+                        'indicator' => "Disajikan skenario pengetikan, peserta didik mampu menerapkan alur interaksi komponen I-P-O.",
+                        'sub_level' => "C3 - MOTS (Penerapan Sistem)",
+                        'explanation_correct' => "Interaksi komputer selalu mengalir dari perangkat input menuju CPU/pengolah sebelum dikirim ke penampil output.",
+                        'explanation_distractors' => "Pilihan pengecoh mengabaikan peran sentral pemrosesan CPU.",
+                    ],
+                    [
+                        'stem' => "Jika kamu ingin menyimpan dokumen tugas agar tetap ada dan tidak hilang saat komputer dimatikan, tindakan yang tepat adalah...",
+                        'correct' => "Menyimpan file ke dalam media penyimpanan sekunder (storage) seperti SSD atau Harddisk.",
+                        'distractors' => [
+                            "Membiarkan dokumen hanya berada di dalam memori sementara RAM.",
+                            "Mencabut kabel power komputer secara langsung dari stopkontak.",
+                            "Menutup aplikasi lembar kerja tanpa menekan tombol Simpan (Save).",
+                        ],
+                        'indicator' => "Disajikan penyimpanan berkas, peserta didik mampu menerapkan penyimpanan non-volatile.",
+                        'sub_level' => "C3 - MOTS (Penerapan Sistem)",
+                        'explanation_correct' => "Penyimpanan sekunder (SSD/HDD) bersifat non-volatile sehingga data tetap tersimpan saat aliran daya mati.",
+                        'explanation_distractors' => "Membiarkan di RAM atau mencabut daya menyebabkan kehilangan data secara permanen.",
+                    ],
+                    [
+                        'stem' => "Perangkat keras yang tepat dihubungkan ke komputer jika seorang guru ingin memproyeksikan tampilan layar laptop ke dinding kelas agar terlihat oleh seluruh siswa adalah...",
+                        'correct' => "Proyektor LCD (LCD Projector).",
+                        'distractors' => [
+                            "Scanner gambar.",
+                            "Webcam.",
+                            "Barcode reader.",
+                        ],
+                        'indicator' => "Disajikan kebutuhan presentasi kelas, peserta didik mampu memilih perangkat keluaran proyektor.",
+                        'sub_level' => "C3 - MOTS (Penerapan Sistem)",
+                        'explanation_correct' => "Proyektor LCD memproyeksikan sinyal video keluaran ke bidang layar lebar yang dapat dilihat massal.",
+                        'explanation_distractors' => "Scanner, webcam, dan barcode reader adalah perangkat masukan (input).",
+                    ],
+                    [
+                        'stem' => "Fungsi utama dari sistem operasi (seperti Windows, Linux, atau macOS) dalam sistem komputer adalah...",
+                        'correct' => "Mengelola sumber daya perangkat keras dan menjembatani komunikasi dengan perangkat lunak aplikasi pengguna.",
+                        'distractors' => [
+                            "Menyuplai aliran listrik tegangan tinggi ke komponen motherboard.",
+                            "Mendinginkan processor saat suhu perangkat naik drastis.",
+                            "Membersihkan debu fisik dari dalam komponen laptop.",
+                        ],
+                        'indicator' => "Disajikan peran sistem operasi, peserta didik mampu menjelaskan fungsi manajemen sistem operasi.",
+                        'sub_level' => "C3 - MOTS (Penerapan Sistem)",
+                        'explanation_correct' => "Sistem operasi bertindak sebagai jembatan pengendali perangkat keras agar aplikasi dapat berjalan teratur.",
+                        'explanation_distractors' => "Pilihan lainnya merupakan fungsi fisik kelistrikan atau perawatan perangkat keras.",
+                    ],
+                    [
+                        'stem' => "Ketika komputer mulai terasa melambat saat membuka banyak aplikasi secara bersamaan (multitasking), komponen yang paling berpengaruh terhadap kapasitas tampung aplikasi aktif tersebut adalah...",
+                        'correct' => "Kapasitas Random Access Memory (RAM).",
+                        'distractors' => [
+                            "Resolusi lensa kamera webcam.",
+                            "Panjang kabel mouse yang digunakan.",
+                            "Daya output speaker audio.",
+                        ],
+                        'indicator' => "Disajikan skenario multitasking, peserta didik mampu mengidentifikasi peran kapasitas RAM.",
+                        'sub_level' => "C3 - MOTS (Penerapan Sistem)",
+                        'explanation_correct' => "RAM menampung proses seluruh aplikasi aktif; kapasitas yang mencukupi mencegah komputer mengalami paging lambat.",
+                        'explanation_distractors' => "Webcam, mouse, dan speaker tidak memengaruhi performa penampungan memori komputasi.",
+                    ],
+                    [
+                        'stem' => "Jika kamu ingin mencetak hasil ketikan tugas dokumen komputer ke atas lembar kertas fisik, perangkat keluaran yang kamu gunakan adalah...",
+                        'correct' => "Printer.",
+                        'distractors' => [
+                            "Plotter digital.",
+                            "Scanner.",
+                            "Microphone.",
+                        ],
+                        'indicator' => "Disajikan pencetakan dokumen, peserta didik mampu memilih perangkat keluaran printer fisik.",
+                        'sub_level' => "C3 - MOTS (Penerapan Sistem)",
+                        'explanation_correct' => "Printer adalah perangkat keluaran keras (hard copy) standar untuk mencetak teks dan gambar pada kertas.",
+                        'explanation_distractors' => "Scanner dan mikrofon adalah perangkat input, sedangkan plotter untuk cetak cetak biru berukuran raksasa.",
+                    ],
+                ];
+            } else {
+                return [
+                    [
+                        'stem' => "Komputer seorang siswa menyala normal tetapi monitor tidak menampilkan gambar apa pun (layar hitam kosong), padahal lampu daya CPU aktif. Langkah analisis pertama yang paling tepat adalah...",
+                        'correct' => "Memeriksa kabel koneksi video (HDMI/VGA) antara monitor dan CPU serta memastikan monitor terhubung ke sumber daya.",
+                        'distractors' => [
+                            "Segera membeli processor baru dan membongkar motherboard.",
+                            "Menghapus sistem operasi dari dalam media penyimpanan.",
+                            "Mengganti keyboard dan mouse dengan tipe yang baru.",
+                        ],
+                        'indicator' => "Disajikan kendala layar mati, peserta didik mampu menganalisis troubleshooting koneksi display output.",
+                        'sub_level' => "{$subLevel} - HOTS (Analisis Masalah)",
+                        'explanation_correct' => "Troubleshooting logis dimulai dari verifikasi kabel sinyal tampilan dan pasokan daya monitor sebelum menduga kerusakan komponen internal.",
+                        'explanation_distractors' => "Membeli processor baru atau menghapus sistem operasi adalah tindakan prematur tanpa dasar analisis.",
+                    ],
+                    [
+                        'stem' => "Mengapa sistem komputer tetap memerlukan media penyimpanan sekunder (seperti SSD/HDD) meskipun kecepatan baca RAM jauh lebih cepat?",
+                        'correct' => "Karena RAM bersifat volatile (data hilang saat aliran listrik mati), sedangkan SSD bersifat non-volatile (data tersimpan permanen).",
+                        'distractors' => [
+                            "Karena SSD bertugas mengeksekusi instruksi logika aritmatika menggantikan CPU.",
+                            "Karena RAM hanya bisa menyimpan berkas suara dan tidak bisa menyimpan teks.",
+                            "Karena SSD tidak memerlukan aliran listrik sama sekali untuk bekerja di komputer.",
+                        ],
+                        'indicator' => "Disajikan perbandingan memori, peserta didik mampu mengevaluasi perbedaan sifat retensi data memori primer dan sekunder.",
+                        'sub_level' => "{$subLevel} - HOTS (Analisis Arsitektur)",
+                        'explanation_correct' => "Sifat volatile RAM mengharuskan adanya media penyimpanan permanen (non-volatile) untuk menjaga integritas data jangka panjang.",
+                        'explanation_distractors' => "SSD tidak mengeksekusi instruksi aritmatika CPU dan RAM dapat menyimpan segala tipe data digital.",
+                    ],
+                    [
+                        'stem' => "Jika kipas pendingin (heatsink fan) pada processor berhenti berputar atau tersumbat debu tebal, akibat yang akan dialami sistem komputer adalah...",
+                        'correct' => "Suhu processor melonjak tinggi (overheating) sehingga performa melambat drastis atau komputer mati mendadak untuk melindungi sirkuit.",
+                        'distractors' => [
+                            "Kapasitas RAM akan bertambah dua kali lipat secara otomatis.",
+                            "Resolusi tampilan layar monitor akan berubah menjadi format hitam putih permanen.",
+                            "Kecepatan jaringan internet pada komputer akan meningkat drastis.",
+                        ],
+                        'indicator' => "Disajikan kegagalan pendinginan, peserta didik mampu menganalisis fenomena thermal throttling dan shutdown protektif.",
+                        'sub_level' => "{$subLevel} - HOTS (Analisis Kausalitas)",
+                        'explanation_correct' => "Panas berlebih memicu thermal throttling (penurunan clockspeed otomatis) dan thermal shutdown guna mencegah kerusakan fisik silikon CPU.",
+                        'explanation_distractors' => "Pilihan pengecoh mengasumsikan fenomena aneh yang mustahil secara teknis.",
+                    ],
+                    [
+                        'stem' => "Seorang siswa memasukkan data angka pada aplikasi lembar kerja, namun hasil penjumlahan salah karena rumusnya keliru. Analisis komponen yang mengalami kesalahan adalah...",
+                        'correct' => "Logika instruksi pengguna atau perangkat lunak (software/brainware), karena perangkat keras (hardware) hanya memproses instruksi yang diberikan.",
+                        'distractors' => [
+                            "Kabel daya listrik komputer karena memberikan tegangan listrik yang kurang.",
+                            "Layar monitor karena sengaja mengubah angka yang ditampilkan.",
+                            "Motherboard karena menolak membaca angka desimal.",
+                        ],
+                        'indicator' => "Disajikan kesalahan hitung rumus, peserta didik mampu memisahkan peran logika software/brainware dan eksekusi hardware.",
+                        'sub_level' => "{$subLevel} - HOTS (Analisis Masalah)",
+                        'explanation_correct' => "Prinsip GIGO (Garbage In, Garbage Out) menegaskan perangkat keras memproses data secara patuh sesuai rumus instruksi yang dimasukkan.",
+                        'explanation_distractors' => "Hardware fisik tidak bertanggung jawab atas kesalahan sintaksis atau logika rumus yang diketik manusia.",
+                    ],
+                    [
+                        'stem' => "Perbedaan mendasar antara Solid State Drive (SSD) dan Hard Disk Drive (HDD) dalam kinerja pemrosesan data komputer adalah...",
+                        'correct' => "SSD menggunakan chip memori flash tanpa komponen bergerak sehingga kecepatan akses datanya jauh lebih tinggi dibandingkan HDD bermagnetik piringan.",
+                        'distractors' => [
+                            "HDD lebih cepat karena piringan logamnya berputar dengan kecepatan tinggi tanpa henti.",
+                            "SSD hanya dapat digunakan untuk menyimpan file gambar dan bukan sistem operasi.",
+                            "HDD tidak memerlukan ruang pemasangan pada casing komputer.",
+                        ],
+                        'indicator' => "Disajikan teknologi storage, peserta didik mampu mengevaluasi keunggulan performa teknologi SSD.",
+                        'sub_level' => "{$subLevel} - HOTS (Evaluasi Teknologi)",
+                        'explanation_correct' => "Ketiadaan latensi mekanis pada chip semikonduktor flash membuat kecepatan baca/tulis acak SSD melampaui piringan putar HDD.",
+                        'explanation_distractors' => "Pilihan lainnya salah mengidentifikasi mekanisme mekanis dan batas fungsional storage.",
+                    ],
+                    [
+                        'stem' => "Jika kapasitas RAM sebuah komputer hampir penuh saat menjalankan program grafis berat, solusi optimal tanpa harus mengganti komputer adalah...",
+                        'correct' => "Menutup aplikasi latar belakang yang tidak digunakan atau meningkatkan kapasitas keping memori RAM.",
+                        'distractors' => [
+                            "Menurunkan kecerahan layar monitor hingga batas paling redup.",
+                            "Memformat ulang keyboard dan mouse melalui pengaturan kontrol panel.",
+                            "Mencabut kabel jaringan internet selama menjalankan aplikasi grafis.",
+                        ],
+                        'indicator' => "Disajikan keterbatasan sumber daya RAM, peserta didik mampu merumuskan solusi optimal peningkatan kinerja.",
+                        'sub_level' => "{$subLevel} - HOTS (Pemecahan Masalah)",
+                        'explanation_correct' => "Mengosongkan alokasi memori kerja dari proses latar atau menambah RAM fisik secara langsung menyelesaikan bottleneck memori.",
+                        'explanation_distractors' => "Pilihan lainnya tidak membebaskan ruang memori utama komputer sama sekali.",
+                    ],
+                ];
+            }
+        }
+
+        if ($domain === 'algorithm_coding') {
+            if ($effectiveLevel === 'lots') {
+                return [
+                    [
+                        'stem' => "Pengertian algoritma yang paling tepat dalam ilmu komputer adalah...",
+                        'correct' => "Urutan langkah-langkah logis dan sistematis untuk memecahkan suatu masalah atau mencapai tujuan tertentu.",
+                        'distractors' => [
+                            "Kumpulan kabel jaringan yang menghubungkan komputer ke internet.",
+                            "Daftar harga suku cadang perangkat keras di toko komputer.",
+                            "Tampilan latar belakang layar desktop komputer.",
+                        ],
+                        'indicator' => "Disajikan konsep dasar, peserta didik mampu mendefinisikan pengertian algoritma.",
+                        'sub_level' => "{$subLevel} - LOTS (Pemahaman Algoritma)",
+                        'explanation_correct' => "Algoritma adalah serangkaian instruksi terdefinisi dengan jelas yang diproses secara bertahap untuk menghasilkan luaran tertentu.",
+                        'explanation_distractors' => "Pilihan lainnya merujuk pada perangkat keras atau antarmuka visual biasa.",
+                    ],
+                    [
+                        'stem' => "Simbol bangun belah ketupat (diamond) pada bagan alir (flowchart) berfungsi untuk melambangkan...",
+                        'correct' => "Pengambilan keputusan atau kondisi percabangan (decision).",
+                        'distractors' => [
+                            "Titik awal atau akhir program (terminator).",
+                            "Proses perhitungan matematika biasa (process).",
+                            "Aliran data masukan dari keyboard (input).",
+                        ],
+                        'indicator' => "Disajikan simbol flowchart, peserta didik mampu mengidentifikasi simbol percabangan keputusan.",
+                        'sub_level' => "{$subLevel} - LOTS (Pemahaman Algoritma)",
+                        'explanation_correct' => "Simbol belah ketupat mengevaluasi kondisi logis (Ya/Tidak) yang menentukan percabangan alur program.",
+                        'explanation_distractors' => "Terminator berbentuk elips/kapsul, proses berbentuk persegi panjang, dan input berbentuk jajar genjang.",
+                    ],
+                    [
+                        'stem' => "Struktur kontrol dalam pemrograman yang berfungsi untuk menjalankan instruksi yang sama secara berulang-ulang selama kondisi terpenuhi disebut...",
+                        'correct' => "Perulangan (Looping).",
+                        'distractors' => [
+                            "Percabangan (Branching).",
+                            "Variabel (Variable).",
+                            "Komentar (Comment).",
+                        ],
+                        'indicator' => "Disajikan struktur kontrol, peserta didik mampu mengenali konsep perulangan (loop).",
+                        'sub_level' => "{$subLevel} - LOTS (Pemahaman Algoritma)",
+                        'explanation_correct' => "Perulangan mengulang blok kode otomatis hingga syarat terminasi tercapai.",
+                        'explanation_distractors' => "Percabangan memilih alur alternatif, variabel menyimpan data, dan komentar adalah catatan kode.",
+                    ],
+                    [
+                        'stem' => "Tempat dalam memori program komputer yang digunakan untuk menampung nilai data yang dapat berubah selama program berjalan disebut...",
+                        'correct' => "Variabel (Variable).",
+                        'distractors' => [
+                            "Konstanta statis.",
+                            "Kabel data.",
+                            "Tipe monitor.",
+                        ],
+                        'indicator' => "Disajikan konsep pemrograman, peserta didik mampu mengidentifikasi pengertian variabel.",
+                        'sub_level' => "{$subLevel} - LOTS (Pemahaman Algoritma)",
+                        'explanation_correct' => "Variabel adalah pengenal bernama yang menyimpan nilai dinamis dalam memori aplikasi.",
+                        'explanation_distractors' => "Konstanta bernilai tetap yang tidak dapat diubah, sedangkan kabel data dan monitor adalah fisik.",
+                    ],
+                    [
+                        'stem' => "Tipe data yang hanya dapat bernilai Benar (True) atau Salah (False) dalam logika pemrograman adalah...",
+                        'correct' => "Boolean.",
+                        'distractors' => [
+                            "Integer.",
+                            "String.",
+                            "Float.",
+                        ],
+                        'indicator' => "Disajikan jenis tipe data, peserta didik mampu mengidentifikasi tipe data Boolean.",
+                        'sub_level' => "{$subLevel} - LOTS (Pemahaman Algoritma)",
+                        'explanation_correct' => "Boolean hanya merepresentasikan nilai kebenaran biner: True (1) atau False (0).",
+                        'explanation_distractors' => "Integer untuk bilangan bulat, String untuk teks, dan Float untuk bilangan desimal.",
+                    ],
+                    [
+                        'stem' => "Simbol persegi panjang pada diagram alir (flowchart) melambangkan...",
+                        'correct' => "Proses pemrosesan atau perhitungan data (process).",
+                        'distractors' => [
+                            "Titik mulai atau selesai program.",
+                            "Kondisi percabangan ya atau tidak.",
+                            "Masukan data manual dari keyboard.",
+                        ],
+                        'indicator' => "Disajikan bagan alir, peserta didik mampu mengidentifikasi fungsi simbol proses.",
+                        'sub_level' => "{$subLevel} - LOTS (Pemahaman Algoritma)",
+                        'explanation_correct' => "Persegi panjang digunakan untuk operasi penugasan nilai, manipulasi data, atau operasi aritmatika.",
+                        'explanation_distractors' => "Pilihan lainnya diwakili oleh kapsul terminator, belah ketupat, dan jajar genjang.",
+                    ],
+                ];
+            } elseif ($effectiveLevel === 'mots') {
+                return [
+                    [
+                        'stem' => "Jika lampu lalu lintas menyala merah maka kendaraan berhenti, jika menyala hijau maka jalan. Struktur logika algoritma yang tepat untuk kasus ini adalah...",
+                        'correct' => "Percabangan kondisi (IF - ELSE).",
+                        'distractors' => [
+                            "Perulangan tanpa henti (Infinite Loop).",
+                            "Pengurutan gelembung (Bubble Sort).",
+                            "Deklarasi fungsi rekursif.",
+                        ],
+                        'indicator' => "Disajikan skenario rambu lalu lintas, peserta didik mampu menerapkan struktur percabangan IF-ELSE.",
+                        'sub_level' => "C3 - MOTS (Penerapan Algoritma)",
+                        'explanation_correct' => "Kondisi pengambilan keputusan berbasis aturan syarat logis membutuhkan percabangan IF-ELSE.",
+                        'explanation_distractors' => "Perulangan atau algoritma pengurutan tidak cocok untuk pemilihan keputusan alternatif.",
+                    ],
+                    [
+                        'stem' => "Langkah pertama yang paling tepat dilakukan seorang programmer sebelum mulai mengetik baris kode program di komputer adalah...",
+                        'correct' => "Menganalisis permasalahan dan merancang alur logika algoritma penyelesaiannya.",
+                        'distractors' => [
+                            "Langsung mengompilasi lembar kode yang masih kosong.",
+                            "Mematikan sambungan daya komputer dan menutup buku panduan.",
+                            "Mengunggah program yang belum selesai dibuat ke toko aplikasi.",
+                        ],
+                        'indicator' => "Disajikan metodologi pembuatan program, peserta didik mampu menerapkan fase perancangan algoritma.",
+                        'sub_level' => "C3 - MOTS (Penerapan Prosedural)",
+                        'explanation_correct' => "Perancangan logika yang matang mencegah kesalahan arsitektural saat tahap implementasi koding berlangsung.",
+                        'explanation_distractors' => "Mengompilasi lembar kosong atau langsung menerbitkan aplikasi merupakan langkah tidak masuk akal.",
+                    ],
+                    [
+                        'stem' => "Diberikan algoritma: Nilai A = 5, Nilai B = 3. Kemudian dieksekusi perintah: A = A + B. Berapakah nilai akhir dari variabel A?",
+                        'correct' => "8",
+                        'distractors' => [
+                            "5",
+                            "3",
+                            "15",
+                        ],
+                        'indicator' => "Disajikan operasi penugasan variabel, peserta didik mampu menghitung nilai luaran operasi aritmatika.",
+                        'sub_level' => "C3 - MOTS (Penerapan Perhitungan)",
+                        'explanation_correct' => "Variabel A menampung hasil 5 + 3, sehingga nilai variabel A kini diperbarui menjadi 8.",
+                        'explanation_distractors' => "Pilihan 5 dan 3 adalah nilai sebelum penambahan, sedangkan 15 hasil perkalian.",
+                    ],
+                    [
+                        'stem' => "Proses melacak dan memperbaiki kesalahan atau galat (bug) di dalam kode program disebut...",
+                        'correct' => "Debugging.",
+                        'distractors' => [
+                            "Rendering.",
+                            "Booting.",
+                            "Formatting.",
+                        ],
+                        'indicator' => "Disajikan perbaikan kode, peserta didik mampu mengidentifikasi aktivitas debugging.",
+                        'sub_level' => "C3 - MOTS (Penerapan Praktik)",
+                        'explanation_correct' => "Debugging melibatkan investigasi alur kode, identifikasi penyebab bug, dan penyuntingan kode solusi.",
+                        'explanation_distractors' => "Rendering untuk pemrosesan grafis, booting menyalakan komputer, dan formatting membersihkan drive.",
+                    ],
+                    [
+                        'stem' => "Jika kamu ingin mencetak teks kalimat 'Tetap Semangat!' sebanyak 50 kali secara otomatis, struktur logika terbaik yang digunakan adalah...",
+                        'correct' => "Menggunakan struktur perulangan (For / While loop) dengan pencacah angka hingga 50.",
+                        'distractors' => [
+                            "Mengetik perintah cetak secara manual satu per satu sebanyak 50 baris kalimat.",
+                            "Menggunakan struktur percabangan IF bersarang 50 tingkatan.",
+                            "Menghapus deklarasi variabel teks dari dalam kode program.",
+                        ],
+                        'indicator' => "Disajikan kebutuhan repetisi teks, peserta didik mampu menerapkan struktur perulangan teratur.",
+                        'sub_level' => "C3 - MOTS (Penerapan Algoritma)",
+                        'explanation_correct' => "Looping mengotomatiskan eksekusi perintah berulang dengan ringkas dan hemat baris kode.",
+                        'explanation_distractors' => "Mengetik manual 50 baris atau menyusun IF bersarang sangat tidak efisien dan rentan galat.",
+                    ],
+                    [
+                        'stem' => "Urutan tahapan pembuatan program komputer yang sistematis dan benar adalah...",
+                        'correct' => "Analisis Masalah -> Perancangan Algoritma -> Penulisan Kode (Coding) -> Pengujian (Testing).",
+                        'distractors' => [
+                            "Pengujian -> Analisis Masalah -> Penulisan Kode -> Perancangan Algoritma.",
+                            "Penulisan Kode -> Publikasi -> Analisis Masalah -> Perancangan Algoritma.",
+                            "Perancangan Algoritma -> Publikasi -> Pengujian -> Analisis Masalah.",
+                        ],
+                        'indicator' => "Disajikan siklus hidup program, peserta didik mampu mengurutkan alur pengembangan software.",
+                        'sub_level' => "C3 - MOTS (Penerapan Prosedural)",
+                        'explanation_correct' => "Siklus baku rekayasa perangkat lunak dimulai dari analisis kebutuhan hingga pengujian mutu hasil karya.",
+                        'explanation_distractors' => "Pilihan lainnya memutarbalikkan logika proses rekayasa sistem.",
+                    ],
+                ];
+            } else {
+                return [
+                    [
+                        'stem' => "Sebuah program mengalami kondisi perulangan tak terhingga (infinite loop) sehingga komputer membeku. Analisis penyebab utama dari masalah ini adalah...",
+                        'correct' => "Kondisi henti perulangan tidak pernah bernilai False karena nilai variabel pencacah tidak bertambah atau tidak diperbarui.",
+                        'distractors' => [
+                            "Kapasitas ruang penyimpanan harddisk sekunder komputer habis.",
+                            "Pengguna menekan tombol spasi keyboard dengan terlalu cepat.",
+                            "Warna antarmuka grafis program terlalu terang.",
+                        ],
+                        'indicator' => "Disajikan anomali infinite loop, peserta didik mampu menganalisis kesalahan terminasi logika perulangan.",
+                        'sub_level' => "{$subLevel} - HOTS (Analisis Logika)",
+                        'explanation_correct' => "Ketiadaan pembaruan counter membuat kondisi syarat terus terpenuhi (True) sehingga loop tidak pernah berhenti.",
+                        'explanation_distractors' => "Pilihan pengecoh mengasumsikan faktor hardware dan grafis yang tidak memengaruhi logika loop.",
+                    ],
+                    [
+                        'stem' => "Diberikan aturan logika: 'JIKA nilai >= 75 MAKA Lulus, SELAIN ITU Remedial'. Jika siswa bernama Budi memperoleh nilai 75, apa hasil luaran program dan alasannya?",
+                        'correct' => "Lulus, karena nilai 75 memenuhi syarat kondisi lebih besar atau sama dengan (>=) 75.",
+                        'distractors' => [
+                            "Remedial, karena nilai 75 belum melampaui angka 75.",
+                            "Program galat, karena angka 75 tidak dapat dibandingkan oleh logika komputer.",
+                            "Program berhenti, karena tidak ada penanganan untuk angka yang nilainya sama.",
+                        ],
+                        'indicator' => "Disajikan operator perbandingan, peserta didik mampu mengevaluasi nilai ambang batas logika percabangan.",
+                        'sub_level' => "{$subLevel} - HOTS (Evaluasi Logika)",
+                        'explanation_correct' => "Operator relasional '>=' mencakup nilai batas pembanding sehingga angka 75 valid menghasilkan kondisi Lulus.",
+                        'explanation_distractors' => "Pilihan lainnya salah memahami arti inklusif dari operator '>='.",
+                    ],
+                    [
+                        'stem' => "Dua algoritma menghasilkan luaran yang sama persis. Algoritma A membutuhkan 10 langkah operasi, sedangkan Algoritma B membutuhkan 1.000 langkah operasi. Evaluasi yang tepat adalah...",
+                        'correct' => "Algoritma A jauh lebih efisien karena membutuhkan waktu eksekusi dan pemakaian sumber daya komputasi yang lebih hemat.",
+                        'distractors' => [
+                            "Algoritma B lebih unggul karena memiliki lebih banyak baris kode sehingga terlihat lebih canggih.",
+                            "Kedua algoritma sama efisiennya karena hasil akhir keduanya sama persis.",
+                            "Algoritma A pasti memiliki galat karena jumlah langkahnya terlalu sedikit.",
+                        ],
+                        'indicator' => "Disajikan komparasi algoritma, peserta didik mampu mengevaluasi kompleksitas efisiensi komputasi.",
+                        'sub_level' => "{$subLevel} - HOTS (Evaluasi Kompleksitas)",
+                        'explanation_correct' => "Efisiensi algoritma diukur dari jumlah langkah eksekusi waktu (time complexity) dan memori yang dipakai.",
+                        'explanation_distractors' => "Banyaknya baris kode yang boros operasi justru menandakan algoritma yang tidak efisien.",
+                    ],
+                    [
+                        'stem' => "Mengapa dekomposisi (memecah masalah besar menjadi submasalah kecil) merupakan keterampilan krusial dalam berpikir komputasional?",
+                        'correct' => "Karena memecah masalah membuat setiap bagian lebih sederhana untuk dianalisis, dirancang logikanya, dan diuji secara terpisah.",
+                        'distractors' => [
+                            "Karena komputer menolak memproses permasalahan yang memiliki lebih dari satu baris instruksi.",
+                            "Agar kita bisa menghindari kewajiban merancang kode program sama sekali.",
+                            "Supaya ukuran kapasitas file kode program menjadi berlipat ganda lebih besar.",
+                        ],
+                        'indicator' => "Disajikan konsep computational thinking, peserta didik mampu menganalisis peran teknik dekomposisi masalah.",
+                        'sub_level' => "{$subLevel} - HOTS (Analisis Komputasional)",
+                        'explanation_correct' => "Dekomposisi mereduksi kompleksitas sistem sehingga penyelesaian per modul lebih terfokus dan mudah di-debug.",
+                        'explanation_distractors' => "Pilihan lainnya menyimpang dari esensi metodologi berpikir komputasional.",
+                    ],
+                    [
+                        'stem' => "Perbedaan mendasar antara kesalahan sintaksis (syntax error) dan kesalahan logika (logic error) dalam pemrograman adalah...",
+                        'correct' => "Syntax error melanggar aturan tata bahasa kode sehingga program gagal dijalankan, sedangkan logic error program tetap berjalan tetapi hasil akhirnya salah.",
+                        'distractors' => [
+                            "Syntax error membuat komputer mati mendadak, sedangkan logic error membuat layar monitor berkedip.",
+                            "Syntax error hanya terjadi pada komputer lama, sedangkan logic error terjadi pada ponsel cerdas modern.",
+                            "Syntax error dapat diperbaiki otomatis oleh browser tanpa campur tangan programmer.",
+                        ],
+                        'indicator' => "Disajikan taksonomi galat program, peserta didik mampu membedakan syntax error dan logic error.",
+                        'sub_level' => "{$subLevel} - HOTS (Analisis Galat)",
+                        'explanation_correct' => "Syntax error ditolak parser compiler/interpreter, sedangkan logic error lolos kompilasi namun menghasilkan keluaran keliru.",
+                        'explanation_distractors' => "Pilihan lainnya mengarang dampak fisik yang keliru.",
+                    ],
+                    [
+                        'stem' => "Jika seorang siswa membuat program kalkulator dan saat memasukkan pembagian dengan angka nol program langsung macet (crash), evaluasi penanganan yang perlu ditambahkan adalah...",
+                        'correct' => "Menambahkan validasi kondisi IF untuk mengecek jika angka pembagi sama dengan nol maka tampilkan peringatan 'Pembagi tidak boleh nol'.",
+                        'distractors' => [
+                            "Mengganti jenis monitor komputer dengan monitor beresolusi lebih tinggi.",
+                            "Menghapus seluruh tombol angka pada tampilan antarmuka kalkulator.",
+                            "Mematikan fitur perhitungan perkalian dan pengurangan pada kalkulator.",
+                        ],
+                        'indicator' => "Disajikan penanganan exception pembagian nol, peserta didik mampu merancang validasi error handling.",
+                        'sub_level' => "{$subLevel} - HOTS (Perancangan Solusi)",
+                        'explanation_correct' => "Pencegahan division by zero memerlukan validasi input (defensive programming) sebelum operasi aritmatika dieksekusi.",
+                        'explanation_distractors' => "Pilihan lainnya tidak menyelesaikan akar penyebab crash perhitungan matematika.",
+                    ],
+                ];
+            }
+        }
+
+        if ($domain === 'data_analysis') {
+            if ($effectiveLevel === 'lots') {
+                return [
+                    [
+                        'stem' => "Fungsi rumus pada aplikasi lembar sebar (spreadsheet) yang digunakan untuk menjumlahkan sekumpulan data angka adalah...",
+                        'correct' => "=SUM(...)",
+                        'distractors' => [
+                            "=AVERAGE(...)",
+                            "=MAX(...)",
+                            "=COUNT(...)",
+                        ],
+                        'indicator' => "Disajikan fungsi rumus spreadsheet, peserta didik mampu mengidentifikasi fungsi SUM.",
+                        'sub_level' => "{$subLevel} - LOTS (Pemahaman Data)",
+                        'explanation_correct' => "Fungsi =SUM digunakan untuk menjumlahkan total seluruh nilai numerik dalam rentang sel yang ditentukan.",
+                        'explanation_distractors' => "AVERAGE untuk rata-rata, MAX untuk nilai terbesar, dan COUNT untuk menghitung frekuensi sel angka.",
+                    ],
+                    [
+                        'stem' => "Fungsi rumus lembar sebar yang digunakan untuk menghitung nilai rata-rata dari sekumpulan data angka adalah...",
+                        'correct' => "=AVERAGE(...)",
+                        'distractors' => [
+                            "=SUM(...)",
+                            "=MIN(...)",
+                            "=IF(...)",
+                        ],
+                        'indicator' => "Disajikan fungsi rumus spreadsheet, peserta didik mampu mengidentifikasi fungsi AVERAGE.",
+                        'sub_level' => "{$subLevel} - LOTS (Pemahaman Data)",
+                        'explanation_correct' => "Fungsi =AVERAGE membagi jumlah total nilai dengan banyaknya data secara otomatis.",
+                        'explanation_distractors' => "SUM untuk penjumlahan total, MIN untuk nilai terkecil, dan IF untuk logika syarat.",
+                    ],
+                    [
+                        'stem' => "Kotak pertemuan antara kolom huruf vertikal dan baris angka horizontal pada lembar kerja spreadsheet disebut...",
+                        'correct' => "Sel (Cell).",
+                        'distractors' => [
+                            "Range.",
+                            "Toolbar.",
+                            "Ribbon.",
+                        ],
+                        'indicator' => "Disajikan elemen lembar kerja, peserta didik mampu mengenali pengertian sel (cell).",
+                        'sub_level' => "{$subLevel} - LOTS (Pemahaman Data)",
+                        'explanation_correct' => "Sel adalah unit terkecil tempat memasukkan data yang diidentifikasi oleh koordinat kolom dan baris (contoh: B4).",
+                        'explanation_distractors' => "Range adalah kumpulan beberapa sel, sedangkan toolbar/ribbon adalah deretan menu perintah.",
+                    ],
+                    [
+                        'stem' => "Fitur yang digunakan untuk mengurutkan data dari nilai terkecil ke terbesar (A ke Z) pada tabel spreadsheet adalah...",
+                        'correct' => "Sort Ascending.",
+                        'distractors' => [
+                            "Filter.",
+                            "Merge Cells.",
+                            "Wrap Text.",
+                        ],
+                        'indicator' => "Disajikan pengorganisasian data, peserta didik mampu mengidentifikasi fitur Sort Ascending.",
+                        'sub_level' => "{$subLevel} - LOTS (Pemahaman Data)",
+                        'explanation_correct' => "Sort Ascending menyusun data dari urutan terendah ke tertinggi atau abjad A menuju Z.",
+                        'explanation_distractors' => "Filter menyaring baris data, Merge Cells menggabungkan sel, dan Wrap Text melipat teks panjang.",
+                    ],
+                    [
+                        'stem' => "Fitur pada lembar sebar yang berfungsi menyaring dan menampilkan baris data tertentu saja yang memenuhi kriteria adalah...",
+                        'correct' => "Filter.",
+                        'distractors' => [
+                            "Delete.",
+                            "Underline.",
+                            "Zoom.",
+                        ],
+                        'indicator' => "Disajikan manipulasi data, peserta didik mampu mengenali fungsi Filter.",
+                        'sub_level' => "{$subLevel} - LOTS (Pemahaman Data)",
+                        'explanation_correct' => "Fitur Filter membatasi tampilan baris lembar kerja hanya pada baris yang sesuai dengan parameter syarat yang dipilih.",
+                        'explanation_distractors' => "Delete menghapus data, Underline memberi garis bawah, dan Zoom mengubah skala pandang layar.",
+                    ],
+                    [
+                        'stem' => "Fungsi rumus spreadsheet yang digunakan untuk mencari nilai angka terkecil dari suatu rentang sel adalah...",
+                        'correct' => "=MIN(...)",
+                        'distractors' => [
+                            "=MAX(...)",
+                            "=SUM(...)",
+                            "=COUNT(...)",
+                        ],
+                        'indicator' => "Disajikan fungsi rumus spreadsheet, peserta didik mampu mengidentifikasi fungsi MIN.",
+                        'sub_level' => "{$subLevel} - LOTS (Pemahaman Data)",
+                        'explanation_correct' => "Fungsi =MIN mengevaluasi rentang sel dan mengembalikan nilai numerik paling rendah.",
+                        'explanation_distractors' => "MAX mencari nilai tertinggi, SUM mencari jumlah total, dan COUNT menghitung jumlah data.",
+                    ],
+                ];
+            } elseif ($effectiveLevel === 'mots') {
+                return [
+                    [
+                        'stem' => "Jika sel B2 bernilai 80 dan sel B3 bernilai 90, rumus yang tepat untuk menghitung nilai rata-rata kedua sel tersebut adalah...",
+                        'correct' => "=AVERAGE(B2:B3)",
+                        'distractors' => [
+                            "=SUM(B2:B3)",
+                            "=MAX(B2:B3)",
+                            "=COUNT(B2:B3)",
+                        ],
+                        'indicator' => "Disajikan alamat sel nilai, peserta didik mampu menerapkan rumus fungsi AVERAGE secara benar.",
+                        'sub_level' => "C3 - MOTS (Penerapan Formula)",
+                        'explanation_correct' => "Sintaks =AVERAGE(B2:B3) menjumlahkan 80 + 90 lalu membaginya dengan 2 menghasilkan nilai rata-rata 85.",
+                        'explanation_distractors' => "Fungsi lainnya menghasilkan nilai jumlah (170), nilai maksimal (90), atau jumlah sel (2).",
+                    ],
+                    [
+                        'stem' => "Tanda baca yang wajib dituliskan di awal setiap penulisan rumus fungsi perhitungan pada spreadsheet adalah...",
+                        'correct' => "Tanda sama dengan ( = )",
+                        'distractors' => [
+                            "Tanda pagar ( # )",
+                            "Tanda tanya ( ? )",
+                            "Tanda petik dua ( \" )",
+                        ],
+                        'indicator' => "Disajikan penulisan rumus, peserta didik mampu menerapkan tanda awal penulisan formula spreadsheet.",
+                        'sub_level' => "C3 - MOTS (Penerapan Formula)",
+                        'explanation_correct' => "Tanda sama dengan '=' memberi sinyal pada aplikasi bahwa teks yang diketik adalah rumus perhitungan yang harus dieksekusi.",
+                        'explanation_distractors' => "Tanpa tanda '=', aplikasi akan menganggap isian sel sebagai teks biasa.",
+                    ],
+                    [
+                        'stem' => "Langkah paling cepat untuk mencari nilai tertinggi dari daftar nilai ulangan siswa pada rentang sel C2 sampai C30 adalah menggunakan fungsi...",
+                        'correct' => "=MAX(C2:C30)",
+                        'distractors' => [
+                            "=MIN(C2:C30)",
+                            "=SUM(C2:C30)",
+                            "=MEDIAN(C2:C30)",
+                        ],
+                        'indicator' => "Disajikan daftar nilai kelas, peserta didik mampu menerapkan fungsi MAX pada rentang data.",
+                        'sub_level' => "C3 - MOTS (Penerapan Formula)",
+                        'explanation_correct' => "Fungsi =MAX memindai seluruh data pada rentang C2:C30 dan menampilkan angka nilai tertinggi.",
+                        'explanation_distractors' => "MIN mencari nilai terendah, SUM menjumlahkan, dan MEDIAN mencari nilai tengah.",
+                    ],
+                    [
+                        'stem' => "Jika kamu ingin menggabungkan beberapa sel yang bersebelahan menjadi satu sel besar untuk judul tabel, fitur yang digunakan adalah...",
+                        'correct' => "Merge & Center.",
+                        'distractors' => [
+                            "Conditional Formatting.",
+                            "Text to Columns.",
+                            "Data Validation.",
+                        ],
+                        'indicator' => "Disajikan perapian tabel, peserta didik mampu menerapkan fitur penggabungan sel Merge & Center.",
+                        'sub_level' => "C3 - MOTS (Penerapan Format)",
+                        'explanation_correct' => "Merge & Center menggabungkan area sel terpilih menjadi satu bidang sel dan memposisikan teks di tengah.",
+                        'explanation_distractors' => "Pilihan lainnya untuk format bersyarat, pemisahan kolom teks, dan pembatasan input.",
+                    ],
+                    [
+                        'stem' => "Saat menyalin rumus yang menggunakan alamat sel relatif (relative reference) dari baris 2 ke baris 3, perubahan yang terjadi adalah...",
+                        'correct' => "Nomor baris pada rumus akan otomatis menyesuaikan bertambah satu menjadi baris 3.",
+                        'distractors' => [
+                            "Rumus akan terkunci dan nilainya menjadi nol.",
+                            "Seluruh isi data pada baris 2 akan terhapus otomatis.",
+                            "Rumus berubah menjadi teks biasa tanpa hasil perhitungan.",
+                        ],
+                        'indicator' => "Disajikan penyalinan formula, peserta didik mampu menerapkan prinsip referensi sel relatif.",
+                        'sub_level' => "C3 - MOTS (Penerapan Formula)",
+                        'explanation_correct' => "Referensi relatif memperbarui indeks baris/kolom secara otomatis mengikuti posisi tujuan penyalinan.",
+                        'explanation_distractors' => "Referensi tidak terkunci menjadi nol dan data baris awal tidak terhapus.",
+                    ],
+                    [
+                        'stem' => "Jika kamu ingin menghitung berapa banyak siswa yang ada di daftar nilai berdasarkan rentang sel nama A2 sampai A40, fungsi yang tepat adalah...",
+                        'correct' => "=COUNTA(A2:A40)",
+                        'distractors' => [
+                            "=SUM(A2:A40)",
+                            "=AVERAGE(A2:A40)",
+                            "=MAX(A2:A40)",
+                        ],
+                        'indicator' => "Disajikan perhitungan entri data teks, peserta didik mampu menerapkan fungsi COUNTA.",
+                        'sub_level' => "C3 - MOTS (Penerapan Formula)",
+                        'explanation_correct' => "Fungsi =COUNTA menghitung banyaknya sel yang tidak kosong (berisi teks maupun angka).",
+                        'explanation_distractors' => "SUM, AVERAGE, dan MAX hanya memproses data numerik dan mengabaikan teks nama siswa.",
+                    ],
+                ];
+            } else {
+                return [
+                    [
+                        'stem' => "Pada sel hasil rumus spreadsheet muncul pesan galat '#DIV/0!'. Analisis penyebab galat tersebut yang paling tepat adalah...",
+                        'correct' => "Rumus mencoba membagi suatu bilangan dengan angka nol atau sel yang kosong.",
+                        'distractors' => [
+                            "Teks di dalam sel terlalu panjang untuk lebar kolom yang tersedia.",
+                            "Komputer tidak terhubung ke jaringan internet lokal.",
+                            "Nama fungsi rumus salah ketik (misalnya mengetik =SUMM).",
+                        ],
+                        'indicator' => "Disajikan kode galat spreadsheet, peserta didik mampu menganalisis penyebab galat #DIV/0!.",
+                        'sub_level' => "{$subLevel} - HOTS (Analisis Galat)",
+                        'explanation_correct' => "Galat #DIV/0! (Division by Zero) terjadi saat operasi matematika melakukan pembagian dengan penyebut bernilai nol atau kosong.",
+                        'explanation_distractors' => "Kolom sempit memunculkan '###', sedangkan salah ketik fungsi memunculkan '#NAME?'.",
+                    ],
+                    [
+                        'stem' => "Mengapa penggunaan tanda dolar ($) pada rumus sel absolut (misal $A$1) sangat penting saat menyalin rumus ke banyak baris lain?",
+                        'correct' => "Agar referensi sel yang dikunci tetap merujuk ke sel A1 dan tidak bergeser saat rumus disalin ke baris atau kolom lain.",
+                        'distractors' => [
+                            "Agar hasil perhitungan otomatis dikonversi ke dalam mata uang dolar Amerika.",
+                            "Agar sel tersebut tidak bisa dibaca oleh pengguna lain di lembar kerja.",
+                            "Untuk mempercepat perhitungan matematika pada prosesor komputer.",
+                        ],
+                        'indicator' => "Disajikan penguncian sel absolut, peserta didik mampu mengevaluasi fungsi penguncian referensi sel ($).",
+                        'sub_level' => "{$subLevel} - HOTS (Analisis Formula)",
+                        'explanation_correct' => "Karakter '$' mengunci koordinat absolut baris dan kolom agar tidak mengalami pergeseran relatif saat autofill diseret.",
+                        'explanation_distractors' => "Tanda '$' bukan simbol konversi mata uang dan tidak memengaruhi kecepatan clock prosesor.",
+                    ],
+                    [
+                        'stem' => "Diberikan tabel data penjualan kantin selama 1 tahun. Jika kepala sekolah ingin melihat tren kenaikan dan penurunan penjualan per bulan, representasi visual terbaik adalah...",
+                        'correct' => "Grafik garis (line chart) dengan sumbu X nama bulan dan sumbu Y total penjualan.",
+                        'distractors' => [
+                            "Diagram lingkaran (pie chart) dengan 365 irisan per hari.",
+                            "Tabel angka mentah tanpa pengurutan dan tanpa grafik.",
+                            "Diagram batang horizontal acak tanpa label waktu.",
+                        ],
+                        'indicator' => "Disajikan data berkala tahunan, peserta didik mampu mengevaluasi dan memilih visualisasi tren garis yang optimal.",
+                        'sub_level' => "{$subLevel} - HOTS (Evaluasi Visualisasi Data)",
+                        'explanation_correct' => "Grafik garis secara visual menghubungkan titik data berurutan waktu sehingga pola kenaikan dan penurunan tren langsung terlihat jelas.",
+                        'explanation_distractors' => "Diagram lingkaran dengan ratusan irisan tidak terbaca, dan tabel mentah tidak menonjolkan tren visual.",
+                    ],
+                    [
+                        'stem' => "Jika sel C2 berisi rumus: =IF(B2>=75; \"Tuntas\"; \"Remedial\"), apa yang terjadi jika isi sel B2 diubah dari 80 menjadi 70?",
+                        'correct' => "Nilai di sel C2 otomatis berubah dari 'Tuntas' menjadi 'Remedial' secara dinamis.",
+                        'distractors' => [
+                            "Muncul pesan error karena rumus tidak bisa menghitung ulang data yang diganti.",
+                            "Isi sel C2 tetap 'Tuntas' sampai komputer dimatikan dan dinyalakan ulang.",
+                            "Sel C2 terhapus permanen dari lembar sebar.",
+                        ],
+                        'indicator' => "Disajikan rumus logika IF dinamis, peserta didik mampu menganalisis perubahan status kalkulasi otomatis.",
+                        'sub_level' => "{$subLevel} - HOTS (Analisis Formula)",
+                        'explanation_correct' => "Spreadsheet menghitung ulang formula secara reaktif; nilai 70 tidak memenuhi syarat '>=75' sehingga mengevaluasi kondisi alternatif.",
+                        'explanation_distractors' => "Pilihan lainnya bertentangan dengan sifat kalkulasi reaktif otomatis pada software lembar sebar.",
+                    ],
+                    [
+                        'stem' => "Evaluasi manfaat penggunaan fitur Conditional Formatting pada tabel data nilai siswa adalah...",
+                        'correct' => "Mempermudah identifikasi visual (misalnya warna merah otomatis untuk nilai di bawah KKM) sehingga analisis data lebih cepat.",
+                        'distractors' => [
+                            "Mengubah angka nilai siswa secara otomatis menjadi nilai sempurna 100.",
+                            "Menghapus data siswa yang tidak lulus secara permanen tanpa konfirmasi.",
+                            "Mengunci file spreadsheet agar tidak bisa dicetak menggunakan printer.",
+                        ],
+                        'indicator' => "Disajikan penyajian data tabel, peserta didik mampu mengevaluasi nilai efisiensi Conditional Formatting.",
+                        'sub_level' => "{$subLevel} - HOTS (Evaluasi Analisis Data)",
+                        'explanation_correct' => "Pewarnaan otomatis berbasis aturan mempercepat deteksi pencilan (outliers) dan siswa yang membutuhkan remedial.",
+                        'explanation_distractors' => "Fitur format tampilan tidak mengubah isi data mentah dan tidak menghapus rekaman data.",
+                    ],
+                    [
+                        'stem' => "Pada kolom tanggal muncul tanda '######' di seluruh sel. Evaluasi penyebab dan cara mengatasi tampilan tersebut adalah...",
+                        'correct' => "Lebar kolom terlalu sempit untuk menampilkan angka tanggal, solusinya perlebar ukuran kolom tersebut.",
+                        'distractors' => [
+                            "Data di dalam sel telah rusak dan harus diketik ulang dari awal.",
+                            "Format sel harus diubah menjadi rumus matematika.",
+                            "Komputer terkena virus dan harus dimatikan.",
+                        ],
+                        'indicator' => "Disajikan anomali tampilan kolom, peserta didik mampu menganalisis penyebab string '######'.",
+                        'sub_level' => "{$subLevel} - HOTS (Analisis Tampilan)",
+                        'explanation_correct' => "Tanda '###' adalah sinyal bahwa representasi format angka/tanggal melebihi batas lebar fisik kolom sel.",
+                        'explanation_distractors' => "Data tidak rusak dan tidak berkaitan dengan serangan virus.",
+                    ],
+                ];
+            }
+        }
+
+        if ($domain === 'network_internet') {
+            if ($effectiveLevel === 'lots') {
+                return [
+                    [
+                        'stem' => "Jaringan komputer yang mencakup area lokal terbatas seperti laboratorium komputer sekolah, ruang kelas, atau gedung kantor disebut...",
+                        'correct' => "Local Area Network (LAN).",
+                        'distractors' => [
+                            "Wide Area Network (WAN).",
+                            "Metropolitan Area Network (MAN).",
+                            "Internet Global.",
+                        ],
+                        'indicator' => "Disajikan cakupan jaringan, peserta didik mampu mengidentifikasi karakteristik jaringan LAN.",
+                        'sub_level' => "{$subLevel} - LOTS (Pemahaman Jaringan)",
+                        'explanation_correct' => "LAN mencakup wilayah geografis lokal terbatas dengan kecepatan transfer data tinggi antarperangkat setempat.",
+                        'explanation_distractors' => "MAN mencakup skala kota, WAN mencakup antarnegara, dan Internet mencakup seluruh dunia.",
+                    ],
+                    [
+                        'stem' => "Perangkat keras jaringan yang berfungsi membagi dan merutekan koneksi data internet ke beberapa perangkat klien adalah...",
+                        'correct' => "Router / Access Point.",
+                        'distractors' => [
+                            "Processor.",
+                            "Monitor LED.",
+                            "Flashdisk USB.",
+                        ],
+                        'indicator' => "Disajikan perangkat jaringan, peserta didik mampu mengenali fungsi router.",
+                        'sub_level' => "{$subLevel} - LOTS (Pemahaman Jaringan)",
+                        'explanation_correct' => "Router mengarahkan paket data antarjaringan dan mendistribusikan koneksi internet ke perangkat pengguna.",
+                        'explanation_distractors' => "Processor adalah pemroses CPU, monitor penampil visual, dan flashdisk media penyimpanan.",
+                    ],
+                    [
+                        'stem' => "Perangkat lunak (software) yang digunakan pengguna untuk membuka dan menjelajahi halaman situs web di internet adalah...",
+                        'correct' => "Web Browser (seperti Google Chrome, Microsoft Edge, atau Mozilla Firefox).",
+                        'distractors' => [
+                            "Search Engine (seperti Google Search atau Bing).",
+                            "Operating System.",
+                            "Spreadsheet.",
+                        ],
+                        'indicator' => "Disajikan aplikasi internet, peserta didik mampu mengidentifikasi peramban web (browser).",
+                        'sub_level' => "{$subLevel} - LOTS (Pemahaman Jaringan)",
+                        'explanation_correct' => "Web browser adalah aplikasi klien yang menerjemahkan kode HTML/CSS dari server web menjadi halaman visual.",
+                        'explanation_distractors' => "Search engine adalah situs mesin pencari di web, OS pengendali komputer, dan spreadsheet pengolah angka.",
+                    ],
+                    [
+                        'stem' => "Tanda ikon gembok terkunci pada bilah alamat situs web di peramban (browser) menandakan bahwa...",
+                        'correct' => "Koneksi ke situs web menggunakan protokol enkripsi yang aman (HTTPS).",
+                        'distractors' => [
+                            "Situs web tersebut sedang mengalami kerusakan server.",
+                            "Komputer dilarang mengakses informasi pada situs tersebut.",
+                            "Pengguna harus membayar biaya langganan untuk membaca artikel.",
+                        ],
+                        'indicator' => "Disajikan indikator keamanan web, peserta didik mampu mengidentifikasi makna simbol gembok HTTPS.",
+                        'sub_level' => "{$subLevel} - LOTS (Pemahaman Jaringan)",
+                        'explanation_correct' => "Ikon gembok menunjukkan sertifikat SSL/TLS aktif yang mengenkripsi jalur transmisi data antara klien dan server.",
+                        'explanation_distractors' => "Pilihan lainnya tidak memiliki kaitan dengan sertifikasi enkripsi web.",
+                    ],
+                    [
+                        'stem' => "Alamat unik berupa kombinasi angka atau nama domain yang digunakan untuk mengidentifikasi komputer atau server di internet disebut...",
+                        'correct' => "IP Address (atau URL/Domain).",
+                        'distractors' => [
+                            "MAC Processor.",
+                            "RAM Register.",
+                            "Serial Key Office.",
+                        ],
+                        'indicator' => "Disajikan pengalamatan jaringan, peserta didik mampu mengenali fungsi IP Address dan Domain.",
+                        'sub_level' => "{$subLevel} - LOTS (Pemahaman Jaringan)",
+                        'explanation_correct' => "IP Address dan nama domain menjadi alamat unik tujuan pengiriman paket data di jaringan komputer global.",
+                        'explanation_distractors' => "Pilihan lainnya adalah register internal perangkat atau lisensi software.",
+                    ],
+                    [
+                        'stem' => "Jaringan komunikasi global tanpa kabel yang menghubungkan jutaan komputer di seluruh dunia menggunakan protokol TCP/IP disebut...",
+                        'correct' => "Internet.",
+                        'distractors' => [
+                            "Intranet.",
+                            "LAN kabel.",
+                            "Bluetooth.",
+                        ],
+                        'indicator' => "Disajikan konsep jaringan global, peserta didik mampu mendefinisikan internet.",
+                        'sub_level' => "{$subLevel} - LOTS (Pemahaman Jaringan)",
+                        'explanation_correct' => "Internet (Interconnected Network) adalah jaringan interkoneksi raksasa berskala global berbasis protokol TCP/IP.",
+                        'explanation_distractors' => "Intranet bersifat internal privat, LAN berskala lokal gedung, dan Bluetooth berjarak sangat dekat.",
+                    ],
+                ];
+            } elseif ($effectiveLevel === 'mots') {
+                return [
+                    [
+                        'stem' => "Ketika laptopmu terhubung ke sinyal Wi-Fi sekolah namun muncul keterangan 'No Internet Access', langkah verifikasi awal yang tepat adalah...",
+                        'correct' => "Memeriksa apakah router sekolah terhubung ke sumber internet penyedia jasa (ISP) atau mencoba menyambungkan ulang Wi-Fi.",
+                        'distractors' => [
+                            "Langsung membongkar casing laptop untuk mengganti kartu memori.",
+                            "Menghapus semua file tugas di dalam harddisk laptop.",
+                            "Mematikan layar laptop dan menyalakannya berulang-ulang.",
+                        ],
+                        'indicator' => "Disajikan gangguan koneksi Wi-Fi, peserta didik mampu menerapkan langkah verifikasi konektivitas jaringan.",
+                        'sub_level' => "C3 - MOTS (Penerapan Jaringan)",
+                        'explanation_correct' => "Keterangan tersebut menunjukkan laptop terhubung ke LAN router namun router belum menerima suplai internet dari ISP.",
+                        'explanation_distractors' => "Membongkar hardware atau menghapus tugas tidak ada hubungannya dengan status link internet.",
+                    ],
+                    [
+                        'stem' => "Tindakan yang paling tepat jika kamu ingin mengunduh bahan materi pelajaran dari internet secara aman adalah...",
+                        'correct' => "Mengunduh dari portal resmi sekolah atau situs sumber tepercaya dan memindainya dengan antivirus.",
+                        'distractors' => [
+                            "Mengeklik banner iklan unduhan yang berkedip-kedip di situs mencurigakan.",
+                            "Mengunduh file berekstensi .exe dari pengirim yang tidak dikenal di media sosial.",
+                            "Mematikan sistem keamanan antivirus sebelum mengunduh.",
+                        ],
+                        'indicator' => "Disajikan unduhan berkas, peserta didik mampu menerapkan praktik pengunduhan dokumen yang aman.",
+                        'sub_level' => "C3 - MOTS (Penerapan Keamanan)",
+                        'explanation_correct' => "Memverifikasi reputasi domain penyedia berkas dan memindai malware menjamin keaslian dan keamanan berkas.",
+                        'explanation_distractors' => "Mengeklik banner iklan atau berkas .exe misterius berisiko tinggi menginfeksi malware.",
+                    ],
+                    [
+                        'stem' => "Perbedaan fungsi mendasar antara Web Browser dan Search Engine saat kita mencari materi di internet adalah...",
+                        'correct' => "Web browser adalah aplikasi untuk menampilkan situs web, sedangkan search engine adalah layanan di web untuk mencari informasi kata kunci.",
+                        'distractors' => [
+                            "Web browser hanya bekerja tanpa koneksi internet, sedangkan search engine membutuhkan kabel LAN.",
+                            "Web browser adalah perangkat keras monitor, sedangkan search engine adalah perangkat lunak printer.",
+                            "Keduanya memiliki arti dan fungsi yang sama persis tanpa perbedaan.",
+                        ],
+                        'indicator' => "Disajikan penjelajahan web, peserta didik mampu membedakan peran browser dan mesin pencari.",
+                        'sub_level' => "C3 - MOTS (Penerapan Jaringan)",
+                        'explanation_correct' => "Browser merupakan pintu pembuka (perangkat lunak klien), sementara search engine adalah situs web direktori indeks informasi.",
+                        'explanation_distractors' => "Pilihan lainnya keliru mendeskripsikan jenis perangkat dan ketergantungan koneksi.",
+                    ],
+                    [
+                        'stem' => "Saat mengirim email tugas kepada guru dengan menyertakan berkas dokumen tugas, fitur yang harus kamu klik adalah...",
+                        'correct' => "Lampiran (Attachment) dengan ikon klip kertas.",
+                        'distractors' => [
+                            "Kotak Sampah (Spam/Trash).",
+                            "Tombol Bintang (Favorite).",
+                            "Tanda Blokir Akun (Block Sender).",
+                        ],
+                        'indicator' => "Disajikan pengiriman surel tugas, peserta didik mampu menerapkan fitur lampiran (attachment).",
+                        'sub_level' => "C3 - MOTS (Penerapan Jaringan)",
+                        'explanation_correct' => "Fitur attachment menyematkan berkas digital ke dalam pesan email agar dapat diunduh oleh guru penerima.",
+                        'explanation_distractors' => "Pilihan lainnya untuk menghapus email, menandai favorit, atau memblokir pengirim.",
+                    ],
+                    [
+                        'stem' => "Keuntungan utama menggunakan penyimpanan berbasis awan (cloud storage seperti Google Drive) untuk menyimpan tugas sekolah adalah...",
+                        'correct' => "Berkas tugas dapat diakses dan disunting dari mana saja melalui internet tanpa takut hilang jika perangkat fisik rusak.",
+                        'distractors' => [
+                            "Kapasitas penyimpanan awan membuat baterai laptop tidak pernah berkurang.",
+                            "Tugas akan otomatis dikerjakan oleh server awan tanpa campur tangan siswa.",
+                            "Awan penyimpanan hanya bisa dibuka saat cuaca mendung.",
+                        ],
+                        'indicator' => "Disajikan pemanfaatan cloud storage, peserta didik mampu menerapkan penyimpanan berkas awan.",
+                        'sub_level' => "C3 - MOTS (Penerapan Praktis)",
+                        'explanation_correct' => "Cloud storage menyinkronkan data ke server terdistribusi sehingga portabel dan tahan terhadap kerusakan flashdisk lokal.",
+                        'explanation_distractors' => "Pilihan lainnya adalah asumsi fiktif yang tidak berdasar sains teknologi.",
+                    ],
+                    [
+                        'stem' => "Jika seorang siswa ingin menghubungkan komputernya ke printer nirkabel tanpa menggunakan kabel panjang di ruangan lab, teknologi koneksi yang digunakan adalah...",
+                        'correct' => "Wi-Fi atau Bluetooth.",
+                        'distractors' => [
+                            "Kabel VGA.",
+                            "Kabel HDMI.",
+                            "Flashdisk.",
+                        ],
+                        'indicator' => "Disajikan perangkat nirkabel, peserta didik mampu menerapkan konektivitas Wi-Fi atau Bluetooth.",
+                        'sub_level' => "C3 - MOTS (Penerapan Jaringan)",
+                        'explanation_correct' => "Teknologi transmisi radio nirkabel seperti Wi-Fi dan Bluetooth menghubungkan perangkat periferal tanpa bentangan kabel fisik.",
+                        'explanation_distractors' => "VGA dan HDMI adalah kabel display monitor berkawat tembaga.",
+                    ],
+                ];
+            } else {
+                return [
+                    [
+                        'stem' => "Mengapa menggunakan jaringan Wi-Fi publik gratis tanpa kata sandi di tempat umum rentan terhadap ancaman keamanan data?",
+                        'correct' => "Karena lalu lintas data yang tidak terenkripsi pada jaringan publik dapat disadap oleh penyerang siber dalam jaringan yang sama (sniffing).",
+                        'distractors' => [
+                            "Karena sinyal Wi-Fi gratis otomatis merusak baterai ponsel secara fisik.",
+                            "Karena penyedia Wi-Fi akan menghapus semua file foto di galeri ponsel.",
+                            "Karena ponsel akan otomatis mengirimkan pesan SMS berbayar ke luar negeri.",
+                        ],
+                        'indicator' => "Disajikan risiko Wi-Fi publik, peserta didik mampu menganalisis ancaman penyadapan paket data jaringan.",
+                        'sub_level' => "{$subLevel} - HOTS (Analisis Keamanan Jaringan)",
+                        'explanation_correct' => "Ketiadaan enkripsi level jaringan memungkinkan teknik packet sniffing dan Man-in-the-Middle (MITM) menyadap data kredensial.",
+                        'explanation_distractors' => "Pilihan pengecoh mengarang kerusakan baterai atau manipulasi SMS yang mustahil.",
+                    ],
+                    [
+                        'stem' => "Analisis keunggulan koneksi internet menggunakan kabel LAN (UTP) dibandingkan koneksi nirkabel (Wi-Fi) dalam ruang lab komputer adalah...",
+                        'correct' => "Koneksi kabel LAN memiliki kecepatan transmisi data yang lebih stabil dan minim gangguan interferensi sinyal dibandingkan Wi-Fi.",
+                        'distractors' => [
+                            "Koneksi Wi-Fi selalu lebih stabil saat terhalang dinding beton tebal dibandingkan kabel LAN.",
+                            "Kabel LAN tidak memerlukan aliran sinyal data sama sekali untuk menghubungkan komputer.",
+                            "Koneksi Wi-Fi memerlukan pemasangan soket tembaga di setiap meja siswa.",
+                        ],
+                        'indicator' => "Disajikan perbandingan media transmisi, peserta didik mampu mengevaluasi keandalan kabel tembaga terhadap gelombang radio.",
+                        'sub_level' => "{$subLevel} - HOTS (Evaluasi Transmisi)",
+                        'explanation_correct' => "Media terpandu (guided media) seperti kabel tembaga bebas dari pelemahan gelombang radio akibat rintangan fisik dan frekuensi bentrok.",
+                        'explanation_distractors' => "Gelombang Wi-Fi justru terdegradasi parah saat menembus dinding beton.",
+                    ],
+                    [
+                        'stem' => "Seorang siswa mencoba mengakses situs web sekolah tetapi muncul pesan '404 Not Found'. Evaluasi yang paling tepat mengenai pesan galat tersebut adalah...",
+                        'correct' => "Server web aktif merespons, namun halaman atau alamat URL spesifik yang diminta tidak ditemukan atau telah dipindahkan.",
+                        'distractors' => [
+                            "Kabel listrik monitor komputer siswa terputus.",
+                            "Sistem operasi komputer siswa telah kedaluwarsa dan harus diganti.",
+                            "Seluruh jaringan internet global di dunia sedang dimatikan sementara.",
+                        ],
+                        'indicator' => "Disajikan kode status HTTP, peserta didik mampu mengevaluasi arti status 404 Not Found.",
+                        'sub_level' => "{$subLevel} - HOTS (Evaluasi Protokol)",
+                        'explanation_correct' => "Kode status HTTP 404 menandakan server berhasil dihubungi (handshake sukses), tetapi endpoint URL yang diminta tidak eksis.",
+                        'explanation_distractors' => "Pilihan lainnya mencampuradukkan galat listrik atau mematikan internet global.",
+                    ],
+                    [
+                        'stem' => "Mengapa protokol HTTPS jauh lebih disarankan dibandingkan HTTP biasa saat melakukan transaksi atau pengisian formulir di internet?",
+                        'correct' => "Karena HTTPS mengenkripsi data yang dikirim antara browser dan server sehingga tidak bisa dibaca oleh pihak ketiga di tengah jalan.",
+                        'distractors' => [
+                            "Karena HTTPS membuat ukuran halaman web menjadi dua kali lebih besar dan lambat.",
+                            "Karena HTTP biasa hanya boleh digunakan oleh instansi militer dan pemerintah.",
+                            "Karena HTTPS tidak membutuhkan koneksi jaringan internet untuk membuka halaman.",
+                        ],
+                        'indicator' => "Disajikan enkripsi protokol web, peserta didik mampu menganalisis pentingnya saluran terenkripsi HTTPS.",
+                        'sub_level' => "{$subLevel} - HOTS (Analisis Protokol)",
+                        'explanation_correct' => "Kriptografi SSL/TLS pada HTTPS mengamankan kerahasiaan dan integritas data dari aksi penyadapan (eavesdropping).",
+                        'explanation_distractors' => "HTTPS tidak melipatgandakan bobot halaman dan tetap memerlukan koneksi jaringan.",
+                    ],
+                    [
+                        'stem' => "Jika kecepatan unduh (download speed) cepat tetapi latensi (ping) sangat tinggi saat melakukan pembelajaran tatap muka daring, dampak yang dirasakan adalah...",
+                        'correct' => "Terjadi keterlambatan suara dan video (lag/delay) saat berkomunikasi interaktif dua arah.",
+                        'distractors' => [
+                            "Video akan otomatis terputar dengan kecepatan dua kali lebih cepat tanpa jeda.",
+                            "Tampilan warna video di layar akan berubah menjadi format hitam putih.",
+                            "Laptop akan menolak memutar suara dari pembicara.",
+                        ],
+                        'indicator' => "Disajikan parameter jaringan bandwidth vs latency, peserta didik mampu menganalisis dampak latensi tinggi pada komunikasi real-time.",
+                        'sub_level' => "{$subLevel} - HOTS (Analisis Kinerja Jaringan)",
+                        'explanation_correct' => "Aplikasi real-time interaktif sangat sensitif terhadap round-trip time (ping); latensi tinggi menyebabkan delay percakapan.",
+                        'explanation_distractors' => "Latensi tinggi tidak mengubah format warna video atau mempercepat pemutaran suara.",
+                    ],
+                    [
+                        'stem' => "Analisis risiko dari mengeklik tautan URL yang dipendekkan (short link) dari sumber yang tidak jelas adalah...",
+                        'correct' => "Tautan tersebut dapat mengarahkan pengguna ke situs web tiruan (phishing) atau memicu pengunduhan malware berbahaya.",
+                        'distractors' => [
+                            "Kapasitas RAM komputer akan berkurang separuh.",
+                            "Suhu ruangan lab komputer akan meningkat drastis.",
+                            "Speaker komputer akan otomatis memutar musik keras.",
+                        ],
+                        'indicator' => "Disajikan pemendek tautan, peserta didik mampu menganalisis risiko pengelabuan alamat tujuan web.",
+                        'sub_level' => "{$subLevel} - HOTS (Analisis Keamanan)",
+                        'explanation_correct' => "Short link menyembunyikan domain tujuan asli sehingga sering dimanfaatkan penyerang untuk mengelabui korban.",
+                        'explanation_distractors' => "Short link tidak memotong kapasitas RAM atau menaikkan suhu ruangan secara fisik.",
+                    ],
+                ];
+            }
+        }
+
+        // Generic / Fallback (Purely substantive for any other subjects / topics)
+        if ($effectiveLevel === 'lots') {
+            return [
+                [
+                    'stem' => "Konsep dasar yang menjadi inti pembahasan materi {$coreNoun} adalah...",
+                    'correct' => "Keterpaduan hubungan fungsional antarelemen materi yang tersusun sistematis untuk mencapai sasaran terukur.",
+                    'distractors' => [
+                        "Kumpulan data acak yang tidak memiliki keterkaitan operasional satu sama lain.",
+                        "Asumsi subjektif tanpa bukti empiris atau fakta pendukung yang terverifikasi.",
+                        "Prosedur historis yang sudah ditinggalkan dan tidak lagi relevan dengan topik ini.",
+                    ],
+                    'indicator' => "Disajikan konsep dasar, peserta didik mampu mengidentifikasi substansi keilmuan materi {$coreNoun}.",
+                    'sub_level' => "{$subLevel} - LOTS (Pemahaman Konseptual)",
+                    'explanation_correct' => "Pilihan ini mendefinisikan esensi materi {$coreNoun} secara tepat berdasarkan keterpaduan antarelemen penyusunnya.",
+                    'explanation_distractors' => "Pilihan pengecoh mengasumsikan data acak, ketiadaan bukti empiris, atau prosedur usang.",
+                ],
+                [
+                    'stem' => "Karakteristik utama yang membedakan materi {$coreNoun} dari bahasan lainnya ditunjukkan oleh...",
+                    'correct' => "Memiliki aturan baku, komponen terstruktur, serta alur kerja yang terstandarisasi.",
+                    'distractors' => [
+                        "Bekerja secara spontan tanpa memerlukan parameter atau kriteria mutu tertentu.",
+                        "Hanya berlaku dalam kondisi khusus tanpa memiliki dasar prinsip yang jelas.",
+                        "Mengabaikan hubungan sebab-akibat antarunsur pembentuknya.",
+                    ],
+                    'indicator' => "Disajikan karakteristik materi, peserta didik mampu membedakan ciri pokok {$coreNoun}.",
+                    'sub_level' => "{$subLevel} - LOTS (Pemahaman Konseptual)",
+                    'explanation_correct' => "Karakteristik fundamental materi keilmuan terletak pada keteraturan kaidah dan standarisasi prosesnya.",
+                    'explanation_distractors' => "Pilihan lainnya mencerminkan ketiadaan aturan baku atau pengabaian prinsip kausalitas.",
+                ],
+                [
+                    'stem' => "Elemen mendasar yang paling menentukan ketepatan pelaksanaan materi {$coreNoun} adalah...",
+                    'correct' => "Ketepatan identifikasi variabel awal dan kepatuhan terhadap kaidah keilmuan yang berlaku.",
+                    'distractors' => [
+                        "Kecepatan menyelesaikan langkah kerja dengan mengabaikan pemeriksaan kualitas.",
+                        "Penggunaan praduga pribadi tanpa mencocokkan dengan parameter materi.",
+                        "Pengurangan tahapan penting dengan tujuan mempercepat hasil.",
+                    ],
+                    'indicator' => "Disajikan elemen penentu, peserta didik mampu mengidentifikasi faktor ketepatan pelaksanaan {$coreNoun}.",
+                    'sub_level' => "{$subLevel} - LOTS (Pemahaman Konseptual)",
+                    'explanation_correct' => "Ketepatan variabel awal dan kepatuhan kaidah ilmiah adalah fondasi mutu setiap penerapan materi.",
+                    'explanation_distractors' => "Mengejar kecepatan tanpa kontrol kualitas mengorbankan keabsahan luaran.",
+                ],
+                [
+                    'stem' => "Dalam konteks {$subjectName}, fungsi mendasar dari materi {$coreNoun} adalah...",
+                    'correct' => "Menyediakan landasan analitis guna memahami dan menguraikan permasalahan secara logis.",
+                    'distractors' => [
+                        "Membatasi eksplorasi ide baru yang relevan dengan perkembangan keilmuan.",
+                        "Menciptakan kerumitan proses tanpa memberikan nilai tambah keilmuan.",
+                        "Menggantikan peran pengamatan empiris dengan spekulasi tanpa bukti.",
+                    ],
+                    'indicator' => "Disajikan fungsi materi, peserta didik mampu menguraikan peran analitis {$coreNoun}.",
+                    'sub_level' => "{$subLevel} - LOTS (Pemahaman Konseptual)",
+                    'explanation_correct' => "Materi ini berperan strategis sebagai kerangka logis dalam membedah dan menyelesaikan permasalahan.",
+                    'explanation_distractors' => "Pilihan lainnya mengklaim pembatasan inovasi atau kerumitan tanpa faedah.",
+                ],
+                [
+                    'stem' => "Prinsip keilmuan yang mendasari keabsahan materi {$coreNoun} adalah...",
+                    'correct' => "Setiap luaran atau hasil akhir sangat ditentukan oleh keabsahan proses dan kualitas data awal.",
+                    'distractors' => [
+                        "Kualitas hasil akhir tidak dipengaruhi oleh ketelitian proses yang ditempuh.",
+                        "Prosedur kerja dapat diubah sewaktu-waktu tanpa perhitungan dampak teknis.",
+                        "Penyederhanaan proses dilakukan dengan menghapus tahapan verifikasi utama.",
+                    ],
+                    'indicator' => "Disajikan prinsip keilmuan, peserta didik mampu memvalidasi kaidah dasar {$coreNoun}.",
+                    'sub_level' => "{$subLevel} - LOTS (Pemahaman Konseptual)",
+                    'explanation_correct' => "Kaidah ilmiah universal menegaskan bahwa integritas proses dan masukan menentukan keandalan produk akhir.",
+                    'explanation_distractors' => "Pilihan pengecoh mengabaikan hubungan kausalitas antara proses dan kualitas luaran.",
+                ],
+                [
+                    'stem' => "Kaidah penting yang harus diperhatikan dalam menelaah materi {$coreNoun} adalah...",
+                    'correct' => "Memperhatikan keterkaitan sebab-akibat yang mendasari setiap perubahan atau fenomena.",
+                    'distractors' => [
+                        "Mengabaikan fakta empiris dan hanya berpegang pada opini pribadi.",
+                        "Menganggap semua bagian berdiri sendiri tanpa hubungan sistemik.",
+                        "Menghilangkan parameter pengukuran agar analisis lebih mudah.",
+                    ],
+                    'indicator' => "Disajikan kaidah telaah, peserta didik mampu menjelaskan hubungan kausalitas pada {$coreNoun}.",
+                    'sub_level' => "{$subLevel} - LOTS (Pemahaman Konseptual)",
+                    'explanation_correct' => "Analisis ilmiah menuntut pengamatan relasi sebab-akibat yang terstruktur dan berbasis fakta objektif.",
+                    'explanation_distractors' => "Pilihan lainnya bertentangan dengan metodologi keilmuan.",
+                ],
+            ];
+        } elseif ($effectiveLevel === 'mots') {
+            return [
+                [
+                    'stem' => "Langkah prosedural pertama yang paling tepat dilakukan saat mengimplementasikan materi {$coreNoun} adalah...",
+                    'correct' => "Mengidentifikasi parameter awal, merumuskan sasaran kerja, dan menyiapkan instrumen pendukung yang valid.",
+                    'distractors' => [
+                        "Langsung menarik kesimpulan akhir sebelum data terkumpul secara lengkap.",
+                        "Mengabaikan petunjuk prosedur baku demi menghemat waktu pengerjaan.",
+                        "Melakukan tahapan implementasi secara acak tanpa rencana kerja terarah.",
+                    ],
+                    'indicator' => "Disajikan implementasi materi, peserta didik mampu menerapkan langkah persiapan prosedural {$coreNoun}.",
+                    'sub_level' => "C3 - MOTS (Penerapan Prosedural)",
+                    'explanation_correct' => "Persiapan instrumen dan identifikasi parameter adalah prasyarat mutlak sebelum tindakan teknis dijalankan.",
+                    'explanation_distractors' => "Melompati persiapan atau menyimpulkan sebelum data ada menyebabkan kesalahan fatal.",
+                ],
+                [
+                    'stem' => "Alur kerja sistematis yang paling tepat untuk menyelesaikan persoalan pada materi {$coreNoun} adalah...",
+                    'correct' => "Pengumpulan dan verifikasi data awal -> Analisis proses sesuai kaidah -> Validasi hasil akhir.",
+                    'distractors' => [
+                        "Perumusan kesimpulan -> Pelaksanaan tahapan acak -> Pengabaian pemeriksaan ulang.",
+                        "Eksekusi proses tanpa data -> Pengujian luaran -> Pengubahan hasil agar sesuai harapan.",
+                        "Pengabaian kaidah materi -> Pengerjaan cepat -> Penyerahan tanpa verifikasi.",
+                    ],
+                    'indicator' => "Disajikan pemecahan persoalan, peserta didik mampu menerapkan alur sistematis pada {$coreNoun}.",
+                    'sub_level' => "C3 - MOTS (Penerapan Prosedural)",
+                    'explanation_correct' => "Alur persiapan-pemrosesan-validasi menjamin akurasi dan akuntabilitas hasil kerja.",
+                    'explanation_distractors' => "Pilihan pengecoh memutarbalikkan urutan logis dan meniadakan tahapan pembuktian.",
+                ],
+                [
+                    'stem' => "Tindakan yang harus diambil jika ditemukan ketidaksesuaian data pada saat menerapkan konsep {$coreNoun} adalah...",
+                    'correct' => "Menelusuri kembali sumber data awal, memverifikasi ulang instrumen, dan memperbaiki bagian yang keliru.",
+                    'distractors' => [
+                        "Mengubah angka data secara sepihak agar terlihat sesuai dengan target.",
+                        "Mengabaikan ketidaksesuaian tersebut dan menganggap hasilnya tetap benar.",
+                        "Menghapus seluruh rekaman data tanpa melakukan telaah penyebab kesalahan.",
+                    ],
+                    'indicator' => "Disajikan anomali data, peserta didik mampu menerapkan tindakan korektif terstandar pada {$coreNoun}.",
+                    'sub_level' => "C3 - MOTS (Penerapan Korektif)",
+                    'explanation_correct' => "Penelusuran sumber dan verifikasi instrumen adalah prosedur korektif baku dalam penjaminan mutu.",
+                    'explanation_distractors' => "Manipulasi data atau pengabaian anomali melanggar integritas keilmuan.",
+                ],
+                [
+                    'stem' => "Kriteria utama untuk memastikan bahwa penerapan materi {$coreNoun} telah memenuhi standar mutu adalah...",
+                    'correct' => "Hasil akhir sesuai dengan parameter yang ditetapkan dan dapat diverifikasi secara objektif.",
+                    'distractors' => [
+                        "Pengerjaan selesai dalam waktu yang sangat singkat meskipun menyimpang dari aturan.",
+                        "Tampilan laporan terlihat tebal tanpa memperhatikan ketepatan isi data.",
+                        "Hasil pekerjaan disetujui tanpa melalui proses pengujian atau pengecekan.",
+                    ],
+                    'indicator' => "Disajikan kendali mutu, peserta didik mampu memverifikasi standar ketercapaian {$coreNoun}.",
+                    'sub_level' => "C3 - MOTS (Penerapan Verifikasi)",
+                    'explanation_correct' => "Standar mutu tercapai jika luaran dapat dibuktikan kesesuaiannya terhadap parameter terukur.",
+                    'explanation_distractors' => "Kecepatan semu atau ketebalan fisik laporan tidak mencerminkan kebenaran substansi.",
+                ],
+                [
+                    'stem' => "Pendekatan paling tepat saat menghubungkan konsep {$coreNoun} dengan kasus nyata di lapangan adalah...",
+                    'correct' => "Menganalisis karakteristik kasus, memilih kaidah yang relevan, lalu menerapkan solusi yang terukur.",
+                    'distractors' => [
+                        "Menyamaratakan semua kasus tanpa mempertimbangkan faktor-faktor spesifik di lapangan.",
+                        "Memilih solusi yang paling mudah tanpa melihat kesesuaian dengan kaidah materi.",
+                        "Mengabaikan data lapangan dan memaksakan asumsi yang belum teruji.",
+                    ],
+                    'indicator' => "Disajikan studi kasus kontekstual, peserta didik mampu mengaplikasikan pendekatan analitis pada {$coreNoun}.",
+                    'sub_level' => "C3 - MOTS (Penerapan Kontekstual)",
+                    'explanation_correct' => "Aplikasi kontekstual menuntut penyesuaian solusi berdasarkan karakteristik empiris di lapangan.",
+                    'explanation_distractors' => "Generalisasi buta atau pemaksaan asumsi berisiko gagal memecahkan masalah.",
+                ],
+                [
+                    'stem' => "Tindakan verifikasi standar setelah menyelesaikan tahapan kerja pada materi {$coreNoun} adalah...",
+                    'correct' => "Melakukan audit kesesuaian antara hasil kerja dengan kriteria capaian yang telah ditetapkan.",
+                    'distractors' => [
+                        "Menutup seluruh dokumentasi proses tanpa melakukan pemeriksaan ulang.",
+                        "Mengasumsikan hasil kerja sudah sempurna tanpa memerlukan pengujian empiris.",
+                        "Menghapus data tahapan awal untuk menghemat ruang pencatatan.",
+                    ],
+                    'indicator' => "Disajikan fase pasca-implementasi, peserta didik mampu menerapkan audit kesesuaian {$coreNoun}.",
+                    'sub_level' => "C3 - MOTS (Penerapan Audit)",
+                    'explanation_correct' => "Audit kesesuaian kriteria memastikan tidak ada penyimpangan prosedur yang terlewatkan.",
+                    'explanation_distractors' => "Menutup tanpa cek ulang atau berasumsi tanpa bukti empiris berisiko meloloskan kesalahan.",
+                ],
+            ];
+        } else {
+            return [
+                [
+                    'stem' => "Faktor utama yang paling berpotensi menyebabkan ketidaktercapaian sasaran pada implementasi {$coreNoun} adalah...",
+                    'correct' => "Kelemahan validasi data awal dan ketidakteraturan dalam mengeksekusi tahapan prosedur.",
+                    'distractors' => [
+                        "Penerapan standar operasional yang terlalu ketat dan terdokumentasi.",
+                        "Penggunaan instrumen pengukuran yang telah terkalibrasi secara resmi.",
+                        "Pelibatan proses pengujian berkala pada setiap tahapan kerja.",
+                    ],
+                    'indicator' => "Disajikan potensi kegagalan, peserta didik mampu menganalisis akar penyebab anomali pada {$coreNoun}.",
+                    'sub_level' => "{$subLevel} - HOTS (Penalaran Kritis)",
+                    'explanation_correct' => "Data yang tidak tervalidasi dan eksekusi non-prosedural adalah akar utama deviasi sistemik.",
+                    'explanation_distractors' => "Pilihan lainnya justru merupakan praktik rekayasa terbaik untuk mencegah kegagalan.",
+                ],
+                [
+                    'stem' => "Jika terjadi anomali atau penyimpangan luaran pada materi {$coreNoun}, langkah analisis kritis terbaik adalah...",
+                    'correct' => "Mengisolasi tahapan yang bermasalah, membandingkan parameter riil dengan standar acuan, lalu merumuskan solusi korektif.",
+                    'distractors' => [
+                        "Mengganti seluruh sistem tanpa mengetahui bagian mana yang mengalami kegagalan.",
+                        "Menyembunyikan penyimpangan agar proses kerja dianggap berjalan lancar.",
+                        "Menghentikan seluruh aktivitas secara permanen tanpa melakukan penyelidikan teknis.",
+                    ],
+                    'indicator' => "Disajikan anomali luaran, peserta didik mampu menganalisis akar masalah dan merumuskan perbaikan pada {$coreNoun}.",
+                    'sub_level' => "{$subLevel} - HOTS (Penalaran Kritis)",
+                    'explanation_correct' => "Isolasi titik anomali dan perbandingan terhadap standar acuan menghasilkan solusi korektif terukur.",
+                    'explanation_distractors' => "Merombak buta tanpa analisis atau menyembunyikan galat memperparah kerusakan sistem.",
+                ],
+                [
+                    'stem' => "Di antara dua metode pemecahan masalah pada materi {$coreNoun}, kriteria evaluasi yang paling tepat untuk menentukan metode terbaik adalah...",
+                    'correct' => "Tingkat akurasi hasil, keandalan proses, efisiensi sumber daya, dan minimnya risiko kesalahan.",
+                    'distractors' => [
+                        "Metode yang paling banyak menggunakan istilah rumit meskipun sulit diterapkan.",
+                        "Metode yang mengabaikan keselamatan kerja demi percepatan waktu.",
+                        "Metode yang paling jarang diuji karena dianggap otomatis sempurna.",
+                    ],
+                    'indicator' => "Disajikan komparasi solusi, peserta didik mampu mengevaluasi metode optimal pada {$coreNoun}.",
+                    'sub_level' => "{$subLevel} - HOTS (Penalaran Kritis)",
+                    'explanation_correct' => "Evaluasi optimalitas menuntut keseimbangan antara presisi luaran, efisiensi, dan keandalan sistem.",
+                    'explanation_distractors' => "Kerumitan semu atau pengabaian keselamatan bukanlah kriteria rekayasa yang baik.",
+                ],
+                [
+                    'stem' => "Bagaimanakah cara membuktikan secara ilmiah bahwa inovasi perbaikan pada materi {$coreNoun} memberikan dampak positif?",
+                    'correct' => "Membandingkan data performa sebelum dan sesudah perbaikan menggunakan indikator terukur dan objektif.",
+                    'distractors' => [
+                        "Mendasarkan penilaian semata-mata pada perkiraan tanpa data perbandingan yang jelas.",
+                        "Mengabaikan indikator performa dan langsung mengklaim keberhasilan secara sepihak.",
+                        "Memilih hanya data yang mendukung keberhasilan dan membuang data yang menunjukkan kekurangan.",
+                    ],
+                    'indicator' => "Disajikan validasi inovasi, peserta didik mampu mengevaluasi data komparasi efektivitas {$coreNoun}.",
+                    'sub_level' => "{$subLevel} - HOTS (Penalaran Kritis)",
+                    'explanation_correct' => "Uji empiris sebelum-sesudah (pre-post evaluation) memberikan bukti kausalitas yang sahih secara ilmiah.",
+                    'explanation_distractors' => "Klaim subjektif atau pemilahan data sepihak (cherry-picking) melanggar kaidah keilmuan.",
+                ],
+                [
+                    'stem' => "Karakteristik pemikiran tingkat tinggi (HOTS) yang paling tercermin saat menyelesaikan masalah kompleks terkait {$coreNoun} adalah...",
+                    'correct' => "Mampu menghubungkan berbagai konsep terkait, menguji keabsahan argumen, dan menyusun solusi orisinal yang logis.",
+                    'distractors' => [
+                        "Menghafal rumus atau teks definisi secara persis kata demi kata tanpa memahami maknanya.",
+                        "Menerima setiap informasi tanpa melakukan konfirmasi atau pengecekan silang.",
+                        "Mengandalkan tebakan spekulatif dalam mengambil keputusan penting.",
+                    ],
+                    'indicator' => "Disajikan pemecahan masalah kompleks, peserta didik mampu menganalisis sintesis konsep {$coreNoun}.",
+                    'sub_level' => "{$subLevel} - HOTS (Penalaran Kritis)",
+                    'explanation_correct' => "Sintesis konseptual dan evaluasi kritis adalah ciri pemikiran tingkat tinggi dalam memecahkan masalah baru.",
+                    'explanation_distractors' => "Hafalan mekanis dan tebakan spekulatif berada pada tingkat kognitif rendah.",
+                ],
+                [
+                    'stem' => "Strategi terbaik untuk memitigasi risiko kegagalan berulang pada implementasi {$coreNoun} di masa depan adalah...",
+                    'correct' => "Menyusun dokumentasi evaluasi kesalahan terdahulu dan menetapkan titik kontrol mutu pada setiap tahapan kritis.",
+                    'distractors' => [
+                        "Menghindari penerapan materi secara menyeluruh agar tidak menghadapi risiko.",
+                        "Menyalahkan faktor lingkungan eksternal tanpa meninjau prosedur internal.",
+                        "Melanjutkan prosedur lama tanpa melakukan revisi pada titik kelemahan.",
+                    ],
+                    'indicator' => "Disajikan mitigasi risiko, peserta didik mampu merumuskan strategi penjaminan mutu preventif pada {$coreNoun}.",
+                    'sub_level' => "{$subLevel} - HOTS (Penalaran Kritis)",
+                    'explanation_correct' => "Dokumentasi retrospektif dan penempatan quality gates pada titik rawan mencegah terulangnya anomali.",
+                    'explanation_distractors' => "Menghindari implementasi atau melempar kesalahan tidak menghasilkan perbaikan berkelanjutan.",
+                ],
+            ];
+        }
+    }
+
     protected function buildSingleMcQuestion(
         LmsLearningObjective $tp,
         string $subjectName,
@@ -867,577 +2651,19 @@ PROMPT;
         }
 
         if ($effectiveLevel === 'lots') {
-            // Level 1: LOTS (C1 - Mengingat / C2 - Memahami)
             $subLevel = (($number + $variant) % 2 === 1) ? 'C1' : 'C2';
             $levelCode = $subLevel;
-
-            if ($isSmp) {
-                $angles = [
-                    [
-                        'stem' => "Apa yang dimaksud dengan {$coreNoun} dalam pelajaran {$subjectName}?",
-                        'correct' => "Konsep atau tata cara pengolahan yang digunakan untuk menghasilkan karya atau informasi yang bermanfaat.",
-                        'distractors' => [
-                            "Kumpulan aturan lama yang sudah tidak dapat digunakan lagi dalam proses belajar saat ini.",
-                            "Catatan tulisan tangan yang disimpan tanpa melalui proses pengolahan dan pemeriksaan.",
-                            "Perangkat atau berkas yang tidak memiliki alur kerja dan tujuan penggunaan tertentu.",
-                        ],
-                        'indicator' => "Disajikan konsep dasar, peserta didik mampu mengidentifikasi pengertian materi terkait {$coreNoun}.",
-                        'sub_level' => "{$subLevel} - LOTS (Pemahaman Dasar)",
-                        'explanation_correct' => "Pilihan ini mendefinisikan inti dari materi {$coreNoun} secara tepat, jelas, dan sesuai dengan materi yang dipelajari.",
-                        'explanation_distractors' => "Pilihan lainnya salah karena mendeskripsikan hal yang tidak berfungsi, usang, atau tidak melalui proses pengolahan.",
-                    ],
-                    [
-                        'stem' => "Ciri utama yang paling mudah kamu kenali dari {$coreNoun} adalah...",
-                        'correct' => "Memiliki susunan bagian yang teratur dan saling bekerja sama untuk mencapai tujuan tertentu.",
-                        'distractors' => [
-                            "Bekerja secara acak tanpa mengikuti aturan atau panduan apa pun.",
-                            "Hanya dapat dioperasikan satu kali saja kemudian langsung rusak.",
-                            "Tidak membutuhkan masukan data atau petunjuk sama sekali untuk bekerja.",
-                        ],
-                        'indicator' => "Disajikan karakteristik konsep, peserta didik mampu mengenali ciri pokok materi {$coreNoun}.",
-                        'sub_level' => "{$subLevel} - LOTS (Pemahaman Dasar)",
-                        'explanation_correct' => "Pilihan ini tepat karena setiap konsep atau sistem materi {$coreNoun} tersusun dari bagian-bagian yang saling terhubung dan teratur.",
-                        'explanation_distractors' => "Pilihan lainnya salah karena menggambarkan cara kerja yang acak, sekali pakai, atau tanpa masukan data.",
-                    ],
-                    [
-                        'stem' => "Apa manfaat penting yang kamu peroleh setelah mempelajari materi {$coreNoun}?",
-                        'correct' => "Mampu memahami alur kerja materi ini dan menggunakannya dengan benar dalam kegiatan belajar sehari-hari.",
-                        'distractors' => [
-                            "Hanya menghafal istilah teknis tanpa memahami bagaimana cara mempraktikkannya.",
-                            "Menambah waktu pengerjaan tugas menjadi jauh lebih lama dan berbelit-belit.",
-                            "Menggantikan seluruh proses belajar mandiri sehingga kita tidak perlu berlatih.",
-                        ],
-                        'indicator' => "Disajikan manfaat materi, peserta didik mampu menjelaskan kegunaan pokok materi {$coreNoun}.",
-                        'sub_level' => "{$subLevel} - LOTS (Pemahaman Dasar)",
-                        'explanation_correct' => "Pilihan ini benar karena esensi pembelajaran adalah memahami konsep sekaligus mampu mengaplikasikannya secara benar.",
-                        'explanation_distractors' => "Pilihan pengecoh hanya berfokus pada hafalan mati atau dampak negatif yang keliru.",
-                    ],
-                    [
-                        'stem' => "Contoh kegiatan sederhana di sekolah yang paling tepat menggambarkan materi {$coreNoun} adalah...",
-                        'correct' => "Menyelesaikan tugas komputer dengan langkah-langkah yang rapi dan terarah sesuai petunjuk guru.",
-                        'distractors' => [
-                            "Menyalakan komputer tanpa membuka file atau melakukan aktivitas pengolahan data apa pun.",
-                            "Menyalin seluruh tugas milik teman lain tanpa memahami isi dan cara pembuatannya.",
-                            "Menyimpan hasil kerja di tempat sembarangan sehingga hilang saat akan diperiksa.",
-                        ],
-                        'indicator' => "Disajikan contoh konkret, peserta didik mampu mengenali contoh penerapan materi {$coreNoun}.",
-                        'sub_level' => "{$subLevel} - LOTS (Pemahaman Dasar)",
-                        'explanation_correct' => "Pilihan ini menunjukkan contoh konkret siswa yang memanfaatkan materi secara aktif, rapi, dan mandiri.",
-                        'explanation_distractors' => "Pilihan lainnya adalah tindakan pasif, mencontek, atau kelalaian dalam belajar.",
-                    ],
-                    [
-                        'stem' => "Pernyataan yang paling tepat mengenai materi {$coreNoun} adalah...",
-                        'correct' => "Memahami aturan dasarnya akan mempermudah kita menyelesaikan berbagai tugas belajar dengan baik.",
-                        'distractors' => [
-                            "Materi ini hanya boleh dipelajari oleh guru dan tidak boleh dipraktikkan oleh siswa.",
-                            "Tidak ada hubungan antara materi ini dengan tugas-tugas praktik yang ada di sekolah.",
-                            "Setiap orang harus membuat aturan sendiri yang bertolak belakang dengan petunjuk materi.",
-                        ],
-                        'indicator' => "Disajikan pernyataan konsep, peserta didik mampu memvalidasi kebenaran prinsip {$coreNoun}.",
-                        'sub_level' => "{$subLevel} - LOTS (Pemahaman Dasar)",
-                        'explanation_correct' => "Pilihan ini tepat karena penguasaan dasar materi secara langsung mempermudah penyelesaian tugas belajar.",
-                        'explanation_distractors' => "Pilihan lainnya merupakan pernyataan yang keliru dan bertentangan dengan esensi materi.",
-                    ],
-                    [
-                        'stem' => "Tujuan utama kita mempelajari materi {$coreNoun} di sekolah adalah agar kita bisa...",
-                        'correct' => "Mengenal konsep dasarnya serta mampu memanfaatkannya secara mandiri dan bertanggung jawab.",
-                        'distractors' => [
-                            "Menghindari penggunaan alat bantu digital dalam setiap aktivitas belajar.",
-                            "Mengerjakan tugas secepat mungkin tanpa memperhatikan ketelitian dan kerapian hasil.",
-                            "Mencari jalan pintas agar tidak perlu mengikuti panduan praktik yang telah ditentukan.",
-                        ],
-                        'indicator' => "Disajikan tujuan materi, peserta didik mampu menjelaskan sasaran pembelajaran {$coreNoun}.",
-                        'sub_level' => "{$subLevel} - LOTS (Pemahaman Dasar)",
-                        'explanation_correct' => "Tujuan kurikulum adalah membekali siswa dengan pemahaman konsep, kemandirian, dan tanggung jawab.",
-                        'explanation_distractors' => "Pilihan pengecoh berorientasi pada jalan pintas atau penolakan terhadap proses belajar yang benar.",
-                    ],
-                    [
-                        'stem' => "Fungsi penting dari materi {$coreNoun} dalam kegiatan sehari-hari adalah...",
-                        'correct' => "Membantu kita mengolah pekerjaan agar tersusun lebih rapi, terstruktur, dan mudah dipahami.",
-                        'distractors' => [
-                            "Membuat tampilan pekerjaan menjadi rumit sehingga sulit dibaca oleh orang lain.",
-                            "Menghilangkan data pekerjaan secara otomatis saat komputer dimatikan.",
-                            "Membatasi ide-ide baru yang ingin kita kembangkan dalam kegiatan belajar.",
-                        ],
-                        'indicator' => "Disajikan fungsi materi, peserta didik mampu mengidentifikasi kegunaan fungsional {$coreNoun}.",
-                        'sub_level' => "{$subLevel} - LOTS (Pemahaman Dasar)",
-                        'explanation_correct' => "Fungsi utama adalah memberikan keteraturan, efisiensi, dan kejelasan dalam pengolahan hasil karya.",
-                        'explanation_distractors' => "Pilihan pengecoh menyebutkan kerumitan, kehilangan data, atau penghambatan ide.",
-                    ],
-                    [
-                        'stem' => "Ketika kamu menjelaskan materi {$coreNoun} kepada teman sebangkumu, hal pokok yang kamu sampaikan adalah...",
-                        'correct' => "Bagaimana bagian-bagian di dalamnya saling melengkapi untuk menghasilkan luaran yang bermanfaat.",
-                        'distractors' => [
-                            "Hanya menyebutkan judul bab buku tanpa bisa menerangkan apa arti dan fungsinya.",
-                            "Menyatakan bahwa materi ini tidak memiliki hubungan dengan tugas praktik yang sedang dikerjakan.",
-                            "Memberi tahu bahwa materi ini tidak perlu dipahami karena tidak ada manfaatnya.",
-                        ],
-                        'indicator' => "Disajikan konteks komunikasi, peserta didik mampu menjelaskan substansi pokok {$coreNoun}.",
-                        'sub_level' => "{$subLevel} - LOTS (Pemahaman Dasar)",
-                        'explanation_correct' => "Menjelaskan keterkaitan antarkomponen menunjukkan pemahaman konseptual (C2 - Memahami) yang matang.",
-                        'explanation_distractors' => "Pilihan lainnya menunjukkan sikap pasif atau ketidakpahaman terhadap materi.",
-                    ],
-                    [
-                        'stem' => "Prinsip dasar yang perlu kamu ingat dengan baik tentang materi {$coreNoun} adalah...",
-                        'correct' => "Setiap proses pengolahan membutuhkan data masukan yang jelas agar menghasilkan keluaran yang tepat.",
-                        'distractors' => [
-                            "Keluaran yang benar dapat diperoleh meskipun data masukan yang dimasukkan salah total.",
-                            "Tidak ada hubungan antara proses yang dilakukan dengan hasil akhir yang diperoleh.",
-                            "Semakin acak urutan langkah yang diambil, semakin baik kualitas hasil akhirnya.",
-                        ],
-                        'indicator' => "Disajikan prinsip materi, peserta didik mampu menguraikan kaidah dasar {$coreNoun}.",
-                        'sub_level' => "{$subLevel} - LOTS (Pemahaman Dasar)",
-                        'explanation_correct' => "Prinsip input-proses-output adalah kaidah fundamental yang selalu berlaku pada pengolahan sistem dan materi.",
-                        'explanation_distractors' => "Pilihan lainnya bertentangan dengan logika dasar pemrosesan data.",
-                    ],
-                    [
-                        'stem' => "Bentuk kegiatan nyata yang menunjukkan bahwa kamu sudah memahami materi {$coreNoun} adalah...",
-                        'correct' => "Dapat menerangkan fungsi setiap bagian serta mampu menunjukkan contoh sederhananya di kelas.",
-                        'distractors' => [
-                            "Hanya dapat menghafal urutan nomor halaman tanpa tahu apa makna isi materinya.",
-                            "Mengerjakan tugas dengan menebak-nebak jawaban tanpa membaca soal dengan teliti.",
-                            "Menolak menjelaskan saat teman meminta bantuan pemahaman materi.",
-                        ],
-                        'indicator' => "Disajikan bukti pemahaman, peserta didik mampu membuktikan penguasaan konsep {$coreNoun}.",
-                        'sub_level' => "{$subLevel} - LOTS (Pemahaman Dasar)",
-                        'explanation_correct' => "Kemampuan menerangkan dan memberi contoh adalah indikator utama ketercapaian pemahaman (C2).",
-                        'explanation_distractors' => "Pilihan lainnya menunjukkan pemahaman semu atau sikap enggan berbagi pengetahuan.",
-                    ],
-                ];
-            } else {
-                // SMA LOTS
-                $angles = [
-                    [
-                        'stem' => "Berdasarkan prinsip {$subjectName}, apa esensi utama yang mendasari materi {$coreNoun}?",
-                        'correct' => "Kerangka konseptual yang mengintegrasikan masukan, mekanisme pemrosesan, dan luaran secara sistematis.",
-                        'distractors' => [
-                            "Himpunan data historis yang tidak memiliki relevansi terhadap perkembangan teknologi saat ini.",
-                            "Prosedur operasional acak tanpa landasan teoritis dan standar mutu yang terukur.",
-                            "Format dokumentasi statis yang tidak melibatkan interaksi fungsional antarkomponen.",
-                        ],
-                        'indicator' => "Peserta didik mampu mengidentifikasi esensi konseptual materi {$coreNoun}.",
-                        'sub_level' => "{$subLevel} - LOTS (Pemahaman Konseptual)",
-                        'explanation_correct' => "Pilihan ini mendefinisikan esensi konseptual materi secara komprehensif dan selaras dengan standar keilmuan.",
-                        'explanation_distractors' => "Pilihan lainnya mendeskripsikan data usang, prosedur acak, atau dokumentasi statis.",
-                    ],
-                    [
-                        'stem' => "Karakteristik fundamental yang membedakan materi {$coreNoun} dari bahasan lainnya ditunjukkan oleh...",
-                        'correct' => "Keterpaduan antarsubsistem yang bekerja harmonis untuk mencapai luaran yang terstruktur dan terstandar.",
-                        'distractors' => [
-                            "Pemisahan mutlak antarkomponen sehingga tidak memiliki ketergantungan operasional.",
-                            "Ketiadaan regulasi kerja sehingga setiap proses berlangsung secara bebas tanpa kendali mutu.",
-                            "Ketergantungan penuh pada intervensi manual tanpa adanya otomatisasi alur kerja.",
-                        ],
-                        'indicator' => "Peserta didik mampu membedakan karakteristik pokok materi {$coreNoun}.",
-                        'sub_level' => "{$subLevel} - LOTS (Pemahaman Konseptual)",
-                        'explanation_correct' => "Karakteristik utama terletak pada integrasi sistemik antarbagian untuk menghasilkan luaran terstandar.",
-                        'explanation_distractors' => "Pilihan pengecoh mengasumsikan ketiadaan regulasi atau pemisahan mutlak yang keliru.",
-                    ],
-                    [
-                        'stem' => "Dalam konteks pembelajaran {$subjectName}, fungsi mendasar dari materi {$coreNoun} adalah...",
-                        'correct' => "Menyediakan landasan metodologis guna menganalisis dan memecahkan persoalan secara logis dan terstruktur.",
-                        'distractors' => [
-                            "Membatasi kebebasan berinovasi dalam mengeksplorasi solusi alternatif.",
-                            "Menambah kompleksitas kerja tanpa memberikan kontribusi terhadap peningkatan kualitas hasil.",
-                            "Menghilangkan kebutuhan akan dokumentasi dan evaluasi berkala terhadap hasil tugas.",
-                        ],
-                        'indicator' => "Peserta didik mampu menguraikan fungsi mendasar materi {$coreNoun}.",
-                        'sub_level' => "{$subLevel} - LOTS (Pemahaman Konseptual)",
-                        'explanation_correct' => "Materi ini berperan strategis sebagai fondasi analitis dalam menyelesaikan permasalahan terstruktur.",
-                        'explanation_distractors' => "Pilihan pengecoh mengklaim pembatasan inovasi atau penambahan kerumitan yang salah.",
-                    ],
-                    [
-                        'stem' => "Pernyataan manakah yang paling akurat dalam merepresentasikan prinsip utama materi {$coreNoun}?",
-                        'correct' => "Validitas luaran akhir sangat ditentukan oleh kepatuhan terhadap kaidah dan integritas data pada tahap awal.",
-                        'distractors' => [
-                            "Kualitas produk akhir tidak dipengaruhi oleh akurasi data masukan yang digunakan.",
-                            "Prosedur kerja dapat diubah sewaktu-waktu tanpa perlu mempertimbangkan dampaknya terhadap sistem.",
-                            "Efisiensi proses tercapai dengan cara menghilangkan tahapan pengujian dan validasi.",
-                        ],
-                        'indicator' => "Peserta didik mampu memvalidasi prinsip utama materi {$coreNoun}.",
-                        'sub_level' => "{$subLevel} - LOTS (Pemahaman Konseptual)",
-                        'explanation_correct' => "Kaidah 'garbage in garbage out' menegaskan bahwa integritas input menentukan validitas luaran.",
-                        'explanation_distractors' => "Pilihan lainnya mengabaikan pentingnya validitas data masukan dan tahapan pengujian.",
-                    ],
-                    [
-                        'stem' => "Manfaat analitis yang Anda peroleh setelah menguasai materi {$coreNoun} adalah...",
-                        'correct' => "Kemampuan memetakan alur permasalahan dan merumuskan pendekatan kerja yang efektif serta terukur.",
-                        'distractors' => [
-                            "Sekadar menghafal istilah terminologis tanpa kemampuan mentransformasikannya ke dalam tindakan.",
-                            "Kecenderungan untuk mengabaikan kaidah keselamatan dan etika profesional saat bekerja.",
-                            "Ketergantungan terhadap solusi instan tanpa melalui proses telaah yang memadai.",
-                        ],
-                        'indicator' => "Peserta didik mampu menjelaskan manfaat analitis materi {$coreNoun}.",
-                        'sub_level' => "{$subLevel} - LOTS (Pemahaman Konseptual)",
-                        'explanation_correct' => "Penguasaan materi meningkatkan kapasitas analitis peserta didik dalam merancang solusi terukur.",
-                        'explanation_distractors' => "Pilihan pengecoh berorientasi pada hafalan mekanis atau sikap mengabaikan etika.",
-                    ],
-                ];
-            }
         } elseif ($effectiveLevel === 'mots') {
-            // Level 2: MOTS (C3 - Menerapkan / Praktik)
+            $subLevel = 'C3';
             $levelCode = 'C3';
-
-            if ($isSmp) {
-                $angles = [
-                    [
-                        'stem' => "Langkah pertama yang paling tepat kamu lakukan saat mulai mengerjakan praktik materi {$coreNoun} adalah...",
-                        'correct' => "Membaca petunjuk kerja dengan saksama dan menyiapkan peralatan atau data yang diperlukan.",
-                        'distractors' => [
-                            "Langsung membagikan hasil karya sebelum memeriksa kerapian dan kebenaran isinya.",
-                            "Mengabaikan panduan guru dan langsung mencoba-coba secara acak tanpa rencana.",
-                            "Menunggu tugas selesai sendiri tanpa melakukan langkah persiapan apa pun.",
-                        ],
-                        'indicator' => "Disajikan instruksi tugas, peserta didik mampu menerapkan langkah awal persiapan pada materi {$coreNoun}.",
-                        'sub_level' => "C3 - MOTS (Penerapan / Praktik)",
-                        'explanation_correct' => "Persiapan awal dan pemahaman petunjuk kerja adalah prosedur standar sebelum tindakan praktik dimulai.",
-                        'explanation_distractors' => "Pilihan pengecoh melewatkan fase persiapan yang krusial atau bertindak tanpa panduan.",
-                    ],
-                    [
-                        'stem' => "Urutan langkah kerja yang paling baik agar tugas praktik materi {$coreNoun} selesai dengan rapi adalah...",
-                        'correct' => "Menyusun rancangan awal, mengerjakan tahap demi tahap secara runtut, lalu memeriksa hasil akhirnya.",
-                        'distractors' => [
-                            "Mengerjakan bagian yang paling akhir terlebih dahulu lalu mengabaikan bagian awal.",
-                            "Mengerjakan tugas secara tergesa-gesa tanpa melakukan pengecekan ulang sama sekali.",
-                            "Mengubah-ubah alur kerja di tengah proses tanpa tujuan yang jelas.",
-                        ],
-                        'indicator' => "Disajikan alur praktik, peserta didik mampu menerapkan urutan kerja sistematis pada materi {$coreNoun}.",
-                        'sub_level' => "C3 - MOTS (Penerapan / Praktik)",
-                        'explanation_correct' => "Alur persiapan - pengerjaan bertahap - verifikasi akhir menjamin hasil kerja rapi dan sesuai kriteria.",
-                        'explanation_distractors' => "Melompati tahapan atau bertindak tergesa-gesa berisiko tinggi menimbulkan kesalahan prosedur.",
-                    ],
-                    [
-                        'stem' => "Jika kamu diminta menggunakan aturan {$coreNoun} untuk menyelesaikan tugas sekolah, tindakan terbaikmu adalah...",
-                        'correct' => "Menerapkan setiap tahapan kerja sesuai dengan pedoman yang telah diajarkan guru di kelas.",
-                        'distractors' => [
-                            "Membuat aturan sendiri yang menyimpang dari petunjuk teknis yang diberikan.",
-                            "Mencampuradukkan langkah kerja tanpa memperhatikan tujuan utama dari tugas tersebut.",
-                            "Menyerahkan hasil tugas mentah tanpa memverifikasi kesesuaian aturannya terlebih dahulu.",
-                        ],
-                        'indicator' => "Disajikan pedoman tugas, peserta didik mampu mengaplikasikan aturan materi {$coreNoun}.",
-                        'sub_level' => "C3 - MOTS (Penerapan / Praktik)",
-                        'explanation_correct' => "Kepatuhan pada aturan dan petunjuk teknis merupakan inti dari kompetensi penerapan di sekolah.",
-                        'explanation_distractors' => "Menyimpang dari aturan atau menyerahkan tugas mentah akan menurunkan mutu hasil kerja.",
-                    ],
-                    [
-                        'stem' => "Cara terbaik yang dapat kamu lakukan untuk memastikan hasil tugas materi {$coreNoun} sudah benar adalah...",
-                        'correct' => "Mencocokkan kembali hasil kerja dengan daftar kriteria penilaian atau rubrik yang diberikan guru.",
-                        'distractors' => [
-                            "Hanya melihat tampilan luarnya sekilas tanpa memeriksa isi dan fungsinya secara detail.",
-                            "Mengira-ngira bahwa tugas sudah sempurna tanpa melakukan pengecekan ulang.",
-                            "Langsung menutup lembar kerja begitu selesai mengetik kalimat terakhir.",
-                        ],
-                        'indicator' => "Disajikan kriteria rubrik, peserta didik mampu memverifikasi kesesuaian hasil kerja materi {$coreNoun}.",
-                        'sub_level' => "C3 - MOTS (Penerapan / Praktik)",
-                        'explanation_correct' => "Verifikasi berbasis kriteria memastikan tidak ada bagian yang terlewat atau keliru sebelum pengumpulan.",
-                        'explanation_distractors' => "Pilihan lainnya adalah sikap ceroboh yang berpotensi menyisakan kesalahan fatal.",
-                    ],
-                    [
-                        'stem' => "Saat mengerjakan tugas praktik materi {$coreNoun} bersama teman kelompokmu, tindakan terbaik yang kamu tunjukkan adalah...",
-                        'correct' => "Berbagi tugas secara adil dan menyelesaikan bagian masing-masing tepat waktu sesuai alur kerja kelompok.",
-                        'distractors' => [
-                            "Mengerjakan seluruh bagian sendirian dan mengabaikan masukan dari anggota kelompok lain.",
-                            "Menyerahkan semua beban kerja kepada ketua kelompok dan bersikap pasif.",
-                            "Saling berdebat tanpa mencari jalan keluar saat menemukan langkah praktik yang belum selesai.",
-                        ],
-                        'indicator' => "Disajikan kerja kelompok, peserta didik mampu menerapkan kolaborasi efektif pada materi {$coreNoun}.",
-                        'sub_level' => "C3 - MOTS (Penerapan / Praktik)",
-                        'explanation_correct' => "Kolaborasi aktif dan pembagian tugas terencana mendukung penyelesaian tugas praktik secara efektif.",
-                        'explanation_distractors' => "Pilihan pengecoh merusak dinamika kelompok dan menghambat penyelesaian tugas.",
-                    ],
-                    [
-                        'stem' => "Tindakan yang paling aman dan rapi saat kamu mempraktikkan materi {$coreNoun} adalah...",
-                        'correct' => "Menyimpan file secara berkala dengan nama yang jelas serta menjaga kerapian area kerja.",
-                        'distractors' => [
-                            "Menumpuk semua berkas dalam satu tempat tanpa nama yang jelas hingga sulit ditemukan.",
-                            "Membiarkan kabel dan perangkat berantakan di sekitar meja komputer.",
-                            "Menonaktifkan fitur penyimpanan otomatis sehingga data rentan hilang saat listrik padam.",
-                        ],
-                        'indicator' => "Disajikan aspek keselamatan kerja, peserta didik mampu menerapkan tata tertib praktik {$coreNoun}.",
-                        'sub_level' => "C3 - MOTS (Penerapan / Praktik)",
-                        'explanation_correct' => "Manajemen file yang rapi dan lingkungan kerja yang aman adalah bagian tak terpisahkan dari praktik sekolah.",
-                        'explanation_distractors' => "Kelalaian menyimpan data dan ketidakteraturan meja kerja berisiko merusak hasil kerja.",
-                    ],
-                    [
-                        'stem' => "Jika dalam petunjuk praktik materi {$coreNoun} terdapat instruksi baru dari guru, tindakan yang harus kamu ambil adalah...",
-                        'correct' => "Menyesuaikan langkah kerjamu dengan instruksi terbaru tersebut secara teliti dan tertib.",
-                        'distractors' => [
-                            "Mengabaikan instruksi baru dan tetap memakai cara lama yang sudah tidak berlaku.",
-                            "Berhenti mengerjakan tugas sama sekali karena merasa terganggu oleh perubahan instruksi.",
-                            "Mengerjakan bagian yang disukai saja dan mengabaikan sisa instruksi lainnya.",
-                        ],
-                        'indicator' => "Disajikan perubahan instruksi, peserta didik mampu menyesuaikan prosedur kerja pada materi {$coreNoun}.",
-                        'sub_level' => "C3 - MOTS (Penerapan / Praktik)",
-                        'explanation_correct' => "Kemampuan beradaptasi terhadap petunjuk kerja yang dinamis merupakan indikator penerapan yang baik.",
-                        'explanation_distractors' => "Menolak instruksi atau menghentikan pekerjaan adalah respon non-produktif.",
-                    ],
-                    [
-                        'stem' => "Urutan langkah kerja yang tepat agar tugas materi {$coreNoun} selesai tepat waktu adalah...",
-                        'correct' => "Membuat target waktu untuk setiap tahapan dan fokus menuntaskan satu bagian sebelum pindah ke bagian berikutnya.",
-                        'distractors' => [
-                            "Membuka banyak aplikasi hiburan sekaligus saat sedang mengerjakan tugas praktik.",
-                            "Menunda-nunda pengerjaan hingga menit-menit terakhir sebelum waktu pengumpulan habis.",
-                            "Berpindah-pindah antarbagian tugas secara acak tanpa pernah menyelesaikan satu bagian pun.",
-                        ],
-                        'indicator' => "Disajikan manajemen waktu, peserta didik mampu menerapkan alur pengerjaan efisien pada materi {$coreNoun}.",
-                        'sub_level' => "C3 - MOTS (Penerapan / Praktik)",
-                        'explanation_correct' => "Manajemen waktu terstruktur dan fokus pada tahapan kerja memastikan tugas rampung tepat jadwal.",
-                        'explanation_distractors' => "Prokrastinasi dan distraksi hiburan menyebabkan tugas terbengkalai.",
-                    ],
-                    [
-                        'stem' => "Ketika kamu menemui satu tahapan yang terasa sulit saat mempraktikkan materi {$coreNoun}, tindakan terbaikmu adalah...",
-                        'correct' => "Membaca ulang contoh panduan materi dan meminta bimbingan guru atau teman yang sudah paham.",
-                        'distractors' => [
-                            "Melompati tahapan tersebut dan berharap guru tidak menyadari kekurangan pada tugasmu.",
-                            "Menyalin pekerjaan teman tanpa meminta izin dan tanpa memahami alur penyelesaiannya.",
-                            "Menyerah dan meninggalkan lembar kerja praktik dalam keadaan belum tuntas.",
-                        ],
-                        'indicator' => "Disajikan kendala praktik, peserta didik mampu menentukan tindakan operasional yang etis pada materi {$coreNoun}.",
-                        'sub_level' => "C3 - MOTS (Penerapan / Praktik)",
-                        'explanation_correct' => "Mencari klarifikasi melalui panduan dan bimbingan guru mencerminkan etika belajar yang bertanggung jawab.",
-                        'explanation_distractors' => "Kecurangan atau kepasrahan bertentangan dengan prinsip pembelajaran aktif.",
-                    ],
-                    [
-                        'stem' => "Bentuk penyajian tugas materi {$coreNoun} yang paling baik saat dikumpulkan kepada guru adalah...",
-                        'correct' => "Lengkap memuat seluruh elemen yang diminta, rapi dalam penataan, dan mudah dipahami pembaca.",
-                        'distractors' => [
-                            "Hanya memuat teks panjang tanpa judul, penataan paragraf, atau kejelasan informasi.",
-                            "Menggunakan dekorasi berlebihan yang justru menutupi informasi pokok tugas.",
-                            "Tugas dikumpulkan dalam format yang rusak atau tidak dapat dibuka oleh guru.",
-                        ],
-                        'indicator' => "Disajikan standar luaran, peserta didik mampu menyajikan hasil karya materi {$coreNoun} secara terstandar.",
-                        'sub_level' => "C3 - MOTS (Penerapan / Praktik)",
-                        'explanation_correct' => "Penyajian yang terstruktur, lengkap, dan berestetika proporsional menunjukkan hasil praktik yang matang.",
-                        'explanation_distractors' => "Penyajian acak, dekorasi berlebihan, atau file rusak menandakan kurangnya ketelitian.",
-                    ],
-                ];
-            } else {
-                // SMA MOTS
-                $angles = [
-                    [
-                        'stem' => "Langkah prosedural awal yang paling tepat diambil saat menerapkan konsep {$coreNoun} adalah...",
-                        'correct' => "Merumuskan rencana kerja sistematis yang mencakup identifikasi parameter, bahan, dan batasan operasional.",
-                        'distractors' => [
-                            "Mengeksekusi tahapan implementasi tanpa melalui fase perencanaan dan pemetaan risiko.",
-                            "Mengabaikan standar prosedur operasional baku guna mempersingkat durasi pengerjaan.",
-                            "Mendelegasikan seluruh keputusan teknis tanpa melakukan supervisi dan kontrol kualitas.",
-                        ],
-                        'indicator' => "Peserta didik mampu merumuskan langkah prosedural awal pada materi {$coreNoun}.",
-                        'sub_level' => "C3 - MOTS (Penerapan Sistematis)",
-                        'explanation_correct' => "Perencanaan terstruktur dengan parameter yang jelas merupakan prasyarat mutlak implementasi tingkat lanjut.",
-                        'explanation_distractors' => "Pilihan pengecoh mengabaikan fase perencanaan risiko atau menyimpang dari SOP baku.",
-                    ],
-                    [
-                        'stem' => "Bagaimanakah alur kerja sistematis yang harus Anda tempuh saat mengimplementasikan kaidah {$coreNoun}?",
-                        'correct' => "Melakukan persiapan data, mengeksekusi tahapan pengolahan secara berurutan, lalu memvalidasi luaran.",
-                        'distractors' => [
-                            "Memulai dari tahap pengujian akhir tanpa memvalidasi keabsahan data masukan.",
-                            "Mengubah urutan tahapan secara sporadis tanpa dokumentasi perubahan yang memadai.",
-                            "Menyelesaikan proyek tanpa melalui proses verifikasi dan penjaminan mutu.",
-                        ],
-                        'indicator' => "Peserta didik mampu menguraikan alur implementasi sistematis materi {$coreNoun}.",
-                        'sub_level' => "C3 - MOTS (Penerapan Sistematis)",
-                        'explanation_correct' => "Alur persiapan-pemrosesan-validasi mencerminkan metodologi baku yang menjamin integritas luaran.",
-                        'explanation_distractors' => "Pilihan lainnya mengabaikan validasi input atau melakukan modifikasi sporadis.",
-                    ],
-                    [
-                        'stem' => "Tindakan verifikasi standar yang wajib dilakukan setelah menyelesaikan tahapan implementasi {$coreNoun} adalah...",
-                        'correct' => "Melakukan audit kesesuaian antara hasil kerja dengan spesifikasi teknis dan kriteria performa.",
-                        'distractors' => [
-                            "Mempublikasikan hasil secara terbuka tanpa melakukan uji kelayakan internal.",
-                            "Menghapus rekaman proses pengolahan data untuk menghemat kapasitas penyimpanan.",
-                            "Mengasumsikan sistem telah berfungsi sempurna tanpa memerlukan pengujian empiris.",
-                        ],
-                        'indicator' => "Peserta didik mampu melakukan tindakan verifikasi pada materi {$coreNoun}.",
-                        'sub_level' => "C3 - MOTS (Penerapan Sistematis)",
-                        'explanation_correct' => "Audit kesesuaian terhadap spesifikasi teknis menjamin keandalan produk sebelum diserahkan.",
-                        'explanation_distractors' => "Pilihan pengecoh menghapus jejak audit atau berasumsi tanpa pengujian empiris.",
-                    ],
-                ];
-            }
         } else {
-            // Level 3: HOTS (C4 - Menganalisis / C5 - Mengevaluasi / C6 - Mengkreasi)
             $subLevel = (($number + $variant) % 2 === 1) ? 'C4' : 'C5';
             $levelCode = $subLevel;
-
-            if ($isSmp) {
-                $angles = [
-                    [
-                        'stem' => "Jika hasil tugas praktikmu pada materi {$coreNoun} belum berjalan sesuai petunjuk, langkah analisis pertama yang paling tepat kamu lakukan adalah...",
-                        'correct' => "Memeriksa kembali alur kerja dari tahap awal untuk mendeteksi letak kesalahan lalu merumuskan langkah perbaikannya.",
-                        'distractors' => [
-                            "Menghapus seluruh file pekerjaan dan mengulang dari nol tanpa mencari tahu apa penyebab gangguannya.",
-                            "Menyalahkan perangkat komputer tanpa memeriksa urutan perintah atau data yang telah kamu masukkan.",
-                            "Mengabaikan kesalahan tersebut dan langsung menyerahkan hasil kerja apa adanya kepada guru.",
-                        ],
-                        'indicator' => "Disajikan kasus ketidaksesuaian hasil, peserta didik mampu menganalisis letak kesalahan dan merumuskan perbaikan pada materi {$coreNoun}.",
-                        'sub_level' => "{$subLevel} - HOTS (Penalaran Kritis)",
-                        'explanation_correct' => "Troubleshooting analitis (C4) dimulai dari pelacakan alur kerja untuk menemukan akar penyebab masalah secara objektif.",
-                        'explanation_distractors' => "Pilihan pengecoh adalah tindakan destruktif tanpa analisis, menyalahkan perangkat, atau membiarkan galat.",
-                    ],
-                    [
-                        'stem' => "Apa akibat yang akan terjadi pada hasil akhir secara menyeluruh jika salah satu elemen penting dalam {$coreNoun} tidak berfungsi?",
-                        'correct' => "Alur pemrosesan data akan terhambat dan hasil akhir menjadi tidak lengkap atau tidak akurat.",
-                        'distractors' => [
-                            "Seluruh sistem akan otomatis memperbaiki diri dan bekerja dua kali lebih cepat dari biasanya.",
-                            "Tidak terjadi pengaruh apa pun karena setiap komponen tidak memiliki hubungan kerja satu sama lain.",
-                            "Semua file lain di dalam komputer akan langsung terhapus secara otomatis dan permanen.",
-                        ],
-                        'indicator' => "Disajikan gangguan elemen sistem, peserta didik mampu menganalisis hubungan kausalitas pada materi {$coreNoun}.",
-                        'sub_level' => "{$subLevel} - HOTS (Penalaran Kritis)",
-                        'explanation_correct' => "Dalam keterpaduan sistem/konten, ketiadaan satu elemen fungsional merusak integritas luaran secara menyeluruh.",
-                        'explanation_distractors' => "Pilihan lainnya adalah asumsi mustahil mengenai perbaikan ajaib, pemisahan mutlak, atau penghapusan acak.",
-                    ],
-                    [
-                        'stem' => "Di antara dua cara penyelesaian tugas pada materi {$coreNoun}, pertimbangan paling bijak dalam menentukan cara terbaik yang kamu pilih adalah...",
-                        'correct' => "Memilih cara kerja yang menghasilkan luaran paling akurat, aman, dan efisien sesuai kriteria pembelajaran.",
-                        'distractors' => [
-                            "Memilih cara yang paling cepat selesai meskipun banyak langkah penting yang sengaja diabaikan.",
-                            "Memilih cara yang paling rumit dan membutuhkan banyak alat tambahan yang sebenarnya tidak dibutuhkan.",
-                            "Memilih cara yang paling jarang digunakan teman tanpa mempertimbangkan tingkat keberhasilannya.",
-                        ],
-                        'indicator' => "Disajikan alternatif metode, peserta didik mampu mengevaluasi dan memilih solusi optimal pada materi {$coreNoun}.",
-                        'sub_level' => "{$subLevel} - HOTS (Penalaran Kritis)",
-                        'explanation_correct' => "Evaluasi kritis (C5) menuntut pertimbangan seimbang antara akurasi, kepatuhan kriteria, dan efisiensi waktu/sumber daya.",
-                        'explanation_distractors' => "Mengejar kecepatan dengan melompati langkah atau mencari kerumitan semu bukanlah solusi yang efektif.",
-                    ],
-                    [
-                        'stem' => "Saran perbaikan yang paling tepat dan membangun jika kamu melihat tugas temanmu tentang materi {$coreNoun} masih belum rapi adalah...",
-                        'correct' => "Menunjukkan secara spesifik bagian yang kurang rapi dan memberikan contoh konkret bagaimana cara memperbaikinya.",
-                        'distractors' => [
-                            "Mencela tugas teman di depan kelas tanpa memberikan alasan atau saran perbaikan yang jelas.",
-                            "Mengambil paksa file tugas teman dan mengubah seluruh isinya tanpa berdiskusi terlebih dahulu.",
-                            "Membiarkan tugas teman tidak rapi agar nilai tugas kelompokmu terlihat lebih unggul.",
-                        ],
-                        'indicator' => "Disajikan telaah rekan sebaya, peserta didik mampu memberikan evaluasi formatif konstruktif pada materi {$coreNoun}.",
-                        'sub_level' => "{$subLevel} - HOTS (Penalaran Kritis)",
-                        'explanation_correct' => "Umpan balik konstruktif (evaluasi formatif) memberikan identifikasi spesifik disertai usulan solusi nyata.",
-                        'explanation_distractors' => "Pilihan pengecoh mencerminkan sikap destruktif, tidak etis, atau persaingan yang tidak sehat.",
-                    ],
-                    [
-                        'stem' => "Ketika kamu menghadapi dua pilihan format penyajian pada materi {$coreNoun}, langkah evaluasi terbaik untuk mengambil keputusan adalah...",
-                        'correct' => "Menilai kesesuaian format dengan tujuan pesan yang ingin disampaikan agar mudah dipahami pembaca.",
-                        'distractors' => [
-                            "Memilih format yang paling mencolok dan penuh animasi tanpa memperhatikan keterbacaan teks.",
-                            "Memilih format secara acak tanpa mempertimbangkan siapa sasaran pembaca atau penontonnya.",
-                            "Menggunakan format yang belum pernah dicoba meskipun tidak didukung oleh perangkat yang tersedia.",
-                        ],
-                        'indicator' => "Disajikan ragam format sajian, peserta didik mampu mengevaluasi kesesuaian media pada materi {$coreNoun}.",
-                        'sub_level' => "{$subLevel} - HOTS (Penalaran Kritis)",
-                        'explanation_correct' => "Kesesuaian antara media/format dengan audiens dan tujuan pesan adalah prinsip utama evaluasi desain komunikasi.",
-                        'explanation_distractors' => "Animasi berlebihan yang merusak keterbacaan atau pilihan acak menunjukkan keputusan yang tidak berdasar.",
-                    ],
-                    [
-                        'stem' => "Faktor utama yang paling berpotensi menyebabkan kegagalan dalam penerapan materi {$coreNoun} adalah...",
-                        'correct' => "Kurangnya ketelitian dalam mengikuti alur prosedur dan mengabaikan tahapan verifikasi hasil kerja.",
-                        'distractors' => [
-                            "Menggunakan warna huruf hitam standar pada dokumen yang sedang dikerjakan.",
-                            "Membaca petunjuk kerja dari awal hingga akhir sebelum menyalakan komputer.",
-                            "Menanyakan hal yang belum dimengerti kepada guru pendamping.",
-                        ],
-                        'indicator' => "Disajikan potensi risiko, peserta didik mampu menganalisis akar penyebab kegagalan pada materi {$coreNoun}.",
-                        'sub_level' => "{$subLevel} - HOTS (Penalaran Kritis)",
-                        'explanation_correct' => "Pengabaian prosedur dan ketiadaan verifikasi adalah akar masalah paling umum dalam kegagalan teknis/praktik.",
-                        'explanation_distractors' => "Pilihan lainnya justru merupakan praktik baik yang dianjurkan dalam proses belajar.",
-                    ],
-                    [
-                        'stem' => "Bagaimanakah cara terbaikmu menilai apakah cara kerja yang kamu gunakan pada materi {$coreNoun} sudah efisien?",
-                        'correct' => "Membandingkan waktu yang digunakan dan kualitas hasil kerja dengan kriteria capaian yang ditetapkan.",
-                        'distractors' => [
-                            "Menganggap cara kerja sudah efisien jika kita bisa bersantai sambil menunggu tugas selesai.",
-                            "Hanya melihat seberapa banyak tombol keyboard yang ditekan selama mengerjakan tugas.",
-                            "Menilai efisiensi dari seberapa cepat kita mengumpulkan tugas tanpa memeriksa isinya.",
-                        ],
-                        'indicator' => "Disajikan evaluasi kerja, peserta didik mampu mengukur efisiensi kerja pada materi {$coreNoun}.",
-                        'sub_level' => "{$subLevel} - HOTS (Penalaran Kritis)",
-                        'explanation_correct' => "Efisiensi diukur secara objektif melalui rasio pemanfaatan waktu terhadap kualitas luaran yang dihasilkan.",
-                        'explanation_distractors' => "Pilihan pengecoh mengukur efisiensi secara keliru dari kemalasan atau kecepatan tanpa akurasi.",
-                    ],
-                    [
-                        'stem' => "Gagasan kreatif apa yang dapat kamu kembangkan dengan memanfaatkan materi {$coreNoun} untuk membantu kegiatan belajarmu?",
-                        'correct' => "Merancang media belajar ringkas yang mengombinasikan poin penting dan ilustrasi jelas agar materi mudah diingat.",
-                        'distractors' => [
-                            "Membuat dokumen palsu untuk menghindari kewajiban piket kebersihan kelas.",
-                            "Menyebarkan informasi yang belum diverifikasi ke grup obrolan kelas.",
-                            "Menghapus catatan pelajaran teman saat meminjam komputernya.",
-                        ],
-                        'indicator' => "Disajikan kebutuhan belajar, peserta didik mampu merancang ide kreatif solutif berbasis materi {$coreNoun}.",
-                        'sub_level' => "{$subLevel} - HOTS (Penalaran Kritis)",
-                        'explanation_correct' => "Mengkreasi (C6) media belajar aplikatif memberikan nilai tambah nyata bagi proses pembelajaran.",
-                        'explanation_distractors' => "Pilihan pengecoh adalah tindakan melanggar tata tertib dan etika digital.",
-                    ],
-                    [
-                        'stem' => "Langkah terbaik yang dapat kamu ambil agar kesalahan praktik materi {$coreNoun} tidak terulang kembali di masa depan adalah...",
-                        'correct' => "Mencatat letak kekeliruan sebelumnya dan membuat daftar periksa langkah kerja sebagai panduan mandiri.",
-                        'distractors' => [
-                            "Berjanji tidak akan pernah menggunakan komputer lagi dalam pelajaran apa pun.",
-                            "Melupakan kesalahan yang pernah terjadi dan berharap kesalahan itu tidak pernah diperiksa guru.",
-                            "Menyalahkan orang lain atas kesalahan langkah kerja yang telah kita perbuat sendiri.",
-                        ],
-                        'indicator' => "Disajikan evaluasi metakognitif, peserta didik mampu merumuskan strategi pencegahan galat pada materi {$coreNoun}.",
-                        'sub_level' => "{$subLevel} - HOTS (Penalaran Kritis)",
-                        'explanation_correct' => "Refleksi metakognitif dan pembuatan checklist mandiri adalah strategi efektif mencegah kekeliruan berulang.",
-                        'explanation_distractors' => "Menghindari teknologi atau melempar kesalahan pada pihak lain bukanlah sikap pembelajar yang dewasa.",
-                    ],
-                    [
-                        'stem' => "Di antara pendekatan mandiri dan pendekatan kolaboratif pada materi {$coreNoun}, keunggulan utama pendekatan kolaboratif adalah...",
-                        'correct' => "Memungkinkan pertukaran ide yang beragam dan saling melengkapi keahlian antaranggota kelompok.",
-                        'distractors' => [
-                            "Kita tidak perlu bekerja sama sekali karena semua tugas dapat dikerjakan oleh ketua kelompok.",
-                            "Pengerjaan tugas menjadi lebih berisik sehingga kelas terlihat lebih ramai.",
-                            "Bisa saling menyontek tanpa perlu memahami isi materi pelajaran.",
-                        ],
-                        'indicator' => "Disajikan komparasi pendekatan, peserta didik mampu mengevaluasi nilai tambah kolaborasi pada materi {$coreNoun}.",
-                        'sub_level' => "{$subLevel} - HOTS (Penalaran Kritis)",
-                        'explanation_correct' => "Sinergi gagasan dan diversitas keterampilan adalah nilai tambah utama dalam pembelajaran kolaboratif.",
-                        'explanation_distractors' => "Pilihan pengecoh menggambarkan ketergantungan pasif, kebisingan, atau ketidakjujuran akademik.",
-                    ],
-                ];
-            } else {
-                // SMA HOTS
-                $angles = [
-                    [
-                        'stem' => "Lakukan analisis kritis: Apa faktor utama yang paling berpotensi menimbulkan kegagalan sistemik pada penerapan materi {$coreNoun}?",
-                        'correct' => "Terjadinya disparitas antara rancangan logika prosedur dan mekanisme verifikasi integritas data.",
-                        'distractors' => [
-                            "Penggunaan variabel independen yang telah melalui proses standarisasi internasional.",
-                            "Pelaksanaan pengujian bertahap sebelum fase penyebaran produk secara menyeluruh.",
-                            "Penyusunan dokumentasi arsitektur sistem yang terlalu lengkap dan transparan.",
-                        ],
-                        'indicator' => "Peserta didik mampu menganalisis faktor penyebab kegagalan sistemik pada materi {$coreNoun}.",
-                        'sub_level' => "{$subLevel} - HOTS (Analisis Sistemik)",
-                        'explanation_correct' => "Disparitas logika prosedur dan absennya verifikasi integritas memicu kegagalan sistemik.",
-                        'explanation_distractors' => "Pilihan pengecoh mencakup praktik-praktik rekayasa terbaik yang justru memitigasi kegagalan.",
-                    ],
-                    [
-                        'stem' => "Bagaimanakah strategi perbaikan paling terukur jika ditemukan deviasi prosedur pada materi {$coreNoun}?",
-                        'correct' => "Melakukan isolasi komponen yang terdistorsi, menganalisis akar anomali, lalu merevisi alur kerja secara terarah.",
-                        'distractors' => [
-                            "Melakukan perombakan arsitektur menyeluruh tanpa menganalisis titik kegagalan spesifik.",
-                            "Mengabaikan deviasi selama luaran sementara masih memenuhi batas toleransi minimal.",
-                            "Menutup paksa sistem dan menyembunyikan log anomali dari tim penjamin mutu.",
-                        ],
-                        'indicator' => "Peserta didik mampu merumuskan strategi perbaikan terukur pada materi {$coreNoun}.",
-                        'sub_level' => "{$subLevel} - HOTS (Analisis Sistemik)",
-                        'explanation_correct' => "Isolasi komponen dan investigasi akar anomali menjamin perbaikan efisien tanpa regresi sistemik.",
-                        'explanation_distractors' => "Pilihan pengecoh mencerminkan kepanikan rekayasa, toleransi galat berlebih, atau manipulasi data.",
-                    ],
-                    [
-                        'stem' => "Berdasarkan pertimbangan kualitas dan efisiensi waktu, pendekatan manakah yang paling optimal Anda terapkan pada materi {$coreNoun}?",
-                        'correct' => "Pendekatan modular terstruktur yang memadukan automasi pengolahan dengan validasi berkala pada titik kritis.",
-                        'distractors' => [
-                            "Pendekatan sekuensial kaku yang tidak mengizinkan adanya iterasi perbaikan di tengah proses.",
-                            "Metode ad-hoc serba cepat yang meniadakan dokumentasi serta pengujian beban kerja.",
-                            "Pendekatan monolitik yang menggabungkan seluruh dependensi ke dalam satu modul tanpa pemisahan peran.",
-                        ],
-                        'indicator' => "Peserta didik mampu mengevaluasi dan memilih pendekatan optimal pada materi {$coreNoun}.",
-                        'sub_level' => "{$subLevel} - HOTS (Analisis Sistemik)",
-                        'explanation_correct' => "Pemisahan modular dan validasi pada titik kritis memberikan rasio terbaik antara kualitas dan kecepatan.",
-                        'explanation_distractors' => "Pilihan pengecoh mengorbankan fleksibilitas (sekuensial kaku) atau keandalan (ad-hoc tanpa uji).",
-                    ],
-                ];
-            }
         }
+
+        // Domain classification for 100% substantive questions
+        $domain = $this->detectTpDomain($analysis, $subjectName);
+        $angles = $this->getDomainMcAngles($domain, $effectiveLevel, $isSmp, $coreNoun, $subjectName, $subLevel);
 
         $angleIndex = ($number + $variant - 1) % count($angles);
         $angle = $angles[$angleIndex];

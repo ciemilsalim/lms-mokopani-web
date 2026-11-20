@@ -920,14 +920,19 @@ class OfflineExamGeneratorTest extends TestCase
         $this->assertStringNotContainsString('hasil buatannya di platform publik virtual', $q26['question']);
         $this->assertStringNotContainsString('dengan menerapkan prinsip keamanan data', $q26['question']);
 
-        // Assert Question 26 uses the simplified, student-friendly noun phrase
-        $this->assertStringContainsString('publikasi konten digital', $q26['question']);
+        // Assert Question 26 is 100% substantive to the domain (security & digital ethics)
+        $this->assertStringContainsString('etika digital', $q26['question']);
         $this->assertEquals(
-            'Tindakan yang paling aman dan rapi saat kamu mempraktikkan materi publikasi konten digital adalah...',
+            'Sebelum mengunggah foto kegiatan bersama teman-teman ke platform publik media sosial, etika digital yang wajib kamu lakukan adalah...',
             $q26['question']
         );
+        foreach ($q26['options'] as $letter => $optText) {
+            $this->assertStringNotContainsString('Menghindari penggunaan alat bantu digital', $optText);
+            $this->assertStringNotContainsString('Mencari jalan pintas', $optText);
+            $this->assertStringNotContainsString('Mengerjakan tugas secepat mungkin', $optText);
+        }
 
-        // When LOTS is selected, question 26 matches the exact stem from the user's screenshot with simplified noun phrase
+        // When LOTS is selected, question 26 tests substantive concepts (digital footprint / data privacy)
         $lots50Response = $this->actingAs($this->teacherUser)->postJson('/offline-exams/generate', [
             'school_class_ids' => [$this->schoolClass->id],
             'learning_objective_ids' => [$complexTp->id, $disseminationTp->id],
@@ -940,8 +945,23 @@ class OfflineExamGeneratorTest extends TestCase
         $lots50Data = $lots50Response->json('exam');
         $q26Lots = $lots50Data['questions'][25];
         $this->assertEquals(
-            'Tujuan utama kita mempelajari materi publikasi konten digital di sekolah adalah agar kita bisa...',
+            'Apa yang dimaksud dengan jejak digital (digital footprint) dalam dunia internet?',
             $q26Lots['question']
         );
+        foreach ($q26Lots['options'] as $letter => $optText) {
+            $this->assertStringNotContainsString('Menghindari penggunaan alat bantu digital', $optText);
+            $this->assertStringNotContainsString('Mencari jalan pintas', $optText);
+            $this->assertStringNotContainsString('Mengerjakan tugas secepat mungkin', $optText);
+        }
+
+        // Verify across all 50 questions: completely free from meta-study / school attitude distractors
+        foreach ($lots50Data['questions'] as $q) {
+            $this->assertStringNotContainsString('Tujuan utama kita mempelajari materi', $q['question']);
+            foreach ($q['options'] as $optText) {
+                $this->assertStringNotContainsString('Menghindari penggunaan alat bantu digital', $optText);
+                $this->assertStringNotContainsString('Mencari jalan pintas', $optText);
+                $this->assertStringNotContainsString('piket kebersihan', $optText);
+            }
+        }
     }
 }
