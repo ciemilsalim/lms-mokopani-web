@@ -964,4 +964,83 @@ class OfflineExamGeneratorTest extends TestCase
             }
         }
     }
+public function test_strictly_zero_duplicate_questions_in_50_multiple_choice_exam(): void
+    {
+        $digitalContentTp = LmsLearningObjective::create([
+            'teacher_id' => $this->teacher->id,
+            'subject_id' => $this->subject->id,
+            'school_class_id' => $this->schoolClass->id,
+            'academic_year_id' => $this->academicYear->id,
+            'semester_id' => $this->semester->id,
+            'code' => 'TP-3.1',
+            'description' => 'memproduksi konten digital terintegrasi yang menggabungkan elemen teks, data visual, dan desain presentasi secara terstruktur dan menarik',
+            'content' => null,
+            'order' => 1,
+        ]);
+
+        $service = app(\App\Services\OfflineExamGeneratorService::class);
+
+        // Case A: 50 questions on a single TP (extreme case where all 50 questions test one domain)
+        $response50 = $this->actingAs($this->teacherUser)->postJson('/offline-exams/generate', [
+            'school_class_ids' => [$this->schoolClass->id],
+            'learning_objective_ids' => [$digitalContentTp->id],
+            'question_type' => 'multiple_choice',
+            'question_count' => 50,
+            'cognitive_level' => 'all',
+            'generation_engine' => 'fast',
+            'output_format' => 'preview',
+        ]);
+
+        $response50->assertOk();
+        $data50 = $response50->json('exam');
+        $this->assertCount(50, $data50['questions']);
+
+        $stems = [];
+        $signatures = [];
+        foreach ($data50['questions'] as $idx => $q) {
+            $stem = trim($q['question']);
+            $sig = $service->generateStemSignature($stem);
+            $qNum = $idx + 1;
+
+            $this->assertNotEmpty($stem, "Question #{$qNum} must not have empty stem");
+            $this->assertFalse(
+                in_array($sig, $signatures, true),
+                "Question #{$qNum} is a duplicate of a previous question! Stem: '{$stem}'"
+            );
+
+            $stems[] = $stem;
+            $signatures[] = $sig;
+        }
+
+        $this->assertCount(50, array_unique($signatures), 'All 50 questions must have strictly unique stems!');
+
+        // Case B: Verify No 10, 11, 12, 13, 14, 15, 16 from the user screenshot are strictly distinct
+        $q10 = $data50['questions'][9]['question'];
+        $q11 = $data50['questions'][10]['question'];
+        $q12 = $data50['questions'][11]['question'];
+        $q13 = $data50['questions'][12]['question'];
+        $q14 = $data50['questions'][13]['question'];
+        $q15 = $data50['questions'][14]['question'];
+        $q16 = $data50['questions'][15]['question'];
+
+        $window = [$q10, $q11, $q12, $q13, $q14, $q15, $q16];
+        $this->assertCount(7, array_unique($window), 'Questions 10 to 16 must all be completely distinct without any cycle!');
+
+        // Case C: 50 questions with LOTS on single TP
+        $responseLots = $this->actingAs($this->teacherUser)->postJson('/offline-exams/generate', [
+            'school_class_ids' => [$this->schoolClass->id],
+            'learning_objective_ids' => [$digitalContentTp->id],
+            'question_type' => 'multiple_choice',
+            'question_count' => 50,
+            'cognitive_level' => 'lots',
+            'generation_engine' => 'fast',
+            'output_format' => 'preview',
+        ]);
+        $responseLots->assertOk();
+        $lotsData = $responseLots->json('exam');
+        $this->assertCount(50, $lotsData['questions']);
+
+        $lotsSigs = array_map(fn($q) => $service->generateStemSignature($q['question']), $lotsData['questions']);
+        $this->assertCount(50, array_unique($lotsSigs), '50 LOTS questions must all have strictly unique stems!');
+    }
 }
