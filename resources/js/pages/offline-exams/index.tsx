@@ -172,6 +172,26 @@ export default function OfflineExamsIndex({
     const [timeLimit, setTimeLimit] = useState<string>(default_time_limit);
     const [generationEngine, setGenerationEngine] = useState<'fast' | 'ai'>('fast');
 
+    // Available question count options based on question type (PG supports up to 50 questions)
+    const availableQuestionCounts = useMemo(() => {
+        if (questionType === 'multiple_choice') {
+            return [5, 10, 15, 20, 25, 30, 35, 40, 45, 50];
+        }
+        if (questionType === 'mixed') {
+            return [10, 15, 20, 25, 30, 35, 40, 45, 50];
+        }
+        return [5, 10, 15, 20, 25, 30];
+    }, [questionType]);
+
+    const handleQuestionTypeChange = (newType: 'multiple_choice' | 'essay' | 'mixed') => {
+        setQuestionType(newType);
+        if (newType === 'essay' && questionCount > 30) {
+            setQuestionCount(10);
+        } else if (newType === 'mixed' && questionCount < 10) {
+            setQuestionCount(10);
+        }
+    };
+
     const [isGenerating, setIsGenerating] = useState<boolean>(false);
     const [examData, setExamData] = useState<ExamData | null>(null);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -760,7 +780,7 @@ export default function OfflineExamsIndex({
                                     {
                                         id: 'multiple_choice',
                                         label: 'Pilihan Ganda',
-                                        desc: 'Hanya PG 4 Opsi (A, B, C, D)',
+                                        desc: 'Hanya PG 4 Opsi (Maks. 50 Soal)',
                                     },
                                     {
                                         id: 'essay',
@@ -770,7 +790,7 @@ export default function OfflineExamsIndex({
                                     {
                                         id: 'mixed',
                                         label: 'Campuran',
-                                        desc: 'PG & Esai Komplit',
+                                        desc: 'PG & Esai (Maks. 50 Soal)',
                                     },
                                 ].map((type) => {
                                     const isSelected = questionType === type.id;
@@ -778,7 +798,7 @@ export default function OfflineExamsIndex({
                                         <button
                                             key={type.id}
                                             type="button"
-                                            onClick={() => setQuestionType(type.id as any)}
+                                            onClick={() => handleQuestionTypeChange(type.id as any)}
                                             className={`p-2.5 rounded-xl border text-left transition flex flex-col justify-between cursor-pointer ${
                                                 isSelected
                                                     ? 'border-primary bg-primary/10 text-primary ring-1 ring-primary'
@@ -942,18 +962,23 @@ export default function OfflineExamsIndex({
                         {/* 6. JUMLAH SOAL & WAKTU */}
                         <div className="grid grid-cols-2 gap-3 pt-2 border-t border-border/50">
                             <div className="space-y-1.5">
-                                <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                                    <ListOrdered className="h-3.5 w-3.5 text-primary" />
-                                    <span>6. Jumlah Soal</span>
+                                <label className="text-xs font-bold text-foreground flex items-center justify-between">
+                                    <span className="flex items-center gap-1.5">
+                                        <ListOrdered className="h-3.5 w-3.5 text-primary" />
+                                        <span>6. Jumlah Soal</span>
+                                    </span>
+                                    {questionType === 'multiple_choice' && (
+                                        <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">Maks. 50 Soal</span>
+                                    )}
                                 </label>
                                 <select
                                     value={questionCount}
                                     onChange={(e) => setQuestionCount(Number(e.target.value))}
                                     className="w-full h-10 rounded-xl border border-border/80 bg-background px-3 text-xs text-foreground font-medium outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition cursor-pointer"
                                 >
-                                    {[5, 10, 15, 20, 25, 30].map((num) => (
+                                    {availableQuestionCounts.map((num) => (
                                         <option key={num} value={num}>
-                                            {num} Butir Soal
+                                            {num} Butir Soal {num === 50 ? '(Maksimal 50)' : ''}
                                         </option>
                                     ))}
                                 </select>

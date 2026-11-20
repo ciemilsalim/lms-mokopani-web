@@ -418,6 +418,7 @@ class OfflineExamGeneratorController extends Controller
             'learning_objective_ids.min' => 'Silakan centang minimal satu Tujuan Pembelajaran (TP) / Materi.',
             'question_type.required' => 'Pilih jenis soal (Pilihan Ganda, Esai, atau Campuran).',
             'question_count.required' => 'Tentukan jumlah soal yang akan digenerate.',
+            'question_count.max' => 'Jumlah butir soal maksimal 50.',
             'output_format.required' => 'Pilih format output (PDF atau DOCS).',
         ]);
 

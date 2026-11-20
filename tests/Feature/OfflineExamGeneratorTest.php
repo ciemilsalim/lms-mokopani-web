@@ -702,4 +702,89 @@ class OfflineExamGeneratorTest extends TestCase
             $this->assertStringNotContainsString('Peserta didik mampu', $stem);
         }
     }
+
+    public function test_multiple_choice_exam_can_generate_up_to_50_questions(): void
+    {
+        // Test generating 50 Multiple Choice questions with multiple TPs divided equally
+        $tp2 = LmsLearningObjective::create([
+            'teacher_id' => $this->teacher->id,
+            'subject_id' => $this->subject->id,
+            'school_class_id' => $this->schoolClass->id,
+            'academic_year_id' => $this->academicYear->id,
+            'semester_id' => $this->semester->id,
+            'code' => 'TP 8.2',
+            'description' => 'Menerapkan logika percabangan dan perulangan dalam algoritma pemecahan masalah.',
+            'competence' => 'Menerapkan dan mengimplementasikan',
+            'content' => 'Logika Percabangan & Perulangan',
+            'order' => 2,
+        ]);
+
+        $response = $this->actingAs($this->teacherUser)->postJson('/offline-exams/generate', [
+            'school_class_ids' => [$this->schoolClass->id],
+            'learning_objective_ids' => [$this->tp->id, $tp2->id],
+            'question_type' => 'multiple_choice',
+            'question_count' => 50,
+            'cognitive_level' => 'all',
+            'generation_engine' => 'fast',
+            'output_format' => 'preview',
+        ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('success', true);
+        $data = $response->json('exam');
+
+        // Verify exact 50 questions
+        $this->assertCount(50, $data['questions']);
+        $this->assertCount(50, $data['mc_questions']);
+        $this->assertCount(0, $data['essay_questions']);
+        $this->assertCount(50, $data['blueprint']);
+        $this->assertCount(50, $data['answer_keys']);
+        $this->assertEquals(100, $data['total_score']); // 50 * 2 points each = 100
+
+        // Verify equal allocation between 2 TPs: 25 questions each
+        $this->assertCount(2, $data['tp_allocations']);
+        $this->assertEquals(25, $data['tp_allocations'][0]['count']);
+        $this->assertEquals(25, $data['tp_allocations'][1]['count']);
+
+        // Check options & answer validity
+        foreach ($data['questions'] as $q) {
+            $this->assertEquals('multiple_choice', $q['type']);
+            $this->assertIsArray($q['options']);
+            $this->assertCount(4, $q['options']);
+            $this->assertContains($q['answer'], ['A', 'B', 'C', 'D']);
+            $this->assertNotEmpty($q['explanation']);
+        }
+
+        // Test rejecting > 50 questions
+        $overflowResponse = $this->actingAs($this->teacherUser)->postJson('/offline-exams/generate', [
+            'school_class_ids' => [$this->schoolClass->id],
+            'learning_objective_ids' => [$this->tp->id],
+            'question_type' => 'multiple_choice',
+            'question_count' => 51,
+            'output_format' => 'preview',
+        ]);
+        $overflowResponse->assertStatus(422);
+        $overflowResponse->assertJsonValidationErrors(['question_count']);
+
+        // Verify PDF download works with 50 questions
+        $pdfResponse = $this->actingAs($this->teacherUser)->post('/offline-exams/generate', [
+            'school_class_ids' => [$this->schoolClass->id],
+            'learning_objective_ids' => [$this->tp->id],
+            'question_type' => 'multiple_choice',
+            'question_count' => 50,
+            'output_format' => 'pdf',
+        ]);
+        $pdfResponse->assertOk();
+        $pdfResponse->assertHeader('Content-Type', 'application/pdf');
+
+        // Verify DOCX download works with 50 questions
+        $docxResponse = $this->actingAs($this->teacherUser)->post('/offline-exams/generate', [
+            'school_class_ids' => [$this->schoolClass->id],
+            'learning_objective_ids' => [$this->tp->id],
+            'question_type' => 'multiple_choice',
+            'question_count' => 50,
+            'output_format' => 'docx',
+        ]);
+        $docxResponse->assertOk();
+    }
 }
