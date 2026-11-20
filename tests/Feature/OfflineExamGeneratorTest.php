@@ -10,9 +10,11 @@ use App\Models\Subject;
 use App\Models\Teacher;
 use App\Models\TeachingAssignment;
 use App\Models\User;
+use DOMDocument;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
+use ZipArchive;
 
 class OfflineExamGeneratorTest extends TestCase
 {
@@ -23,6 +25,7 @@ class OfflineExamGeneratorTest extends TestCase
     protected User $teacherUser;
     protected Teacher $teacher;
     protected SchoolClass $schoolClass;
+    protected SchoolClass $schoolClassB;
     protected Subject $subject;
     protected LmsLearningObjective $tp;
 
@@ -58,6 +61,11 @@ class OfflineExamGeneratorTest extends TestCase
             'academic_year_id' => $this->academicYear->id,
         ]);
 
+        $this->schoolClassB = SchoolClass::create([
+            'name' => 'Kelas 8B',
+            'academic_year_id' => $this->academicYear->id,
+        ]);
+
         $this->subject = Subject::create([
             'name' => 'Informatika',
             'code' => 'INF',
@@ -72,6 +80,14 @@ class OfflineExamGeneratorTest extends TestCase
             'semester_id' => $this->semester->id,
         ]);
 
+        TeachingAssignment::create([
+            'teacher_id' => $this->teacher->id,
+            'school_class_id' => $this->schoolClassB->id,
+            'subject_id' => $this->subject->id,
+            'academic_year_id' => $this->academicYear->id,
+            'semester_id' => $this->semester->id,
+        ]);
+
         $this->tp = LmsLearningObjective::create([
             'teacher_id' => $this->teacher->id,
             'subject_id' => $this->subject->id,
@@ -79,9 +95,9 @@ class OfflineExamGeneratorTest extends TestCase
             'academic_year_id' => $this->academicYear->id,
             'semester_id' => $this->semester->id,
             'code' => 'TP 8.1',
-            'description' => 'Memahami struktur data dan algoritma pencarian sederhana dalam kehidupan sehari-hari.',
+            'description' => 'Memahami struktur data & algoritma pencarian sederhana dalam kehidupan sehari-hari.',
             'competence' => 'Memahami dan menganalisis',
-            'content' => 'Struktur Data dan Algoritma',
+            'content' => 'Struktur Data & Algoritma',
             'order' => 1,
         ]);
     }
@@ -106,8 +122,7 @@ class OfflineExamGeneratorTest extends TestCase
 
         $response->assertInertia(fn (Assert $page) => $page
             ->component('offline-exams/index')
-            ->has('classes', 1)
-            ->where('classes.0.name', 'Kelas 8A')
+            ->has('classes', 2)
             ->has('subjects', 1)
             ->where('subjects.0.name', 'Informatika')
             ->has('tps', 1)
@@ -116,13 +131,14 @@ class OfflineExamGeneratorTest extends TestCase
         );
     }
 
-    public function test_teacher_can_generate_offline_exam_preview(): void
+    public function test_teacher_can_generate_offline_exam_preview_with_multiple_classes(): void
     {
+        // Multi-class checkbox selection: Kelas 8A & Kelas 8B
         $response = $this->actingAs($this->teacherUser)->postJson('/offline-exams/generate', [
-            'school_class_id' => $this->schoolClass->id,
+            'school_class_ids' => [$this->schoolClass->id, $this->schoolClassB->id],
             'learning_objective_id' => $this->tp->id,
             'question_type' => 'mixed',
-            'question_count' => 5,
+            'question_count' => 6,
             'output_format' => 'preview',
             'time_limit' => '60 Menit',
         ]);
@@ -135,17 +151,72 @@ class OfflineExamGeneratorTest extends TestCase
         $data = $response->json('exam');
         $this->assertNotEmpty($data);
         $this->assertEquals('Informatika', $data['subject_name']);
-        $this->assertEquals('Kelas 8A', $data['class_name']);
+        $this->assertStringContainsString('Kelas 8A', $data['class_name']);
+        $this->assertStringContainsString('Kelas 8B', $data['class_name']);
         $this->assertEquals('60 Menit', $data['time_limit']);
-        $this->assertCount(5, $data['questions']);
-        $this->assertCount(5, $data['blueprint']);
-        $this->assertCount(5, $data['answer_keys']);
+        $this->assertCount(6, $data['questions']);
+        $this->assertCount(6, $data['blueprint']);
+        $this->assertCount(6, $data['answer_keys']);
+    }
+
+    public function test_strict_essay_selection_contains_zero_multiple_choice_questions(): void
+    {
+        // Request 10 essay questions: MUST ONLY contain essay questions
+        $response = $this->actingAs($this->teacherUser)->postJson('/offline-exams/generate', [
+            'school_class_ids' => [$this->schoolClass->id],
+            'learning_objective_id' => $this->tp->id,
+            'question_type' => 'essay',
+            'question_count' => 10,
+            'output_format' => 'preview',
+        ]);
+
+        $response->assertStatus(200);
+        $data = $response->json('exam');
+
+        $this->assertCount(10, $data['questions']);
+        $this->assertCount(0, $data['mc_questions'], 'mc_questions must be strictly empty for essay type');
+        $this->assertCount(10, $data['essay_questions']);
+
+        foreach ($data['questions'] as $q) {
+            $this->assertEquals('essay', $q['type'], 'Question must be of type essay');
+            $this->assertNull($q['options'], 'Options must be null for essay questions');
+        }
+
+        foreach ($data['blueprint'] as $bp) {
+            $this->assertEquals('Esai / Uraian', $bp['question_type']);
+        }
+    }
+
+    public function test_strict_multiple_choice_selection_contains_zero_essay_questions(): void
+    {
+        // Request 10 MC questions: MUST ONLY contain MC questions
+        $response = $this->actingAs($this->teacherUser)->postJson('/offline-exams/generate', [
+            'school_class_ids' => [$this->schoolClass->id],
+            'learning_objective_id' => $this->tp->id,
+            'question_type' => 'multiple_choice',
+            'question_count' => 8,
+            'output_format' => 'preview',
+        ]);
+
+        $response->assertStatus(200);
+        $data = $response->json('exam');
+
+        $this->assertCount(8, $data['questions']);
+        $this->assertCount(8, $data['mc_questions']);
+        $this->assertCount(0, $data['essay_questions'], 'essay_questions must be strictly empty for multiple_choice type');
+
+        foreach ($data['questions'] as $q) {
+            $this->assertEquals('multiple_choice', $q['type']);
+            $this->assertIsArray($q['options']);
+            $this->assertArrayHasKey('A', $q['options']);
+            $this->assertArrayHasKey('B', $q['options']);
+        }
     }
 
     public function test_teacher_can_generate_and_download_pdf(): void
     {
         $response = $this->actingAs($this->teacherUser)->post('/offline-exams/generate', [
-            'school_class_id' => $this->schoolClass->id,
+            'school_class_ids' => [$this->schoolClass->id],
             'learning_objective_id' => $this->tp->id,
             'question_type' => 'multiple_choice',
             'question_count' => 5,
@@ -158,13 +229,13 @@ class OfflineExamGeneratorTest extends TestCase
         $this->assertNotEmpty($response->getContent());
     }
 
-    public function test_teacher_can_generate_and_download_docx(): void
+    public function test_teacher_can_generate_and_download_docx_with_valid_xml(): void
     {
         $response = $this->actingAs($this->teacherUser)->post('/offline-exams/generate', [
-            'school_class_id' => $this->schoolClass->id,
+            'school_class_ids' => [$this->schoolClass->id, $this->schoolClassB->id],
             'learning_objective_id' => $this->tp->id,
             'question_type' => 'essay',
-            'question_count' => 3,
+            'question_count' => 5,
             'output_format' => 'docx',
             'time_limit' => '45 Menit',
         ]);
@@ -174,6 +245,32 @@ class OfflineExamGeneratorTest extends TestCase
             'Content-Type',
             'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
         );
+
+        // Verify the binary docx is valid OOXML and can be opened by Microsoft Word without XML errors
+        $tempDocx = tempnam(sys_get_temp_dir(), 'test_exam_') . '.docx';
+        $baseResponse = $response->baseResponse;
+        if ($baseResponse instanceof \Symfony\Component\HttpFoundation\BinaryFileResponse) {
+            $binaryContent = file_get_contents($baseResponse->getFile()->getPathname());
+        } else {
+            $binaryContent = $response->getContent();
+        }
+        file_put_contents($tempDocx, $binaryContent);
+
+        $zip = new ZipArchive();
+        $this->assertTrue($zip->open($tempDocx), 'Generated DOCX must be a valid zip package');
+        $xmlContent = $zip->getFromName('word/document.xml');
+        $this->assertNotEmpty($xmlContent, 'DOCX must contain word/document.xml');
+        $zip->close();
+        @unlink($tempDocx);
+
+        // Validate XML strictly: must not have any entity reference errors
+        libxml_use_internal_errors(true);
+        $dom = new DOMDocument();
+        $isXmlValid = $dom->loadXML($xmlContent);
+        $errors = libxml_get_errors();
+        libxml_clear_errors();
+
+        $this->assertTrue($isXmlValid, 'word/document.xml must be 100% valid XML with no entity ref errors: ' . ($errors[0]->message ?? ''));
     }
 
     public function test_validation_errors_when_required_inputs_are_missing(): void
@@ -181,7 +278,7 @@ class OfflineExamGeneratorTest extends TestCase
         $response = $this->actingAs($this->teacherUser)->postJson('/offline-exams/generate', []);
         $response->assertStatus(422);
         $response->assertJsonValidationErrors([
-            'school_class_id',
+            'school_class_ids',
             'learning_objective_id',
             'question_type',
             'question_count',
@@ -212,7 +309,7 @@ class OfflineExamGeneratorTest extends TestCase
 
         // Teacher Budi attempts to access other teacher's class & TP
         $response = $this->actingAs($this->teacherUser)->postJson('/offline-exams/generate', [
-            'school_class_id' => $otherClass->id,
+            'school_class_ids' => [$otherClass->id],
             'learning_objective_id' => $otherTp->id,
             'question_type' => 'multiple_choice',
             'question_count' => 5,

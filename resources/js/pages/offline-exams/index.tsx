@@ -8,17 +8,18 @@ import {
     Sparkles,
     CheckCircle2,
     Download,
-    Eye,
     Layers,
     BookOpen,
     School,
     Clock,
     RefreshCw,
-    HelpCircle,
-    FileCheck,
     ListOrdered,
     KeyRound,
     AlertCircle,
+    CheckSquare,
+    Square,
+    Zap,
+    Info,
 } from 'lucide-react';
 import axios from 'axios';
 
@@ -47,8 +48,12 @@ interface TpItem {
     content?: string | null;
     subject_id: number;
     subject_name?: string | null;
-    school_class_id?: number | null;
-    school_class_name?: string | null;
+    school_class_ids?: number[];
+    is_active_material?: boolean;
+    material_title?: string | null;
+    material_id?: number | null;
+    is_sub_tp?: boolean;
+    parent_tp_code?: string | null;
 }
 
 interface Props {
@@ -103,7 +108,7 @@ interface ExamData {
     headmaster_nip: string;
     teacher_name: string;
     teacher_nip: string;
-    class_id: number;
+    class_ids: number[];
     class_name: string;
     subject_name: string;
     tp_id: number;
@@ -130,8 +135,15 @@ export default function OfflineExamsIndex({
     school_name,
     default_time_limit = '90 Menit',
 }: Props) {
-    const [selectedClassId, setSelectedClassId] = useState<number | ''>(classes[0]?.id ?? '');
+    // 1. Multiple Classes Checkbox State (Default to first class or all)
+    const [selectedClassIds, setSelectedClassIds] = useState<number[]>(
+        classes.length > 0 ? [classes[0].id] : []
+    );
+
+    // 2. Selected TP (Default to first active material TP if present, else first TP)
     const [selectedTpId, setSelectedTpId] = useState<number | ''>(tps[0]?.id ?? '');
+
+    // 3. Question Form States
     const [questionType, setQuestionType] = useState<'multiple_choice' | 'essay' | 'mixed'>('multiple_choice');
     const [questionCount, setQuestionCount] = useState<number>(10);
     const [timeLimit, setTimeLimit] = useState<string>(default_time_limit);
@@ -141,11 +153,41 @@ export default function OfflineExamsIndex({
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<'soal' | 'kisi_kisi' | 'kunci_jawaban'>('soal');
 
-    // Filter TPs based on selected class or show all
-    const availableTps = useMemo(() => {
-        if (!selectedClassId) return tps;
-        return tps.filter((tp) => !tp.school_class_id || tp.school_class_id === Number(selectedClassId));
-    }, [tps, selectedClassId]);
+    // Toggle single class checkbox
+    const handleToggleClass = (classId: number) => {
+        setSelectedClassIds((prev) => {
+            if (prev.includes(classId)) {
+                return prev.filter((id) => id !== classId);
+            } else {
+                return [...prev, classId];
+            }
+        });
+    };
+
+    // Toggle all classes
+    const handleToggleAllClasses = () => {
+        if (selectedClassIds.length === classes.length) {
+            setSelectedClassIds([]);
+        } else {
+            setSelectedClassIds(classes.map((c) => c.id));
+        }
+    };
+
+    // Separate active material TPs vs general TPs
+    const { activeMaterialTps, otherTps } = useMemo(() => {
+        const active: TpItem[] = [];
+        const other: TpItem[] = [];
+
+        tps.forEach((tp) => {
+            if (tp.is_active_material) {
+                active.push(tp);
+            } else {
+                other.push(tp);
+            }
+        });
+
+        return { activeMaterialTps: active, otherTps: other };
+    }, [tps]);
 
     const activeTp = useMemo(() => {
         return tps.find((tp) => tp.id === Number(selectedTpId));
@@ -153,12 +195,12 @@ export default function OfflineExamsIndex({
 
     // Handle Generation (AJAX Preview)
     const handleGenerate = async (forceRegenerate = false) => {
-        if (!selectedClassId) {
-            setErrorMessage('Silakan pilih kelas terlebih dahulu.');
+        if (selectedClassIds.length === 0) {
+            setErrorMessage('Silakan centang minimal satu kelas target.');
             return;
         }
         if (!selectedTpId) {
-            setErrorMessage('Silakan pilih Tujuan Pembelajaran (TP).');
+            setErrorMessage('Silakan pilih Tujuan Pembelajaran (TP) atau materi yang diujikan.');
             return;
         }
 
@@ -167,7 +209,7 @@ export default function OfflineExamsIndex({
 
         try {
             const response = await axios.post('/offline-exams/generate', {
-                school_class_id: selectedClassId,
+                school_class_ids: selectedClassIds,
                 learning_objective_id: selectedTpId,
                 question_type: questionType,
                 question_count: questionCount,
@@ -191,8 +233,12 @@ export default function OfflineExamsIndex({
 
     // Direct Download PDF or DOCX via POST submit
     const handleDirectDownload = (format: 'pdf' | 'docx') => {
-        if (!selectedClassId || !selectedTpId) {
-            setErrorMessage('Pastikan Kelas dan TP telah dipilih sebelum mengunduh.');
+        if (selectedClassIds.length === 0) {
+            setErrorMessage('Pastikan minimal satu kelas telah dicentang sebelum mengunduh.');
+            return;
+        }
+        if (!selectedTpId) {
+            setErrorMessage('Pastikan Tujuan Pembelajaran (TP) telah dipilih sebelum mengunduh.');
             return;
         }
 
@@ -215,7 +261,10 @@ export default function OfflineExamsIndex({
             form.appendChild(input);
         };
 
-        addField('school_class_id', selectedClassId);
+        selectedClassIds.forEach((id) => {
+            addField('school_class_ids[]', id);
+        });
+
         addField('learning_objective_id', selectedTpId);
         addField('question_type', questionType);
         addField('question_count', questionCount);
@@ -242,7 +291,7 @@ export default function OfflineExamsIndex({
                         <h1 className="text-xl sm:text-2xl font-black text-foreground tracking-tight flex items-center gap-2">
                             <span>Generator Soal Asesmen Offline</span>
                             <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 font-bold border border-emerald-500/20">
-                                Berbasis TP
+                                Berbasis TP & Materi Aktif
                             </span>
                         </h1>
                         <p className="text-xs sm:text-sm text-muted-foreground font-medium max-w-2xl">
@@ -250,11 +299,11 @@ export default function OfflineExamsIndex({
                         </p>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                         <button
                             type="button"
                             onClick={() => handleDirectDownload('pdf')}
-                            disabled={!selectedClassId || !selectedTpId || isGenerating}
+                            disabled={selectedClassIds.length === 0 || !selectedTpId || isGenerating}
                             className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-xs font-bold shadow-xs hover:bg-primary/90 transition disabled:opacity-50 cursor-pointer min-h-[40px]"
                         >
                             <Download className="h-4 w-4" />
@@ -263,7 +312,7 @@ export default function OfflineExamsIndex({
                         <button
                             type="button"
                             onClick={() => handleDirectDownload('docx')}
-                            disabled={!selectedClassId || !selectedTpId || isGenerating}
+                            disabled={selectedClassIds.length === 0 || !selectedTpId || isGenerating}
                             className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-card border border-border/80 text-foreground text-xs font-bold shadow-xs hover:bg-muted transition disabled:opacity-50 cursor-pointer min-h-[40px]"
                         >
                             <FileText className="h-4 w-4 text-primary" />
@@ -289,80 +338,160 @@ export default function OfflineExamsIndex({
                                 <span>Parameter Pembuatan Soal</span>
                             </h2>
                             <p className="text-xs text-muted-foreground mt-0.5">
-                                Tentukan sasaran kelas, TP, jenis soal, dan jumlah butir soal.
+                                Tentukan sasaran kelas, materi/TP aktif, dan bentuk soal yang diinginkan.
                             </p>
                         </div>
 
-                        {/* Pilih Kelas */}
-                        <div className="space-y-1.5">
-                            <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                                <School className="h-3.5 w-3.5 text-primary" />
-                                <span>Pilih Kelas Target</span>
-                            </label>
-                            <select
-                                value={selectedClassId}
-                                onChange={(e) => setSelectedClassId(Number(e.target.value))}
-                                className="w-full h-10 rounded-xl border border-border/80 bg-background px-3 text-xs text-foreground font-medium outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition cursor-pointer"
-                            >
-                                <option value="" disabled>-- Pilih Kelas --</option>
-                                {classes.map((cls) => (
-                                    <option key={cls.id} value={cls.id}>
-                                        {cls.name}
-                                    </option>
-                                ))}
-                            </select>
+                        {/* 1. PILIH KELAS TARGET (CHECKBOX MULTI-SELECT) */}
+                        <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                                <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                                    <School className="h-3.5 w-3.5 text-primary" />
+                                    <span>Pilih Kelas Target</span>
+                                    <span className="text-[11px] font-normal text-muted-foreground">
+                                        ({selectedClassIds.length} dipilih)
+                                    </span>
+                                </label>
+                                {classes.length > 1 && (
+                                    <button
+                                        type="button"
+                                        onClick={handleToggleAllClasses}
+                                        className="text-[11px] font-semibold text-primary hover:underline cursor-pointer"
+                                    >
+                                        {selectedClassIds.length === classes.length ? 'Batal Semua' : 'Pilih Semua'}
+                                    </button>
+                                )}
+                            </div>
+
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                {classes.map((cls) => {
+                                    const isChecked = selectedClassIds.includes(cls.id);
+                                    return (
+                                        <button
+                                            key={cls.id}
+                                            type="button"
+                                            onClick={() => handleToggleClass(cls.id)}
+                                            className={`p-2.5 rounded-xl border text-left transition flex items-center gap-2 cursor-pointer ${
+                                                isChecked
+                                                    ? 'border-primary bg-primary/10 text-primary font-bold shadow-2xs'
+                                                    : 'border-border/80 bg-background text-muted-foreground hover:bg-muted/40 font-medium'
+                                            }`}
+                                        >
+                                            {isChecked ? (
+                                                <CheckSquare className="h-4 w-4 text-primary shrink-0" />
+                                            ) : (
+                                                <Square className="h-4 w-4 text-muted-foreground/60 shrink-0" />
+                                            )}
+                                            <span className="text-xs truncate">{cls.name}</span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
                         </div>
 
-                        {/* Pilih TP */}
+                        {/* 2. PILIH TP & SUB-TP (MENGUTAMAKAN MATERI YANG SEDANG AKTIF) */}
                         <div className="space-y-1.5">
                             <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
                                 <BookOpen className="h-3.5 w-3.5 text-primary" />
-                                <span>Pilih Tujuan Pembelajaran (TP)</span>
+                                <span>Pilih Tujuan Pembelajaran (TP) / Materi</span>
                             </label>
+
                             <select
                                 value={selectedTpId}
                                 onChange={(e) => setSelectedTpId(Number(e.target.value))}
-                                className="w-full h-10 rounded-xl border border-border/80 bg-background px-3 text-xs text-foreground font-medium outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition cursor-pointer"
+                                className="w-full h-11 rounded-xl border border-border/80 bg-background px-3 text-xs text-foreground font-medium outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition cursor-pointer"
                             >
-                                <option value="" disabled>-- Pilih TP --</option>
-                                {availableTps.map((tp) => (
-                                    <option key={tp.id} value={tp.id}>
-                                        [{tp.code}] {tp.subject_name ? `${tp.subject_name} - ` : ''}{tp.description.substring(0, 75)}...
-                                    </option>
-                                ))}
+                                <option value="" disabled>-- Pilih TP atau Materi --</option>
+
+                                {activeMaterialTps.length > 0 && (
+                                    <optgroup label="⭐ TP / Sub-TP dari Materi yang Sedang Aktif">
+                                        {activeMaterialTps.map((tp) => (
+                                            <option key={`act-${tp.id}`} value={tp.id}>
+                                                [Materi Aktif: {tp.material_title}] {tp.is_sub_tp ? `(Sub-TP ${tp.code})` : `(${tp.code})`} {tp.description.substring(0, 60)}...
+                                            </option>
+                                        ))}
+                                    </optgroup>
+                                )}
+
+                                {otherTps.length > 0 && (
+                                    <optgroup label="Daftar Tujuan Pembelajaran Lainnya">
+                                        {otherTps.map((tp) => (
+                                            <option key={`oth-${tp.id}`} value={tp.id}>
+                                                [{tp.code}] {tp.is_sub_tp ? '(Sub-TP) ' : ''}{tp.subject_name ? `${tp.subject_name} - ` : ''}{tp.description.substring(0, 65)}...
+                                            </option>
+                                        ))}
+                                    </optgroup>
+                                )}
                             </select>
 
+                            {/* Detail Badge Card for Selected TP */}
                             {activeTp && (
-                                <div className="mt-2 p-3 rounded-xl bg-muted/40 border border-border/60 text-xs space-y-1 text-muted-foreground">
-                                    <div className="font-bold text-foreground flex items-center justify-between">
-                                        <span>{activeTp.code}</span>
-                                        <span className="text-[10px] px-2 py-0.5 rounded bg-primary/10 text-primary font-bold">
-                                            {activeTp.subject_name || 'Mata Pelajaran'}
-                                        </span>
+                                <div className="mt-2 p-3.5 rounded-xl bg-muted/40 border border-border/60 text-xs space-y-1.5 text-muted-foreground">
+                                    <div className="flex items-center justify-between flex-wrap gap-1">
+                                        <div className="flex items-center gap-1.5 font-bold text-foreground">
+                                            <span>{activeTp.code}</span>
+                                            {activeTp.is_sub_tp && (
+                                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-600 font-semibold border border-blue-500/20">
+                                                    Sub-TP
+                                                </span>
+                                            )}
+                                        </div>
+                                        {activeTp.is_active_material && (
+                                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 font-bold border border-emerald-500/20 flex items-center gap-1">
+                                                <Zap className="h-3 w-3" />
+                                                <span>Aktif di Bahan Materi</span>
+                                            </span>
+                                        )}
                                     </div>
+
+                                    {activeTp.material_title && (
+                                        <p className="text-[11px] font-semibold text-foreground">
+                                            Materi: <span className="text-primary font-bold">{activeTp.material_title}</span>
+                                        </p>
+                                    )}
+
                                     <p className="text-[11px] leading-relaxed text-foreground">
                                         "{activeTp.description}"
                                     </p>
-                                    {activeTp.content && (
-                                        <p className="text-[10px] text-muted-foreground font-mono">
-                                            Materi: {activeTp.content}
+
+                                    {activeTp.competence && (
+                                        <p className="text-[10px] text-muted-foreground">
+                                            Target Kompetensi: <span className="font-medium text-foreground">{activeTp.competence}</span>
                                         </p>
                                     )}
                                 </div>
                             )}
                         </div>
 
-                        {/* Pilih Jenis Soal */}
+                        {/* 3. PILIH BENTUK / JENIS SOAL (STRICT 100% SESUAI PILIHAN) */}
                         <div className="space-y-2">
-                            <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                                <Layers className="h-3.5 w-3.5 text-primary" />
-                                <span>Bentuk / Jenis Soal</span>
-                            </label>
+                            <div className="flex items-center justify-between">
+                                <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                                    <Layers className="h-3.5 w-3.5 text-primary" />
+                                    <span>Bentuk / Jenis Soal</span>
+                                </label>
+                                <span className="text-[10px] text-muted-foreground italic">
+                                    Hasil soal 100% konsisten
+                                </span>
+                            </div>
+
                             <div className="grid grid-cols-3 gap-2">
                                 {[
-                                    { id: 'multiple_choice', label: 'Pilihan Ganda', desc: '4 Opsi (A, B, C, D)' },
-                                    { id: 'essay', label: 'Esai / Uraian', desc: 'Soal Analisis & Jawaban' },
-                                    { id: 'mixed', label: 'Campuran', desc: 'PG & Esai Komplit' },
+                                    {
+                                        id: 'multiple_choice',
+                                        label: 'Pilihan Ganda',
+                                        desc: 'Hanya PG 4 Opsi (A, B, C, D)',
+                                    },
+                                    {
+                                        id: 'essay',
+                                        label: 'Esai / Uraian',
+                                        desc: 'Hanya Soal Uraian & Rubrik',
+                                    },
+                                    {
+                                        id: 'mixed',
+                                        label: 'Campuran',
+                                        desc: 'PG & Esai Komplit',
+                                    },
                                 ].map((type) => {
                                     const isSelected = questionType === type.id;
                                     return (
@@ -382,9 +511,19 @@ export default function OfflineExamsIndex({
                                     );
                                 })}
                             </div>
+
+                            {/* Informational Note for Strict Mode */}
+                            <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/30 text-[11px] text-muted-foreground">
+                                <Info className="h-3.5 w-3.5 text-primary shrink-0" />
+                                <span>
+                                    {questionType === 'essay' && `Pilihan Esai: Seluruh ${questionCount} butir soal murni berupa pertanyaan esai/uraian tanpa ada pilihan ganda.`}
+                                    {questionType === 'multiple_choice' && `Pilihan PG: Seluruh ${questionCount} butir soal murni berupa pilihan ganda (A, B, C, D).`}
+                                    {questionType === 'mixed' && `Pilihan Campuran: Terdiri dari kombinasi Pilihan Ganda dan Esai.`}
+                                </span>
+                            </div>
                         </div>
 
-                        {/* Jumlah Soal & Waktu */}
+                        {/* 4. JUMLAH SOAL & WAKTU */}
                         <div className="grid grid-cols-2 gap-3">
                             <div className="space-y-1.5">
                                 <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
@@ -424,7 +563,7 @@ export default function OfflineExamsIndex({
                             <button
                                 type="button"
                                 onClick={() => handleGenerate(false)}
-                                disabled={isGenerating || !selectedClassId || !selectedTpId}
+                                disabled={isGenerating || selectedClassIds.length === 0 || !selectedTpId}
                                 className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-primary text-primary-foreground font-bold text-xs shadow-md hover:bg-primary/90 transition disabled:opacity-50 cursor-pointer min-h-[44px]"
                             >
                                 {isGenerating ? (
@@ -582,11 +721,11 @@ export default function OfflineExamsIndex({
                                                 </div>
                                             )}
 
-                                            {/* Multiple Choice Section */}
+                                            {/* Multiple Choice Section (HANYA MUNCUL JIKA ADA SOAL PG) */}
                                             {examData.mc_questions.length > 0 && (
                                                 <div className="space-y-3">
                                                     <div className="font-bold text-xs uppercase bg-muted/40 p-2 rounded-lg border-l-4 border-primary">
-                                                        Bagian I: Pilihan Ganda
+                                                        {examData.essay_questions.length > 0 ? 'Bagian I: Pilihan Ganda' : 'Daftar Soal Pilihan Ganda'}
                                                     </div>
                                                     <div className="space-y-4">
                                                         {examData.mc_questions.map((q) => (
@@ -611,11 +750,11 @@ export default function OfflineExamsIndex({
                                                 </div>
                                             )}
 
-                                            {/* Essay Section */}
+                                            {/* Essay Section (HANYA MUNCUL JIKA ADA SOAL ESAI) */}
                                             {examData.essay_questions.length > 0 && (
                                                 <div className="space-y-3 pt-2">
                                                     <div className="font-bold text-xs uppercase bg-muted/40 p-2 rounded-lg border-l-4 border-primary">
-                                                        Bagian II: Esai / Uraian
+                                                        {examData.mc_questions.length > 0 ? 'Bagian II: Esai / Uraian' : 'Daftar Soal Esai / Uraian'}
                                                     </div>
                                                     <div className="space-y-4">
                                                         {examData.essay_questions.map((q) => (
@@ -730,7 +869,7 @@ export default function OfflineExamsIndex({
                                         Naskah Soal Belum Digenerate
                                     </h3>
                                     <p className="text-xs text-muted-foreground">
-                                        Pilih kelas, TP, jenis soal, dan klik tombol <strong>Generate & Tinjau Soal (AI)</strong> atau langsung klik <strong>Unduh PDF / DOCS</strong>.
+                                        Centang kelas target, pilih TP/materi, jenis soal, dan klik tombol <strong>Generate & Tinjau Soal (AI)</strong> atau langsung klik <strong>Unduh PDF / DOCS</strong>.
                                     </p>
                                 </div>
                             </div>
