@@ -147,7 +147,7 @@ class OfflineExamGeneratorService
         $classKey = implode('_', $classIds);
         $tpKey = $tpList->pluck('id')->sort()->implode('_');
         $levelInfo = $this->resolveEducationLevel($classList, $classNames);
-        $cacheHash = md5("offline_exam_v8_{$tpKey}_{$classKey}_{$questionType}_{$questionCount}_{$generationEngine}_{$cognitiveLevel}_{$levelInfo['grade_label']}");
+        $cacheHash = md5("offline_exam_v9_{$tpKey}_{$classKey}_{$questionType}_{$questionCount}_{$generationEngine}_{$cognitiveLevel}_{$levelInfo['grade_label']}");
 
         if (!$regenerate) {
             $cachedJson = LmsAiCache::getCache($cacheHash);
@@ -507,6 +507,10 @@ ATURAN WAJIB & SANGAT KETAT:
    d. JANGAN PERNAH menyalin mentah-mentah frasa kurikulum seperti "Peserta didik mampu..." atau "Peserta didik dapat..." ke dalam kalimat soal.
    e. DILARANG KERAS menyisipkan teks artifisial seperti "(soal nomor X)!" pada kalimat soal.
    f. Jika sebuah TP dialokasikan lebih dari 1 butir soal, setiap butir soal pada TP tersebut WAJIB menguji aspek materi yang BERBEDA (contoh: butir 1 fokus alur/konsep, butir 2 fokus manfaat, butir 3 fokus komponen/bagian, butir 4 fokus contoh penerapan sehari-hari, butir 5 fokus langkah kerja). DILARANG KERAS membuat soal kembar atau berulang dengan redaksi yang sama!
+   g. KHUSUS SOAL PILIHAN GANDA (PG):
+      - Kalimat stem pertanyaan maupun pilihan jawaban (opsi A, B, C, D) WAJIB sederhana, ramah, dan mudah dipahami siswa seperti halnya soal esai.
+      - DILARANG KERAS menggunakan frasa abstrak atau kaku bergaya buku panduan teknis pada opsi jawaban (seperti: "bentuk penerapan dasar...", "pengenalan konsep secara utuh dan sistematis", "pedoman normatif", dll.).
+      - Pilihan jawaban harus singkat, konkret, jelas, dan menyajikan tindakan/pemahaman riil yang biasa didengar dan dialami siswa di kelas.
 5. RINCIAN KUNCI JAWABAN & RUBRIK (WAJIB SANGAT LENGKAP & JELAS):
    - Untuk Pilihan Ganda (PG):
      Field 'explanation' WAJIB memuat:
@@ -832,74 +836,74 @@ PROMPT;
 
             if ($isSmp) {
                 $stems = [
-                    "Apa pengertian utama dari {$concept} dalam pembelajaran {$subjectName}?",
-                    "Berikut ini yang merupakan bagian atau ciri pokok dari {$coreNoun} adalah...",
+                    "Apa yang dimaksud dengan {$coreNoun} dalam pelajaran {$subjectName}?",
+                    "Ciri utama yang paling mudah kamu kenali dari {$coreNoun} adalah...",
                     "Apa manfaat utama yang kamu peroleh setelah mempelajari materi {$coreNoun}?",
-                    "Contoh sederhana penerapan {$coreNoun} yang paling sering kamu jumpai sehari-hari adalah...",
-                    "Pernyataan yang paling benar mengenai materi {$coreNoun} adalah...",
-                    "Tujuan utama kita mempelajari materi {$coreNoun} dalam kehidupan sehari-hari adalah...",
-                    "Fungsi dasar yang paling penting dari materi {$coreNoun} adalah...",
-                    "Manakah di bawah ini yang merupakan konsep atau istilah kunci dalam materi {$coreNoun}?",
-                    "Prinsip pokok yang harus kamu pahami terlebih dahulu pada materi {$coreNoun} adalah...",
-                    "Bentuk kegiatan nyata yang menunjukkan pemahaman dasar tentang materi {$coreNoun} adalah...",
+                    "Contoh sederhana dari {$coreNoun} yang paling sering kamu jumpai dalam kehidupan sehari-hari adalah...",
+                    "Pernyataan yang paling tepat mengenai materi {$coreNoun} adalah...",
+                    "Tujuan utama kita mempelajari materi {$coreNoun} di sekolah adalah agar kita bisa...",
+                    "Fungsi penting dari materi {$coreNoun} dalam kegiatan sehari-hari adalah...",
+                    "Ketika kamu menjelaskan materi {$coreNoun} kepada teman sebangkumu, hal pokok yang kamu sampaikan adalah...",
+                    "Prinsip dasar yang perlu kamu ingat dengan baik tentang materi {$coreNoun} adalah...",
+                    "Bentuk kegiatan nyata yang menunjukkan pemahamanmu tentang materi {$coreNoun} adalah...",
                 ];
                 $optionSets = [
                     [
-                        'A' => "Konsep atau cara dasar dalam {$coreNoun} yang bertujuan mempermudah pemahaman siswa.",
-                        'B' => "Bagian dari materi {$coreNoun} yang berfungsi mengenali istilah dan aturan pokok yang berlaku.",
-                        'C' => "Bentuk penerapan dasar {$coreNoun} yang digunakan untuk mengenalkan materi secara konseptual.",
-                        'D' => "Prinsip utama {$coreNoun} yang membedakannya dari materi lain dalam pembelajaran {$subjectName}.",
-                        'correct' => "Pengenalan dan pemahaman konsep utama mengenai {$coreNoun} secara utuh dan sistematis.",
+                        'A' => "Aturan atau cara dasar materi {$coreNoun} yang membantu mempermudah kegiatan belajar kita.",
+                        'B' => "Bagian dari materi {$coreNoun} yang bertugas mengenali aturan dan istilah penting di kelas.",
+                        'C' => "Pedoman praktis yang membantu kita mengenali materi {$coreNoun} secara sederhana.",
+                        'D' => "Bentuk pemahaman awal yang membedakan materi {$coreNoun} dengan materi lainnya.",
+                        'correct' => "Memahami inti materi {$coreNoun} dan cara menggunakannya dengan benar dalam kehidupan sehari-hari.",
                     ],
                     [
-                        'A' => "Pedoman kerja sederhana yang membantu mengenali struktur materi {$coreNoun}.",
-                        'B' => "Komponen pelengkap yang digunakan sewaktu-waktu dalam materi {$coreNoun}.",
-                        'C' => "Aturan umum dalam materi {$coreNoun} yang mengatur keselarasan teori dan kegiatan belajar.",
-                        'D' => "Bentuk latihan mandiri yang membantu mengingat kembali materi {$coreNoun}.",
-                        'correct' => "Unsur pokok dan fungsi esensial dari materi {$coreNoun} yang dipelajari secara mendalam.",
+                        'A' => "Pedoman kerja sederhana yang membantu kita memahami materi {$coreNoun} langkah demi langkah.",
+                        'B' => "Bagian tambahan yang digunakan saat kita membutuhkan contoh materi {$coreNoun}.",
+                        'C' => "Aturan umum yang membantu menjaga kerapian hasil belajar materi {$coreNoun}.",
+                        'D' => "Latihan dasar untuk melatih daya ingat kita terhadap nama-nama materi {$coreNoun}.",
+                        'correct' => "Mengenal bagian-bagian penting materi {$coreNoun} dan fungsinya secara jelas.",
                     ],
                     [
-                        'A' => "Metode pengenalan ciri-ciri utama materi {$coreNoun} dalam kegiatan sehari-hari.",
-                        'B' => "Bentuk latihan dasar untuk mengenali ruang lingkup materi {$coreNoun}.",
-                        'C' => "Kaidah dasar materi {$coreNoun} yang bermanfaat langsung dalam aktivitas belajar.",
-                        'D' => "Pemahaman awal mengenai batasan ruang lingkup materi {$coreNoun}.",
-                        'correct' => "Manfaat nyata dan peranan mendasar {$coreNoun} dalam mendukung pemahaman konsep.",
+                        'A' => "Membantu kita menyelesaikan tugas sekolah tentang {$coreNoun} dengan lebih cepat dan rapi.",
+                        'B' => "Membuat kita lebih mudah mengenali contoh penerapan materi {$coreNoun} di rumah dan sekolah.",
+                        'C' => "Melatih kita agar selalu teliti saat mempraktikkan materi {$coreNoun}.",
+                        'D' => "Menambah wawasan dan rasa ingin tahu kita tentang materi {$coreNoun}.",
+                        'correct' => "Menambah pengetahuan dan keterampilan kita tentang materi {$coreNoun} agar bermanfaat sehari-hari.",
                     ],
                 ];
             } else {
                 $stems = [
-                    "Berdasarkan materi {$subjectName}, apa yang menjadi fokus atau pengertian pokok dari {$concept}?",
-                    "Berikut ini yang merupakan ciri-ciri atau bagian mendasar dari {$coreNoun} adalah...",
-                    "Dalam ruang lingkup materi {$subjectName}, pernyataan manakah yang paling tepat menjelaskan konsep {$coreNoun}?",
-                    "Fungsi atau tujuan utama dari mempelajari {$coreNoun} pada mata pelajaran {$subjectName} adalah...",
-                    "Salah satu contoh bentuk penerapan sederhana dari {$coreNoun} yang sering dijumpai sehari-hari adalah...",
-                    "Prinsip fundamental yang mendasari konsep materi {$coreNoun} adalah...",
-                    "Karakteristik esensial yang membedakan materi {$coreNoun} dari topik bahasan lainnya adalah...",
-                    "Dalam konteks keilmuan {$subjectName}, peranan krusial dari {$coreNoun} ditunjukkan oleh...",
-                    "Pernyataan konseptual yang paling akurat mengenai mekanisme pokok {$coreNoun} adalah...",
-                    "Indikator mendasar yang merepresentasikan pemahaman materi {$coreNoun} secara komprehensif adalah...",
+                    "Berdasarkan materi {$subjectName}, apa pengertian pokok yang paling tepat mengenai {$coreNoun}?",
+                    "Ciri utama atau bagian mendasar dari materi {$coreNoun} ditunjukkan oleh...",
+                    "Pernyataan manakah yang paling tepat menjelaskan konsep materi {$coreNoun}?",
+                    "Tujuan atau manfaat utama yang Anda peroleh setelah mempelajari materi {$coreNoun} adalah...",
+                    "Contoh penerapan praktis dari prinsip {$coreNoun} yang paling sering ditemui sehari-hari adalah...",
+                    "Prinsip dasar yang harus dipahami terlebih dahulu pada materi {$coreNoun} adalah...",
+                    "Karakteristik penting yang membedakan materi {$coreNoun} dari bahasan lainnya adalah...",
+                    "Dalam pembelajaran {$subjectName}, fungsi mendasar dari materi {$coreNoun} adalah...",
+                    "Pernyataan yang paling tepat dalam menggambarkan mekanisme materi {$coreNoun} adalah...",
+                    "Pemahaman konseptual yang benar tentang materi {$coreNoun} ditunjukkan oleh...",
                 ];
                 $optionSets = [
                     [
-                        'A' => "Konsep atau cara dasar dalam {$coreNoun} yang bertujuan untuk mempermudah pemahaman peserta didik.",
-                        'B' => "Bagian dari materi {$coreNoun} yang berfungsi mengenali istilah, fakta, dan aturan pokok yang berlaku.",
-                        'C' => "Bentuk dasar penerapan {$coreNoun} yang digunakan untuk mengenalkan materi secara konseptual.",
+                        'A' => "Konsep atau cara dasar dalam materi {$coreNoun} yang mempermudah pemahaman peserta didik.",
+                        'B' => "Bagian dari materi {$coreNoun} yang berfungsi mengenali istilah, fakta, dan aturan yang berlaku.",
+                        'C' => "Bentuk dasar penerapan materi {$coreNoun} yang digunakan dalam kegiatan belajar.",
                         'D' => "Prinsip utama {$coreNoun} yang membedakannya dari materi lain dalam pembelajaran {$subjectName}.",
-                        'correct' => "Pengenalan dan pemahaman konsep utama mengenai {$coreNoun} secara utuh dan sistematis.",
+                        'correct' => "Memahami konsep esensial materi {$coreNoun} dan penerapannya secara jelas dan tepat.",
                     ],
                     [
-                        'A' => "Pedoman teoritis yang melandasi perancangan sistematis materi {$coreNoun}.",
-                        'B' => "Elemen pendukung sekunder yang memperkaya wawasan materi {$coreNoun}.",
-                        'C' => "Kerangka acuan normatif dalam meninjau fenomena terkait materi {$coreNoun}.",
-                        'D' => "Klasifikasi awal komponen-komponen operasional dalam lingkup {$coreNoun}.",
-                        'correct' => "Landasan teoretis fundamental dan substansi inti dari materi {$coreNoun}.",
+                        'A' => "Pedoman terencana yang membantu mengenali struktur materi {$coreNoun} secara bertahap.",
+                        'B' => "Bagian pendukung yang membantu memperjelas contoh penerapan materi {$coreNoun}.",
+                        'C' => "Aturan baku yang membantu menjaga ketepatan pemahaman materi {$coreNoun}.",
+                        'D' => "Bentuk pengenalan awal untuk memahami ruang lingkup materi {$coreNoun}.",
+                        'correct' => "Menguasai prinsip dan fungsi utama materi {$coreNoun} secara terarah dan terstruktur.",
                     ],
                     [
-                        'A' => "Tinjauan deskriptif mengenai batasan aplikasi praktis konsep {$coreNoun}.",
-                        'B' => "Representasi fakta empiris yang mendukung prinsip dasar materi {$coreNoun}.",
-                        'C' => "Kaidah metodologis yang menjembatani konsep dan analisis materi {$coreNoun}.",
-                        'D' => "Struktur konseptual yang mengintegrasikan subtopik dalam materi {$coreNoun}.",
-                        'correct' => "Korelasi esensial dan signifikansi konseptual materi {$coreNoun} dalam disiplin ilmu terkait.",
+                        'A' => "Membantu memecahkan persoalan sehari-hari dengan menerapkan prinsip {$coreNoun}.",
+                        'B' => "Mengenali fenomena di sekitar yang memiliki keterkaitan dengan materi {$coreNoun}.",
+                        'C' => "Mengembangkan keterampilan analisis dasar pada materi {$coreNoun}.",
+                        'D' => "Membangun pemahaman awal yang kuat sebelum mempelajari topik lanjutan.",
+                        'correct' => "Meningkatkan kemampuan pemahaman dan aplikasi materi {$coreNoun} dalam pemecahan masalah.",
                     ],
                 ];
             }
@@ -917,9 +921,9 @@ PROMPT;
             $explanation = "Kunci Jawaban: Pilihan {$correctLetter} (Tingkat Kognitif: {$subLevel} - LOTS / Pemahaman Dasar)\n\n"
                 . "Pembahasan Rinci:\n"
                 . "1. Analisis Opsi Benar (Pilihan {$correctLetter}):\n"
-                . "   Pilihan ini tepat karena menyatakan pemahaman dasar dan definisi esensial dari materi {$coreNoun} secara lugas dan sesuai dengan kaidah materi {$subjectName}.\n\n"
+                . "   Pilihan ini tepat karena menyatakan pemahaman dasar materi {$coreNoun} secara jelas, lugas, dan mudah dipahami siswa.\n\n"
                 . "2. Analisis Opsi Pengecoh:\n"
-                . "   Pilihan lainnya kurang tepat karena hanya mendeskripsikan aspek parsial atau tidak mencakup substansi utama dari {$coreNoun}.";
+                . "   Pilihan lainnya kurang tepat karena hanya mendeskripsikan aspek sampingan atau tidak sesuai dengan aturan pokok materi {$coreNoun}.";
 
             $indicator = "Disajikan konsep dasar, peserta didik mampu {$verb} materi terkait {$coreNoun}.";
             $levelCode = $subLevel;
@@ -931,73 +935,73 @@ PROMPT;
             if ($isSmp) {
                 $stems = [
                     "Langkah pertama yang paling tepat kamu lakukan saat mempraktikkan materi {$coreNoun} adalah...",
-                    "Jika kamu diminta menggunakan konsep {$coreNoun} untuk menyelesaikan tugas sekolah, tindakan yang paling benar adalah...",
-                    "Contoh tindakan siswa yang benar dalam menerapkan materi {$coreNoun} di kelas adalah...",
-                    "Bagaimanakah urutan langkah kerja yang tepat saat kamu menggunakan {$coreNoun} untuk menyelesaikan tugas?",
+                    "Jika kamu diminta menggunakan aturan {$coreNoun} untuk menyelesaikan tugas sekolah, tindakan terbaikmu adalah...",
+                    "Contoh tindakan siswa yang benar saat menerapkan materi {$coreNoun} di dalam kelas adalah...",
+                    "Bagaimanakah urutan langkah kerja yang paling baik saat kamu menggunakan materi {$coreNoun}?",
                     "Pilihan berikut yang menunjukkan cara kerja {$coreNoun} yang benar dan teratur adalah...",
-                    "Tahapan yang harus kamu selesaikan terlebih dahulu sebelum melanjutkan ke langkah berikutnya pada materi {$coreNoun} adalah...",
-                    "Ketika kamu menyusun rencana kerja kelompok untuk mempraktikkan materi {$coreNoun}, urutan yang benar adalah...",
-                    "Cara terbaik yang dapat kamu lakukan untuk membuktikan hasil praktik materi {$coreNoun} telah benar adalah...",
-                    "Sikap kerja yang tepat saat kamu menerapkan aturan materi {$coreNoun} bersama teman kelompok adalah...",
-                    "Tindakan yang paling aman dan efektif saat kamu mempraktikkan materi {$coreNoun} adalah...",
+                    "Tahapan yang harus kamu selesaikan terlebih dahulu sebelum melanjutkan ke langkah berikutnya adalah...",
+                    "Saat mengerjakan tugas praktik materi {$coreNoun} bersama teman sekelompok, sikap terbaikmu adalah...",
+                    "Cara terbaik yang dapat kamu lakukan untuk memastikan hasil tugas materi {$coreNoun} sudah benar adalah...",
+                    "Tindakan yang paling aman dan rapi saat kamu mempraktikkan materi {$coreNoun} adalah...",
+                    "Urutan langkah kerja yang tepat agar tugas materi {$coreNoun} selesai tepat waktu adalah...",
                 ];
                 $optionSets = [
                     [
                         'A' => "Mengikuti urutan langkah kerja materi {$coreNoun} secara bertahap dan teratur.",
-                        'B' => "Menyesuaikan langkah kerja dengan memperhatikan aturan pokok dan tujuan dari {$coreNoun}.",
-                        'C' => "Menggunakan konsep {$coreNoun} sebagai acuan utama dalam memilih cara kerja yang efisien.",
-                        'D' => "Mempraktikkan cara penyelesaian masalah dengan menerapkan prinsip yang telah dipelajari pada {$coreNoun}.",
-                        'correct' => "Menerapkan langkah kerja yang sistematis dan terarah sesuai kaidah {$coreNoun} dalam mencapai tujuan.",
+                        'B' => "Menyesuaikan langkah kerja dengan memperhatikan aturan pokok dan tujuan tugas materi {$coreNoun}.",
+                        'C' => "Menggunakan cara yang paling tepat dan hemat waktu dalam menyelesaikan tugas {$coreNoun}.",
+                        'D' => "Mempraktikkan cara penyelesaian tugas sesuai dengan contoh yang telah dipelajari bersama.",
+                        'correct' => "Menerapkan langkah kerja yang rapi dan terarah sesuai petunjuk materi {$coreNoun}.",
                     ],
                     [
-                        'A' => "Menyiapkan seluruh perlengkapan dan mengecek petunjuk teknis materi {$coreNoun}.",
-                        'B' => "Mencatat setiap hasil observasi selama mempraktikkan materi {$coreNoun}.",
-                        'C' => "Membandingkan hasil kerja sendiri dengan pedoman baku pada materi {$coreNoun}.",
-                        'D' => "Menguji coba langkah awal secara mandiri sebelum melangkah ke proses utama.",
-                        'correct' => "Melaksanakan prosedur kerja secara terencana dan konsisten dengan panduan materi {$coreNoun}.",
+                        'A' => "Menyiapkan seluruh peralatan yang dibutuhkan dan membaca petunjuk kerja sebelum mulai.",
+                        'B' => "Membagi tugas secara adil dengan teman kelompok sesuai kemampuan masing-masing.",
+                        'C' => "Mengecek kembali hasil kerja pada setiap tahapan agar tidak ada langkah yang terlewat.",
+                        'D' => "Mencatat hal-hal penting yang kamu temukan selama mengerjakan tugas praktik materi {$coreNoun}.",
+                        'correct' => "Melaksanakan tugas secara bertahap sesuai petunjuk kerja yang sudah ditentukan.",
                     ],
                     [
-                        'A' => "Mengidentifikasi kebutuhan tugas kemudian membagi peran berdasarkan kaidah {$coreNoun}.",
-                        'B' => "Memastikan keselamatan dan ketelitian saat mempraktikkan materi {$coreNoun}.",
-                        'C' => "Mengevaluasi setiap tahapan selesai agar tidak terjadi kesalahan berulang.",
-                        'D' => "Menggunakan metode yang sudah teruji saat mengimplementasikan konsep {$coreNoun}.",
-                        'correct' => "Menuntaskan tugas praktik dengan alur kerja yang runtut dan teruji sesuai prinsip {$coreNoun}.",
+                        'A' => "Mengerjakan tugas dengan teliti dan tidak terburu-buru agar hasilnya rapi dan memuaskan.",
+                        'B' => "Memastikan setiap langkah kerja dilakukan dengan aman dan mematuhi panduan guru.",
+                        'C' => "Mencocokkan hasil tugas sementara dengan contoh panduan materi {$coreNoun}.",
+                        'D' => "Bertanya kepada guru atau teman kelompok jika menemukan langkah yang belum dipahami.",
+                        'correct' => "Menuntaskan seluruh tahapan kerja dengan cermat dan berpegang pada aturan materi {$coreNoun}.",
                     ],
                 ];
             } else {
                 $stems = [
-                    "Seorang siswa ingin menerapkan prinsip {$concept} dalam kegiatan pembelajaran {$subjectName}. Tindakan pertama yang paling tepat dilakukan adalah...",
-                    "Perhatikan situasi sehari-hari: Jika Anda diminta menggunakan konsep {$coreNoun} untuk menyelesaikan suatu tugas, langkah yang paling sesuai adalah...",
-                    "Dalam praktik pembelajaran {$subjectName}, penerapan materi {$coreNoun} yang benar ditunjukkan oleh...",
-                    "Bagaimanakah prosedur atau alur kerja yang tepat saat kita memanfaatkan {$coreNoun} untuk memecahkan persoalan praktis?",
-                    "Manakah di antara pilihan berikut yang menunjukkan contoh implementasi langsung prinsip {$coreNoun} secara terencana?",
-                    "Prosedur operasional baku yang paling efektif saat menerapkan aturan {$coreNoun} adalah...",
-                    "Dalam menyusun tahapan penyelesaian tugas berbasis {$coreNoun}, langkah verifikasi awal yang wajib dilakukan adalah...",
-                    "Manakah skenario implementasi materi {$coreNoun} yang paling efisien dalam mengoptimalkan sumber daya yang tersedia?",
-                    "Ketika mengoperasikan prinsip {$coreNoun} dalam studi kasus nyata, tindakan preventif yang harus diprioritaskan adalah...",
-                    "Urutan metodologis yang paling valid dalam mengeksekusi tahapan kerja materi {$coreNoun} adalah...",
+                    "Langkah awal yang paling tepat dilakukan saat menerapkan materi {$coreNoun} dalam pembelajaran {$subjectName} adalah...",
+                    "Jika Anda diminta menerapkan aturan materi {$coreNoun} untuk menyelesaikan suatu tugas, tindakan yang paling sesuai adalah...",
+                    "Penerapan praktis materi {$coreNoun} yang benar dan terencana ditunjukkan oleh...",
+                    "Bagaimanakah alur kerja yang sistematis saat memanfaatkan prinsip {$coreNoun} untuk menyelesaikan persoalan?",
+                    "Contoh penerapan langsung materi {$coreNoun} dalam menyelesaikan tugas mandiri adalah...",
+                    "Prosedur kerja yang paling efektif saat menerapkan aturan materi {$coreNoun} adalah...",
+                    "Dalam menyusun tahapan tugas berbasis {$coreNoun}, langkah verifikasi awal yang tepat dilakukan adalah...",
+                    "Cara yang paling terukur saat menerapkan materi {$coreNoun} agar hasil tugas optimal adalah...",
+                    "Tindakan yang tepat dalam memastikan kepatuhan alur kerja pada materi {$coreNoun} adalah...",
+                    "Urutan pelaksanaan tugas yang logis dan efisien pada materi {$coreNoun} adalah...",
                 ];
                 $optionSets = [
                     [
-                        'A' => "Mengikuti tahapan prosedur baku materi {$coreNoun} secara bertahap dan terencana.",
-                        'B' => "Menyesuaikan langkah kerja dengan memperhatikan aturan pokok dan tujuan dari {$coreNoun}.",
-                        'C' => "Menggunakan konsep {$coreNoun} sebagai acuan utama dalam memilih tindakan praktis yang efisien.",
-                        'D' => "Mempraktikkan cara penyelesaian masalah dengan menerapkan prinsip yang telah dipelajari pada {$coreNoun}.",
-                        'correct' => "Menerapkan langkah kerja yang sistematis dan terarah sesuai kaidah {$coreNoun} dalam mencapai tujuan.",
+                        'A' => "Mengikuti tahapan prosedur materi {$coreNoun} secara teratur dan terencana.",
+                        'B' => "Menyesuaikan langkah kerja dengan memperhatikan aturan pokok dan tujuan dari materi {$coreNoun}.",
+                        'C' => "Memilih cara kerja yang paling efisien berdasarkan panduan materi {$coreNoun}.",
+                        'D' => "Mempraktikkan penyelesaian masalah dengan menerapkan prinsip yang telah dipelajari.",
+                        'correct' => "Menerapkan langkah kerja yang sistematis dan terarah sesuai kaidah materi {$coreNoun}.",
                     ],
                     [
-                        'A' => "Melakukan kalibrasi awal terhadap instrumen operasional berbasis materi {$coreNoun}.",
-                        'B' => "Mengintegrasikan prinsip {$coreNoun} ke dalam mekanisme kerja yang adaptif.",
-                        'C' => "Menetapkan parameter keberhasilan sebelum memulai proses aplikasi materi {$coreNoun}.",
-                        'D' => "Menjalankan protokol verifikasi berjenjang saat menguji hasil kerja materi {$coreNoun}.",
-                        'correct' => "Menerapkan metodologi terstruktur yang menjamin ketercapaian target fungsional materi {$coreNoun}.",
+                        'A' => "Menyiapkan bahan dan instrumen yang relevan sebelum memulai proses penerapan materi {$coreNoun}.",
+                        'B' => "Menyusun pembagian tahapan kerja secara terperinci untuk menghindari kesalahan langkah.",
+                        'C' => "Melakukan pemeriksaan berkala pada setiap tahapan kerja yang sedang berlangsung.",
+                        'D' => "Mendokumentasikan data hasil praktik secara rapi untuk mempermudah evaluasi akhir.",
+                        'correct' => "Mengeksekusi rencana kerja secara runtut dan konsisten dengan panduan materi {$coreNoun}.",
                     ],
                     [
-                        'A' => "Merancang alur kerja yang meminimalkan redundansi operasional pada materi {$coreNoun}.",
-                        'B' => "Mengorkestrasi komponen pendukung agar selaras dengan spesifikasi materi {$coreNoun}.",
-                        'C' => "Melakukan dokumentasi presisi pada setiap siklus implementasi prinsip {$coreNoun}.",
-                        'D' => "Menerapkan kendali mutu secara berkelanjutan selama proses kerja materi {$coreNoun}.",
-                        'correct' => "Mengeksekusi rencana kerja yang terukur dan mematuhi seluruh kaidah teknis materi {$coreNoun}.",
+                        'A' => "Memastikan seluruh langkah operasional telah memenuhi standar kerja materi {$coreNoun}.",
+                        'B' => "Menyelaraskan alur kerja dengan batas waktu yang tersedia tanpa mengorbankan ketelitian.",
+                        'C' => "Melakukan validasi bertahap untuk memastikan hasil kerja sesuai dengan tujuan pembelajaran.",
+                        'D' => "Mengoptimalkan koordinasi tugas agar seluruh aspek materi {$coreNoun} terselesaikan dengan baik.",
+                        'correct' => "Menyelesaikan seluruh prosedur penerapan secara cermat, terstruktur, dan tepat sasaran.",
                     ],
                 ];
             }
@@ -1015,9 +1019,9 @@ PROMPT;
             $explanation = "Kunci Jawaban: Pilihan {$correctLetter} (Tingkat Kognitif: C3 - MOTS / Penerapan)\n\n"
                 . "Pembahasan Rinci:\n"
                 . "1. Analisis Opsi Benar (Pilihan {$correctLetter}):\n"
-                . "   Pilihan ini benar karena menunjukkan kemampuan penerapan (aplikasi) prosedur dan cara kerja materi {$coreNoun} dalam konteks tugas nyata.\n\n"
+                . "   Pilihan ini benar karena menunjukkan cara penerapan langkah kerja materi {$coreNoun} yang runtut, teratur, dan sesuai petunjuk.\n\n"
                 . "2. Analisis Opsi Pengecoh:\n"
-                . "   Opsi pengecoh lainnya kurang tepat karena urutan penerapannya tidak sistematis atau belum menunjukkan aplikasi menyeluruh terhadap kaidah {$coreNoun}.";
+                . "   Opsi pengecoh lainnya kurang tepat karena langkah kerjanya tidak berurutan atau belum mencerminkan cara kerja materi {$coreNoun} yang benar.";
 
             $indicator = "Disajikan situasi kontekstual, peserta didik mampu {$verb} konsep {$coreNoun} untuk menyelesaikan tugas.";
         } else {
@@ -1028,74 +1032,74 @@ PROMPT;
 
             if ($isSmp) {
                 $stems = [
-                    "Jika hasil tugasmu pada materi {$coreNoun} belum sesuai petunjuk, langkah pemeriksaan yang harus kamu lakukan pertama kali adalah...",
-                    "Mengapa kamu perlu memahami aturan {$coreNoun} sebelum mulai mengerjakan tugas praktiknya?",
-                    "Apa yang akan terjadi jika salah satu bagian penting dalam {$coreNoun} mengalami kerusakan?",
-                    "Ketika kamu menemukan kesalahan saat mempraktikkan {$coreNoun}, tindakan perbaikan yang paling tepat adalah...",
-                    "Di antara dua cara kerja dalam materi {$coreNoun}, tindakan yang paling tepat dan hemat waktu adalah...",
-                    "Apa dampak jangka panjang terhadap hasil akhir jika kamu mengabaikan prinsip utama materi {$coreNoun}?",
-                    "Analisis yang paling tepat untuk menjelaskan mengapa hasil praktik materi {$coreNoun} bisa berbeda antara satu siswa dengan lainnya adalah...",
-                    "Jika terjadi kendala saat menerapkan kaidah materi {$coreNoun}, solusi kreatif yang paling tepat kamu berikan adalah...",
-                    "Bagaimana cara terbaikmu mengevaluasi apakah metode yang kamu gunakan pada materi {$coreNoun} sudah efisien?",
-                    "Saran paling tepat yang dapat kamu berikan kepada teman yang mengalami kesulitan memahami alur kerja {$coreNoun} adalah...",
+                    "Jika hasil tugasmu pada materi {$coreNoun} belum sesuai petunjuk, langkah pemeriksaan pertama yang harus kamu lakukan adalah...",
+                    "Mengapa kamu perlu memahami aturan materi {$coreNoun} sebelum mulai mengerjakan tugas praktiknya?",
+                    "Apa yang akan terjadi pada hasil tugasmu jika salah satu bagian penting dalam {$coreNoun} mengalami kerusakan atau tidak berfungsi?",
+                    "Ketika kamu menemukan kesalahan saat mempraktikkan materi {$coreNoun}, tindakan perbaikan yang paling tepat adalah...",
+                    "Di antara dua cara kerja dalam materi {$coreNoun}, cara manakah yang paling tepat dan hemat waktu untuk kamu pilih?",
+                    "Apa akibatnya bagi hasil akhir tugasmu jika kamu sengaja melewati salah satu langkah penting dalam materi {$coreNoun}?",
+                    "Jika ada teman kelompokmu yang bingung memahami cara kerja materi {$coreNoun}, saran terbaik yang bisa kamu berikan adalah...",
+                    "Ketika menghadapi kendala saat mengerjakan tugas materi {$coreNoun}, cara terbaik untuk menyelesaikannya adalah...",
+                    "Bagaimana cara terbaikmu menilai apakah cara kerja yang kamu gunakan pada materi {$coreNoun} sudah efisien?",
+                    "Saran paling tepat yang dapat kamu berikan agar tugas kelompok tentang materi {$coreNoun} menjadi lebih rapi dan lengkap adalah...",
                 ];
                 $optionSets = [
                     [
-                        'A' => "Mencari tahu penyebab gangguan pada komponen pendukung dan memperbaiki proses kerja {$coreNoun}.",
-                        'B' => "Memeriksa kembali bagian-bagian penting dalam materi {$coreNoun} yang belum dilakukan dengan cermat.",
-                        'C' => "Memperbaiki kesalahan langkah kerja agar tujuan materi {$coreNoun} dapat tercapai dengan benar.",
-                        'D' => "Melakukan pemeriksaan ulang terhadap petunjuk dasar yang digunakan dalam penerapan {$coreNoun}.",
-                        'correct' => "Mencari tahu bagian yang mengalami kendala lalu memperbaikinya sesuai aturan materi {$coreNoun}.",
+                        'A' => "Mencari tahu penyebab gangguan pada tugas lalu memperbaikinya sesuai aturan materi {$coreNoun}.",
+                        'B' => "Memeriksa kembali bagian-bagian penting yang mungkin belum dikerjakan dengan teliti.",
+                        'C' => "Memperbaiki kesalahan langkah kerja agar tujuan materi {$coreNoun} tercapai dengan benar.",
+                        'D' => "Membaca ulang petunjuk dasar untuk memastikan tidak ada langkah kerja yang tertinggal.",
+                        'correct' => "Menemukan bagian yang mengalami kendala lalu memperbaikinya dengan tenang dan teliti.",
                     ],
                     [
-                        'A' => "Menganalisis keterkaitan antartahap untuk mendeteksi letak ketidaksesuaian hasil kerja.",
-                        'B' => "Menimbang kembali kelebihan dan kekurangan metode yang digunakan pada materi {$coreNoun}.",
-                        'C' => "Merumuskan langkah alternatif yang lebih praktis untuk menyelesaikan persoalan pada {$coreNoun}.",
-                        'D' => "Meneliti faktor penyebab perbedaan hasil agar langkah perbaikan berikutnya lebih tepat sasaran.",
-                        'correct' => "Menemukan akar penyebab masalah dan memilih tindakan korektif yang paling efektif.",
+                        'A' => "Hasil kerja menjadi kurang rapi dan tujuan tugas materi {$coreNoun} tidak tercapai secara maksimal.",
+                        'B' => "Waktu pengerjaan tugas menjadi lebih lama karena harus mengulang tahapan yang keliru.",
+                        'C' => "Terjadi kesalahan pada hasil akhir yang membuat fungsi materi {$coreNoun} tidak berjalan normal.",
+                        'D' => "Langkah kerja berikutnya menjadi sulit diselesaikan karena bergantung pada langkah sebelumnya.",
+                        'correct' => "Hasil akhir tugas menjadi tidak tepat dan berisiko menimbulkan kesalahan pada tahapan berikutnya.",
                     ],
                     [
-                        'A' => "Menilai ketepatan prosedur yang telah diterapkan dan memperbaiki bagian yang menyimpang.",
-                        'B' => "Memberikan masukan yang membangun agar cara kerja pada materi {$coreNoun} semakin efisien.",
-                        'C' => "Mengevaluasi kelemahan alur kerja dan menyesuaikannya dengan kaidah yang berlaku.",
-                        'D' => "Menguji kembali hipotesis kerja untuk memastikan seluruh komponen berfungsi normal.",
-                        'correct' => "Mengidentifikasi letak kekeliruan secara teliti kemudian menerapkan solusi teruji.",
+                        'A' => "Mengajak teman berdiskusi untuk mencari cara kerja yang lebih mudah dan menyenangkan.",
+                        'B' => "Membandingkan cara kerjamu dengan petunjuk guru untuk mengetahui bagian yang bisa diperbaiki.",
+                        'C' => "Memberikan masukan yang sopan dan jelas agar teman mudah memahami bagian yang perlu diperbaiki.",
+                        'D' => "Menyusun kembali rencana kerja kelompok agar setiap anggota memahami peran masing-masing.",
+                        'correct' => "Mengevaluasi letak kekurangan tugas dengan cermat lalu menerapkan perbaikan yang paling tepat.",
                     ],
                 ];
             } else {
                 $stems = [
-                    "Disajikan studi kasus: Dalam pelaksanaan kegiatan terkait {$coreNoun}, terjadi ketidaksesuaian antara rencana dan hasil akhir. Analisis penyebab yang paling kritis adalah...",
-                    "Mengapa pemahaman mendalam tentang {$coreNoun} sangat menentukan keberhasilan pemecahan masalah yang kompleks dalam {$subjectName}?",
-                    "Apabila salah satu prinsip pokok pada {$coreNoun} diabaikan atau tidak terpenuhi, dampak lanjutan yang paling signifikan adalah...",
-                    "Berdasarkan analisis perbandingan dua metode dalam {$coreNoun}, manakah evaluasi yang paling tepat mengenai solusi yang paling efektif dan efisien?",
-                    "Seorang siswa menemukan hasil kerja yang tidak sinkron saat menerapkan aturan {$coreNoun}. Evaluasi kritis yang harus dilakukan pertama kali adalah...",
-                    "Telaah analitis manakah yang paling akurat dalam mengidentifikasi titik kegagalan kritis pada mekanisme {$coreNoun}?",
-                    "Bagaimanakah rumusan strategi perbaikan holistik yang harus diterapkan jika terjadi anomali berulang pada materi {$coreNoun}?",
-                    "Berdasarkan pertimbangan kualitas dan efisiensi, manakah penilaian evaluatif yang paling objektif terhadap sistem {$coreNoun}?",
-                    "Apabila variabel eksternal mengalami fluktuasi, dampak sistemik yang paling krusial terhadap integritas {$coreNoun} adalah...",
-                    "Rekomendasi inovatif apakah yang paling layak diimplementasikan untuk meningkatkan resiliensi alur kerja {$coreNoun}?",
+                    "Jika terjadi kendala atau ketidaksesuaian hasil saat menerapkan materi {$coreNoun}, analisis awal yang paling tepat adalah...",
+                    "Mengapa pemahaman mendalam tentang materi {$coreNoun} sangat penting dalam menyelesaikan permasalahan yang kompleks?",
+                    "Apabila salah satu prinsip pokok pada materi {$coreNoun} diabaikan, dampak lanjutan yang paling mungkin terjadi adalah...",
+                    "Berdasarkan perbandingan dua cara kerja dalam materi {$coreNoun}, penilaian yang paling objektif mengenai solusi terbaik adalah...",
+                    "Seorang siswa menemukan hasil kerja yang kurang tepat saat menerapkan aturan materi {$coreNoun}. Tindakan evaluasi yang harus dilakukan adalah...",
+                    "Faktor utama yang paling berpotensi menyebabkan terjadinya kegagalan dalam penerapan materi {$coreNoun} adalah...",
+                    "Bagaimanakah langkah perbaikan yang paling efektif jika ditemukan kesalahan prosedur pada materi {$coreNoun}?",
+                    "Berdasarkan pertimbangan kualitas dan waktu, cara kerja yang paling optimal pada materi {$coreNoun} adalah...",
+                    "Dampak jangka panjang yang timbul apabila pengawasan kerja pada materi {$coreNoun} tidak dijalankan dengan cermat adalah...",
+                    "Saran atau rekomendasi terbaik yang dapat diajukan untuk meningkatkan efisiensi kerja pada materi {$coreNoun} adalah...",
                 ];
                 $optionSets = [
                     [
-                        'A' => "Terjadinya ketidakselarasan antara faktor pendukung dan mekanisme pelaksanaan konsep {$coreNoun}.",
-                        'B' => "Hasil evaluasi menunjukkan bahwa variabel utama dalam materi {$coreNoun} belum diperhitungkan dengan cermat.",
-                        'C' => "Dampak kesalahan logika atau prosedur menyebabkan tujuan materi {$coreNoun} tidak tercapai secara optimal.",
-                        'D' => "Diperlukannya pengkajian ulang secara kritis terhadap asumsi dasar yang mendasari penerapan {$coreNoun}.",
-                        'correct' => "Analisis mendalam membuktikan bahwa pengabaian kaidah {$coreNoun} menimbulkan kendala sistemik dalam pemecahan masalah.",
+                        'A' => "Terjadinya ketidaksesuaian antara perencanaan awal dan pelaksanaan pada materi {$coreNoun}.",
+                        'B' => "Pemeriksaan menunjukkan adanya faktor penting yang belum diperhitungkan dengan cermat.",
+                        'C' => "Kekeliruan pada prosedur menyebabkan tujuan materi {$coreNoun} tidak tercapai secara maksimal.",
+                        'D' => "Perlunya peninjauan ulang terhadap langkah-langkah dasar yang mendasari materi {$coreNoun}.",
+                        'correct' => "Mengidentifikasi akar penyebab masalah secara teliti lalu merumuskan solusi perbaikan yang tepat.",
                     ],
                     [
-                        'A' => "Ketidakseimbangan alokasi sumber daya memicu disfungsi pada subsistem materi {$coreNoun}.",
-                        'B' => "Kegagalan mendeteksi deviasi operasional menyebabkan akumulasi galat pada proses {$coreNoun}.",
-                        'C' => "Kurangnya integrasi antarvariabel analitis menurunkan reliabilitas solusi berbasis materi {$coreNoun}.",
-                        'D' => "Pengambilan keputusan yang tidak berbasis data menimbulkan inefisiensi dalam penerapan {$coreNoun}.",
-                        'correct' => "Penilaian kritis mengungkapkan perlunya restrukturisasi metodologi agar selaras dengan prinsip dasar materi {$coreNoun}.",
+                        'A' => "Kurangnya ketelitian dalam mengikuti prosedur menyebabkan akumulasi kesalahan pada hasil akhir.",
+                        'B' => "Tahapan kerja yang terlewati membuat keterkaitan antarkomponen {$coreNoun} menjadi terganggu.",
+                        'C' => "Efisiensi kerja menurun drastis akibat pengulangan langkah yang tidak direncanakan.",
+                        'D' => "Hasil akhir tidak memenuhi kriteria kelayakan yang telah ditetapkan oleh guru.",
+                        'correct' => "Kegagalan pada salah satu tahap krusial menimbulkan gangguan menyeluruh pada sistem {$coreNoun}.",
                     ],
                     [
-                        'A' => "Terjadinya friksi prosedural akibat divergensi interpretasi kaidah materi {$coreNoun}.",
-                        'B' => "Evaluasi komparatif membuktikan keunggulan pendekatan terstruktur dalam memitigasi risiko kegagalan sistem.",
-                        'C' => "Eksplorasi solusi alternatif harus mempertimbangkan trade-off antara kecepatan dan presisi analitis.",
-                        'D' => "Inovasi metodologis diperlukan untuk merekayasa ulang siklus implementasi materi {$coreNoun}.",
-                        'correct' => "Sintesis data komprehensif mengarah pada penetapan rekomendasi strategis guna mengoptimalkan kinerja sistem {$coreNoun}.",
+                        'A' => "Menelaah kembali seluruh tahapan kerja untuk memastikan kesesuaian dengan kaidah materi {$coreNoun}.",
+                        'B' => "Mengembangkan alternatif solusi yang lebih efisien berdasarkan hasil analisis masalah.",
+                        'C' => "Menetapkan langkah korektif yang terukur agar kendala serupa tidak terulang kembali.",
+                        'D' => "Mengevaluasi efektivitas waktu dan penggunaan sumber daya dalam penyelesaian tugas.",
+                        'correct' => "Melakukan evaluasi menyeluruh terhadap alur kerja dan menerapkan rekomendasi perbaikan yang teruji.",
                     ],
                 ];
             }

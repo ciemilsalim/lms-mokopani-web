@@ -586,6 +586,17 @@ class OfflineExamGeneratorTest extends TestCase
             $this->assertStringNotContainsString('dalam memproses data melalui siklus input-proses-output', $stem);
         }
 
+        // Verify options and stems are student-friendly and devoid of rigid bureaucratic/academic jargon
+        foreach ($mcData['questions'] as $q) {
+            $this->assertNotEmpty($q['options']);
+            $this->assertCount(4, $q['options']);
+            foreach ($q['options'] as $letter => $optText) {
+                $this->assertStringNotContainsString('secara konseptual', $optText);
+                $this->assertStringNotContainsString('secara utuh dan sistematis', $optText);
+                $this->assertStringNotContainsString('operasional sekunder', $optText);
+            }
+        }
+
         $uniqueMcStems = array_unique($mcStems);
         $this->assertCount(5, $uniqueMcStems, 'All 5 MC questions generated for the same TP must have distinct stems');
     }
