@@ -273,13 +273,86 @@ class OfflineExamGeneratorTest extends TestCase
         $this->assertTrue($isXmlValid, 'word/document.xml must be 100% valid XML with no entity ref errors: ' . ($errors[0]->message ?? ''));
     }
 
+    public function test_teacher_can_select_multiple_tps_and_questions_are_divided_equally(): void
+    {
+        $tp2 = LmsLearningObjective::create([
+            'teacher_id' => $this->teacher->id,
+            'subject_id' => $this->subject->id,
+            'school_class_id' => $this->schoolClass->id,
+            'academic_year_id' => $this->academicYear->id,
+            'semester_id' => $this->semester->id,
+            'code' => 'TP 8.2',
+            'description' => 'Menerapkan logika percabangan dan perulangan dalam algoritma pemecahan masalah.',
+            'competence' => 'Menerapkan dan mengimplementasikan',
+            'content' => 'Logika Percabangan & Perulangan',
+            'order' => 2,
+        ]);
+
+        // Request 10 questions with 2 selected TPs -> MUST be divided equally: 5 for TP1 and 5 for TP2
+        $response = $this->actingAs($this->teacherUser)->postJson('/offline-exams/generate', [
+            'school_class_ids' => [$this->schoolClass->id],
+            'learning_objective_ids' => [$this->tp->id, $tp2->id],
+            'question_type' => 'multiple_choice',
+            'question_count' => 10,
+            'output_format' => 'preview',
+        ]);
+
+        $response->assertStatus(200);
+        $data = $response->json('exam');
+
+        $this->assertCount(10, $data['questions']);
+        $this->assertEquals(2, $data['total_tps']);
+        $this->assertCount(2, $data['tp_allocations']);
+
+        // First 5 questions belong to TP 8.1
+        for ($i = 0; $i < 5; $i++) {
+            $this->assertEquals('TP 8.1', $data['questions'][$i]['tp_code']);
+            $this->assertEquals('TP 8.1', $data['blueprint'][$i]['tp_code']);
+        }
+
+        // Remaining 5 questions belong to TP 8.2
+        for ($i = 5; $i < 10; $i++) {
+            $this->assertEquals('TP 8.2', $data['questions'][$i]['tp_code']);
+            $this->assertEquals('TP 8.2', $data['blueprint'][$i]['tp_code']);
+        }
+
+        // Verify detailed answer keys with distractor analysis
+        $firstAk = $data['answer_keys'][0];
+        $this->assertStringContainsString('Analisis Opsi Benar', $firstAk['explanation']);
+        $this->assertStringContainsString('Analisis Opsi Pengecoh', $firstAk['explanation']);
+    }
+
+    public function test_essay_kunci_jawaban_has_detailed_model_answer_and_tiered_scoring_rubric(): void
+    {
+        $response = $this->actingAs($this->teacherUser)->postJson('/offline-exams/generate', [
+            'school_class_ids' => [$this->schoolClass->id],
+            'learning_objective_ids' => [$this->tp->id],
+            'question_type' => 'essay',
+            'question_count' => 5,
+            'output_format' => 'preview',
+        ]);
+
+        $response->assertStatus(200);
+        $data = $response->json('exam');
+
+        $this->assertCount(5, $data['questions']);
+        $this->assertCount(5, $data['answer_keys']);
+
+        // Check detailed rubric in answer keys
+        $firstAk = $data['answer_keys'][0];
+        $this->assertStringContainsString('Kriteria Model Jawaban Lengkap', $firstAk['answer']);
+        $this->assertStringContainsString('Pedoman & Rubrik Penskoran Analitik', $firstAk['explanation']);
+        $this->assertStringContainsString('Skor 9 - 10', $firstAk['explanation']);
+        $this->assertStringContainsString('Skor 0', $firstAk['explanation']);
+    }
+
     public function test_validation_errors_when_required_inputs_are_missing(): void
     {
         $response = $this->actingAs($this->teacherUser)->postJson('/offline-exams/generate', []);
         $response->assertStatus(422);
         $response->assertJsonValidationErrors([
             'school_class_ids',
-            'learning_objective_id',
+            'learning_objective_ids',
             'question_type',
             'question_count',
             'output_format',

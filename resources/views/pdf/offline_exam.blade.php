@@ -382,7 +382,12 @@
     <div class="lampiran-meta">
         <strong>Mata Pelajaran:</strong> {{ $subject_name }} &nbsp;|&nbsp; 
         <strong>Kelas:</strong> {{ $class_name }} &nbsp;|&nbsp; 
-        <strong>Tujuan Pembelajaran:</strong> [{{ $tp_code }}] {{ $tp_description }}
+        <strong>Tujuan Pembelajaran:</strong> 
+        @if(!empty($tp_allocations) && count($tp_allocations) > 1)
+            [{{ $tp_code }}] <em>({{ count($tp_allocations) }} TP Diujikan &mdash; Soal Dibagi Rata)</em>
+        @else
+            [{{ $tp_code }}] {{ $tp_description }}
+        @endif
     </div>
 
     <!-- TABEL 1: KISI-KISI SOAL (BLUEPRINT) -->
@@ -402,7 +407,7 @@
             @foreach($blueprint as $bp)
                 <tr>
                     <td class="text-center font-bold">{{ $bp['number'] ?? '-' }}</td>
-                    <td>{{ $bp['tp_code'] ?? $tp_code }}</td>
+                    <td class="font-bold">{{ $bp['tp_code'] ?? $tp_code }}</td>
                     <td>{{ $bp['material'] ?? '-' }}</td>
                     <td>{{ $bp['indicator'] ?? '-' }}</td>
                     <td class="text-center">{{ $bp['question_type'] ?? '-' }}</td>
@@ -417,20 +422,20 @@
     <table class="data-table">
         <thead>
             <tr>
-                <th style="width: 6%;">No</th>
-                <th style="width: 14%;">Bentuk</th>
-                <th style="width: 10%;">Kunci</th>
-                <th style="width: 58%;">Pembahasan Singkat / Rubrik Penskoran</th>
-                <th style="width: 12%;">Skor Maks</th>
+                <th style="width: 5%;">No</th>
+                <th style="width: 13%;">Bentuk</th>
+                <th style="width: 20%;">Kunci / Kriteria</th>
+                <th style="width: 54%;">Pembahasan Rinci & Pedoman Rubrik</th>
+                <th style="width: 8%;">Skor Maks</th>
             </tr>
         </thead>
         <tbody>
             @foreach($answer_keys as $ak)
                 <tr>
                     <td class="text-center font-bold">{{ $ak['number'] ?? '-' }}</td>
-                    <td>{{ $ak['question_type'] ?? '-' }}</td>
-                    <td class="text-center font-bold" style="color: #1e1b4b; font-size: 9.5pt;">{{ $ak['answer'] ?? '-' }}</td>
-                    <td>{{ $ak['explanation'] ?? '-' }}</td>
+                    <td class="text-center">{{ $ak['question_type'] ?? '-' }}</td>
+                    <td style="color: #0f172a; font-size: 8.5pt;">{!! nl2br(e($ak['answer'] ?? '-')) !!}</td>
+                    <td style="font-size: 8pt; line-height: 1.35;">{!! nl2br(e($ak['explanation'] ?? '-')) !!}</td>
                     <td class="text-center font-bold">{{ $ak['max_score'] ?? '-' }}</td>
                 </tr>
             @endforeach

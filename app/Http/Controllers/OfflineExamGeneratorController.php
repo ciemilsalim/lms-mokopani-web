@@ -13,6 +13,7 @@ use App\Models\TeachingAssignment;
 use App\Services\OfflineExamGeneratorService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class OfflineExamGeneratorController extends Controller
@@ -56,13 +57,26 @@ class OfflineExamGeneratorController extends Controller
             ->unique('id')
             ->sortBy('name')
             ->values()
-            ->map(fn ($c) => [
-                'id' => $c->id,
-                'name' => $c->name,
-            ]);
+            ->map(function ($c) {
+                $grade = $this->extractGradeLevel($c);
+                return [
+                    'id' => $c->id,
+                    'name' => $c->name,
+                    'grade_level' => $grade['level'],
+                    'grade_label' => $grade['label'],
+                ];
+            });
 
         if ($classes->isEmpty() && $user->role === 'admin') {
-            $classes = SchoolClass::orderBy('name')->get(['id', 'name']);
+            $classes = SchoolClass::orderBy('name')->get()->map(function ($c) {
+                $grade = $this->extractGradeLevel($c);
+                return [
+                    'id' => $c->id,
+                    'name' => $c->name,
+                    'grade_level' => $grade['level'],
+                    'grade_label' => $grade['label'],
+                ];
+            });
         }
 
         // Distinct subjects taught by teacher
@@ -116,6 +130,9 @@ class OfflineExamGeneratorController extends Controller
             $tp = $mat->learningObjective;
 
             if ($tp) {
+                $firstMatClass = $mat->schoolClasses->first();
+                $grade = $this->extractGradeLevel($tp->schoolClass ?: $firstMatClass);
+
                 $tpsCollection->push([
                     'id' => $tp->id,
                     'code' => $tp->code ?: ('TP ' . ($tp->order ?? $tp->id)),
@@ -124,6 +141,8 @@ class OfflineExamGeneratorController extends Controller
                     'content' => $tp->content,
                     'subject_id' => $tp->subject_id ?: $mat->subject_id,
                     'subject_name' => $tp->subject?->name ?: $mat->subject?->name,
+                    'grade_level' => $grade['level'],
+                    'grade_label' => $grade['label'],
                     'school_class_ids' => $matClassIds,
                     'is_active_material' => true,
                     'material_title' => $mat->title,
@@ -136,6 +155,8 @@ class OfflineExamGeneratorController extends Controller
                 // Jika TP ini memiliki sub-objectives, sertakan juga sebagai pilihan sub-TP
                 if ($tp->subObjectives && $tp->subObjectives->isNotEmpty()) {
                     foreach ($tp->subObjectives as $subTp) {
+                        $subGrade = $this->extractGradeLevel($subTp->schoolClass ?: ($tp->schoolClass ?: $firstMatClass));
+
                         $tpsCollection->push([
                             'id' => $subTp->id,
                             'code' => $subTp->code ?: ($tp->code . '.' . ($subTp->order ?? $subTp->id)),
@@ -144,6 +165,8 @@ class OfflineExamGeneratorController extends Controller
                             'content' => $subTp->content ?: $tp->content,
                             'subject_id' => $subTp->subject_id ?: $tp->subject_id,
                             'subject_name' => $tp->subject?->name ?: $mat->subject?->name,
+                            'grade_level' => $subGrade['level'],
+                            'grade_label' => $subGrade['label'],
                             'school_class_ids' => $matClassIds,
                             'is_active_material' => true,
                             'material_title' => $mat->title . ' (Sub-Materi)',
@@ -158,13 +181,15 @@ class OfflineExamGeneratorController extends Controller
         }
 
         // Prioritas 2: TPs Lainnya yang Dimiliki Guru / Terdaftar di Master
-        $allTpsQuery = LmsLearningObjective::with(['subject', 'schoolClass', 'parent', 'subObjectives']);
+        $allTpsQuery = LmsLearningObjective::with(['subject', 'schoolClass', 'parent.schoolClass', 'subObjectives']);
         if ($user->role !== 'admin') {
             $allTpsQuery->where('teacher_id', $teacher->id);
         }
 
         $allTps = $allTpsQuery->orderBy('order')->orderBy('id')->get();
         foreach ($allTps as $tp) {
+            $grade = $this->extractGradeLevel($tp->schoolClass ?: $tp->parent?->schoolClass);
+
             $tpsCollection->push([
                 'id' => $tp->id,
                 'code' => $tp->code ?: ('TP ' . ($tp->order ?? $tp->id)),
@@ -173,6 +198,8 @@ class OfflineExamGeneratorController extends Controller
                 'content' => $tp->content,
                 'subject_id' => $tp->subject_id,
                 'subject_name' => $tp->subject?->name,
+                'grade_level' => $grade['level'],
+                'grade_label' => $grade['label'],
                 'school_class_ids' => $tp->school_class_id ? [$tp->school_class_id] : [],
                 'is_active_material' => false,
                 'material_title' => null,
@@ -184,6 +211,8 @@ class OfflineExamGeneratorController extends Controller
 
             if ($tp->subObjectives && $tp->subObjectives->isNotEmpty()) {
                 foreach ($tp->subObjectives as $subTp) {
+                    $subGrade = $this->extractGradeLevel($subTp->schoolClass ?: ($tp->schoolClass ?: $tp->parent?->schoolClass));
+
                     $tpsCollection->push([
                         'id' => $subTp->id,
                         'code' => $subTp->code ?: ($tp->code . '.' . ($subTp->order ?? $subTp->id)),
@@ -192,6 +221,8 @@ class OfflineExamGeneratorController extends Controller
                         'content' => $subTp->content ?: $tp->content,
                         'subject_id' => $subTp->subject_id ?: $tp->subject_id,
                         'subject_name' => $tp->subject?->name,
+                        'grade_level' => $subGrade['level'],
+                        'grade_label' => $subGrade['label'],
                         'school_class_ids' => $subTp->school_class_id ? [$subTp->school_class_id] : [],
                         'is_active_material' => false,
                         'material_title' => null,
@@ -266,6 +297,57 @@ class OfflineExamGeneratorController extends Controller
     }
 
     /**
+     * Determine Grade Level (Jenjang) from a SchoolClass model.
+     * E.g. "Kelas 7A" -> ['level' => '7', 'label' => 'Kelas 7']
+     */
+    protected function extractGradeLevel(?SchoolClass $class): array
+    {
+        if (!$class) {
+            return ['level' => null, 'label' => 'Umum'];
+        }
+
+        $name = trim($class->name);
+
+        // 1. Check Arabic numeral (e.g. Kelas 7A, 8B, 9, 10-1)
+        if (preg_match('/(?:kelas\s*|tingkat\s*)?(\d+)/i', $name, $matches)) {
+            $num = $matches[1];
+            return ['level' => $num, 'label' => "Kelas {$num}"];
+        }
+
+        // 2. Check Roman numerals
+        if (preg_match('/\b(VII|VIII|IX|X|XI|XII)\b/i', $name, $matches)) {
+            $romanMap = [
+                'VII' => '7',
+                'VIII' => '8',
+                'IX' => '9',
+                'X' => '10',
+                'XI' => '11',
+                'XII' => '12',
+            ];
+            $upper = strtoupper($matches[1]);
+            if (isset($romanMap[$upper])) {
+                $num = $romanMap[$upper];
+                return ['level' => $num, 'label' => "Kelas {$num}"];
+            }
+        }
+
+        // 3. Fallback to level_id
+        if (!empty($class->level_id)) {
+            try {
+                $level = DB::table('levels')->where('id', $class->level_id)->first();
+                if ($level && preg_match('/(\d+)/', $level->name, $lm)) {
+                    return ['level' => $lm[1], 'label' => "Kelas {$lm[1]}"];
+                }
+            } catch (\Throwable $e) {
+                // Ignore DB error if table not exists
+            }
+            return ['level' => (string) $class->level_id, 'label' => "Kelas {$class->level_id}"];
+        }
+
+        return ['level' => null, 'label' => $name];
+    }
+
+    /**
      * Generate Exam Data and Dispatch Output (Preview, PDF, or DOCX).
      */
     public function generate(Request $request)
@@ -277,10 +359,20 @@ class OfflineExamGeneratorController extends Controller
         }
         $request->merge(['school_class_ids' => $classIds]);
 
+        // Support both learning_objective_ids (array) and legacy learning_objective_id (single int)
+        $tpIds = $request->input('learning_objective_ids');
+        if (empty($tpIds) && $request->filled('learning_objective_id')) {
+            $tpIds = [(int) $request->input('learning_objective_id')];
+        } elseif (!is_array($tpIds) && !empty($tpIds)) {
+            $tpIds = [(int) $tpIds];
+        }
+        $request->merge(['learning_objective_ids' => $tpIds]);
+
         $validated = $request->validate([
             'school_class_ids' => 'required|array|min:1',
             'school_class_ids.*' => 'integer|exists:school_classes,id',
-            'learning_objective_id' => 'required|integer|exists:lms_learning_objectives,id',
+            'learning_objective_ids' => 'required|array|min:1',
+            'learning_objective_ids.*' => 'integer|exists:lms_learning_objectives,id',
             'question_type' => 'required|string|in:multiple_choice,essay,mixed',
             'question_count' => 'required|integer|min:1|max:50',
             'output_format' => 'required|string|in:pdf,docx,preview',
@@ -289,7 +381,8 @@ class OfflineExamGeneratorController extends Controller
         ], [
             'school_class_ids.required' => 'Silakan pilih minimal satu kelas target.',
             'school_class_ids.min' => 'Silakan centang minimal satu kelas target.',
-            'learning_objective_id.required' => 'Silakan pilih Tujuan Pembelajaran (TP) / Materi.',
+            'learning_objective_ids.required' => 'Silakan pilih minimal satu Tujuan Pembelajaran (TP) / Materi.',
+            'learning_objective_ids.min' => 'Silakan centang minimal satu Tujuan Pembelajaran (TP) / Materi.',
             'question_type.required' => 'Pilih jenis soal (Pilihan Ganda, Esai, atau Campuran).',
             'question_count.required' => 'Tentukan jumlah soal yang akan digenerate.',
             'output_format.required' => 'Pilih format output (PDF atau DOCS).',
@@ -311,16 +404,25 @@ class OfflineExamGeneratorController extends Controller
             abort(404, 'Kelas yang dipilih tidak ditemukan.');
         }
 
-        $tp = LmsLearningObjective::with('subject')->findOrFail($validated['learning_objective_id']);
+        $tps = LmsLearningObjective::with(['subject', 'schoolClass'])
+            ->whereIn('id', $validated['learning_objective_ids'])
+            ->orderBy('order')
+            ->orderBy('id')
+            ->get();
 
-        // IDOR Authorization: Verify teacher owns this TP or teaches at least one selected class (unless admin)
+        if ($tps->isEmpty()) {
+            abort(404, 'Tujuan Pembelajaran yang dipilih tidak ditemukan.');
+        }
+
+        // IDOR Authorization: Verify teacher owns at least one TP or teaches at least one selected class (unless admin)
         if ($user->role !== 'admin') {
-            $isTpOwner = (int) $tp->teacher_id === (int) $teacher->id;
             $teachesClasses = TeachingAssignment::where('teacher_id', $teacher->id)
                 ->whereIn('school_class_id', $schoolClasses->pluck('id'))
                 ->exists();
 
-            if (!$isTpOwner && !$teachesClasses) {
+            $ownsAnyTp = $tps->contains(fn ($tp) => (int) $tp->teacher_id === (int) $teacher->id);
+
+            if (!$ownsAnyTp && !$teachesClasses) {
                 abort(403, 'Anda tidak memiliki hak akses terhadap Tujuan Pembelajaran atau Kelas yang dipilih.');
             }
         }
@@ -331,7 +433,7 @@ class OfflineExamGeneratorController extends Controller
         $examData = $this->generatorService->generateExamData(
             $teacher,
             $schoolClasses,
-            $tp,
+            $tps,
             $validated['question_type'],
             (int) $validated['question_count'],
             $timeLimit,
