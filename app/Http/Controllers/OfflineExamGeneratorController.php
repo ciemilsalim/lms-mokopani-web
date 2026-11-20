@@ -382,6 +382,7 @@ class OfflineExamGeneratorController extends Controller
             'time_limit' => 'nullable|string|max:50',
             'regenerate' => 'nullable|boolean',
             'generation_engine' => 'nullable|string|in:fast,ai',
+            'cognitive_level' => 'nullable|string|in:all,lots,mots,hots',
         ], [
             'school_class_ids.required' => 'Silakan pilih minimal satu kelas target.',
             'school_class_ids.min' => 'Silakan centang minimal satu kelas target.',
@@ -434,6 +435,7 @@ class OfflineExamGeneratorController extends Controller
         $timeLimit = !empty($validated['time_limit']) ? $validated['time_limit'] : '90 Menit';
         $regenerate = (bool) ($validated['regenerate'] ?? false);
         $engine = $validated['generation_engine'] ?? 'fast';
+        $cognitiveLevel = $validated['cognitive_level'] ?? 'all';
 
         $examData = $this->generatorService->generateExamData(
             $teacher,
@@ -443,7 +445,8 @@ class OfflineExamGeneratorController extends Controller
             (int) $validated['question_count'],
             $timeLimit,
             $regenerate,
-            $engine
+            $engine,
+            $cognitiveLevel
         );
 
         if ($validated['output_format'] === 'pdf') {

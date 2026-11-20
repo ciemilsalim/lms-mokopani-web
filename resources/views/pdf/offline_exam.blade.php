@@ -382,6 +382,7 @@
     <div class="lampiran-meta">
         <strong>Mata Pelajaran:</strong> {{ $subject_name }} &nbsp;|&nbsp; 
         <strong>Kelas:</strong> {{ $class_name }} &nbsp;|&nbsp; 
+        <strong>Tingkat Kognitif:</strong> {{ $cognitive_level_label ?? 'Campuran Proporsional' }} &nbsp;|&nbsp; 
         <strong>Tujuan Pembelajaran:</strong> 
         @if(!empty($tp_allocations) && count($tp_allocations) > 1)
             [{{ $tp_code }}] <em>({{ count($tp_allocations) }} TP Diujikan &mdash; Soal Dibagi Rata)</em>

@@ -98,7 +98,8 @@ class OfflineExamGeneratorService
         int $questionCount = 10,
         ?string $timeLimit = '90 Menit',
         bool $regenerate = false,
-        string $generationEngine = 'fast'
+        string $generationEngine = 'fast',
+        string $cognitiveLevel = 'all'
     ): array {
         $activeYear = AcademicYear::getActive();
         $activeSemester = Semester::getActive();
@@ -144,7 +145,7 @@ class OfflineExamGeneratorService
 
         $classKey = implode('_', $classIds);
         $tpKey = $tpList->pluck('id')->sort()->implode('_');
-        $cacheHash = md5("offline_exam_{$tpKey}_{$classKey}_{$questionType}_{$questionCount}");
+        $cacheHash = md5("offline_exam_{$tpKey}_{$classKey}_{$questionType}_{$questionCount}_{$generationEngine}_{$cognitiveLevel}");
 
         if (!$regenerate) {
             $cachedJson = LmsAiCache::getCache($cacheHash);
@@ -152,7 +153,7 @@ class OfflineExamGeneratorService
                 $decoded = json_decode($cachedJson, true);
                 if (is_array($decoded) && !empty($decoded['questions'])) {
                     // Enforce strict question type filtering even on cached payload
-                    $filtered = $this->enforceStrictQuestionType($decoded, $tpList, $subjectName, $classNames, $questionType, $questionCount, $tpAllocations);
+                    $filtered = $this->enforceStrictQuestionType($decoded, $tpList, $subjectName, $classNames, $questionType, $questionCount, $tpAllocations, $cognitiveLevel);
                     return $this->formatExamPayload(
                         $filtered,
                         $teacher,
@@ -168,7 +169,8 @@ class OfflineExamGeneratorService
                         $schoolPhone,
                         $schoolEmail,
                         $headmasterName,
-                        $headmasterNip
+                        $headmasterNip,
+                        $cognitiveLevel
                     );
                 }
             }
@@ -176,19 +178,19 @@ class OfflineExamGeneratorService
 
         // If 'fast' engine or testing environment, immediately use deterministic pedagogical generator (0.05s, 0 token cost, 100% no 503 timeout)
         if ($generationEngine === 'fast' || app()->environment('testing')) {
-            $aiResult = $this->buildPedagogicalFallback($tpList, $subjectName, $classNames, $questionType, $questionCount, $tpAllocations);
+            $aiResult = $this->buildPedagogicalFallback($tpList, $subjectName, $classNames, $questionType, $questionCount, $tpAllocations, $cognitiveLevel);
         } else {
             // Try AI generation first
-            $aiResult = $this->callAiForExam($tpList, $subjectName, $classNames, $questionType, $questionCount, $tpAllocations);
+            $aiResult = $this->callAiForExam($tpList, $subjectName, $classNames, $questionType, $questionCount, $tpAllocations, $cognitiveLevel);
 
             if (!$aiResult || empty($aiResult['questions'])) {
                 // Fallback: Generate structured pedagogical questions deterministically
-                $aiResult = $this->buildPedagogicalFallback($tpList, $subjectName, $classNames, $questionType, $questionCount, $tpAllocations);
+                $aiResult = $this->buildPedagogicalFallback($tpList, $subjectName, $classNames, $questionType, $questionCount, $tpAllocations, $cognitiveLevel);
             }
         }
 
         // Post-validation: Enforce STRICT question type consistency and TP allocation
-        $aiResult = $this->enforceStrictQuestionType($aiResult, $tpList, $subjectName, $classNames, $questionType, $questionCount, $tpAllocations);
+        $aiResult = $this->enforceStrictQuestionType($aiResult, $tpList, $subjectName, $classNames, $questionType, $questionCount, $tpAllocations, $cognitiveLevel);
 
         // Cache successful output
         try {
@@ -197,6 +199,8 @@ class OfflineExamGeneratorService
                 'class_ids' => $classIds,
                 'type' => $questionType,
                 'count' => $questionCount,
+                'engine' => $generationEngine,
+                'cognitive_level' => $cognitiveLevel,
             ], json_encode($aiResult));
         } catch (\Throwable $e) {
             Log::warning('Failed saving exam cache: ' . $e->getMessage());
@@ -217,7 +221,8 @@ class OfflineExamGeneratorService
             $schoolPhone,
             $schoolEmail,
             $headmasterName,
-            $headmasterNip
+            $headmasterNip,
+            $cognitiveLevel
         );
     }
 
@@ -233,7 +238,8 @@ class OfflineExamGeneratorService
         string $className,
         string $questionType,
         int $questionCount,
-        array $tpAllocations
+        array $tpAllocations,
+        string $cognitiveLevel = 'all'
     ): array {
         $questions = $rawExam['questions'] ?? [];
 
@@ -252,7 +258,7 @@ class OfflineExamGeneratorService
                 $num = count($questions) + 1;
                 $currentAlloc = $allocMap[$num] ?? ($tpAllocations[0] ?? null);
                 $targetTp = $currentAlloc ? $currentAlloc['tp'] : ($tps instanceof Collection ? $tps->first() : $tps[0]);
-                $q = $this->buildSingleEssayQuestion($targetTp, $subjectName, $className, $num);
+                $q = $this->buildSingleEssayQuestion($targetTp, $subjectName, $className, $num, $cognitiveLevel, $questionCount);
                 if ($currentAlloc) {
                     $q['tp_code'] = $currentAlloc['tp_code'];
                     $q['material'] = $currentAlloc['content'];
@@ -267,7 +273,7 @@ class OfflineExamGeneratorService
                 $num = count($questions) + 1;
                 $currentAlloc = $allocMap[$num] ?? ($tpAllocations[0] ?? null);
                 $targetTp = $currentAlloc ? $currentAlloc['tp'] : ($tps instanceof Collection ? $tps->first() : $tps[0]);
-                $q = $this->buildSingleMcQuestion($targetTp, $subjectName, $className, $num);
+                $q = $this->buildSingleMcQuestion($targetTp, $subjectName, $className, $num, $cognitiveLevel, $questionCount);
                 if ($currentAlloc) {
                     $q['tp_code'] = $currentAlloc['tp_code'];
                     $q['material'] = $currentAlloc['content'];
@@ -278,7 +284,7 @@ class OfflineExamGeneratorService
         } else {
             // Mixed
             if (count($questions) < $questionCount) {
-                $fallback = $this->buildPedagogicalFallback($tps, $subjectName, $className, 'mixed', $questionCount, $tpAllocations);
+                $fallback = $this->buildPedagogicalFallback($tps, $subjectName, $className, 'mixed', $questionCount, $tpAllocations, $cognitiveLevel);
                 $questions = $fallback['questions'];
             }
             $questions = array_slice($questions, 0, $questionCount);
@@ -351,12 +357,20 @@ class OfflineExamGeneratorService
         string $className,
         string $questionType,
         int $questionCount,
-        array $tpAllocations
+        array $tpAllocations,
+        string $cognitiveLevel = 'all'
     ): ?array {
         $typeInstruction = match ($questionType) {
             'essay' => "PERINGATAN KHUSUS: Jenis soal WAJIB 100% 'essay' (Esai / Uraian) sebanyak {$questionCount} nomor. DILARANG KERAS menghasilkan soal pilihan ganda ataupun opsi A/B/C/D!",
             'mixed' => "Jenis soal adalah 'mixed' (Campuran Pilihan Ganda & Esai) dengan total {$questionCount} nomor (misal 70% Pilihan Ganda, 30% Esai).",
             default => "PERINGATAN KHUSUS: Jenis soal WAJIB 100% 'multiple_choice' (Pilihan Ganda 4 Opsi: A, B, C, D) sebanyak {$questionCount} nomor. DILARANG KERAS menghasilkan soal esai!",
+        };
+
+        $cognitiveInstruction = match ($cognitiveLevel) {
+            'lots' => "TINGKAT KOGNITIF: WAJIB Level 1 - LOTS (C1-C2 / Mengingat & Memahami). Gunakan bahasa yang sederhana, mudah dipahami siswa SMP/SMA, pertanyaan langsung/lugas, kenalkan istilah & definisi dasar, dan HINDARI kalimat yang berbelit-belit atau terlalu rumit.",
+            'mots' => "TINGKAT KOGNITIF: WAJIB Level 2 - MOTS (C3 / Menerapkan & Aplikasi). Fokus pada prosedur langkah kerja, contoh konkret harian, dan penerapan aturan materi pada situasi nyata.",
+            'hots' => "TINGKAT KOGNITIF: WAJIB Level 3 - HOTS (C4-C6 / Menganalisis, Mengevaluasi, Pemecahan Masalah). Sajikan stimulus kasus kontekstual yang menuntut penalaran kritis.",
+            default => "TINGKAT KOGNITIF: Campuran Proporsional Kurikulum Merdeka (sekitar 30% LOTS C1-C2 pada nomor-nomor awal, 50% MOTS C3 pada nomor tengah, dan 20% HOTS C4-C5 pada nomor akhir).",
         };
 
         $tpAllocationsText = "";
@@ -372,6 +386,7 @@ INFORMASI UJIAN:
 - Mata Pelajaran: {$subjectName}
 - Kelas / Sasaran: {$className}
 - Bentuk Soal: {$questionType} ({$typeInstruction})
+- Tingkat Kognitif / Kesulitan: {$cognitiveInstruction}
 - Total Butir Soal: {$questionCount} Nomor
 
 DAFTAR TUJUAN PEMBELAJARAN (TP) DAN PEMBAGIAN RATA BUTIR SOAL:
@@ -478,7 +493,7 @@ PROMPT;
 
     /**
      * Deterministic pedagogical question builder when AI is unavailable or offline.
-     * Guarantees exact equal division of questions across the selected TPs.
+     * Guarantees exact equal division of questions across the selected TPs and adheres to selected cognitive level.
      */
     protected function buildPedagogicalFallback(
         Collection|array $tps,
@@ -486,7 +501,8 @@ PROMPT;
         string $className,
         string $questionType,
         int $questionCount,
-        array $tpAllocations
+        array $tpAllocations,
+        string $cognitiveLevel = 'all'
     ): array {
         $questions = [];
 
@@ -498,7 +514,7 @@ PROMPT;
             if ($questionType === 'essay') {
                 for ($n = 0; $n < $countForThisTp; $n++) {
                     $qNum = $startNum + $n;
-                    $q = $this->buildSingleEssayQuestion($currentTp, $subjectName, $className, $qNum);
+                    $q = $this->buildSingleEssayQuestion($currentTp, $subjectName, $className, $qNum, $cognitiveLevel, $questionCount);
                     $q['tp_code'] = $alloc['tp_code'];
                     $q['material'] = $alloc['content'];
                     $questions[] = $q;
@@ -506,7 +522,7 @@ PROMPT;
             } elseif ($questionType === 'multiple_choice') {
                 for ($n = 0; $n < $countForThisTp; $n++) {
                     $qNum = $startNum + $n;
-                    $q = $this->buildSingleMcQuestion($currentTp, $subjectName, $className, $qNum);
+                    $q = $this->buildSingleMcQuestion($currentTp, $subjectName, $className, $qNum, $cognitiveLevel, $questionCount);
                     $q['tp_code'] = $alloc['tp_code'];
                     $q['material'] = $alloc['content'];
                     $questions[] = $q;
@@ -517,14 +533,14 @@ PROMPT;
                 $mcForTp = $countForThisTp - $essayForTp;
                 for ($n = 0; $n < $mcForTp; $n++) {
                     $qNum = $startNum + $n;
-                    $q = $this->buildSingleMcQuestion($currentTp, $subjectName, $className, $qNum);
+                    $q = $this->buildSingleMcQuestion($currentTp, $subjectName, $className, $qNum, $cognitiveLevel, $questionCount);
                     $q['tp_code'] = $alloc['tp_code'];
                     $q['material'] = $alloc['content'];
                     $questions[] = $q;
                 }
                 for ($n = 0; $n < $essayForTp; $n++) {
                     $qNum = $startNum + $mcForTp + $n;
-                    $q = $this->buildSingleEssayQuestion($currentTp, $subjectName, $className, $qNum);
+                    $q = $this->buildSingleEssayQuestion($currentTp, $subjectName, $className, $qNum, $cognitiveLevel, $questionCount);
                     $q['tp_code'] = $alloc['tp_code'];
                     $q['material'] = $alloc['content'];
                     $questions[] = $q;
@@ -580,34 +596,124 @@ PROMPT;
         ];
     }
 
-    protected function buildSingleMcQuestion(LmsLearningObjective $tp, string $subjectName, string $className, int $number): array
-    {
+    protected function buildSingleMcQuestion(
+        LmsLearningObjective $tp,
+        string $subjectName,
+        string $className,
+        int $number,
+        string $cognitiveLevel = 'all',
+        int $totalQuestions = 10
+    ): array {
         $tpDesc = $tp->description;
         $content = $tp->content ?: $tpDesc;
         $competence = $tp->competence ?: 'Pemahaman konsep dasar';
 
-        $levels = ['C2', 'C3', 'C3', 'C4', 'C4', 'C5'];
-        $verbs = ['mengidentifikasi', 'menjelaskan', 'menganalisis', 'menerapkan', 'mengevaluasi', 'menghubungkan'];
-        $level = $levels[($number - 1) % count($levels)];
-        $verb = $verbs[($number - 1) % count($verbs)];
+        // Determine effective cognitive level for this question
+        $effectiveLevel = $cognitiveLevel;
+        if ($effectiveLevel === 'all') {
+            $ratio = $number / max(1, $totalQuestions);
+            if ($ratio <= 0.35) {
+                $effectiveLevel = 'lots';
+            } elseif ($ratio <= 0.75) {
+                $effectiveLevel = 'mots';
+            } else {
+                $effectiveLevel = 'hots';
+            }
+        }
+
         $correctLetter = ['A', 'B', 'C', 'D'][($number + 1) % 4];
 
-        $stem = "Dalam konteks pembelajaran {$subjectName} lingkup materi {$content}, manakah pernyataan berikut yang paling tepat terkait dengan {$tpDesc} (butir soal {$number})?";
+        if ($effectiveLevel === 'lots') {
+            // Level 1: LOTS (C1 - Mengingat / C2 - Memahami) - Bahasa jelas, lugas, mudah dipahami siswa
+            $subLevel = ($number % 2 === 1) ? 'C1' : 'C2';
+            $verb = ($subLevel === 'C1') ? 'mengingat dan mengidentifikasi' : 'menjelaskan';
 
-        $options = [
-            'A' => "Menerapkan kaidah substantif {$content} secara terstruktur dan terukur dalam konteks permasalahan.",
-            'B' => "Menjabarkan prinsip fundamental dan fungsi utama {$competence} secara sistematis.",
-            'C' => "Menghubungkan relevansi dampak empiris {$content} dalam penyelesaian tugas kontekstual.",
-            'D' => "Menyajikan alternatif solusi komprehensif berbasis analisis prinsip dasar {$competence}.",
-        ];
+            $stems = [
+                "Berdasarkan materi {$subjectName} tentang {$content}, apa yang dimaksud dengan {$content} secara mendasar?",
+                "Berikut ini yang merupakan ciri-ciri atau bagian pokok dari {$content} adalah...",
+                "Dalam ruang lingkup materi {$content}, pernyataan manakah yang paling tepat menjelaskan konsep tersebut?",
+                "Fungsi atau tujuan utama dari mempelajari {$content} pada mata pelajaran {$subjectName} adalah...",
+                "Salah satu contoh bentuk penerapan sederhana dari {$content} yang sering dijumpai sehari-hari adalah...",
+            ];
+            $stem = $stems[($number - 1) % count($stems)];
 
-        $otherLetters = array_diff(['A', 'B', 'C', 'D'], [$correctLetter]);
-        $explanation = "Kunci Jawaban: Pilihan {$correctLetter}\n\n"
-            . "Pembahasan Rinci:\n"
-            . "1. Analisis Opsi Benar (Pilihan {$correctLetter}):\n"
-            . "   Pernyataan ini tepat karena secara substantif mencerminkan kaidah utama {$competence} pada materi {$content}.\n\n"
-            . "2. Analisis Opsi Pengecoh (Distraktor):\n"
-            . "   Pilihan " . implode(', ', $otherLetters) . " merupakan pilihan pengecoh karena tidak secara langsung merespons indikator ketercapaian {$tpDesc}.";
+            $options = [
+                'A' => "Konsep atau cara dasar dalam {$content} yang bertujuan untuk memahami dan mempermudah pembelajaran {$subjectName}.",
+                'B' => "Bagian dari materi {$content} yang berfungsi untuk mengenali fakta, istilah, dan aturan pokok yang berlaku.",
+                'C' => "Bentuk dasar penerapan {$content} yang sering digunakan untuk mengenalkan materi kepada peserta didik.",
+                'D' => "Prinsip utama {$content} yang membedakannya dari materi lain dalam pembelajaran {$subjectName}.",
+            ];
+            $options[$correctLetter] = "Pengenalan dan pemahaman konsep utama mengenai {$content} yang relevan dengan {$tpDesc}.";
+
+            $explanation = "Kunci Jawaban: Pilihan {$correctLetter} (Tingkat Kognitif: {$subLevel} - LOTS / Pemahaman Dasar)\n\n"
+                . "Pembahasan Rinci:\n"
+                . "1. Analisis Opsi Benar (Pilihan {$correctLetter}):\n"
+                . "   Pilihan ini tepat karena menyatakan pemahaman dasar dan definisi esensial dari materi {$content} secara lugas dan sesuai dengan konsep yang dipelajari.\n\n"
+                . "2. Analisis Opsi Pengecoh:\n"
+                . "   Pilihan lainnya kurang tepat karena hanya mendeskripsikan aspek parsial atau tidak mencakup substansi utama dari {$tpDesc}.";
+
+            $indicator = "Disajikan konsep dasar {$content}, peserta didik mampu {$verb} materi terkait dengan {$tpDesc}.";
+            $levelCode = $subLevel;
+        } elseif ($effectiveLevel === 'mots') {
+            // Level 2: MOTS (C3 - Menerapkan / Aplikasi) - Kontekstual & Prosedur
+            $verb = 'menerapkan';
+            $levelCode = 'C3';
+
+            $stems = [
+                "Seorang siswa ingin menerapkan prinsip {$content} dalam kegiatan pembelajaran {$subjectName}. Tindakan pertama yang paling tepat dilakukan adalah...",
+                "Perhatikan situasi sehari-hari: Jika Anda diminta menggunakan konsep {$content} untuk menyelesaikan suatu tugas, langkah yang paling sesuai adalah...",
+                "Dalam praktik pembelajaran {$subjectName}, penerapan materi {$content} yang benar ditunjukkan oleh...",
+                "Bagaimanakah prosedur atau alur kerja yang tepat saat kita memanfaatkan {$content} untuk memecahkan persoalan praktis?",
+            ];
+            $stem = $stems[($number - 1) % count($stems)];
+
+            $options = [
+                'A' => "Mengikuti tahapan prosedur baku materi {$content} secara bertahap dan terencana.",
+                'B' => "Menyesuaikan langkah kerja dengan memperhatikan aturan pokok dan tujuan dari {$content}.",
+                'C' => "Menggunakan konsep {$content} sebagai acuan utama dalam memilih tindakan praktis yang efisien.",
+                'D' => "Mempraktikkan cara penyelesaian masalah dengan menerapkan prinsip yang telah dipelajari pada {$content}.",
+            ];
+            $options[$correctLetter] = "Menerapkan langkah kerja yang sistematis dan terarah sesuai kaidah {$content} dalam mencapai tujuan.";
+
+            $explanation = "Kunci Jawaban: Pilihan {$correctLetter} (Tingkat Kognitif: C3 - MOTS / Penerapan)\n\n"
+                . "Pembahasan Rinci:\n"
+                . "1. Analisis Opsi Benar (Pilihan {$correctLetter}):\n"
+                . "   Pilihan ini benar karena menunjukkan kemampuan penerapan (aplikasi) prosedur dan cara kerja materi {$content} dalam konteks tugas atau situasi nyata.\n\n"
+                . "2. Analisis Opsi Pengecoh:\n"
+                . "   Opsi pengecoh lainnya kurang tepat karena urutan penerapannya tidak sistematis atau belum menunjukkan aplikasi menyeluruh.";
+
+            $indicator = "Disajikan situasi kontekstual, peserta didik mampu {$verb} konsep {$content} untuk menyelesaikan tugas.";
+        } else {
+            // Level 3: HOTS (C4 - Menganalisis / C5 - Mengevaluasi) - Penalaran kritis & Kasus
+            $subLevel = ($number % 2 === 1) ? 'C4' : 'C5';
+            $verb = ($subLevel === 'C4') ? 'menganalisis' : 'mengevaluasi';
+            $levelCode = $subLevel;
+
+            $stems = [
+                "Disajikan studi kasus: Dalam pelaksanaan kegiatan terkait {$content}, terjadi ketidaksesuaian antara rencana dan hasil akhir. Analisis penyebab yang paling kritis adalah...",
+                "Mengapa pemahaman mendalam tentang {$content} sangat menentukan keberhasilan pemecahan masalah yang kompleks dalam {$subjectName}?",
+                "Apabila salah satu prinsip pokok pada {$content} diabaikan atau tidak terpenuhi, dampak lanjutan yang paling signifikan adalah...",
+                "Berdasarkan analisis perbandingan dua metode dalam {$content}, manakah evaluasi yang paling tepat mengenai solusi yang paling efektif dan efisien?",
+            ];
+            $stem = $stems[($number - 1) % count($stems)];
+
+            $options = [
+                'A' => "Terjadinya ketidakselarasan antara faktor pendukung dan mekanisme pelaksanaan konsep {$content}.",
+                'B' => "Hasil evaluasi menunjukkan bahwa variabel utama dalam materi {$content} belum diperhitungkan dengan cermat.",
+                'C' => "Dampak kesalahan logika atau prosedur menyebabkan tujuan pembelajaran {$tpDesc} tidak tercapai secara optimal.",
+                'D' => "Diperlukannya pengkajian ulang secara kritis terhadap asumsi dasar yang mendasari penerapan {$content}.",
+            ];
+            $options[$correctLetter] = "Analisis mendalam membuktikan bahwa pengabaian prinsip {$content} menimbulkan kendala sistemik dalam proses pemecahan masalah.";
+
+            $explanation = "Kunci Jawaban: Pilihan {$correctLetter} (Tingkat Kognitif: {$subLevel} - HOTS / Penalaran Kritis)\n\n"
+                . "Pembahasan Rinci:\n"
+                . "1. Analisis Opsi Benar (Pilihan {$correctLetter}):\n"
+                . "   Pilihan ini benar karena mampu mengurai hubungan sebab-akibat secara mendalam dan memberikan kesimpulan kritis yang valid terhadap dinamika materi {$content}.\n\n"
+                . "2. Analisis Opsi Pengecoh:\n"
+                . "   Opsi-opsi pengecoh hanya melihat gejala permukaan tanpa menganalisis akar masalah secara komprehensif.";
+
+            $indicator = "Disajikan permasalahan kontekstual kompleks, peserta didik mampu {$verb} hubungan sebab-akibat dan menentukan solusi terbaik pada materi {$content}.";
+        }
 
         return [
             'number' => $number,
@@ -616,35 +722,87 @@ PROMPT;
             'options' => $options,
             'answer' => $correctLetter,
             'explanation' => $explanation,
-            'indicator' => "Disajikan konteks materi {$content}, peserta didik mampu {$verb} konsep yang berkaitan dengan {$tpDesc}.",
-            'cognitive_level' => $level,
+            'indicator' => $indicator,
+            'cognitive_level' => $levelCode,
             'score' => 2,
         ];
     }
 
-    protected function buildSingleEssayQuestion(LmsLearningObjective $tp, string $subjectName, string $className, int $number): array
-    {
+    protected function buildSingleEssayQuestion(
+        LmsLearningObjective $tp,
+        string $subjectName,
+        string $className,
+        int $number,
+        string $cognitiveLevel = 'all',
+        int $totalQuestions = 10
+    ): array {
         $tpDesc = $tp->description;
         $content = $tp->content ?: $tpDesc;
         $competence = $tp->competence ?: 'Pemahaman mendalam';
 
-        $level = $number % 2 === 1 ? 'C4' : 'C5';
-        $verb = $number % 2 === 1 ? 'menganalisis' : 'mengevaluasi';
+        // Determine effective cognitive level
+        $effectiveLevel = $cognitiveLevel;
+        if ($effectiveLevel === 'all') {
+            $ratio = $number / max(1, $totalQuestions);
+            if ($ratio <= 0.4) {
+                $effectiveLevel = 'lots';
+            } elseif ($ratio <= 0.75) {
+                $effectiveLevel = 'mots';
+            } else {
+                $effectiveLevel = 'hots';
+            }
+        }
 
-        $stem = "Jelaskan dan analisislah secara mendalam bagaimana implementasi konsep {$content} dalam menyelesaikan permasalahan nyata, serta kaitkan dengan {$tpDesc} (soal nomor {$number})!";
-        $indicator = "Peserta didik dapat {$verb} penerapan konsep {$content} serta memberikan argumen logis dan terstruktur.";
+        if ($effectiveLevel === 'lots') {
+            // LOTS (C2 - Memahami / Menjelaskan) - Soal lugas, ramah siswa, tidak rumit
+            $levelCode = 'C2';
+            $stem = "Jelaskan dengan bahasa Anda sendiri apa yang dimaksud dengan {$content}, dan sebutkan 2 (dua) contoh atau ciri pokoknya dalam kehidupan sehari-hari (soal nomor {$number})!";
+            $indicator = "Peserta didik mampu mendeskripsikan konsep dasar {$content} serta menyebutkan contoh sederhana.";
 
-        $answer = "Kriteria Model Jawaban Lengkap:\n"
-            . "1. Menjelaskan definisi dan prinsip fundamental {$content} dengan tepat dan terstruktur.\n"
-            . "2. Memberikan minimal 2 (dua) contoh konkret implementasi nyata yang relevan dengan {$competence}.\n"
-            . "3. Menyimpulkan korelasi atau solusi alternatif berbasis penalaran kritis yang logis.";
+            $answer = "Kriteria Model Jawaban Lengkap (Level 1 / LOTS):\n"
+                . "1. Menuliskan definisi atau pemahaman mengenai {$content} dengan kalimat yang jelas dan benar.\n"
+                . "2. Menyebutkan minimal 2 (dua) contoh nyata atau ciri utama yang sesuai dengan konsep tersebut.";
 
-        $explanation = "Pedoman & Rubrik Penskoran Analitik (Skor Maksimal: 10):\n"
-            . "• Skor 9 - 10 (Sangat Baik): Menguraikan ketiga kriteria secara komprehensif, argumentasi logis, sistematis, dan tepat kaidah materi.\n"
-            . "• Skor 6 - 8 (Baik): Menjelaskan konsep dasar dan 1 contoh implementasi dengan benar, namun kesimpulan solusi belum mendalam.\n"
-            . "• Skor 3 - 5 (Cukup): Hanya menyebutkan konsep dasar secara umum tanpa analisis kontekstual atau contoh yang jelas.\n"
-            . "• Skor 1 - 2 (Perlu Bimbingan): Jawaban memiliki kata kunci materi {$content} namun pemahaman konsep masih keliru.\n"
-            . "• Skor 0 (Tidak Menjawab): Lembar jawaban kosong atau tidak ada substansi yang relevan sama sekali.";
+            $explanation = "Pedoman & Rubrik Penskoran Analitik (Skor Maksimal: 10):\n"
+                . "• Skor 9 - 10 (Sangat Baik): Definisi dijelaskan dengan tepat menggunakan bahasa sendiri serta menyertakan 2 contoh/ciri dengan benar.\n"
+                . "• Skor 6 - 8 (Baik): Definisi benar namun hanya menyebutkan 1 contoh/ciri, atau penjelasan masih singkat.\n"
+                . "• Skor 3 - 5 (Cukup): Definisi masih kurang lengkap dan belum memberikan contoh yang relevan.\n"
+                . "• Skor 1 - 2 (Perlu Bimbingan): Hanya menuliskan beberapa kata kunci tanpa membentuk penjelasan konsep yang utuh.\n"
+                . "• Skor 0 (Tidak Menjawab): Lembar jawaban kosong atau tidak ada substansi yang relevan sama sekali.";
+        } elseif ($effectiveLevel === 'mots') {
+            // MOTS (C3 - Menerapkan / Aplikasi)
+            $levelCode = 'C3';
+            $stem = "Uraikan langkah-langkah praktis dalam menerapkan konsep {$content} saat menyelesaikan suatu tugas atau kegiatan pembelajaran {$subjectName} (soal nomor {$number})!";
+            $indicator = "Peserta didik mampu menguraikan tahapan penerapan konsep {$content} secara runtut dan terarah.";
+
+            $answer = "Kriteria Model Jawaban Lengkap (Level 2 / MOTS):\n"
+                . "1. Menjelaskan langkah atau tahapan penerapan materi {$content} secara runtut dari awal hingga akhir.\n"
+                . "2. Memberikan alasan mengapa tahapan tersebut penting dilakukan untuk mencapai hasil yang diinginkan.";
+
+            $explanation = "Pedoman & Rubrik Penskoran Analitik (Skor Maksimal: 10):\n"
+                . "• Skor 9 - 10 (Sangat Baik): Menguraikan tahapan penerapan secara sistematis, jelas, dan memberikan alasan yang tepat.\n"
+                . "• Skor 6 - 8 (Baik): Menguraikan tahapan penerapan dengan cukup jelas, namun ada sebagian langkah yang terlewat.\n"
+                . "• Skor 3 - 5 (Cukup): Langkah-langkah yang diuraikan masih acak dan belum menunjukkan alur kerja yang terstruktur.\n"
+                . "• Skor 1 - 2 (Perlu Bimbingan): Hanya menyebutkan tujuan tanpa ada uraian langkah penerapan konkret.\n"
+                . "• Skor 0 (Tidak Menjawab): Lembar jawaban kosong atau tidak ada substansi yang relevan sama sekali.";
+        } else {
+            // HOTS (C4/C5 - Analisis & Evaluasi)
+            $levelCode = ($number % 2 === 1) ? 'C4' : 'C5';
+            $stem = "Lakukan analisis kritis terhadap penerapan {$content}: Jika menghadapi suatu kendala dalam penerapannya, bagaimana cara Anda mengidentifikasi penyebabnya dan merumuskan solusi alternatif yang paling efektif (soal nomor {$number})?";
+            $indicator = "Peserta didik mampu menganalisis permasalahan, mengevaluasi faktor penyebab, dan merumuskan solusi logis pada materi {$content}.";
+
+            $answer = "Kriteria Model Jawaban Lengkap (Level 3 / HOTS):\n"
+                . "1. Mengidentifikasi minimal 2 faktor penyebab masalah pada implementasi {$content}.\n"
+                . "2. Merumuskan solusi alternatif yang kreatif, logis, dan dapat diterapkan.\n"
+                . "3. Menyertakan argumen penalaran yang menghubungkan solusi dengan prinsip {$tpDesc}.";
+
+            $explanation = "Pedoman & Rubrik Penskoran Analitik (Skor Maksimal: 10):\n"
+                . "• Skor 9 - 10 (Sangat Baik): Analisis kritis sangat mendalam, pemetaan akar masalah tepat, dan solusi alternatif inovatif serta realistis.\n"
+                . "• Skor 6 - 8 (Baik): Mampu mengidentifikasi penyebab dan menawarkan solusi, namun argumentasi penalaran masih sederhana.\n"
+                . "• Skor 3 - 5 (Cukup): Hanya menyebutkan masalah tanpa analisis mendalam mengenai alternatif solusi.\n"
+                . "• Skor 1 - 2 (Perlu Bimbingan): Uraian belum menyentuh pemecahan masalah dan argumentasi tidak logis.\n"
+                . "• Skor 0 (Tidak Menjawab): Lembar jawaban kosong atau tidak ada substansi yang relevan sama sekali.";
+        }
 
         return [
             'number' => $number,
@@ -654,7 +812,7 @@ PROMPT;
             'answer' => $answer,
             'explanation' => $explanation,
             'indicator' => $indicator,
-            'cognitive_level' => $level,
+            'cognitive_level' => $levelCode,
             'score' => 10,
         ];
     }
@@ -677,10 +835,18 @@ PROMPT;
         string $schoolPhone,
         string $schoolEmail,
         string $headmasterName,
-        string $headmasterNip
+        string $headmasterNip,
+        string $cognitiveLevel = 'all'
     ): array {
         $tpList = $tps instanceof Collection ? $tps : collect($tps);
         $primaryTp = $tpList->first();
+
+        $cognitiveLabel = match ($cognitiveLevel) {
+            'lots' => 'Level 1 - LOTS (C1-C2 / Mengingat & Memahami)',
+            'mots' => 'Level 2 - MOTS (C3 / Menerapkan)',
+            'hots' => 'Level 3 - HOTS (C4-C6 / Menganalisis & Mengevaluasi)',
+            default => 'Campuran Proporsional (LOTS, MOTS, HOTS)',
+        };
 
         $questions = $rawExam['questions'] ?? [];
         $blueprint = $rawExam['blueprint'] ?? [];
@@ -718,6 +884,8 @@ PROMPT;
             'total_tps' => $tpList->count(),
             'period' => $periodName,
             'time_limit' => $timeLimit ?: '90 Menit',
+            'cognitive_level' => $cognitiveLevel,
+            'cognitive_level_label' => $cognitiveLabel,
             'title' => $rawExam['title'] ?? 'LEMBAR SOAL ASESMEN SUMATIF OFFLINE',
             'instructions' => $rawExam['instructions'] ?? [],
             'questions' => $questions,
@@ -846,7 +1014,7 @@ PROMPT;
         // Use 'DAN' instead of bare '&' to prevent XML entity reference failure
         $section->addText("KISI-KISI SOAL, KUNCI JAWABAN DAN RUBRIK PENILAIAN", ['bold' => true, 'size' => 11, 'underline' => 'single'], ['alignment' => Jc::CENTER, 'spaceAfter' => 100]);
 
-        $section->addText("Mata Pelajaran : " . $this->cleanWordText($examData['subject_name']) . " | Kelas : " . $this->cleanWordText($examData['class_name']), ['size' => 10, 'bold' => true]);
+        $section->addText("Mata Pelajaran : " . $this->cleanWordText($examData['subject_name']) . " | Kelas : " . $this->cleanWordText($examData['class_name']) . " | Tingkat Kognitif : " . $this->cleanWordText($examData['cognitive_level_label'] ?? 'Campuran Proporsional'), ['size' => 9.5, 'bold' => true]);
         $tpDisplayText = count($examData['tp_allocations'] ?? []) > 1
             ? "[" . $this->cleanWordText($examData['tp_code']) . "] (" . count($examData['tp_allocations']) . " TP Diujikan - Dibagi Rata)"
             : "[" . $this->cleanWordText($examData['tp_code']) . "] " . $this->cleanWordText($examData['tp_description']);

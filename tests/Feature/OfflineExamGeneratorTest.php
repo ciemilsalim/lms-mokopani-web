@@ -422,4 +422,58 @@ class OfflineExamGeneratorTest extends TestCase
         $aiResponse->assertJsonPath('success', true);
         $aiResponse->assertJsonCount(5, 'exam.questions');
     }
+
+    public function test_teacher_can_generate_exam_with_different_cognitive_levels(): void
+    {
+        // 1. Level 1: LOTS (Mudah - C1 & C2)
+        $lotsResponse = $this->actingAs($this->teacherUser)->postJson('/offline-exams/generate', [
+            'school_class_ids' => [$this->schoolClass->id],
+            'learning_objective_ids' => [$this->tp->id],
+            'question_type' => 'multiple_choice',
+            'question_count' => 5,
+            'cognitive_level' => 'lots',
+            'output_format' => 'preview',
+        ]);
+
+        $lotsResponse->assertOk();
+        $lotsData = $lotsResponse->json('exam');
+        $this->assertEquals('lots', $lotsData['cognitive_level']);
+        foreach ($lotsData['questions'] as $q) {
+            $this->assertContains($q['cognitive_level'], ['C1', 'C2']);
+        }
+
+        // 2. Level 2: MOTS (Sedang - C3)
+        $motsResponse = $this->actingAs($this->teacherUser)->postJson('/offline-exams/generate', [
+            'school_class_ids' => [$this->schoolClass->id],
+            'learning_objective_ids' => [$this->tp->id],
+            'question_type' => 'multiple_choice',
+            'question_count' => 5,
+            'cognitive_level' => 'mots',
+            'output_format' => 'preview',
+        ]);
+
+        $motsResponse->assertOk();
+        $motsData = $motsResponse->json('exam');
+        $this->assertEquals('mots', $motsData['cognitive_level']);
+        foreach ($motsData['questions'] as $q) {
+            $this->assertEquals('C3', $q['cognitive_level']);
+        }
+
+        // 3. Level 3: HOTS (Tinggi - C4 & C5)
+        $hotsResponse = $this->actingAs($this->teacherUser)->postJson('/offline-exams/generate', [
+            'school_class_ids' => [$this->schoolClass->id],
+            'learning_objective_ids' => [$this->tp->id],
+            'question_type' => 'essay',
+            'question_count' => 5,
+            'cognitive_level' => 'hots',
+            'output_format' => 'preview',
+        ]);
+
+        $hotsResponse->assertOk();
+        $hotsData = $hotsResponse->json('exam');
+        $this->assertEquals('hots', $hotsData['cognitive_level']);
+        foreach ($hotsData['questions'] as $q) {
+            $this->assertContains($q['cognitive_level'], ['C4', 'C5']);
+        }
+    }
 }

@@ -22,6 +22,7 @@ import {
     Info,
     Search,
     GraduationCap,
+    Brain,
 } from 'lucide-react';
 import axios from 'axios';
 
@@ -134,6 +135,8 @@ interface ExamData {
     total_tps?: number;
     period: string;
     time_limit: string;
+    cognitive_level?: string;
+    cognitive_level_label?: string;
     title: string;
     instructions: string[];
     questions: QuestionItem[];
@@ -165,6 +168,7 @@ export default function OfflineExamsIndex({
     // 3. Question Form States
     const [questionType, setQuestionType] = useState<'multiple_choice' | 'essay' | 'mixed'>('multiple_choice');
     const [questionCount, setQuestionCount] = useState<number>(10);
+    const [cognitiveLevel, setCognitiveLevel] = useState<'all' | 'lots' | 'mots' | 'hots'>('lots');
     const [timeLimit, setTimeLimit] = useState<string>(default_time_limit);
     const [generationEngine, setGenerationEngine] = useState<'fast' | 'ai'>('fast');
 
@@ -337,6 +341,7 @@ export default function OfflineExamsIndex({
                 learning_objective_ids: selectedTpIds,
                 question_type: questionType,
                 question_count: questionCount,
+                cognitive_level: cognitiveLevel,
                 generation_engine: generationEngine,
                 output_format: 'preview',
                 time_limit: timeLimit,
@@ -400,6 +405,7 @@ export default function OfflineExamsIndex({
 
         addField('question_type', questionType);
         addField('question_count', questionCount);
+        addField('cognitive_level', cognitiveLevel);
         addField('generation_engine', generationEngine);
         addField('output_format', format);
         addField('time_limit', timeLimit);
@@ -797,12 +803,99 @@ export default function OfflineExamsIndex({
                             </div>
                         </div>
 
-                        {/* 4. METODE MESIN PEMBUAT SOAL (FAST VS AI) */}
+                        {/* 4. LEVEL KOGNITIF / TINGKAT PENGETAHUAN */}
+                        <div className="space-y-2 pt-2 border-t border-border/50">
+                            <div className="flex items-center justify-between">
+                                <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                                    <Brain className="h-3.5 w-3.5 text-primary" />
+                                    <span>4. Tingkat Kognitif / Level Pengetahuan</span>
+                                </label>
+                                <span className="text-[10px] text-muted-foreground italic">
+                                    Menyesuaikan kemampuan siswa
+                                </span>
+                            </div>
+
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                {[
+                                    {
+                                        id: 'lots',
+                                        label: 'Level 1: LOTS',
+                                        badge: 'Mudah / Dasar',
+                                        desc: 'Mengingat & Memahami (C1-C2). Bahasa lugas, ramah siswa, tidak rumit.',
+                                        color: 'border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 ring-1 ring-emerald-500',
+                                        badgeColor: 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300',
+                                    },
+                                    {
+                                        id: 'mots',
+                                        label: 'Level 2: MOTS',
+                                        badge: 'Sedang / Aplikasi',
+                                        desc: 'Menerapkan (C3). Kasus konkret harian, langkah prosedur, dan cara kerja.',
+                                        color: 'border-blue-500 bg-blue-500/10 text-blue-700 dark:text-blue-300 ring-1 ring-blue-500',
+                                        badgeColor: 'bg-blue-500/20 text-blue-700 dark:text-blue-300',
+                                    },
+                                    {
+                                        id: 'hots',
+                                        label: 'Level 3: HOTS',
+                                        badge: 'Tinggi / Analisis',
+                                        desc: 'Menganalisis & Mengevaluasi (C4-C6). Penalaran kritis dan studi kasus.',
+                                        color: 'border-purple-500 bg-purple-500/10 text-purple-700 dark:text-purple-300 ring-1 ring-purple-500',
+                                        badgeColor: 'bg-purple-500/20 text-purple-700 dark:text-purple-300',
+                                    },
+                                    {
+                                        id: 'all',
+                                        label: 'Campuran',
+                                        badge: 'Proporsional',
+                                        desc: 'Kombinasi standar Kurikulum Merdeka (30% Mudah, 50% Sedang, 20% Tinggi).',
+                                        color: 'border-primary bg-primary/10 text-primary ring-1 ring-primary',
+                                        badgeColor: 'bg-primary/20 text-primary',
+                                    },
+                                ].map((item) => {
+                                    const isSelected = cognitiveLevel === item.id;
+                                    return (
+                                        <button
+                                            key={item.id}
+                                            type="button"
+                                            onClick={() => setCognitiveLevel(item.id as any)}
+                                            className={`p-2.5 rounded-xl border text-left transition flex flex-col justify-between cursor-pointer ${
+                                                isSelected
+                                                    ? item.color
+                                                    : 'border-border/80 bg-background text-muted-foreground hover:bg-muted/40'
+                                            }`}
+                                        >
+                                            <div>
+                                                <div className="flex items-center justify-between gap-1">
+                                                    <span className="text-xs font-bold text-foreground">{item.label}</span>
+                                                    <span className={`text-[8.5px] px-1 py-0.2 rounded font-semibold ${item.badgeColor}`}>
+                                                        {item.badge}
+                                                    </span>
+                                                </div>
+                                                <span className="text-[10px] text-muted-foreground mt-1.5 line-clamp-2 leading-tight block">
+                                                    {item.desc}
+                                                </span>
+                                            </div>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+
+                            {/* Informative Guidance note */}
+                            <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/30 text-[11px] text-muted-foreground">
+                                <Info className="h-3.5 w-3.5 text-primary shrink-0" />
+                                <span>
+                                    {cognitiveLevel === 'lots' && 'Rekomendasi jika siswa membutuhkan soal yang lebih mudah, lugas, dan mengenalkan konsep dasar tanpa jebakan rumit.'}
+                                    {cognitiveLevel === 'mots' && 'Fokus mengukur kemampuan siswa dalam mempraktikkan konsep pada contoh situasi nyata sehari-hari.'}
+                                    {cognitiveLevel === 'hots' && 'Menguji kemampuan analisis tingkat tinggi, penalaran logis, dan pemecahan masalah kompleks.'}
+                                    {cognitiveLevel === 'all' && 'Soal disusun bertingkat: nomor awal mudah (LOTS), nomor tengah sedang (MOTS), dan nomor akhir menantang (HOTS).'}
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* 5. METODE MESIN PEMBUAT SOAL (FAST VS AI) */}
                         <div className="space-y-2 pt-2 border-t border-border/50">
                             <div className="flex items-center justify-between">
                                 <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
                                     <Zap className="h-3.5 w-3.5 text-primary" />
-                                    <span>4. Mesin Pembuat Soal</span>
+                                    <span>5. Mesin Pembuat Soal</span>
                                 </label>
                                 <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
                                     {generationEngine === 'fast' ? '⚡ Mode Cepat (Stabil)' : '🤖 AI Cloud'}
@@ -846,12 +939,12 @@ export default function OfflineExamsIndex({
                             </div>
                         </div>
 
-                        {/* 5. JUMLAH SOAL & WAKTU */}
+                        {/* 6. JUMLAH SOAL & WAKTU */}
                         <div className="grid grid-cols-2 gap-3 pt-2 border-t border-border/50">
                             <div className="space-y-1.5">
                                 <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
                                     <ListOrdered className="h-3.5 w-3.5 text-primary" />
-                                    <span>5. Jumlah Soal</span>
+                                    <span>6. Jumlah Soal</span>
                                 </label>
                                 <select
                                     value={questionCount}
@@ -1022,12 +1115,19 @@ export default function OfflineExamsIndex({
                                                     <span className="text-muted-foreground font-medium">Alokasi Waktu:</span>{' '}
                                                     <span className="font-bold text-foreground">{examData.time_limit}</span>
                                                 </div>
-                                                <div className="col-span-2 pt-1 border-t border-border/40">
-                                                    <span className="text-muted-foreground font-medium">Tujuan Pembelajaran:</span>{' '}
-                                                    <span className="font-bold text-foreground">{examData.tp_code}</span>
-                                                    {examData.tp_allocations && examData.tp_allocations.length > 1 && (
-                                                        <span className="text-[11px] font-normal text-muted-foreground ml-1">
-                                                            ({examData.tp_allocations.length} TP diujikan &mdash; butir soal dibagi rata)
+                                                <div className="col-span-2 pt-1 border-t border-border/40 flex items-center justify-between flex-wrap gap-1">
+                                                    <div>
+                                                        <span className="text-muted-foreground font-medium">Tujuan Pembelajaran:</span>{' '}
+                                                        <span className="font-bold text-foreground">{examData.tp_code}</span>
+                                                        {examData.tp_allocations && examData.tp_allocations.length > 1 && (
+                                                            <span className="text-[11px] font-normal text-muted-foreground ml-1">
+                                                                ({examData.tp_allocations.length} TP diujikan &mdash; butir soal dibagi rata)
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    {examData.cognitive_level_label && (
+                                                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-bold border border-primary/20">
+                                                            {examData.cognitive_level_label}
                                                         </span>
                                                     )}
                                                 </div>
