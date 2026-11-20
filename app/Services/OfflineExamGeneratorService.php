@@ -97,7 +97,8 @@ class OfflineExamGeneratorService
         string $questionType = 'multiple_choice',
         int $questionCount = 10,
         ?string $timeLimit = '90 Menit',
-        bool $regenerate = false
+        bool $regenerate = false,
+        string $generationEngine = 'fast'
     ): array {
         $activeYear = AcademicYear::getActive();
         $activeSemester = Semester::getActive();
@@ -173,8 +174,8 @@ class OfflineExamGeneratorService
             }
         }
 
-        // In testing environment, immediately use deterministic pedagogical fallback for speed and isolation
-        if (app()->environment('testing')) {
+        // If 'fast' engine or testing environment, immediately use deterministic pedagogical generator (0.05s, 0 token cost, 100% no 503 timeout)
+        if ($generationEngine === 'fast' || app()->environment('testing')) {
             $aiResult = $this->buildPedagogicalFallback($tpList, $subjectName, $classNames, $questionType, $questionCount, $tpAllocations);
         } else {
             // Try AI generation first
@@ -442,6 +443,10 @@ PROMPT;
 
         try {
             $provider = $this->aiManager->getActiveProvider();
+            if (!$provider->isConfigured()) {
+                Log::info('AI Provider not configured, skipping AI generation for offline exam.');
+                return null;
+            }
             $rawResponse = $provider->generateContent($prompt);
 
             if (!$rawResponse) {

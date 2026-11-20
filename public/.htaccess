@@ -5,6 +5,11 @@
 
     RewriteEngine On
 
+    # Prevent LiteSpeed Web Server premature connection timeout (503) on hosting
+    <IfModule Litespeed>
+        RewriteRule .* - [E=noconntimeout:1]
+    </IfModule>
+
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]

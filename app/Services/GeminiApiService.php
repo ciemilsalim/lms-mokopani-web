@@ -260,7 +260,7 @@ class GeminiApiService implements AiProviderInterface
         if (empty($this->apiKeys)) return null;
 
         $attempts = 0;
-        $maxAttempts = count($this->apiKeys) * 2;
+        $maxAttempts = min(2, count($this->apiKeys) * 2);
         $candidateModels = array_values(array_unique(array_filter([
             $this->model,
             'gemini-2.5-flash',
@@ -277,7 +277,7 @@ class GeminiApiService implements AiProviderInterface
             try {
                 $url = "{$this->baseUrl}/models/{$currentModel}:generateContent?key={$currentKey}";
 
-                $response = Http::timeout(120)->connectTimeout(15)->post($url, [
+                $response = Http::timeout(25)->connectTimeout(8)->post($url, [
                     'contents' => [
                         [
                             'parts' => [

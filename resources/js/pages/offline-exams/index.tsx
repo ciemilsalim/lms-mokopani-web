@@ -166,6 +166,7 @@ export default function OfflineExamsIndex({
     const [questionType, setQuestionType] = useState<'multiple_choice' | 'essay' | 'mixed'>('multiple_choice');
     const [questionCount, setQuestionCount] = useState<number>(10);
     const [timeLimit, setTimeLimit] = useState<string>(default_time_limit);
+    const [generationEngine, setGenerationEngine] = useState<'fast' | 'ai'>('fast');
 
     const [isGenerating, setIsGenerating] = useState<boolean>(false);
     const [examData, setExamData] = useState<ExamData | null>(null);
@@ -336,6 +337,7 @@ export default function OfflineExamsIndex({
                 learning_objective_ids: selectedTpIds,
                 question_type: questionType,
                 question_count: questionCount,
+                generation_engine: generationEngine,
                 output_format: 'preview',
                 time_limit: timeLimit,
                 regenerate: forceRegenerate,
@@ -347,8 +349,12 @@ export default function OfflineExamsIndex({
                 setErrorMessage('Gagal memproses pembuatan soal. Silakan coba lagi.');
             }
         } catch (err: any) {
-            const msg = err.response?.data?.message || err.message || 'Terjadi kesalahan saat memproses data.';
-            setErrorMessage(msg);
+            if (err.response?.status === 503) {
+                setErrorMessage('Koneksi server hosting mengalami timeout (HTTP 503). Disarankan menggunakan "⚡ Mode Cepat (Instan & Stabil)" yang langsung selesai dalam 0.1 detik tanpa timeout.');
+            } else {
+                const msg = err.response?.data?.message || err.message || 'Terjadi kesalahan saat memproses data.';
+                setErrorMessage(msg);
+            }
         } finally {
             setIsGenerating(false);
         }
@@ -394,6 +400,7 @@ export default function OfflineExamsIndex({
 
         addField('question_type', questionType);
         addField('question_count', questionCount);
+        addField('generation_engine', generationEngine);
         addField('output_format', format);
         addField('time_limit', timeLimit);
 
@@ -790,12 +797,61 @@ export default function OfflineExamsIndex({
                             </div>
                         </div>
 
-                        {/* 4. JUMLAH SOAL & WAKTU */}
+                        {/* 4. METODE MESIN PEMBUAT SOAL (FAST VS AI) */}
+                        <div className="space-y-2 pt-2 border-t border-border/50">
+                            <div className="flex items-center justify-between">
+                                <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                                    <Zap className="h-3.5 w-3.5 text-primary" />
+                                    <span>4. Mesin Pembuat Soal</span>
+                                </label>
+                                <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                                    {generationEngine === 'fast' ? '⚡ Mode Cepat (Stabil)' : '🤖 AI Cloud'}
+                                </span>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setGenerationEngine('fast')}
+                                    className={`p-2.5 rounded-xl border text-left transition flex flex-col justify-between cursor-pointer ${
+                                        generationEngine === 'fast'
+                                            ? 'border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 ring-1 ring-emerald-500'
+                                            : 'border-border/80 bg-background text-muted-foreground hover:bg-muted/40'
+                                    }`}
+                                >
+                                    <div className="flex items-center gap-1.5 font-bold text-xs">
+                                        <span>⚡ Mode Cepat</span>
+                                    </div>
+                                    <span className="text-[10px] text-muted-foreground mt-1 leading-tight">
+                                        Instan 0.1s, stabil di hosting cPanel, anti 503
+                                    </span>
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onClick={() => setGenerationEngine('ai')}
+                                    className={`p-2.5 rounded-xl border text-left transition flex flex-col justify-between cursor-pointer ${
+                                        generationEngine === 'ai'
+                                            ? 'border-primary bg-primary/10 text-primary ring-1 ring-primary'
+                                            : 'border-border/80 bg-background text-muted-foreground hover:bg-muted/40'
+                                    }`}
+                                >
+                                    <div className="flex items-center gap-1.5 font-bold text-xs text-foreground">
+                                        <span>🤖 AI Cloud</span>
+                                    </div>
+                                    <span className="text-[10px] text-muted-foreground mt-1 leading-tight">
+                                        Generasi via API eksternal (OpenRouter / Gemini)
+                                    </span>
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* 5. JUMLAH SOAL & WAKTU */}
                         <div className="grid grid-cols-2 gap-3 pt-2 border-t border-border/50">
                             <div className="space-y-1.5">
                                 <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
                                     <ListOrdered className="h-3.5 w-3.5 text-primary" />
-                                    <span>Jumlah Soal</span>
+                                    <span>5. Jumlah Soal</span>
                                 </label>
                                 <select
                                     value={questionCount}

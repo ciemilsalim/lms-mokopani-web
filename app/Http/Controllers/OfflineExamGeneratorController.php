@@ -352,6 +352,9 @@ class OfflineExamGeneratorController extends Controller
      */
     public function generate(Request $request)
     {
+        @ini_set('max_execution_time', '180');
+        @set_time_limit(180);
+
         // Support both school_class_ids (array) and legacy school_class_id (single int)
         $classIds = $request->input('school_class_ids');
         if (empty($classIds) && $request->filled('school_class_id')) {
@@ -378,6 +381,7 @@ class OfflineExamGeneratorController extends Controller
             'output_format' => 'required|string|in:pdf,docx,preview',
             'time_limit' => 'nullable|string|max:50',
             'regenerate' => 'nullable|boolean',
+            'generation_engine' => 'nullable|string|in:fast,ai',
         ], [
             'school_class_ids.required' => 'Silakan pilih minimal satu kelas target.',
             'school_class_ids.min' => 'Silakan centang minimal satu kelas target.',
@@ -429,6 +433,7 @@ class OfflineExamGeneratorController extends Controller
 
         $timeLimit = !empty($validated['time_limit']) ? $validated['time_limit'] : '90 Menit';
         $regenerate = (bool) ($validated['regenerate'] ?? false);
+        $engine = $validated['generation_engine'] ?? 'fast';
 
         $examData = $this->generatorService->generateExamData(
             $teacher,
@@ -437,7 +442,8 @@ class OfflineExamGeneratorController extends Controller
             $validated['question_type'],
             (int) $validated['question_count'],
             $timeLimit,
-            $regenerate
+            $regenerate,
+            $engine
         );
 
         if ($validated['output_format'] === 'pdf') {

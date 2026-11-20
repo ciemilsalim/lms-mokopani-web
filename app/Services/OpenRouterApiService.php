@@ -196,7 +196,7 @@ class OpenRouterApiService implements AiProviderInterface
         ])));
         $keyCount = count($this->apiKeys);
         $keys = array_values($this->apiKeys);
-        $maxAttempts = $keyCount * count($candidateModels);
+        $maxAttempts = min(2, $keyCount * count($candidateModels));
 
         while ($attempts < $maxAttempts) {
             $currentKey = $keys[$this->currentKeyIndex % $keyCount];
@@ -208,7 +208,7 @@ class OpenRouterApiService implements AiProviderInterface
                 $response = Http::withToken($currentKey)->withHeaders([
                     'HTTP-Referer' => config('app.url', 'http://localhost'),
                     'X-Title' => config('app.name', 'LMS Mokopani'),
-                ])->timeout(120)->connectTimeout(15)->post($url, [
+                ])->timeout(25)->connectTimeout(8)->post($url, [
                     'model' => $currentModel,
                     'messages' => [
                         ['role' => 'user', 'content' => $prompt]

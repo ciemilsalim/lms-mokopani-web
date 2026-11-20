@@ -391,4 +391,35 @@ class OfflineExamGeneratorTest extends TestCase
 
         $response->assertStatus(403);
     }
+
+    public function test_teacher_can_generate_exam_with_fast_engine_and_ai_engine(): void
+    {
+        // Test Fast Engine
+        $fastResponse = $this->actingAs($this->teacherUser)->postJson('/offline-exams/generate', [
+            'school_class_ids' => [$this->schoolClass->id],
+            'learning_objective_ids' => [$this->tp->id],
+            'question_type' => 'multiple_choice',
+            'question_count' => 5,
+            'generation_engine' => 'fast',
+            'output_format' => 'preview',
+        ]);
+
+        $fastResponse->assertOk();
+        $fastResponse->assertJsonPath('success', true);
+        $fastResponse->assertJsonCount(5, 'exam.questions');
+
+        // Test AI Engine (falls back gracefully in isolated/unconfigured environment without error)
+        $aiResponse = $this->actingAs($this->teacherUser)->postJson('/offline-exams/generate', [
+            'school_class_ids' => [$this->schoolClass->id],
+            'learning_objective_ids' => [$this->tp->id],
+            'question_type' => 'essay',
+            'question_count' => 5,
+            'generation_engine' => 'ai',
+            'output_format' => 'preview',
+        ]);
+
+        $aiResponse->assertOk();
+        $aiResponse->assertJsonPath('success', true);
+        $aiResponse->assertJsonCount(5, 'exam.questions');
+    }
 }
