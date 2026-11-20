@@ -1079,14 +1079,30 @@ export default function OfflineExamsIndex({
                                 <div className="p-6 sm:p-8 bg-background max-h-[700px] overflow-y-auto space-y-6 text-foreground font-sans border-t border-border/40 scrollbar-thin">
                                     {activeTab === 'soal' && (
                                         <div className="space-y-5">
-                                            {/* Kop Sekolah */}
-                                            <div className="text-center border-b-2 border-foreground/80 pb-3 space-y-0.5">
-                                                <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">PEMERINTAH KABUPATEN BUOL</p>
-                                                <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">DINAS PENDIDIKAN DAN KEBUDAYAAN</p>
-                                                <p className="text-base font-black uppercase text-foreground">{examData.school_name}</p>
-                                                <p className="text-[10px] text-muted-foreground italic">
-                                                    {examData.school_address} | Telp: {examData.school_phone}
-                                                </p>
+                                            {/* Kop Sekolah dengan 2 Logo: Pemda Buol (Kiri) & Spensa (Kanan) */}
+                                            <div className="flex items-center justify-between border-b-2 border-foreground/80 pb-3 gap-3">
+                                                <div className="w-16 flex-shrink-0 flex items-center justify-center">
+                                                    <img
+                                                        src="/images/logo-buol.png"
+                                                        alt="Logo Pemda Buol"
+                                                        className="h-16 w-auto max-h-16 object-contain"
+                                                    />
+                                                </div>
+                                                <div className="text-center flex-1 space-y-0.5">
+                                                    <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">PEMERINTAH KABUPATEN BUOL</p>
+                                                    <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">DINAS PENDIDIKAN DAN KEBUDAYAAN</p>
+                                                    <p className="text-base font-black uppercase text-foreground">{examData.school_name}</p>
+                                                    <p className="text-[10px] text-muted-foreground italic">
+                                                        {examData.school_address} | Telp: {examData.school_phone}
+                                                    </p>
+                                                </div>
+                                                <div className="w-16 flex-shrink-0 flex items-center justify-center">
+                                                    <img
+                                                        src="/images/logo-spensa.png"
+                                                        alt="Logo Spensa"
+                                                        className="h-16 w-auto max-h-16 object-contain"
+                                                    />
+                                                </div>
                                             </div>
 
                                             {/* Exam Title */}

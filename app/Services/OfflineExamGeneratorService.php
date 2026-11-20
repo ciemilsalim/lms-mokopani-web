@@ -147,7 +147,7 @@ class OfflineExamGeneratorService
         $classKey = implode('_', $classIds);
         $tpKey = $tpList->pluck('id')->sort()->implode('_');
         $levelInfo = $this->resolveEducationLevel($classList, $classNames);
-        $cacheHash = md5("offline_exam_v5_{$tpKey}_{$classKey}_{$questionType}_{$questionCount}_{$generationEngine}_{$cognitiveLevel}_{$levelInfo['grade_label']}");
+        $cacheHash = md5("offline_exam_v6_{$tpKey}_{$classKey}_{$questionType}_{$questionCount}_{$generationEngine}_{$cognitiveLevel}_{$levelInfo['grade_label']}");
 
         if (!$regenerate) {
             $cachedJson = LmsAiCache::getCache($cacheHash);
@@ -1485,7 +1485,10 @@ PROMPT;
             'school_address' => $schoolAddress,
             'school_phone' => $schoolPhone,
             'school_email' => $schoolEmail,
-            'school_logo' => school_logo_url(),
+            'region_logo' => $this->getRegionLogoBase64(),
+            'school_logo' => $this->getSchoolLogoBase64(),
+            'region_logo_url' => '/images/logo-buol.png',
+            'school_logo_url' => '/images/logo-spensa.png',
             'headmaster_name' => $headmasterName,
             'headmaster_nip' => $headmasterNip,
             'teacher_name' => $teacher->name,
@@ -1535,29 +1538,91 @@ PROMPT;
     }
 
     /**
-     * Get local filesystem path to school logo for PhpWord export if available.
+     * Get local filesystem path to Pemda Buol region logo.
      */
-    protected function getLocalSchoolLogoPath(): ?string
+    protected function getLocalRegionLogoPath(): ?string
     {
-        $path = school_setting('app_logo');
-        if (!$path) {
-            return null;
-        }
-
         $paths = [
-            storage_path('app/public/' . $path),
-            base_path('../aplikasi-absensi/storage/app/public/' . $path),
-            public_path('storage/' . $path),
+            public_path('images/logo-buol.png'),
+            storage_path('app/public/logos/logo-buol.png'),
         ];
 
-        foreach ($paths as $fullPath) {
-            $fullPath = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $fullPath);
-            if (file_exists($fullPath)) {
-                return $fullPath;
+        foreach ($paths as $path) {
+            $path = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $path);
+            if (file_exists($path)) {
+                return $path;
             }
         }
 
         return null;
+    }
+
+    /**
+     * Get Base64 encoded string for Pemda Buol region logo (for DomPDF).
+     */
+    protected function getRegionLogoBase64(): ?string
+    {
+        $path = $this->getLocalRegionLogoPath();
+        if ($path && file_exists($path)) {
+            $type = pathinfo($path, PATHINFO_EXTENSION);
+            $data = file_get_contents($path);
+            return 'data:image/' . $type . ';base64,' . base64_encode($data);
+        }
+
+        return null;
+    }
+
+    /**
+     * Get local filesystem path to school logo (Spensa) for PhpWord export if available.
+     */
+    protected function getLocalSchoolLogoPath(): ?string
+    {
+        // 1. Explicit Spensa logo uploaded
+        $paths = [
+            public_path('images/logo-spensa.png'),
+            storage_path('app/public/logos/logo-spensa.png'),
+        ];
+
+        foreach ($paths as $p) {
+            $p = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $p);
+            if (file_exists($p)) {
+                return $p;
+            }
+        }
+
+        // 2. Fallback to dynamic school_setting('app_logo')
+        $path = school_setting('app_logo');
+        if ($path) {
+            $fallbackPaths = [
+                storage_path('app/public/' . $path),
+                base_path('../aplikasi-absensi/storage/app/public/' . $path),
+                public_path('storage/' . $path),
+            ];
+
+            foreach ($fallbackPaths as $fp) {
+                $fp = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $fp);
+                if (file_exists($fp)) {
+                    return $fp;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Get Base64 encoded string for school logo (Spensa) for DomPDF.
+     */
+    protected function getSchoolLogoBase64(): ?string
+    {
+        $path = $this->getLocalSchoolLogoPath();
+        if ($path && file_exists($path)) {
+            $type = pathinfo($path, PATHINFO_EXTENSION);
+            $data = file_get_contents($path);
+            return 'data:image/' . $type . ';base64,' . base64_encode($data);
+        }
+
+        return school_logo_url();
     }
 
     /**
@@ -1590,7 +1655,7 @@ PROMPT;
             'color' => '64748B',
         ], ['alignment' => Jc::CENTER]);
 
-        // 1. Kop Surat
+        // 1. Kop Surat dengan 2 Logo: Pemda Buol di sebelah KIRI dan Logo Spensa di sebelah KANAN
         $kopTable = $section->addTable([
             'borderBottomSize' => 18,
             'borderBottomColor' => '000000',
@@ -1600,26 +1665,37 @@ PROMPT;
         ]);
         $kopRow = $kopTable->addRow();
 
-        $logoPath = $this->getLocalSchoolLogoPath();
-        if ($logoPath) {
-            $logoCell = $kopRow->addCell(1500, ['valign' => 'center']);
-            $logoCell->addImage($logoPath, [
-                'width' => 60,
-                'height' => 60,
+        $regionLogoPath = $this->getLocalRegionLogoPath();
+        $schoolLogoPath = $this->getLocalSchoolLogoPath();
+
+        // Logo Pemda Buol (Kiri, width 12%)
+        $leftCell = $kopRow->addCell(1200, ['valign' => 'center']);
+        if ($regionLogoPath) {
+            $leftCell->addImage($regionLogoPath, [
+                'width' => 55,
+                'height' => 55,
                 'alignment' => Jc::CENTER,
             ]);
-            $textCellWidth = 8500;
-        } else {
-            $textCellWidth = 10000;
         }
 
-        $kopCell = $kopRow->addCell($textCellWidth, ['valign' => 'center']);
+        // Teks Instansi Kop Surat (Tengah, width 76%)
+        $kopCell = $kopRow->addCell(7600, ['valign' => 'center']);
         $kopCell->addText('PEMERINTAH KABUPATEN BUOL', ['bold' => true, 'size' => 11], ['alignment' => Jc::CENTER, 'spaceAfter' => 20]);
         $kopCell->addText('DINAS PENDIDIKAN DAN KEBUDAYAAN', ['bold' => true, 'size' => 11], ['alignment' => Jc::CENTER, 'spaceAfter' => 20]);
         $kopCell->addText($this->cleanWordText(strtoupper($examData['school_name'])), ['bold' => true, 'size' => 13], ['alignment' => Jc::CENTER, 'spaceAfter' => 30]);
 
         $metaSchoolText = $this->cleanWordText($examData['school_address'] . ' | Telp: ' . $examData['school_phone'] . ' | Email: ' . $examData['school_email']);
         $kopCell->addText($metaSchoolText, ['size' => 8.5, 'italic' => true], ['alignment' => Jc::CENTER, 'spaceAfter' => 40]);
+
+        // Logo Spensa (Kanan, width 12%)
+        $rightCell = $kopRow->addCell(1200, ['valign' => 'center']);
+        if ($schoolLogoPath) {
+            $rightCell->addImage($schoolLogoPath, [
+                'width' => 55,
+                'height' => 55,
+                'alignment' => Jc::CENTER,
+            ]);
+        }
 
         $section->addTextBreak(1);
 
