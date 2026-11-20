@@ -798,4 +798,88 @@ class OfflineExamGeneratorTest extends TestCase
         ]);
         $docxResponse->assertOk();
     }
+
+    public function test_multiple_choice_options_strictly_match_selected_cognitive_level_and_avoid_topic_repetition(): void
+    {
+        // 1. Create realistic complex TP from user's screenshot
+        $complexTp = LmsLearningObjective::create([
+            'teacher_id' => $this->teacher->id,
+            'subject_id' => $this->subject->id,
+            'school_class_id' => $this->schoolClass->id,
+            'academic_year_id' => $this->academicYear->id,
+            'semester_id' => $this->semester->id,
+            'code' => 'TP-3.1',
+            'description' => 'memproduksi konten digital terintegrasi yang menggabungkan elemen teks, data visual, dan desain presentasi secara terstruktur dan menarik',
+            'content' => null,
+            'order' => 1,
+        ]);
+
+        // 2. Test LOTS generation
+        $lotsResponse = $this->actingAs($this->teacherUser)->postJson('/offline-exams/generate', [
+            'school_class_ids' => [$this->schoolClass->id],
+            'learning_objective_ids' => [$complexTp->id],
+            'question_type' => 'multiple_choice',
+            'question_count' => 5,
+            'cognitive_level' => 'lots',
+            'generation_engine' => 'fast',
+            'output_format' => 'preview',
+        ]);
+
+        $lotsResponse->assertOk();
+        $lotsData = $lotsResponse->json('exam');
+
+        foreach ($lotsData['questions'] as $q) {
+            $this->assertContains($q['cognitive_level'], ['C1', 'C2']);
+            $this->assertStringNotContainsString('yang menggabungkan elemen teks, data visual, dan desain presentasi', $q['question']);
+            foreach ($q['options'] as $letter => $optText) {
+                // Must not repeat the 15-word curriculum phrase in options
+                $this->assertStringNotContainsString('memproduksi konten digital terintegrasi yang menggabungkan elemen teks', $optText);
+                $this->assertStringNotContainsString('tentang materi memproduksi konten digital', $optText);
+            }
+        }
+
+        // 3. Test MOTS generation
+        $motsResponse = $this->actingAs($this->teacherUser)->postJson('/offline-exams/generate', [
+            'school_class_ids' => [$this->schoolClass->id],
+            'learning_objective_ids' => [$complexTp->id],
+            'question_type' => 'multiple_choice',
+            'question_count' => 5,
+            'cognitive_level' => 'mots',
+            'generation_engine' => 'fast',
+            'output_format' => 'preview',
+        ]);
+
+        $motsResponse->assertOk();
+        $motsData = $motsResponse->json('exam');
+
+        foreach ($motsData['questions'] as $q) {
+            $this->assertEquals('C3', $q['cognitive_level']);
+            $this->assertStringNotContainsString('yang menggabungkan elemen teks, data visual, dan desain presentasi', $q['question']);
+            foreach ($q['options'] as $letter => $optText) {
+                $this->assertStringNotContainsString('memproduksi konten digital terintegrasi yang menggabungkan elemen teks', $optText);
+            }
+        }
+
+        // 4. Test HOTS generation
+        $hotsResponse = $this->actingAs($this->teacherUser)->postJson('/offline-exams/generate', [
+            'school_class_ids' => [$this->schoolClass->id],
+            'learning_objective_ids' => [$complexTp->id],
+            'question_type' => 'multiple_choice',
+            'question_count' => 5,
+            'cognitive_level' => 'hots',
+            'generation_engine' => 'fast',
+            'output_format' => 'preview',
+        ]);
+
+        $hotsResponse->assertOk();
+        $hotsData = $hotsResponse->json('exam');
+
+        foreach ($hotsData['questions'] as $q) {
+            $this->assertContains($q['cognitive_level'], ['C4', 'C5', 'C6']);
+            $this->assertStringNotContainsString('yang menggabungkan elemen teks, data visual, dan desain presentasi', $q['question']);
+            foreach ($q['options'] as $letter => $optText) {
+                $this->assertStringNotContainsString('memproduksi konten digital terintegrasi yang menggabungkan elemen teks', $optText);
+            }
+        }
+    }
 }

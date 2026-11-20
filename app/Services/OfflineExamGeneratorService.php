@@ -147,7 +147,7 @@ class OfflineExamGeneratorService
         $classKey = implode('_', $classIds);
         $tpKey = $tpList->pluck('id')->sort()->implode('_');
         $levelInfo = $this->resolveEducationLevel($classList, $classNames);
-        $cacheHash = md5("offline_exam_v9_{$tpKey}_{$classKey}_{$questionType}_{$questionCount}_{$generationEngine}_{$cognitiveLevel}_{$levelInfo['grade_label']}");
+        $cacheHash = md5("offline_exam_v10_{$tpKey}_{$classKey}_{$questionType}_{$questionCount}_{$generationEngine}_{$cognitiveLevel}_{$levelInfo['grade_label']}");
 
         if (!$regenerate) {
             $cachedJson = LmsAiCache::getCache($cacheHash);
@@ -508,6 +508,11 @@ ATURAN WAJIB & SANGAT KETAT:
    e. DILARANG KERAS menyisipkan teks artifisial seperti "(soal nomor X)!" pada kalimat soal.
    f. Jika sebuah TP dialokasikan lebih dari 1 butir soal, setiap butir soal pada TP tersebut WAJIB menguji aspek materi yang BERBEDA (contoh: butir 1 fokus alur/konsep, butir 2 fokus manfaat, butir 3 fokus komponen/bagian, butir 4 fokus contoh penerapan sehari-hari, butir 5 fokus langkah kerja). DILARANG KERAS membuat soal kembar atau berulang dengan redaksi yang sama!
    g. KHUSUS SOAL PILIHAN GANDA (PG):
+      - Pilihan jawaban (opsi A, B, C, D) WAJIB DISESUAIKAN DENGAN TINGKAT KOGNITIF YANG DIPILIH GURU:
+        * Jika Level LOTS (C1/C2): Opsi jawaban menguji pemahaman definisi, karakteristik, atau fungsi pokok materi secara langsung.
+        * Jika Level MOTS (C3): Opsi jawaban berupa tindakan operasional / langkah kerja nyata siswa saat mempraktikkan konsep materi.
+        * Jika Level HOTS (C4/C5/C6): Opsi jawaban berupa analisis pemecahan masalah (troubleshooting), identifikasi akar penyebab kendala, atau evaluasi kritis terhadap solusi/karya.
+      - DILARANG KERAS mengulang-ulang teks materi atau deskripsi TP yang panjang pada setiap opsi jawaban A, B, C, D! Sekali topik sudah disebutkan pada kalimat stem pertanyaan, pilihan A, B, C, D langsung menyatakan substansi jawaban secara lugas, ringkas, dan jelas.
       - Kalimat stem pertanyaan maupun pilihan jawaban (opsi A, B, C, D) WAJIB sederhana, ramah, dan mudah dipahami siswa seperti halnya soal esai.
       - DILARANG KERAS menggunakan frasa abstrak atau kaku bergaya buku panduan teknis pada opsi jawaban (seperti: "bentuk penerapan dasar...", "pengenalan konsep secara utuh dan sistematis", "pedoman normatif", dll.).
       - Pilihan jawaban harus singkat, konkret, jelas, dan menyajikan tindakan/pemahaman riil yang biasa didengar dan dialami siswa di kelas.
@@ -747,7 +752,8 @@ PROMPT;
 
         // 3. Operational verb
         $verb = 'memahami';
-        if (preg_match('/^(menjelaskan|mengidentifikasi|menganalisis|memahami|menerapkan|mengevaluasi|menguraikan|mempraktikkan|mendeskripsikan|merancang|menyusun|membedakan)/iu', $cleanedDesc, $vMatch)) {
+        $verbPattern = '/^(menjelaskan|mengidentifikasi|menganalisis|memahami|menerapkan|mengevaluasi|menguraikan|mempraktikkan|mendeskripsikan|merancang|menyusun|membedakan|memproduksi|membuat|mengembangkan|mengoperasikan|menggunakan|mengolah|menghasilkan|menampilkan|menyajikan|membangun|memilih|menentukan|mengkaji|menelaah)/iu';
+        if (preg_match($verbPattern, $cleanedDesc, $vMatch)) {
             $verb = mb_strtolower($vMatch[1]);
         }
 
@@ -756,7 +762,7 @@ PROMPT;
             $fullConcept = trim($rawContent, " \t\n\r\0\x0B.,:;");
         } else {
             // Strip leading operational verbs from cleanedDesc to extract the pure subject matter concept
-            $fullConcept = preg_replace('/^(menjelaskan|mengidentifikasi|menganalisis|memahami|menerapkan|mengevaluasi|menguraikan|mempraktikkan|mendeskripsikan|merancang|menyusun|membedakan)\s+/iu', '', $cleanedDesc);
+            $fullConcept = preg_replace('/^(?:menjelaskan|mengidentifikasi|menganalisis|memahami|menerapkan|mengevaluasi|menguraikan|mempraktikkan|mendeskripsikan|merancang|menyusun|membedakan|memproduksi|membuat|mengembangkan|mengoperasikan|menggunakan|mengolah|menghasilkan|menampilkan|menyajikan|membangun|memilih|menentukan|mengkaji|menelaah)\s+/iu', '', $cleanedDesc);
             $fullConcept = trim($fullConcept, " \t\n\r\0\x0B.,:;");
             if ($fullConcept === '') {
                 $fullConcept = $cleanedDesc ?: ($subjectName ?: 'materi pembelajaran');
@@ -764,8 +770,8 @@ PROMPT;
         }
 
         // 5. Natural Simplification: Cut off overly long trailing prepositional qualification clauses
-        // e.g. "dalam memproses data melalui siklus input-proses-output", "untuk memecahkan masalah...", "dalam konteks...", "secara tepat..."
-        $qualifierPattern = '/\s+(?:dalam\s+(?:memproses|menyelesaikan|menerapkan|melakukan|menganalisis|mengembangkan|memecahkan|pemecahan|kehidupan|konteks|kegiatan|praktik|lingkungan|berbagai)|untuk\s+(?:memecahkan|menyelesaikan|membantu|mencapai|menghasilkan|menjaga|meningkatkan|mendukung)|melalui\s+(?:siklus|proses|tahapan|kegiatan|pendekatan)|secara\s+(?:tepat|kritis|mandiri|kreatif|bertanggung\s+jawab|efektif|lengkap|logis|sistematis)|dengan\s+(?:menggunakan|memanfaatkan|bantuan))\b.*$/iu';
+        // e.g. "dalam memproses data melalui siklus input-proses-output", "untuk memecahkan masalah...", "dalam konteks...", "secara tepat...", "yang menggabungkan..."
+        $qualifierPattern = '/\s*,?\s+(?:dalam\s+(?:memproses|menyelesaikan|menerapkan|melakukan|menganalisis|mengembangkan|memecahkan|pemecahan|kehidupan|konteks|kegiatan|praktik|lingkungan|berbagai)|untuk\s+(?:memecahkan|menyelesaikan|membantu|mencapai|menghasilkan|menjaga|meningkatkan|mendukung)|melalui\s+(?:siklus|proses|tahapan|kegiatan|pendekatan)|secara\s+(?:tepat|kritis|mandiri|kreatif|bertanggung\s+jawab|efektif|lengkap|logis|sistematis|terstruktur|menarik)|dengan\s+(?:menggunakan|memanfaatkan|bantuan)|yang\s+(?:menggabungkan|memadukan|melibatkan|berkaitan\s+dengan|berhubungan\s+dengan|berbasis|memuat|berisi|menggunakan|memanfaatkan|terdiri\s+dari|mengintegrasikan))\b.*$/iu';
         $headConcept = preg_replace($qualifierPattern, '', $fullConcept);
         $headConcept = trim($headConcept, " \t\n\r\0\x0B.,:;");
         if ($headConcept === '' || mb_strlen($headConcept) < 4) {
@@ -776,9 +782,10 @@ PROMPT;
         $coreNoun = $headConcept;
         if (preg_match('/^(?:cara kerja dan interaksi antar komponen|cara kerja dan interaksi|interaksi antar komponen|komponen dan cara kerja|cara kerja|alur kerja|proses kerja|interaksi)\s+(.+)/iu', $headConcept, $m)) {
             $coreNoun = $m[1];
-        } elseif (preg_match('/^(?:prinsip-prinsip|prinsip dasar|prinsip|konsep dasar|konsep|mekanisme|pengertian dasar|pengertian|karakteristik|penerapan|penggunaan|implementasi)\s+(.+)/iu', $headConcept, $m)) {
+        } elseif (preg_match('/^(?:prinsip-prinsip|prinsip dasar|prinsip|konsep dasar|konsep|mekanisme|pengertian dasar|pengertian|karakteristik|penerapan|penggunaan|implementasi|pembuatan|produksi)\s+(.+)/iu', $headConcept, $m)) {
             $coreNoun = $m[1];
         }
+        $coreNoun = preg_replace('/^(?:cara\s+(?:kerja|membuat|menggunakan|mengoperasikan|merancang)\s+|proses\s+(?:pembuatan|produksi|pengolahan)\s+|pembuatan\s+|produksi\s+)/iu', '', $coreNoun);
         $coreNoun = trim($coreNoun, " \t\n\r\0\x0B.,:;");
         if ($coreNoun === '') {
             $coreNoun = $headConcept;
@@ -810,10 +817,9 @@ PROMPT;
         $analysis = $this->analyzeTp($tp, $subjectName);
         $concept = $analysis['concept'];
         $coreNoun = $analysis['core_noun'] ?? $concept;
-        $gradeLabel = $levelInfo['grade_label'] ?? 'Kelas 8 SMP';
         $isSmp = ($levelInfo['pedagogical_tone'] ?? 'smp') === 'smp';
 
-        // Determine effective cognitive level for this question
+        // Determine effective cognitive level for this question based on teacher selection
         $effectiveLevel = $cognitiveLevel;
         if ($effectiveLevel === 'all') {
             $ratio = $number / max(1, $totalQuestions);
@@ -826,312 +832,608 @@ PROMPT;
             }
         }
 
-        $correctLetter = ['A', 'B', 'C', 'D'][($number + $variant + 1) % 4];
-        $optSetIndex = ($number + $variant) % 3;
-
         if ($effectiveLevel === 'lots') {
             // Level 1: LOTS (C1 - Mengingat / C2 - Memahami)
             $subLevel = (($number + $variant) % 2 === 1) ? 'C1' : 'C2';
-            $verb = ($subLevel === 'C1') ? 'mengingat dan mengidentifikasi' : 'menjelaskan';
+            $levelCode = $subLevel;
 
             if ($isSmp) {
-                $stems = [
-                    "Apa yang dimaksud dengan {$coreNoun} dalam pelajaran {$subjectName}?",
-                    "Ciri utama yang paling mudah kamu kenali dari {$coreNoun} adalah...",
-                    "Apa manfaat utama yang kamu peroleh setelah mempelajari materi {$coreNoun}?",
-                    "Contoh sederhana dari {$coreNoun} yang paling sering kamu jumpai dalam kehidupan sehari-hari adalah...",
-                    "Pernyataan yang paling tepat mengenai materi {$coreNoun} adalah...",
-                    "Tujuan utama kita mempelajari materi {$coreNoun} di sekolah adalah agar kita bisa...",
-                    "Fungsi penting dari materi {$coreNoun} dalam kegiatan sehari-hari adalah...",
-                    "Ketika kamu menjelaskan materi {$coreNoun} kepada teman sebangkumu, hal pokok yang kamu sampaikan adalah...",
-                    "Prinsip dasar yang perlu kamu ingat dengan baik tentang materi {$coreNoun} adalah...",
-                    "Bentuk kegiatan nyata yang menunjukkan pemahamanmu tentang materi {$coreNoun} adalah...",
-                ];
-                $optionSets = [
+                $angles = [
                     [
-                        'A' => "Aturan atau cara dasar materi {$coreNoun} yang membantu mempermudah kegiatan belajar kita.",
-                        'B' => "Bagian dari materi {$coreNoun} yang bertugas mengenali aturan dan istilah penting di kelas.",
-                        'C' => "Pedoman praktis yang membantu kita mengenali materi {$coreNoun} secara sederhana.",
-                        'D' => "Bentuk pemahaman awal yang membedakan materi {$coreNoun} dengan materi lainnya.",
-                        'correct' => "Memahami inti materi {$coreNoun} dan cara menggunakannya dengan benar dalam kehidupan sehari-hari.",
+                        'stem' => "Apa yang dimaksud dengan {$coreNoun} dalam pelajaran {$subjectName}?",
+                        'correct' => "Konsep atau tata cara pengolahan yang digunakan untuk menghasilkan karya atau informasi yang bermanfaat.",
+                        'distractors' => [
+                            "Kumpulan aturan lama yang sudah tidak dapat digunakan lagi dalam proses belajar saat ini.",
+                            "Catatan tulisan tangan yang disimpan tanpa melalui proses pengolahan dan pemeriksaan.",
+                            "Perangkat atau berkas yang tidak memiliki alur kerja dan tujuan penggunaan tertentu.",
+                        ],
+                        'indicator' => "Disajikan konsep dasar, peserta didik mampu mengidentifikasi pengertian materi terkait {$coreNoun}.",
+                        'sub_level' => "{$subLevel} - LOTS (Pemahaman Dasar)",
+                        'explanation_correct' => "Pilihan ini mendefinisikan inti dari materi {$coreNoun} secara tepat, jelas, dan sesuai dengan materi yang dipelajari.",
+                        'explanation_distractors' => "Pilihan lainnya salah karena mendeskripsikan hal yang tidak berfungsi, usang, atau tidak melalui proses pengolahan.",
                     ],
                     [
-                        'A' => "Pedoman kerja sederhana yang membantu kita memahami materi {$coreNoun} langkah demi langkah.",
-                        'B' => "Bagian tambahan yang digunakan saat kita membutuhkan contoh materi {$coreNoun}.",
-                        'C' => "Aturan umum yang membantu menjaga kerapian hasil belajar materi {$coreNoun}.",
-                        'D' => "Latihan dasar untuk melatih daya ingat kita terhadap nama-nama materi {$coreNoun}.",
-                        'correct' => "Mengenal bagian-bagian penting materi {$coreNoun} dan fungsinya secara jelas.",
+                        'stem' => "Ciri utama yang paling mudah kamu kenali dari {$coreNoun} adalah...",
+                        'correct' => "Memiliki susunan bagian yang teratur dan saling bekerja sama untuk mencapai tujuan tertentu.",
+                        'distractors' => [
+                            "Bekerja secara acak tanpa mengikuti aturan atau panduan apa pun.",
+                            "Hanya dapat dioperasikan satu kali saja kemudian langsung rusak.",
+                            "Tidak membutuhkan masukan data atau petunjuk sama sekali untuk bekerja.",
+                        ],
+                        'indicator' => "Disajikan karakteristik konsep, peserta didik mampu mengenali ciri pokok materi {$coreNoun}.",
+                        'sub_level' => "{$subLevel} - LOTS (Pemahaman Dasar)",
+                        'explanation_correct' => "Pilihan ini tepat karena setiap konsep atau sistem materi {$coreNoun} tersusun dari bagian-bagian yang saling terhubung dan teratur.",
+                        'explanation_distractors' => "Pilihan lainnya salah karena menggambarkan cara kerja yang acak, sekali pakai, atau tanpa masukan data.",
                     ],
                     [
-                        'A' => "Membantu kita menyelesaikan tugas sekolah tentang {$coreNoun} dengan lebih cepat dan rapi.",
-                        'B' => "Membuat kita lebih mudah mengenali contoh penerapan materi {$coreNoun} di rumah dan sekolah.",
-                        'C' => "Melatih kita agar selalu teliti saat mempraktikkan materi {$coreNoun}.",
-                        'D' => "Menambah wawasan dan rasa ingin tahu kita tentang materi {$coreNoun}.",
-                        'correct' => "Menambah pengetahuan dan keterampilan kita tentang materi {$coreNoun} agar bermanfaat sehari-hari.",
+                        'stem' => "Apa manfaat penting yang kamu peroleh setelah mempelajari materi {$coreNoun}?",
+                        'correct' => "Mampu memahami alur kerja materi ini dan menggunakannya dengan benar dalam kegiatan belajar sehari-hari.",
+                        'distractors' => [
+                            "Hanya menghafal istilah teknis tanpa memahami bagaimana cara mempraktikkannya.",
+                            "Menambah waktu pengerjaan tugas menjadi jauh lebih lama dan berbelit-belit.",
+                            "Menggantikan seluruh proses belajar mandiri sehingga kita tidak perlu berlatih.",
+                        ],
+                        'indicator' => "Disajikan manfaat materi, peserta didik mampu menjelaskan kegunaan pokok materi {$coreNoun}.",
+                        'sub_level' => "{$subLevel} - LOTS (Pemahaman Dasar)",
+                        'explanation_correct' => "Pilihan ini benar karena esensi pembelajaran adalah memahami konsep sekaligus mampu mengaplikasikannya secara benar.",
+                        'explanation_distractors' => "Pilihan pengecoh hanya berfokus pada hafalan mati atau dampak negatif yang keliru.",
+                    ],
+                    [
+                        'stem' => "Contoh kegiatan sederhana di sekolah yang paling tepat menggambarkan materi {$coreNoun} adalah...",
+                        'correct' => "Menyelesaikan tugas komputer dengan langkah-langkah yang rapi dan terarah sesuai petunjuk guru.",
+                        'distractors' => [
+                            "Menyalakan komputer tanpa membuka file atau melakukan aktivitas pengolahan data apa pun.",
+                            "Menyalin seluruh tugas milik teman lain tanpa memahami isi dan cara pembuatannya.",
+                            "Menyimpan hasil kerja di tempat sembarangan sehingga hilang saat akan diperiksa.",
+                        ],
+                        'indicator' => "Disajikan contoh konkret, peserta didik mampu mengenali contoh penerapan materi {$coreNoun}.",
+                        'sub_level' => "{$subLevel} - LOTS (Pemahaman Dasar)",
+                        'explanation_correct' => "Pilihan ini menunjukkan contoh konkret siswa yang memanfaatkan materi secara aktif, rapi, dan mandiri.",
+                        'explanation_distractors' => "Pilihan lainnya adalah tindakan pasif, mencontek, atau kelalaian dalam belajar.",
+                    ],
+                    [
+                        'stem' => "Pernyataan yang paling tepat mengenai materi {$coreNoun} adalah...",
+                        'correct' => "Memahami aturan dasarnya akan mempermudah kita menyelesaikan berbagai tugas belajar dengan baik.",
+                        'distractors' => [
+                            "Materi ini hanya boleh dipelajari oleh guru dan tidak boleh dipraktikkan oleh siswa.",
+                            "Tidak ada hubungan antara materi ini dengan tugas-tugas praktik yang ada di sekolah.",
+                            "Setiap orang harus membuat aturan sendiri yang bertolak belakang dengan petunjuk materi.",
+                        ],
+                        'indicator' => "Disajikan pernyataan konsep, peserta didik mampu memvalidasi kebenaran prinsip {$coreNoun}.",
+                        'sub_level' => "{$subLevel} - LOTS (Pemahaman Dasar)",
+                        'explanation_correct' => "Pilihan ini tepat karena penguasaan dasar materi secara langsung mempermudah penyelesaian tugas belajar.",
+                        'explanation_distractors' => "Pilihan lainnya merupakan pernyataan yang keliru dan bertentangan dengan esensi materi.",
+                    ],
+                    [
+                        'stem' => "Tujuan utama kita mempelajari materi {$coreNoun} di sekolah adalah agar kita bisa...",
+                        'correct' => "Mengenal konsep dasarnya serta mampu memanfaatkannya secara mandiri dan bertanggung jawab.",
+                        'distractors' => [
+                            "Menghindari penggunaan alat bantu digital dalam setiap aktivitas belajar.",
+                            "Mengerjakan tugas secepat mungkin tanpa memperhatikan ketelitian dan kerapian hasil.",
+                            "Mencari jalan pintas agar tidak perlu mengikuti panduan praktik yang telah ditentukan.",
+                        ],
+                        'indicator' => "Disajikan tujuan materi, peserta didik mampu menjelaskan sasaran pembelajaran {$coreNoun}.",
+                        'sub_level' => "{$subLevel} - LOTS (Pemahaman Dasar)",
+                        'explanation_correct' => "Tujuan kurikulum adalah membekali siswa dengan pemahaman konsep, kemandirian, dan tanggung jawab.",
+                        'explanation_distractors' => "Pilihan pengecoh berorientasi pada jalan pintas atau penolakan terhadap proses belajar yang benar.",
+                    ],
+                    [
+                        'stem' => "Fungsi penting dari materi {$coreNoun} dalam kegiatan sehari-hari adalah...",
+                        'correct' => "Membantu kita mengolah pekerjaan agar tersusun lebih rapi, terstruktur, dan mudah dipahami.",
+                        'distractors' => [
+                            "Membuat tampilan pekerjaan menjadi rumit sehingga sulit dibaca oleh orang lain.",
+                            "Menghilangkan data pekerjaan secara otomatis saat komputer dimatikan.",
+                            "Membatasi ide-ide baru yang ingin kita kembangkan dalam kegiatan belajar.",
+                        ],
+                        'indicator' => "Disajikan fungsi materi, peserta didik mampu mengidentifikasi kegunaan fungsional {$coreNoun}.",
+                        'sub_level' => "{$subLevel} - LOTS (Pemahaman Dasar)",
+                        'explanation_correct' => "Fungsi utama adalah memberikan keteraturan, efisiensi, dan kejelasan dalam pengolahan hasil karya.",
+                        'explanation_distractors' => "Pilihan pengecoh menyebutkan kerumitan, kehilangan data, atau penghambatan ide.",
+                    ],
+                    [
+                        'stem' => "Ketika kamu menjelaskan materi {$coreNoun} kepada teman sebangkumu, hal pokok yang kamu sampaikan adalah...",
+                        'correct' => "Bagaimana bagian-bagian di dalamnya saling melengkapi untuk menghasilkan luaran yang bermanfaat.",
+                        'distractors' => [
+                            "Hanya menyebutkan judul bab buku tanpa bisa menerangkan apa arti dan fungsinya.",
+                            "Menyatakan bahwa materi ini tidak memiliki hubungan dengan tugas praktik yang sedang dikerjakan.",
+                            "Memberi tahu bahwa materi ini tidak perlu dipahami karena tidak ada manfaatnya.",
+                        ],
+                        'indicator' => "Disajikan konteks komunikasi, peserta didik mampu menjelaskan substansi pokok {$coreNoun}.",
+                        'sub_level' => "{$subLevel} - LOTS (Pemahaman Dasar)",
+                        'explanation_correct' => "Menjelaskan keterkaitan antarkomponen menunjukkan pemahaman konseptual (C2 - Memahami) yang matang.",
+                        'explanation_distractors' => "Pilihan lainnya menunjukkan sikap pasif atau ketidakpahaman terhadap materi.",
+                    ],
+                    [
+                        'stem' => "Prinsip dasar yang perlu kamu ingat dengan baik tentang materi {$coreNoun} adalah...",
+                        'correct' => "Setiap proses pengolahan membutuhkan data masukan yang jelas agar menghasilkan keluaran yang tepat.",
+                        'distractors' => [
+                            "Keluaran yang benar dapat diperoleh meskipun data masukan yang dimasukkan salah total.",
+                            "Tidak ada hubungan antara proses yang dilakukan dengan hasil akhir yang diperoleh.",
+                            "Semakin acak urutan langkah yang diambil, semakin baik kualitas hasil akhirnya.",
+                        ],
+                        'indicator' => "Disajikan prinsip materi, peserta didik mampu menguraikan kaidah dasar {$coreNoun}.",
+                        'sub_level' => "{$subLevel} - LOTS (Pemahaman Dasar)",
+                        'explanation_correct' => "Prinsip input-proses-output adalah kaidah fundamental yang selalu berlaku pada pengolahan sistem dan materi.",
+                        'explanation_distractors' => "Pilihan lainnya bertentangan dengan logika dasar pemrosesan data.",
+                    ],
+                    [
+                        'stem' => "Bentuk kegiatan nyata yang menunjukkan bahwa kamu sudah memahami materi {$coreNoun} adalah...",
+                        'correct' => "Dapat menerangkan fungsi setiap bagian serta mampu menunjukkan contoh sederhananya di kelas.",
+                        'distractors' => [
+                            "Hanya dapat menghafal urutan nomor halaman tanpa tahu apa makna isi materinya.",
+                            "Mengerjakan tugas dengan menebak-nebak jawaban tanpa membaca soal dengan teliti.",
+                            "Menolak menjelaskan saat teman meminta bantuan pemahaman materi.",
+                        ],
+                        'indicator' => "Disajikan bukti pemahaman, peserta didik mampu membuktikan penguasaan konsep {$coreNoun}.",
+                        'sub_level' => "{$subLevel} - LOTS (Pemahaman Dasar)",
+                        'explanation_correct' => "Kemampuan menerangkan dan memberi contoh adalah indikator utama ketercapaian pemahaman (C2).",
+                        'explanation_distractors' => "Pilihan lainnya menunjukkan pemahaman semu atau sikap enggan berbagi pengetahuan.",
                     ],
                 ];
             } else {
-                $stems = [
-                    "Berdasarkan materi {$subjectName}, apa pengertian pokok yang paling tepat mengenai {$coreNoun}?",
-                    "Ciri utama atau bagian mendasar dari materi {$coreNoun} ditunjukkan oleh...",
-                    "Pernyataan manakah yang paling tepat menjelaskan konsep materi {$coreNoun}?",
-                    "Tujuan atau manfaat utama yang Anda peroleh setelah mempelajari materi {$coreNoun} adalah...",
-                    "Contoh penerapan praktis dari prinsip {$coreNoun} yang paling sering ditemui sehari-hari adalah...",
-                    "Prinsip dasar yang harus dipahami terlebih dahulu pada materi {$coreNoun} adalah...",
-                    "Karakteristik penting yang membedakan materi {$coreNoun} dari bahasan lainnya adalah...",
-                    "Dalam pembelajaran {$subjectName}, fungsi mendasar dari materi {$coreNoun} adalah...",
-                    "Pernyataan yang paling tepat dalam menggambarkan mekanisme materi {$coreNoun} adalah...",
-                    "Pemahaman konseptual yang benar tentang materi {$coreNoun} ditunjukkan oleh...",
-                ];
-                $optionSets = [
+                // SMA LOTS
+                $angles = [
                     [
-                        'A' => "Konsep atau cara dasar dalam materi {$coreNoun} yang mempermudah pemahaman peserta didik.",
-                        'B' => "Bagian dari materi {$coreNoun} yang berfungsi mengenali istilah, fakta, dan aturan yang berlaku.",
-                        'C' => "Bentuk dasar penerapan materi {$coreNoun} yang digunakan dalam kegiatan belajar.",
-                        'D' => "Prinsip utama {$coreNoun} yang membedakannya dari materi lain dalam pembelajaran {$subjectName}.",
-                        'correct' => "Memahami konsep esensial materi {$coreNoun} dan penerapannya secara jelas dan tepat.",
+                        'stem' => "Berdasarkan prinsip {$subjectName}, apa esensi utama yang mendasari materi {$coreNoun}?",
+                        'correct' => "Kerangka konseptual yang mengintegrasikan masukan, mekanisme pemrosesan, dan luaran secara sistematis.",
+                        'distractors' => [
+                            "Himpunan data historis yang tidak memiliki relevansi terhadap perkembangan teknologi saat ini.",
+                            "Prosedur operasional acak tanpa landasan teoritis dan standar mutu yang terukur.",
+                            "Format dokumentasi statis yang tidak melibatkan interaksi fungsional antarkomponen.",
+                        ],
+                        'indicator' => "Peserta didik mampu mengidentifikasi esensi konseptual materi {$coreNoun}.",
+                        'sub_level' => "{$subLevel} - LOTS (Pemahaman Konseptual)",
+                        'explanation_correct' => "Pilihan ini mendefinisikan esensi konseptual materi secara komprehensif dan selaras dengan standar keilmuan.",
+                        'explanation_distractors' => "Pilihan lainnya mendeskripsikan data usang, prosedur acak, atau dokumentasi statis.",
                     ],
                     [
-                        'A' => "Pedoman terencana yang membantu mengenali struktur materi {$coreNoun} secara bertahap.",
-                        'B' => "Bagian pendukung yang membantu memperjelas contoh penerapan materi {$coreNoun}.",
-                        'C' => "Aturan baku yang membantu menjaga ketepatan pemahaman materi {$coreNoun}.",
-                        'D' => "Bentuk pengenalan awal untuk memahami ruang lingkup materi {$coreNoun}.",
-                        'correct' => "Menguasai prinsip dan fungsi utama materi {$coreNoun} secara terarah dan terstruktur.",
+                        'stem' => "Karakteristik fundamental yang membedakan materi {$coreNoun} dari bahasan lainnya ditunjukkan oleh...",
+                        'correct' => "Keterpaduan antarsubsistem yang bekerja harmonis untuk mencapai luaran yang terstruktur dan terstandar.",
+                        'distractors' => [
+                            "Pemisahan mutlak antarkomponen sehingga tidak memiliki ketergantungan operasional.",
+                            "Ketiadaan regulasi kerja sehingga setiap proses berlangsung secara bebas tanpa kendali mutu.",
+                            "Ketergantungan penuh pada intervensi manual tanpa adanya otomatisasi alur kerja.",
+                        ],
+                        'indicator' => "Peserta didik mampu membedakan karakteristik pokok materi {$coreNoun}.",
+                        'sub_level' => "{$subLevel} - LOTS (Pemahaman Konseptual)",
+                        'explanation_correct' => "Karakteristik utama terletak pada integrasi sistemik antarbagian untuk menghasilkan luaran terstandar.",
+                        'explanation_distractors' => "Pilihan pengecoh mengasumsikan ketiadaan regulasi atau pemisahan mutlak yang keliru.",
                     ],
                     [
-                        'A' => "Membantu memecahkan persoalan sehari-hari dengan menerapkan prinsip {$coreNoun}.",
-                        'B' => "Mengenali fenomena di sekitar yang memiliki keterkaitan dengan materi {$coreNoun}.",
-                        'C' => "Mengembangkan keterampilan analisis dasar pada materi {$coreNoun}.",
-                        'D' => "Membangun pemahaman awal yang kuat sebelum mempelajari topik lanjutan.",
-                        'correct' => "Meningkatkan kemampuan pemahaman dan aplikasi materi {$coreNoun} dalam pemecahan masalah.",
+                        'stem' => "Dalam konteks pembelajaran {$subjectName}, fungsi mendasar dari materi {$coreNoun} adalah...",
+                        'correct' => "Menyediakan landasan metodologis guna menganalisis dan memecahkan persoalan secara logis dan terstruktur.",
+                        'distractors' => [
+                            "Membatasi kebebasan berinovasi dalam mengeksplorasi solusi alternatif.",
+                            "Menambah kompleksitas kerja tanpa memberikan kontribusi terhadap peningkatan kualitas hasil.",
+                            "Menghilangkan kebutuhan akan dokumentasi dan evaluasi berkala terhadap hasil tugas.",
+                        ],
+                        'indicator' => "Peserta didik mampu menguraikan fungsi mendasar materi {$coreNoun}.",
+                        'sub_level' => "{$subLevel} - LOTS (Pemahaman Konseptual)",
+                        'explanation_correct' => "Materi ini berperan strategis sebagai fondasi analitis dalam menyelesaikan permasalahan terstruktur.",
+                        'explanation_distractors' => "Pilihan pengecoh mengklaim pembatasan inovasi atau penambahan kerumitan yang salah.",
+                    ],
+                    [
+                        'stem' => "Pernyataan manakah yang paling akurat dalam merepresentasikan prinsip utama materi {$coreNoun}?",
+                        'correct' => "Validitas luaran akhir sangat ditentukan oleh kepatuhan terhadap kaidah dan integritas data pada tahap awal.",
+                        'distractors' => [
+                            "Kualitas produk akhir tidak dipengaruhi oleh akurasi data masukan yang digunakan.",
+                            "Prosedur kerja dapat diubah sewaktu-waktu tanpa perlu mempertimbangkan dampaknya terhadap sistem.",
+                            "Efisiensi proses tercapai dengan cara menghilangkan tahapan pengujian dan validasi.",
+                        ],
+                        'indicator' => "Peserta didik mampu memvalidasi prinsip utama materi {$coreNoun}.",
+                        'sub_level' => "{$subLevel} - LOTS (Pemahaman Konseptual)",
+                        'explanation_correct' => "Kaidah 'garbage in garbage out' menegaskan bahwa integritas input menentukan validitas luaran.",
+                        'explanation_distractors' => "Pilihan lainnya mengabaikan pentingnya validitas data masukan dan tahapan pengujian.",
+                    ],
+                    [
+                        'stem' => "Manfaat analitis yang Anda peroleh setelah menguasai materi {$coreNoun} adalah...",
+                        'correct' => "Kemampuan memetakan alur permasalahan dan merumuskan pendekatan kerja yang efektif serta terukur.",
+                        'distractors' => [
+                            "Sekadar menghafal istilah terminologis tanpa kemampuan mentransformasikannya ke dalam tindakan.",
+                            "Kecenderungan untuk mengabaikan kaidah keselamatan dan etika profesional saat bekerja.",
+                            "Ketergantungan terhadap solusi instan tanpa melalui proses telaah yang memadai.",
+                        ],
+                        'indicator' => "Peserta didik mampu menjelaskan manfaat analitis materi {$coreNoun}.",
+                        'sub_level' => "{$subLevel} - LOTS (Pemahaman Konseptual)",
+                        'explanation_correct' => "Penguasaan materi meningkatkan kapasitas analitis peserta didik dalam merancang solusi terukur.",
+                        'explanation_distractors' => "Pilihan pengecoh berorientasi pada hafalan mekanis atau sikap mengabaikan etika.",
                     ],
                 ];
             }
-
-            $currentSet = $optionSets[$optSetIndex];
-            $options = [
-                'A' => $currentSet['A'],
-                'B' => $currentSet['B'],
-                'C' => $currentSet['C'],
-                'D' => $currentSet['D'],
-            ];
-            $options[$correctLetter] = $currentSet['correct'];
-            $stem = $stems[($number + $variant - 1) % count($stems)];
-
-            $explanation = "Kunci Jawaban: Pilihan {$correctLetter} (Tingkat Kognitif: {$subLevel} - LOTS / Pemahaman Dasar)\n\n"
-                . "Pembahasan Rinci:\n"
-                . "1. Analisis Opsi Benar (Pilihan {$correctLetter}):\n"
-                . "   Pilihan ini tepat karena menyatakan pemahaman dasar materi {$coreNoun} secara jelas, lugas, dan mudah dipahami siswa.\n\n"
-                . "2. Analisis Opsi Pengecoh:\n"
-                . "   Pilihan lainnya kurang tepat karena hanya mendeskripsikan aspek sampingan atau tidak sesuai dengan aturan pokok materi {$coreNoun}.";
-
-            $indicator = "Disajikan konsep dasar, peserta didik mampu {$verb} materi terkait {$coreNoun}.";
-            $levelCode = $subLevel;
         } elseif ($effectiveLevel === 'mots') {
-            // Level 2: MOTS (C3 - Menerapkan / Aplikasi)
-            $verb = 'menerapkan';
+            // Level 2: MOTS (C3 - Menerapkan / Praktik)
             $levelCode = 'C3';
 
             if ($isSmp) {
-                $stems = [
-                    "Langkah pertama yang paling tepat kamu lakukan saat mempraktikkan materi {$coreNoun} adalah...",
-                    "Jika kamu diminta menggunakan aturan {$coreNoun} untuk menyelesaikan tugas sekolah, tindakan terbaikmu adalah...",
-                    "Contoh tindakan siswa yang benar saat menerapkan materi {$coreNoun} di dalam kelas adalah...",
-                    "Bagaimanakah urutan langkah kerja yang paling baik saat kamu menggunakan materi {$coreNoun}?",
-                    "Pilihan berikut yang menunjukkan cara kerja {$coreNoun} yang benar dan teratur adalah...",
-                    "Tahapan yang harus kamu selesaikan terlebih dahulu sebelum melanjutkan ke langkah berikutnya adalah...",
-                    "Saat mengerjakan tugas praktik materi {$coreNoun} bersama teman sekelompok, sikap terbaikmu adalah...",
-                    "Cara terbaik yang dapat kamu lakukan untuk memastikan hasil tugas materi {$coreNoun} sudah benar adalah...",
-                    "Tindakan yang paling aman dan rapi saat kamu mempraktikkan materi {$coreNoun} adalah...",
-                    "Urutan langkah kerja yang tepat agar tugas materi {$coreNoun} selesai tepat waktu adalah...",
-                ];
-                $optionSets = [
+                $angles = [
                     [
-                        'A' => "Mengikuti urutan langkah kerja materi {$coreNoun} secara bertahap dan teratur.",
-                        'B' => "Menyesuaikan langkah kerja dengan memperhatikan aturan pokok dan tujuan tugas materi {$coreNoun}.",
-                        'C' => "Menggunakan cara yang paling tepat dan hemat waktu dalam menyelesaikan tugas {$coreNoun}.",
-                        'D' => "Mempraktikkan cara penyelesaian tugas sesuai dengan contoh yang telah dipelajari bersama.",
-                        'correct' => "Menerapkan langkah kerja yang rapi dan terarah sesuai petunjuk materi {$coreNoun}.",
+                        'stem' => "Langkah pertama yang paling tepat kamu lakukan saat mulai mengerjakan praktik materi {$coreNoun} adalah...",
+                        'correct' => "Membaca petunjuk kerja dengan saksama dan menyiapkan peralatan atau data yang diperlukan.",
+                        'distractors' => [
+                            "Langsung membagikan hasil karya sebelum memeriksa kerapian dan kebenaran isinya.",
+                            "Mengabaikan panduan guru dan langsung mencoba-coba secara acak tanpa rencana.",
+                            "Menunggu tugas selesai sendiri tanpa melakukan langkah persiapan apa pun.",
+                        ],
+                        'indicator' => "Disajikan instruksi tugas, peserta didik mampu menerapkan langkah awal persiapan pada materi {$coreNoun}.",
+                        'sub_level' => "C3 - MOTS (Penerapan / Praktik)",
+                        'explanation_correct' => "Persiapan awal dan pemahaman petunjuk kerja adalah prosedur standar sebelum tindakan praktik dimulai.",
+                        'explanation_distractors' => "Pilihan pengecoh melewatkan fase persiapan yang krusial atau bertindak tanpa panduan.",
                     ],
                     [
-                        'A' => "Menyiapkan seluruh peralatan yang dibutuhkan dan membaca petunjuk kerja sebelum mulai.",
-                        'B' => "Membagi tugas secara adil dengan teman kelompok sesuai kemampuan masing-masing.",
-                        'C' => "Mengecek kembali hasil kerja pada setiap tahapan agar tidak ada langkah yang terlewat.",
-                        'D' => "Mencatat hal-hal penting yang kamu temukan selama mengerjakan tugas praktik materi {$coreNoun}.",
-                        'correct' => "Melaksanakan tugas secara bertahap sesuai petunjuk kerja yang sudah ditentukan.",
+                        'stem' => "Urutan langkah kerja yang paling baik agar tugas praktik materi {$coreNoun} selesai dengan rapi adalah...",
+                        'correct' => "Menyusun rancangan awal, mengerjakan tahap demi tahap secara runtut, lalu memeriksa hasil akhirnya.",
+                        'distractors' => [
+                            "Mengerjakan bagian yang paling akhir terlebih dahulu lalu mengabaikan bagian awal.",
+                            "Mengerjakan tugas secara tergesa-gesa tanpa melakukan pengecekan ulang sama sekali.",
+                            "Mengubah-ubah alur kerja di tengah proses tanpa tujuan yang jelas.",
+                        ],
+                        'indicator' => "Disajikan alur praktik, peserta didik mampu menerapkan urutan kerja sistematis pada materi {$coreNoun}.",
+                        'sub_level' => "C3 - MOTS (Penerapan / Praktik)",
+                        'explanation_correct' => "Alur persiapan - pengerjaan bertahap - verifikasi akhir menjamin hasil kerja rapi dan sesuai kriteria.",
+                        'explanation_distractors' => "Melompati tahapan atau bertindak tergesa-gesa berisiko tinggi menimbulkan kesalahan prosedur.",
                     ],
                     [
-                        'A' => "Mengerjakan tugas dengan teliti dan tidak terburu-buru agar hasilnya rapi dan memuaskan.",
-                        'B' => "Memastikan setiap langkah kerja dilakukan dengan aman dan mematuhi panduan guru.",
-                        'C' => "Mencocokkan hasil tugas sementara dengan contoh panduan materi {$coreNoun}.",
-                        'D' => "Bertanya kepada guru atau teman kelompok jika menemukan langkah yang belum dipahami.",
-                        'correct' => "Menuntaskan seluruh tahapan kerja dengan cermat dan berpegang pada aturan materi {$coreNoun}.",
+                        'stem' => "Jika kamu diminta menggunakan aturan {$coreNoun} untuk menyelesaikan tugas sekolah, tindakan terbaikmu adalah...",
+                        'correct' => "Menerapkan setiap tahapan kerja sesuai dengan pedoman yang telah diajarkan guru di kelas.",
+                        'distractors' => [
+                            "Membuat aturan sendiri yang menyimpang dari petunjuk teknis yang diberikan.",
+                            "Mencampuradukkan langkah kerja tanpa memperhatikan tujuan utama dari tugas tersebut.",
+                            "Menyerahkan hasil tugas mentah tanpa memverifikasi kesesuaian aturannya terlebih dahulu.",
+                        ],
+                        'indicator' => "Disajikan pedoman tugas, peserta didik mampu mengaplikasikan aturan materi {$coreNoun}.",
+                        'sub_level' => "C3 - MOTS (Penerapan / Praktik)",
+                        'explanation_correct' => "Kepatuhan pada aturan dan petunjuk teknis merupakan inti dari kompetensi penerapan di sekolah.",
+                        'explanation_distractors' => "Menyimpang dari aturan atau menyerahkan tugas mentah akan menurunkan mutu hasil kerja.",
+                    ],
+                    [
+                        'stem' => "Cara terbaik yang dapat kamu lakukan untuk memastikan hasil tugas materi {$coreNoun} sudah benar adalah...",
+                        'correct' => "Mencocokkan kembali hasil kerja dengan daftar kriteria penilaian atau rubrik yang diberikan guru.",
+                        'distractors' => [
+                            "Hanya melihat tampilan luarnya sekilas tanpa memeriksa isi dan fungsinya secara detail.",
+                            "Mengira-ngira bahwa tugas sudah sempurna tanpa melakukan pengecekan ulang.",
+                            "Langsung menutup lembar kerja begitu selesai mengetik kalimat terakhir.",
+                        ],
+                        'indicator' => "Disajikan kriteria rubrik, peserta didik mampu memverifikasi kesesuaian hasil kerja materi {$coreNoun}.",
+                        'sub_level' => "C3 - MOTS (Penerapan / Praktik)",
+                        'explanation_correct' => "Verifikasi berbasis kriteria memastikan tidak ada bagian yang terlewat atau keliru sebelum pengumpulan.",
+                        'explanation_distractors' => "Pilihan lainnya adalah sikap ceroboh yang berpotensi menyisakan kesalahan fatal.",
+                    ],
+                    [
+                        'stem' => "Saat mengerjakan tugas praktik materi {$coreNoun} bersama teman kelompokmu, tindakan terbaik yang kamu tunjukkan adalah...",
+                        'correct' => "Berbagi tugas secara adil dan menyelesaikan bagian masing-masing tepat waktu sesuai alur kerja kelompok.",
+                        'distractors' => [
+                            "Mengerjakan seluruh bagian sendirian dan mengabaikan masukan dari anggota kelompok lain.",
+                            "Menyerahkan semua beban kerja kepada ketua kelompok dan bersikap pasif.",
+                            "Saling berdebat tanpa mencari jalan keluar saat menemukan langkah praktik yang belum selesai.",
+                        ],
+                        'indicator' => "Disajikan kerja kelompok, peserta didik mampu menerapkan kolaborasi efektif pada materi {$coreNoun}.",
+                        'sub_level' => "C3 - MOTS (Penerapan / Praktik)",
+                        'explanation_correct' => "Kolaborasi aktif dan pembagian tugas terencana mendukung penyelesaian tugas praktik secara efektif.",
+                        'explanation_distractors' => "Pilihan pengecoh merusak dinamika kelompok dan menghambat penyelesaian tugas.",
+                    ],
+                    [
+                        'stem' => "Tindakan yang paling aman dan rapi saat kamu mempraktikkan materi {$coreNoun} adalah...",
+                        'correct' => "Menyimpan file secara berkala dengan nama yang jelas serta menjaga kerapian area kerja.",
+                        'distractors' => [
+                            "Menumpuk semua berkas dalam satu tempat tanpa nama yang jelas hingga sulit ditemukan.",
+                            "Membiarkan kabel dan perangkat berantakan di sekitar meja komputer.",
+                            "Menonaktifkan fitur penyimpanan otomatis sehingga data rentan hilang saat listrik padam.",
+                        ],
+                        'indicator' => "Disajikan aspek keselamatan kerja, peserta didik mampu menerapkan tata tertib praktik {$coreNoun}.",
+                        'sub_level' => "C3 - MOTS (Penerapan / Praktik)",
+                        'explanation_correct' => "Manajemen file yang rapi dan lingkungan kerja yang aman adalah bagian tak terpisahkan dari praktik sekolah.",
+                        'explanation_distractors' => "Kelalaian menyimpan data dan ketidakteraturan meja kerja berisiko merusak hasil kerja.",
+                    ],
+                    [
+                        'stem' => "Jika dalam petunjuk praktik materi {$coreNoun} terdapat instruksi baru dari guru, tindakan yang harus kamu ambil adalah...",
+                        'correct' => "Menyesuaikan langkah kerjamu dengan instruksi terbaru tersebut secara teliti dan tertib.",
+                        'distractors' => [
+                            "Mengabaikan instruksi baru dan tetap memakai cara lama yang sudah tidak berlaku.",
+                            "Berhenti mengerjakan tugas sama sekali karena merasa terganggu oleh perubahan instruksi.",
+                            "Mengerjakan bagian yang disukai saja dan mengabaikan sisa instruksi lainnya.",
+                        ],
+                        'indicator' => "Disajikan perubahan instruksi, peserta didik mampu menyesuaikan prosedur kerja pada materi {$coreNoun}.",
+                        'sub_level' => "C3 - MOTS (Penerapan / Praktik)",
+                        'explanation_correct' => "Kemampuan beradaptasi terhadap petunjuk kerja yang dinamis merupakan indikator penerapan yang baik.",
+                        'explanation_distractors' => "Menolak instruksi atau menghentikan pekerjaan adalah respon non-produktif.",
+                    ],
+                    [
+                        'stem' => "Urutan langkah kerja yang tepat agar tugas materi {$coreNoun} selesai tepat waktu adalah...",
+                        'correct' => "Membuat target waktu untuk setiap tahapan dan fokus menuntaskan satu bagian sebelum pindah ke bagian berikutnya.",
+                        'distractors' => [
+                            "Membuka banyak aplikasi hiburan sekaligus saat sedang mengerjakan tugas praktik.",
+                            "Menunda-nunda pengerjaan hingga menit-menit terakhir sebelum waktu pengumpulan habis.",
+                            "Berpindah-pindah antarbagian tugas secara acak tanpa pernah menyelesaikan satu bagian pun.",
+                        ],
+                        'indicator' => "Disajikan manajemen waktu, peserta didik mampu menerapkan alur pengerjaan efisien pada materi {$coreNoun}.",
+                        'sub_level' => "C3 - MOTS (Penerapan / Praktik)",
+                        'explanation_correct' => "Manajemen waktu terstruktur dan fokus pada tahapan kerja memastikan tugas rampung tepat jadwal.",
+                        'explanation_distractors' => "Prokrastinasi dan distraksi hiburan menyebabkan tugas terbengkalai.",
+                    ],
+                    [
+                        'stem' => "Ketika kamu menemui satu tahapan yang terasa sulit saat mempraktikkan materi {$coreNoun}, tindakan terbaikmu adalah...",
+                        'correct' => "Membaca ulang contoh panduan materi dan meminta bimbingan guru atau teman yang sudah paham.",
+                        'distractors' => [
+                            "Melompati tahapan tersebut dan berharap guru tidak menyadari kekurangan pada tugasmu.",
+                            "Menyalin pekerjaan teman tanpa meminta izin dan tanpa memahami alur penyelesaiannya.",
+                            "Menyerah dan meninggalkan lembar kerja praktik dalam keadaan belum tuntas.",
+                        ],
+                        'indicator' => "Disajikan kendala praktik, peserta didik mampu menentukan tindakan operasional yang etis pada materi {$coreNoun}.",
+                        'sub_level' => "C3 - MOTS (Penerapan / Praktik)",
+                        'explanation_correct' => "Mencari klarifikasi melalui panduan dan bimbingan guru mencerminkan etika belajar yang bertanggung jawab.",
+                        'explanation_distractors' => "Kecurangan atau kepasrahan bertentangan dengan prinsip pembelajaran aktif.",
+                    ],
+                    [
+                        'stem' => "Bentuk penyajian tugas materi {$coreNoun} yang paling baik saat dikumpulkan kepada guru adalah...",
+                        'correct' => "Lengkap memuat seluruh elemen yang diminta, rapi dalam penataan, dan mudah dipahami pembaca.",
+                        'distractors' => [
+                            "Hanya memuat teks panjang tanpa judul, penataan paragraf, atau kejelasan informasi.",
+                            "Menggunakan dekorasi berlebihan yang justru menutupi informasi pokok tugas.",
+                            "Tugas dikumpulkan dalam format yang rusak atau tidak dapat dibuka oleh guru.",
+                        ],
+                        'indicator' => "Disajikan standar luaran, peserta didik mampu menyajikan hasil karya materi {$coreNoun} secara terstandar.",
+                        'sub_level' => "C3 - MOTS (Penerapan / Praktik)",
+                        'explanation_correct' => "Penyajian yang terstruktur, lengkap, dan berestetika proporsional menunjukkan hasil praktik yang matang.",
+                        'explanation_distractors' => "Penyajian acak, dekorasi berlebihan, atau file rusak menandakan kurangnya ketelitian.",
                     ],
                 ];
             } else {
-                $stems = [
-                    "Langkah awal yang paling tepat dilakukan saat menerapkan materi {$coreNoun} dalam pembelajaran {$subjectName} adalah...",
-                    "Jika Anda diminta menerapkan aturan materi {$coreNoun} untuk menyelesaikan suatu tugas, tindakan yang paling sesuai adalah...",
-                    "Penerapan praktis materi {$coreNoun} yang benar dan terencana ditunjukkan oleh...",
-                    "Bagaimanakah alur kerja yang sistematis saat memanfaatkan prinsip {$coreNoun} untuk menyelesaikan persoalan?",
-                    "Contoh penerapan langsung materi {$coreNoun} dalam menyelesaikan tugas mandiri adalah...",
-                    "Prosedur kerja yang paling efektif saat menerapkan aturan materi {$coreNoun} adalah...",
-                    "Dalam menyusun tahapan tugas berbasis {$coreNoun}, langkah verifikasi awal yang tepat dilakukan adalah...",
-                    "Cara yang paling terukur saat menerapkan materi {$coreNoun} agar hasil tugas optimal adalah...",
-                    "Tindakan yang tepat dalam memastikan kepatuhan alur kerja pada materi {$coreNoun} adalah...",
-                    "Urutan pelaksanaan tugas yang logis dan efisien pada materi {$coreNoun} adalah...",
-                ];
-                $optionSets = [
+                // SMA MOTS
+                $angles = [
                     [
-                        'A' => "Mengikuti tahapan prosedur materi {$coreNoun} secara teratur dan terencana.",
-                        'B' => "Menyesuaikan langkah kerja dengan memperhatikan aturan pokok dan tujuan dari materi {$coreNoun}.",
-                        'C' => "Memilih cara kerja yang paling efisien berdasarkan panduan materi {$coreNoun}.",
-                        'D' => "Mempraktikkan penyelesaian masalah dengan menerapkan prinsip yang telah dipelajari.",
-                        'correct' => "Menerapkan langkah kerja yang sistematis dan terarah sesuai kaidah materi {$coreNoun}.",
+                        'stem' => "Langkah prosedural awal yang paling tepat diambil saat menerapkan konsep {$coreNoun} adalah...",
+                        'correct' => "Merumuskan rencana kerja sistematis yang mencakup identifikasi parameter, bahan, dan batasan operasional.",
+                        'distractors' => [
+                            "Mengeksekusi tahapan implementasi tanpa melalui fase perencanaan dan pemetaan risiko.",
+                            "Mengabaikan standar prosedur operasional baku guna mempersingkat durasi pengerjaan.",
+                            "Mendelegasikan seluruh keputusan teknis tanpa melakukan supervisi dan kontrol kualitas.",
+                        ],
+                        'indicator' => "Peserta didik mampu merumuskan langkah prosedural awal pada materi {$coreNoun}.",
+                        'sub_level' => "C3 - MOTS (Penerapan Sistematis)",
+                        'explanation_correct' => "Perencanaan terstruktur dengan parameter yang jelas merupakan prasyarat mutlak implementasi tingkat lanjut.",
+                        'explanation_distractors' => "Pilihan pengecoh mengabaikan fase perencanaan risiko atau menyimpang dari SOP baku.",
                     ],
                     [
-                        'A' => "Menyiapkan bahan dan instrumen yang relevan sebelum memulai proses penerapan materi {$coreNoun}.",
-                        'B' => "Menyusun pembagian tahapan kerja secara terperinci untuk menghindari kesalahan langkah.",
-                        'C' => "Melakukan pemeriksaan berkala pada setiap tahapan kerja yang sedang berlangsung.",
-                        'D' => "Mendokumentasikan data hasil praktik secara rapi untuk mempermudah evaluasi akhir.",
-                        'correct' => "Mengeksekusi rencana kerja secara runtut dan konsisten dengan panduan materi {$coreNoun}.",
+                        'stem' => "Bagaimanakah alur kerja sistematis yang harus Anda tempuh saat mengimplementasikan kaidah {$coreNoun}?",
+                        'correct' => "Melakukan persiapan data, mengeksekusi tahapan pengolahan secara berurutan, lalu memvalidasi luaran.",
+                        'distractors' => [
+                            "Memulai dari tahap pengujian akhir tanpa memvalidasi keabsahan data masukan.",
+                            "Mengubah urutan tahapan secara sporadis tanpa dokumentasi perubahan yang memadai.",
+                            "Menyelesaikan proyek tanpa melalui proses verifikasi dan penjaminan mutu.",
+                        ],
+                        'indicator' => "Peserta didik mampu menguraikan alur implementasi sistematis materi {$coreNoun}.",
+                        'sub_level' => "C3 - MOTS (Penerapan Sistematis)",
+                        'explanation_correct' => "Alur persiapan-pemrosesan-validasi mencerminkan metodologi baku yang menjamin integritas luaran.",
+                        'explanation_distractors' => "Pilihan lainnya mengabaikan validasi input atau melakukan modifikasi sporadis.",
                     ],
                     [
-                        'A' => "Memastikan seluruh langkah operasional telah memenuhi standar kerja materi {$coreNoun}.",
-                        'B' => "Menyelaraskan alur kerja dengan batas waktu yang tersedia tanpa mengorbankan ketelitian.",
-                        'C' => "Melakukan validasi bertahap untuk memastikan hasil kerja sesuai dengan tujuan pembelajaran.",
-                        'D' => "Mengoptimalkan koordinasi tugas agar seluruh aspek materi {$coreNoun} terselesaikan dengan baik.",
-                        'correct' => "Menyelesaikan seluruh prosedur penerapan secara cermat, terstruktur, dan tepat sasaran.",
+                        'stem' => "Tindakan verifikasi standar yang wajib dilakukan setelah menyelesaikan tahapan implementasi {$coreNoun} adalah...",
+                        'correct' => "Melakukan audit kesesuaian antara hasil kerja dengan spesifikasi teknis dan kriteria performa.",
+                        'distractors' => [
+                            "Mempublikasikan hasil secara terbuka tanpa melakukan uji kelayakan internal.",
+                            "Menghapus rekaman proses pengolahan data untuk menghemat kapasitas penyimpanan.",
+                            "Mengasumsikan sistem telah berfungsi sempurna tanpa memerlukan pengujian empiris.",
+                        ],
+                        'indicator' => "Peserta didik mampu melakukan tindakan verifikasi pada materi {$coreNoun}.",
+                        'sub_level' => "C3 - MOTS (Penerapan Sistematis)",
+                        'explanation_correct' => "Audit kesesuaian terhadap spesifikasi teknis menjamin keandalan produk sebelum diserahkan.",
+                        'explanation_distractors' => "Pilihan pengecoh menghapus jejak audit atau berasumsi tanpa pengujian empiris.",
                     ],
                 ];
             }
-
-            $currentSet = $optionSets[$optSetIndex];
-            $options = [
-                'A' => $currentSet['A'],
-                'B' => $currentSet['B'],
-                'C' => $currentSet['C'],
-                'D' => $currentSet['D'],
-            ];
-            $options[$correctLetter] = $currentSet['correct'];
-            $stem = $stems[($number + $variant - 1) % count($stems)];
-
-            $explanation = "Kunci Jawaban: Pilihan {$correctLetter} (Tingkat Kognitif: C3 - MOTS / Penerapan)\n\n"
-                . "Pembahasan Rinci:\n"
-                . "1. Analisis Opsi Benar (Pilihan {$correctLetter}):\n"
-                . "   Pilihan ini benar karena menunjukkan cara penerapan langkah kerja materi {$coreNoun} yang runtut, teratur, dan sesuai petunjuk.\n\n"
-                . "2. Analisis Opsi Pengecoh:\n"
-                . "   Opsi pengecoh lainnya kurang tepat karena langkah kerjanya tidak berurutan atau belum mencerminkan cara kerja materi {$coreNoun} yang benar.";
-
-            $indicator = "Disajikan situasi kontekstual, peserta didik mampu {$verb} konsep {$coreNoun} untuk menyelesaikan tugas.";
         } else {
-            // Level 3: HOTS (C4 - Menganalisis / C5 - Mengevaluasi)
+            // Level 3: HOTS (C4 - Menganalisis / C5 - Mengevaluasi / C6 - Mengkreasi)
             $subLevel = (($number + $variant) % 2 === 1) ? 'C4' : 'C5';
-            $verb = ($subLevel === 'C4') ? 'menganalisis' : 'mengevaluasi';
             $levelCode = $subLevel;
 
             if ($isSmp) {
-                $stems = [
-                    "Jika hasil tugasmu pada materi {$coreNoun} belum sesuai petunjuk, langkah pemeriksaan pertama yang harus kamu lakukan adalah...",
-                    "Mengapa kamu perlu memahami aturan materi {$coreNoun} sebelum mulai mengerjakan tugas praktiknya?",
-                    "Apa yang akan terjadi pada hasil tugasmu jika salah satu bagian penting dalam {$coreNoun} mengalami kerusakan atau tidak berfungsi?",
-                    "Ketika kamu menemukan kesalahan saat mempraktikkan materi {$coreNoun}, tindakan perbaikan yang paling tepat adalah...",
-                    "Di antara dua cara kerja dalam materi {$coreNoun}, cara manakah yang paling tepat dan hemat waktu untuk kamu pilih?",
-                    "Apa akibatnya bagi hasil akhir tugasmu jika kamu sengaja melewati salah satu langkah penting dalam materi {$coreNoun}?",
-                    "Jika ada teman kelompokmu yang bingung memahami cara kerja materi {$coreNoun}, saran terbaik yang bisa kamu berikan adalah...",
-                    "Ketika menghadapi kendala saat mengerjakan tugas materi {$coreNoun}, cara terbaik untuk menyelesaikannya adalah...",
-                    "Bagaimana cara terbaikmu menilai apakah cara kerja yang kamu gunakan pada materi {$coreNoun} sudah efisien?",
-                    "Saran paling tepat yang dapat kamu berikan agar tugas kelompok tentang materi {$coreNoun} menjadi lebih rapi dan lengkap adalah...",
-                ];
-                $optionSets = [
+                $angles = [
                     [
-                        'A' => "Mencari tahu penyebab gangguan pada tugas lalu memperbaikinya sesuai aturan materi {$coreNoun}.",
-                        'B' => "Memeriksa kembali bagian-bagian penting yang mungkin belum dikerjakan dengan teliti.",
-                        'C' => "Memperbaiki kesalahan langkah kerja agar tujuan materi {$coreNoun} tercapai dengan benar.",
-                        'D' => "Membaca ulang petunjuk dasar untuk memastikan tidak ada langkah kerja yang tertinggal.",
-                        'correct' => "Menemukan bagian yang mengalami kendala lalu memperbaikinya dengan tenang dan teliti.",
+                        'stem' => "Jika hasil tugas praktikmu pada materi {$coreNoun} belum berjalan sesuai petunjuk, langkah analisis pertama yang paling tepat kamu lakukan adalah...",
+                        'correct' => "Memeriksa kembali alur kerja dari tahap awal untuk mendeteksi letak kesalahan lalu merumuskan langkah perbaikannya.",
+                        'distractors' => [
+                            "Menghapus seluruh file pekerjaan dan mengulang dari nol tanpa mencari tahu apa penyebab gangguannya.",
+                            "Menyalahkan perangkat komputer tanpa memeriksa urutan perintah atau data yang telah kamu masukkan.",
+                            "Mengabaikan kesalahan tersebut dan langsung menyerahkan hasil kerja apa adanya kepada guru.",
+                        ],
+                        'indicator' => "Disajikan kasus ketidaksesuaian hasil, peserta didik mampu menganalisis letak kesalahan dan merumuskan perbaikan pada materi {$coreNoun}.",
+                        'sub_level' => "{$subLevel} - HOTS (Penalaran Kritis)",
+                        'explanation_correct' => "Troubleshooting analitis (C4) dimulai dari pelacakan alur kerja untuk menemukan akar penyebab masalah secara objektif.",
+                        'explanation_distractors' => "Pilihan pengecoh adalah tindakan destruktif tanpa analisis, menyalahkan perangkat, atau membiarkan galat.",
                     ],
                     [
-                        'A' => "Hasil kerja menjadi kurang rapi dan tujuan tugas materi {$coreNoun} tidak tercapai secara maksimal.",
-                        'B' => "Waktu pengerjaan tugas menjadi lebih lama karena harus mengulang tahapan yang keliru.",
-                        'C' => "Terjadi kesalahan pada hasil akhir yang membuat fungsi materi {$coreNoun} tidak berjalan normal.",
-                        'D' => "Langkah kerja berikutnya menjadi sulit diselesaikan karena bergantung pada langkah sebelumnya.",
-                        'correct' => "Hasil akhir tugas menjadi tidak tepat dan berisiko menimbulkan kesalahan pada tahapan berikutnya.",
+                        'stem' => "Apa akibat yang akan terjadi pada hasil akhir secara menyeluruh jika salah satu elemen penting dalam {$coreNoun} tidak berfungsi?",
+                        'correct' => "Alur pemrosesan data akan terhambat dan hasil akhir menjadi tidak lengkap atau tidak akurat.",
+                        'distractors' => [
+                            "Seluruh sistem akan otomatis memperbaiki diri dan bekerja dua kali lebih cepat dari biasanya.",
+                            "Tidak terjadi pengaruh apa pun karena setiap komponen tidak memiliki hubungan kerja satu sama lain.",
+                            "Semua file lain di dalam komputer akan langsung terhapus secara otomatis dan permanen.",
+                        ],
+                        'indicator' => "Disajikan gangguan elemen sistem, peserta didik mampu menganalisis hubungan kausalitas pada materi {$coreNoun}.",
+                        'sub_level' => "{$subLevel} - HOTS (Penalaran Kritis)",
+                        'explanation_correct' => "Dalam keterpaduan sistem/konten, ketiadaan satu elemen fungsional merusak integritas luaran secara menyeluruh.",
+                        'explanation_distractors' => "Pilihan lainnya adalah asumsi mustahil mengenai perbaikan ajaib, pemisahan mutlak, atau penghapusan acak.",
                     ],
                     [
-                        'A' => "Mengajak teman berdiskusi untuk mencari cara kerja yang lebih mudah dan menyenangkan.",
-                        'B' => "Membandingkan cara kerjamu dengan petunjuk guru untuk mengetahui bagian yang bisa diperbaiki.",
-                        'C' => "Memberikan masukan yang sopan dan jelas agar teman mudah memahami bagian yang perlu diperbaiki.",
-                        'D' => "Menyusun kembali rencana kerja kelompok agar setiap anggota memahami peran masing-masing.",
-                        'correct' => "Mengevaluasi letak kekurangan tugas dengan cermat lalu menerapkan perbaikan yang paling tepat.",
+                        'stem' => "Di antara dua cara penyelesaian tugas pada materi {$coreNoun}, pertimbangan paling bijak dalam menentukan cara terbaik yang kamu pilih adalah...",
+                        'correct' => "Memilih cara kerja yang menghasilkan luaran paling akurat, aman, dan efisien sesuai kriteria pembelajaran.",
+                        'distractors' => [
+                            "Memilih cara yang paling cepat selesai meskipun banyak langkah penting yang sengaja diabaikan.",
+                            "Memilih cara yang paling rumit dan membutuhkan banyak alat tambahan yang sebenarnya tidak dibutuhkan.",
+                            "Memilih cara yang paling jarang digunakan teman tanpa mempertimbangkan tingkat keberhasilannya.",
+                        ],
+                        'indicator' => "Disajikan alternatif metode, peserta didik mampu mengevaluasi dan memilih solusi optimal pada materi {$coreNoun}.",
+                        'sub_level' => "{$subLevel} - HOTS (Penalaran Kritis)",
+                        'explanation_correct' => "Evaluasi kritis (C5) menuntut pertimbangan seimbang antara akurasi, kepatuhan kriteria, dan efisiensi waktu/sumber daya.",
+                        'explanation_distractors' => "Mengejar kecepatan dengan melompati langkah atau mencari kerumitan semu bukanlah solusi yang efektif.",
+                    ],
+                    [
+                        'stem' => "Saran perbaikan yang paling tepat dan membangun jika kamu melihat tugas temanmu tentang materi {$coreNoun} masih belum rapi adalah...",
+                        'correct' => "Menunjukkan secara spesifik bagian yang kurang rapi dan memberikan contoh konkret bagaimana cara memperbaikinya.",
+                        'distractors' => [
+                            "Mencela tugas teman di depan kelas tanpa memberikan alasan atau saran perbaikan yang jelas.",
+                            "Mengambil paksa file tugas teman dan mengubah seluruh isinya tanpa berdiskusi terlebih dahulu.",
+                            "Membiarkan tugas teman tidak rapi agar nilai tugas kelompokmu terlihat lebih unggul.",
+                        ],
+                        'indicator' => "Disajikan telaah rekan sebaya, peserta didik mampu memberikan evaluasi formatif konstruktif pada materi {$coreNoun}.",
+                        'sub_level' => "{$subLevel} - HOTS (Penalaran Kritis)",
+                        'explanation_correct' => "Umpan balik konstruktif (evaluasi formatif) memberikan identifikasi spesifik disertai usulan solusi nyata.",
+                        'explanation_distractors' => "Pilihan pengecoh mencerminkan sikap destruktif, tidak etis, atau persaingan yang tidak sehat.",
+                    ],
+                    [
+                        'stem' => "Ketika kamu menghadapi dua pilihan format penyajian pada materi {$coreNoun}, langkah evaluasi terbaik untuk mengambil keputusan adalah...",
+                        'correct' => "Menilai kesesuaian format dengan tujuan pesan yang ingin disampaikan agar mudah dipahami pembaca.",
+                        'distractors' => [
+                            "Memilih format yang paling mencolok dan penuh animasi tanpa memperhatikan keterbacaan teks.",
+                            "Memilih format secara acak tanpa mempertimbangkan siapa sasaran pembaca atau penontonnya.",
+                            "Menggunakan format yang belum pernah dicoba meskipun tidak didukung oleh perangkat yang tersedia.",
+                        ],
+                        'indicator' => "Disajikan ragam format sajian, peserta didik mampu mengevaluasi kesesuaian media pada materi {$coreNoun}.",
+                        'sub_level' => "{$subLevel} - HOTS (Penalaran Kritis)",
+                        'explanation_correct' => "Kesesuaian antara media/format dengan audiens dan tujuan pesan adalah prinsip utama evaluasi desain komunikasi.",
+                        'explanation_distractors' => "Animasi berlebihan yang merusak keterbacaan atau pilihan acak menunjukkan keputusan yang tidak berdasar.",
+                    ],
+                    [
+                        'stem' => "Faktor utama yang paling berpotensi menyebabkan kegagalan dalam penerapan materi {$coreNoun} adalah...",
+                        'correct' => "Kurangnya ketelitian dalam mengikuti alur prosedur dan mengabaikan tahapan verifikasi hasil kerja.",
+                        'distractors' => [
+                            "Menggunakan warna huruf hitam standar pada dokumen yang sedang dikerjakan.",
+                            "Membaca petunjuk kerja dari awal hingga akhir sebelum menyalakan komputer.",
+                            "Menanyakan hal yang belum dimengerti kepada guru pendamping.",
+                        ],
+                        'indicator' => "Disajikan potensi risiko, peserta didik mampu menganalisis akar penyebab kegagalan pada materi {$coreNoun}.",
+                        'sub_level' => "{$subLevel} - HOTS (Penalaran Kritis)",
+                        'explanation_correct' => "Pengabaian prosedur dan ketiadaan verifikasi adalah akar masalah paling umum dalam kegagalan teknis/praktik.",
+                        'explanation_distractors' => "Pilihan lainnya justru merupakan praktik baik yang dianjurkan dalam proses belajar.",
+                    ],
+                    [
+                        'stem' => "Bagaimanakah cara terbaikmu menilai apakah cara kerja yang kamu gunakan pada materi {$coreNoun} sudah efisien?",
+                        'correct' => "Membandingkan waktu yang digunakan dan kualitas hasil kerja dengan kriteria capaian yang ditetapkan.",
+                        'distractors' => [
+                            "Menganggap cara kerja sudah efisien jika kita bisa bersantai sambil menunggu tugas selesai.",
+                            "Hanya melihat seberapa banyak tombol keyboard yang ditekan selama mengerjakan tugas.",
+                            "Menilai efisiensi dari seberapa cepat kita mengumpulkan tugas tanpa memeriksa isinya.",
+                        ],
+                        'indicator' => "Disajikan evaluasi kerja, peserta didik mampu mengukur efisiensi kerja pada materi {$coreNoun}.",
+                        'sub_level' => "{$subLevel} - HOTS (Penalaran Kritis)",
+                        'explanation_correct' => "Efisiensi diukur secara objektif melalui rasio pemanfaatan waktu terhadap kualitas luaran yang dihasilkan.",
+                        'explanation_distractors' => "Pilihan pengecoh mengukur efisiensi secara keliru dari kemalasan atau kecepatan tanpa akurasi.",
+                    ],
+                    [
+                        'stem' => "Gagasan kreatif apa yang dapat kamu kembangkan dengan memanfaatkan materi {$coreNoun} untuk membantu kegiatan belajarmu?",
+                        'correct' => "Merancang media belajar ringkas yang mengombinasikan poin penting dan ilustrasi jelas agar materi mudah diingat.",
+                        'distractors' => [
+                            "Membuat dokumen palsu untuk menghindari kewajiban piket kebersihan kelas.",
+                            "Menyebarkan informasi yang belum diverifikasi ke grup obrolan kelas.",
+                            "Menghapus catatan pelajaran teman saat meminjam komputernya.",
+                        ],
+                        'indicator' => "Disajikan kebutuhan belajar, peserta didik mampu merancang ide kreatif solutif berbasis materi {$coreNoun}.",
+                        'sub_level' => "{$subLevel} - HOTS (Penalaran Kritis)",
+                        'explanation_correct' => "Mengkreasi (C6) media belajar aplikatif memberikan nilai tambah nyata bagi proses pembelajaran.",
+                        'explanation_distractors' => "Pilihan pengecoh adalah tindakan melanggar tata tertib dan etika digital.",
+                    ],
+                    [
+                        'stem' => "Langkah terbaik yang dapat kamu ambil agar kesalahan praktik materi {$coreNoun} tidak terulang kembali di masa depan adalah...",
+                        'correct' => "Mencatat letak kekeliruan sebelumnya dan membuat daftar periksa langkah kerja sebagai panduan mandiri.",
+                        'distractors' => [
+                            "Berjanji tidak akan pernah menggunakan komputer lagi dalam pelajaran apa pun.",
+                            "Melupakan kesalahan yang pernah terjadi dan berharap kesalahan itu tidak pernah diperiksa guru.",
+                            "Menyalahkan orang lain atas kesalahan langkah kerja yang telah kita perbuat sendiri.",
+                        ],
+                        'indicator' => "Disajikan evaluasi metakognitif, peserta didik mampu merumuskan strategi pencegahan galat pada materi {$coreNoun}.",
+                        'sub_level' => "{$subLevel} - HOTS (Penalaran Kritis)",
+                        'explanation_correct' => "Refleksi metakognitif dan pembuatan checklist mandiri adalah strategi efektif mencegah kekeliruan berulang.",
+                        'explanation_distractors' => "Menghindari teknologi atau melempar kesalahan pada pihak lain bukanlah sikap pembelajar yang dewasa.",
+                    ],
+                    [
+                        'stem' => "Di antara pendekatan mandiri dan pendekatan kolaboratif pada materi {$coreNoun}, keunggulan utama pendekatan kolaboratif adalah...",
+                        'correct' => "Memungkinkan pertukaran ide yang beragam dan saling melengkapi keahlian antaranggota kelompok.",
+                        'distractors' => [
+                            "Kita tidak perlu bekerja sama sekali karena semua tugas dapat dikerjakan oleh ketua kelompok.",
+                            "Pengerjaan tugas menjadi lebih berisik sehingga kelas terlihat lebih ramai.",
+                            "Bisa saling menyontek tanpa perlu memahami isi materi pelajaran.",
+                        ],
+                        'indicator' => "Disajikan komparasi pendekatan, peserta didik mampu mengevaluasi nilai tambah kolaborasi pada materi {$coreNoun}.",
+                        'sub_level' => "{$subLevel} - HOTS (Penalaran Kritis)",
+                        'explanation_correct' => "Sinergi gagasan dan diversitas keterampilan adalah nilai tambah utama dalam pembelajaran kolaboratif.",
+                        'explanation_distractors' => "Pilihan pengecoh menggambarkan ketergantungan pasif, kebisingan, atau ketidakjujuran akademik.",
                     ],
                 ];
             } else {
-                $stems = [
-                    "Jika terjadi kendala atau ketidaksesuaian hasil saat menerapkan materi {$coreNoun}, analisis awal yang paling tepat adalah...",
-                    "Mengapa pemahaman mendalam tentang materi {$coreNoun} sangat penting dalam menyelesaikan permasalahan yang kompleks?",
-                    "Apabila salah satu prinsip pokok pada materi {$coreNoun} diabaikan, dampak lanjutan yang paling mungkin terjadi adalah...",
-                    "Berdasarkan perbandingan dua cara kerja dalam materi {$coreNoun}, penilaian yang paling objektif mengenai solusi terbaik adalah...",
-                    "Seorang siswa menemukan hasil kerja yang kurang tepat saat menerapkan aturan materi {$coreNoun}. Tindakan evaluasi yang harus dilakukan adalah...",
-                    "Faktor utama yang paling berpotensi menyebabkan terjadinya kegagalan dalam penerapan materi {$coreNoun} adalah...",
-                    "Bagaimanakah langkah perbaikan yang paling efektif jika ditemukan kesalahan prosedur pada materi {$coreNoun}?",
-                    "Berdasarkan pertimbangan kualitas dan waktu, cara kerja yang paling optimal pada materi {$coreNoun} adalah...",
-                    "Dampak jangka panjang yang timbul apabila pengawasan kerja pada materi {$coreNoun} tidak dijalankan dengan cermat adalah...",
-                    "Saran atau rekomendasi terbaik yang dapat diajukan untuk meningkatkan efisiensi kerja pada materi {$coreNoun} adalah...",
-                ];
-                $optionSets = [
+                // SMA HOTS
+                $angles = [
                     [
-                        'A' => "Terjadinya ketidaksesuaian antara perencanaan awal dan pelaksanaan pada materi {$coreNoun}.",
-                        'B' => "Pemeriksaan menunjukkan adanya faktor penting yang belum diperhitungkan dengan cermat.",
-                        'C' => "Kekeliruan pada prosedur menyebabkan tujuan materi {$coreNoun} tidak tercapai secara maksimal.",
-                        'D' => "Perlunya peninjauan ulang terhadap langkah-langkah dasar yang mendasari materi {$coreNoun}.",
-                        'correct' => "Mengidentifikasi akar penyebab masalah secara teliti lalu merumuskan solusi perbaikan yang tepat.",
+                        'stem' => "Lakukan analisis kritis: Apa faktor utama yang paling berpotensi menimbulkan kegagalan sistemik pada penerapan materi {$coreNoun}?",
+                        'correct' => "Terjadinya disparitas antara rancangan logika prosedur dan mekanisme verifikasi integritas data.",
+                        'distractors' => [
+                            "Penggunaan variabel independen yang telah melalui proses standarisasi internasional.",
+                            "Pelaksanaan pengujian bertahap sebelum fase penyebaran produk secara menyeluruh.",
+                            "Penyusunan dokumentasi arsitektur sistem yang terlalu lengkap dan transparan.",
+                        ],
+                        'indicator' => "Peserta didik mampu menganalisis faktor penyebab kegagalan sistemik pada materi {$coreNoun}.",
+                        'sub_level' => "{$subLevel} - HOTS (Analisis Sistemik)",
+                        'explanation_correct' => "Disparitas logika prosedur dan absennya verifikasi integritas memicu kegagalan sistemik.",
+                        'explanation_distractors' => "Pilihan pengecoh mencakup praktik-praktik rekayasa terbaik yang justru memitigasi kegagalan.",
                     ],
                     [
-                        'A' => "Kurangnya ketelitian dalam mengikuti prosedur menyebabkan akumulasi kesalahan pada hasil akhir.",
-                        'B' => "Tahapan kerja yang terlewati membuat keterkaitan antarkomponen {$coreNoun} menjadi terganggu.",
-                        'C' => "Efisiensi kerja menurun drastis akibat pengulangan langkah yang tidak direncanakan.",
-                        'D' => "Hasil akhir tidak memenuhi kriteria kelayakan yang telah ditetapkan oleh guru.",
-                        'correct' => "Kegagalan pada salah satu tahap krusial menimbulkan gangguan menyeluruh pada sistem {$coreNoun}.",
+                        'stem' => "Bagaimanakah strategi perbaikan paling terukur jika ditemukan deviasi prosedur pada materi {$coreNoun}?",
+                        'correct' => "Melakukan isolasi komponen yang terdistorsi, menganalisis akar anomali, lalu merevisi alur kerja secara terarah.",
+                        'distractors' => [
+                            "Melakukan perombakan arsitektur menyeluruh tanpa menganalisis titik kegagalan spesifik.",
+                            "Mengabaikan deviasi selama luaran sementara masih memenuhi batas toleransi minimal.",
+                            "Menutup paksa sistem dan menyembunyikan log anomali dari tim penjamin mutu.",
+                        ],
+                        'indicator' => "Peserta didik mampu merumuskan strategi perbaikan terukur pada materi {$coreNoun}.",
+                        'sub_level' => "{$subLevel} - HOTS (Analisis Sistemik)",
+                        'explanation_correct' => "Isolasi komponen dan investigasi akar anomali menjamin perbaikan efisien tanpa regresi sistemik.",
+                        'explanation_distractors' => "Pilihan pengecoh mencerminkan kepanikan rekayasa, toleransi galat berlebih, atau manipulasi data.",
                     ],
                     [
-                        'A' => "Menelaah kembali seluruh tahapan kerja untuk memastikan kesesuaian dengan kaidah materi {$coreNoun}.",
-                        'B' => "Mengembangkan alternatif solusi yang lebih efisien berdasarkan hasil analisis masalah.",
-                        'C' => "Menetapkan langkah korektif yang terukur agar kendala serupa tidak terulang kembali.",
-                        'D' => "Mengevaluasi efektivitas waktu dan penggunaan sumber daya dalam penyelesaian tugas.",
-                        'correct' => "Melakukan evaluasi menyeluruh terhadap alur kerja dan menerapkan rekomendasi perbaikan yang teruji.",
+                        'stem' => "Berdasarkan pertimbangan kualitas dan efisiensi waktu, pendekatan manakah yang paling optimal Anda terapkan pada materi {$coreNoun}?",
+                        'correct' => "Pendekatan modular terstruktur yang memadukan automasi pengolahan dengan validasi berkala pada titik kritis.",
+                        'distractors' => [
+                            "Pendekatan sekuensial kaku yang tidak mengizinkan adanya iterasi perbaikan di tengah proses.",
+                            "Metode ad-hoc serba cepat yang meniadakan dokumentasi serta pengujian beban kerja.",
+                            "Pendekatan monolitik yang menggabungkan seluruh dependensi ke dalam satu modul tanpa pemisahan peran.",
+                        ],
+                        'indicator' => "Peserta didik mampu mengevaluasi dan memilih pendekatan optimal pada materi {$coreNoun}.",
+                        'sub_level' => "{$subLevel} - HOTS (Analisis Sistemik)",
+                        'explanation_correct' => "Pemisahan modular dan validasi pada titik kritis memberikan rasio terbaik antara kualitas dan kecepatan.",
+                        'explanation_distractors' => "Pilihan pengecoh mengorbankan fleksibilitas (sekuensial kaku) atau keandalan (ad-hoc tanpa uji).",
                     ],
                 ];
             }
-
-            $currentSet = $optionSets[$optSetIndex];
-            $options = [
-                'A' => $currentSet['A'],
-                'B' => $currentSet['B'],
-                'C' => $currentSet['C'],
-                'D' => $currentSet['D'],
-            ];
-            $options[$correctLetter] = $currentSet['correct'];
-            $stem = $stems[($number + $variant - 1) % count($stems)];
-
-            $explanation = "Kunci Jawaban: Pilihan {$correctLetter} (Tingkat Kognitif: {$subLevel} - HOTS / Penalaran Kritis)\n\n"
-                . "Pembahasan Rinci:\n"
-                . "1. Analisis Opsi Benar (Pilihan {$correctLetter}):\n"
-                . "   Pilihan ini benar karena mampu mengurai hubungan sebab-akibat secara mendalam dan memberikan kesimpulan kritis yang valid terhadap dinamika materi {$coreNoun}.\n\n"
-                . "2. Analisis Opsi Pengecoh:\n"
-                . "   Opsi-opsi pengecoh hanya melihat gejala permukaan tanpa menganalisis akar masalah secara komprehensif.";
-
-            $indicator = "Disajikan permasalahan kontekstual, peserta didik mampu {$verb} hubungan sebab-akibat dan menentukan solusi terbaik pada materi {$coreNoun}.";
         }
+
+        $angleIndex = ($number + $variant - 1) % count($angles);
+        $angle = $angles[$angleIndex];
+
+        $correctLetter = ['A', 'B', 'C', 'D'][($number + $variant + 1) % 4];
+        $distractorIdx = 0;
+        $options = [];
+        foreach (['A', 'B', 'C', 'D'] as $letter) {
+            if ($letter === $correctLetter) {
+                $options[$letter] = $angle['correct'];
+            } else {
+                $options[$letter] = $angle['distractors'][$distractorIdx++];
+            }
+        }
+
+        $explanation = "Kunci Jawaban: Pilihan {$correctLetter} (Tingkat Kognitif: {$angle['sub_level']})\n\n"
+            . "Pembahasan Rinci:\n"
+            . "1. Analisis Opsi Benar (Pilihan {$correctLetter}):\n"
+            . "   {$angle['explanation_correct']}\n\n"
+            . "2. Analisis Opsi Pengecoh:\n"
+            . "   {$angle['explanation_distractors']}";
 
         return [
             'number' => $number,
             'type' => 'multiple_choice',
-            'question' => $stem,
+            'question' => $angle['stem'],
             'options' => $options,
             'answer' => $correctLetter,
             'explanation' => $explanation,
-            'indicator' => $indicator,
+            'indicator' => $angle['indicator'],
             'cognitive_level' => $levelCode,
             'score' => 2,
         ];
