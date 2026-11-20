@@ -541,4 +541,53 @@ class OfflineExamGeneratorTest extends TestCase
         $uniqueMcStems = array_unique($mcStems);
         $this->assertCount(5, $uniqueMcStems, 'All 5 MC questions generated for the same TP must have distinct stems');
     }
+
+    public function test_grade_level_calibration_for_smp_and_safe_ooxml_table_widths(): void
+    {
+        $response = $this->actingAs($this->teacherUser)->postJson('/offline-exams/generate', [
+            'school_class_ids' => [$this->schoolClass->id, $this->schoolClassB->id],
+            'learning_objective_ids' => [$this->tp->id],
+            'question_type' => 'essay',
+            'question_count' => 3,
+            'output_format' => 'preview',
+        ]);
+
+        $response->assertOk();
+        $data = $response->json('exam');
+
+        // Verify SMP grade level calibration
+        $this->assertEquals('Kelas 8 SMP', $data['grade_level']);
+        $this->assertEquals('SMP', $data['education_level']);
+        $this->assertEquals('Fase D', $data['curriculum_phase']);
+        $this->assertStringContainsString('Kelas 8 SMP', $data['class_name'] . ' (' . $data['grade_level'] . ')');
+
+        // Test DOCX output: Ensure table widths are strictly valid OOXML (pct or dxa, no auto with nonzero width)
+        $docxResponse = $this->actingAs($this->teacherUser)->post('/offline-exams/generate', [
+            'school_class_ids' => [$this->schoolClass->id, $this->schoolClassB->id],
+            'learning_objective_ids' => [$this->tp->id],
+            'question_type' => 'essay',
+            'question_count' => 3,
+            'output_format' => 'docx',
+        ]);
+
+        $docxResponse->assertOk();
+        $baseResponse = $docxResponse->baseResponse;
+        $tempDocx = tempnam(sys_get_temp_dir(), 'test_docx_') . '.docx';
+        if ($baseResponse instanceof \Symfony\Component\HttpFoundation\BinaryFileResponse) {
+            copy($baseResponse->getFile()->getPathname(), $tempDocx);
+        } else {
+            file_put_contents($tempDocx, $docxResponse->getContent());
+        }
+
+        $zip = new ZipArchive();
+        $this->assertTrue($zip->open($tempDocx), 'DOCX must be openable as zip');
+        $xmlContent = $zip->getFromName('word/document.xml');
+        $this->assertNotEmpty($xmlContent);
+        $zip->close();
+        @unlink($tempDocx);
+
+        // Strict schema check: No <w:tblW w:w="5000" w:type="auto"/>
+        $this->assertStringNotContainsString('w:type="auto"/>', $xmlContent, 'All table widths must have explicit valid units (pct or dxa)');
+        $this->assertMatchesRegularExpression('/<w:tblW[^>]*w:type="(?:pct|dxa)"[^>]*\/>/', $xmlContent);
+    }
 }

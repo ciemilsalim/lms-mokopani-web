@@ -298,53 +298,81 @@ class OfflineExamGeneratorController extends Controller
 
     /**
      * Determine Grade Level (Jenjang) from a SchoolClass model.
-     * E.g. "Kelas 7A" -> ['level' => '7', 'label' => 'Kelas 7']
+     * E.g. "Kelas 8A" -> ['level' => '8', 'label' => 'Kelas 8 SMP', 'education_level' => 'SMP', 'phase' => 'Fase D']
      */
     protected function extractGradeLevel(?SchoolClass $class): array
     {
         if (!$class) {
-            return ['level' => null, 'label' => 'Umum'];
+            return ['level' => null, 'label' => 'Umum', 'education_level' => 'SMP', 'phase' => 'Fase D'];
         }
 
         $name = trim($class->name);
+        $num = null;
 
-        // 1. Check Arabic numeral (e.g. Kelas 7A, 8B, 9, 10-1)
+        // 1. Check Arabic numeral (e.g. Kelas 7A, 8B, 8C, 9, 10-1)
         if (preg_match('/(?:kelas\s*|tingkat\s*)?(\d+)/i', $name, $matches)) {
-            $num = $matches[1];
-            return ['level' => $num, 'label' => "Kelas {$num}"];
-        }
-
-        // 2. Check Roman numerals
-        if (preg_match('/\b(VII|VIII|IX|X|XI|XII)\b/i', $name, $matches)) {
+            $num = (int) $matches[1];
+        } elseif (preg_match('/\b(VII|VIII|IX|X|XI|XII)\b/i', $name, $matches)) {
+            // 2. Check Roman numerals
             $romanMap = [
-                'VII' => '7',
-                'VIII' => '8',
-                'IX' => '9',
-                'X' => '10',
-                'XI' => '11',
-                'XII' => '12',
+                'VII' => 7,
+                'VIII' => 8,
+                'IX' => 9,
+                'X' => 10,
+                'XI' => 11,
+                'XII' => 12,
             ];
             $upper = strtoupper($matches[1]);
             if (isset($romanMap[$upper])) {
                 $num = $romanMap[$upper];
-                return ['level' => $num, 'label' => "Kelas {$num}"];
             }
-        }
-
-        // 3. Fallback to level_id
-        if (!empty($class->level_id)) {
+        } elseif (!empty($class->level_id)) {
+            // 3. Fallback to level_id
             try {
                 $level = DB::table('levels')->where('id', $class->level_id)->first();
                 if ($level && preg_match('/(\d+)/', $level->name, $lm)) {
-                    return ['level' => $lm[1], 'label' => "Kelas {$lm[1]}"];
+                    $num = (int) $lm[1];
                 }
             } catch (\Throwable $e) {
                 // Ignore DB error if table not exists
             }
-            return ['level' => (string) $class->level_id, 'label' => "Kelas {$class->level_id}"];
+            if ($num === null && is_numeric($class->level_id)) {
+                $num = (int) $class->level_id;
+            }
         }
 
-        return ['level' => null, 'label' => $name];
+        if ($num !== null) {
+            if ($num >= 7 && $num <= 9) {
+                return [
+                    'level' => (string) $num,
+                    'label' => "Kelas {$num} SMP",
+                    'education_level' => 'SMP',
+                    'phase' => 'Fase D',
+                ];
+            } elseif ($num >= 10 && $num <= 12) {
+                return [
+                    'level' => (string) $num,
+                    'label' => "Kelas {$num} SMA",
+                    'education_level' => 'SMA',
+                    'phase' => $num === 10 ? 'Fase E' : 'Fase F',
+                ];
+            } elseif ($num >= 1 && $num <= 6) {
+                return [
+                    'level' => (string) $num,
+                    'label' => "Kelas {$num} SD",
+                    'education_level' => 'SD',
+                    'phase' => $num <= 2 ? 'Fase A' : ($num <= 4 ? 'Fase B' : 'Fase C'),
+                ];
+            }
+            return [
+                'level' => (string) $num,
+                'label' => "Kelas {$num}",
+                'education_level' => 'Umum',
+                'phase' => 'Kurikulum Merdeka',
+            ];
+        }
+
+        return ['level' => null, 'label' => $name, 'education_level' => 'SMP', 'phase' => 'Fase D'];
     }
 
     /**

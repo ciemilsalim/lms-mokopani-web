@@ -299,7 +299,7 @@
         </tr>
         <tr>
             <td class="label">Kelas / Rombel</td>
-            <td>: {{ $class_name }}</td>
+            <td>: {{ $class_name }} @if(!empty($grade_level)) ({{ $grade_level }}) @endif</td>
             <td class="label">Alokasi Waktu</td>
             <td>: {{ $time_limit }}</td>
         </tr>

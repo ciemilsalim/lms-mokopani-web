@@ -15,8 +15,10 @@ use Illuminate\Support\Facades\Log;
 use PhpOffice\PhpWord\Element\Table;
 use PhpOffice\PhpWord\IOFactory;
 use PhpOffice\PhpWord\PhpWord;
+use PhpOffice\PhpWord\Settings;
 use PhpOffice\PhpWord\SimpleType\Jc;
 use PhpOffice\PhpWord\SimpleType\JcTable;
+use PhpOffice\PhpWord\SimpleType\TblWidth;
 
 class OfflineExamGeneratorService
 {
@@ -29,6 +31,7 @@ class OfflineExamGeneratorService
 
     /**
      * Clean text for XML output inside Microsoft Word .docx to prevent XML entity corruption.
+     * Strips illegal XML 1.0 control characters while preserving valid formatting.
      */
     public function cleanWordText(?string $text): string
     {
@@ -36,12 +39,10 @@ class OfflineExamGeneratorService
             return '';
         }
 
-        // Replace bare ampersands not part of an existing valid XML entity
-        $cleaned = preg_replace('/&(?!(?:amp|lt|gt|quot|apos);)/u', '&amp;', $text);
-        // Strip any null bytes or control characters except tab, LF, CR
-        $cleaned = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', '', $cleaned);
+        // Strip illegal XML 1.0 control characters (0x00-0x08, 0x0B, 0x0C, 0x0E-0x1F, 0x7F)
+        $cleaned = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', '', (string) $text);
 
-        return $cleaned;
+        return trim($cleaned);
     }
 
     /**
@@ -145,7 +146,8 @@ class OfflineExamGeneratorService
 
         $classKey = implode('_', $classIds);
         $tpKey = $tpList->pluck('id')->sort()->implode('_');
-        $cacheHash = md5("offline_exam_{$tpKey}_{$classKey}_{$questionType}_{$questionCount}_{$generationEngine}_{$cognitiveLevel}");
+        $levelInfo = $this->resolveEducationLevel($classList, $classNames);
+        $cacheHash = md5("offline_exam_{$tpKey}_{$classKey}_{$questionType}_{$questionCount}_{$generationEngine}_{$cognitiveLevel}_{$levelInfo['grade_label']}");
 
         if (!$regenerate) {
             $cachedJson = LmsAiCache::getCache($cacheHash);
@@ -153,7 +155,7 @@ class OfflineExamGeneratorService
                 $decoded = json_decode($cachedJson, true);
                 if (is_array($decoded) && !empty($decoded['questions'])) {
                     // Enforce strict question type filtering even on cached payload
-                    $filtered = $this->enforceStrictQuestionType($decoded, $tpList, $subjectName, $classNames, $questionType, $questionCount, $tpAllocations, $cognitiveLevel);
+                    $filtered = $this->enforceStrictQuestionType($decoded, $tpList, $subjectName, $classNames, $questionType, $questionCount, $tpAllocations, $cognitiveLevel, $levelInfo);
                     return $this->formatExamPayload(
                         $filtered,
                         $teacher,
@@ -170,7 +172,8 @@ class OfflineExamGeneratorService
                         $schoolEmail,
                         $headmasterName,
                         $headmasterNip,
-                        $cognitiveLevel
+                        $cognitiveLevel,
+                        $levelInfo
                     );
                 }
             }
@@ -178,19 +181,19 @@ class OfflineExamGeneratorService
 
         // If 'fast' engine or testing environment, immediately use deterministic pedagogical generator (0.05s, 0 token cost, 100% no 503 timeout)
         if ($generationEngine === 'fast' || app()->environment('testing')) {
-            $aiResult = $this->buildPedagogicalFallback($tpList, $subjectName, $classNames, $questionType, $questionCount, $tpAllocations, $cognitiveLevel);
+            $aiResult = $this->buildPedagogicalFallback($tpList, $subjectName, $classNames, $questionType, $questionCount, $tpAllocations, $cognitiveLevel, $levelInfo);
         } else {
             // Try AI generation first
-            $aiResult = $this->callAiForExam($tpList, $subjectName, $classNames, $questionType, $questionCount, $tpAllocations, $cognitiveLevel);
+            $aiResult = $this->callAiForExam($tpList, $subjectName, $classNames, $questionType, $questionCount, $tpAllocations, $cognitiveLevel, $levelInfo);
 
             if (!$aiResult || empty($aiResult['questions'])) {
                 // Fallback: Generate structured pedagogical questions deterministically
-                $aiResult = $this->buildPedagogicalFallback($tpList, $subjectName, $classNames, $questionType, $questionCount, $tpAllocations, $cognitiveLevel);
+                $aiResult = $this->buildPedagogicalFallback($tpList, $subjectName, $classNames, $questionType, $questionCount, $tpAllocations, $cognitiveLevel, $levelInfo);
             }
         }
 
         // Post-validation: Enforce STRICT question type consistency and TP allocation
-        $aiResult = $this->enforceStrictQuestionType($aiResult, $tpList, $subjectName, $classNames, $questionType, $questionCount, $tpAllocations, $cognitiveLevel);
+        $aiResult = $this->enforceStrictQuestionType($aiResult, $tpList, $subjectName, $classNames, $questionType, $questionCount, $tpAllocations, $cognitiveLevel, $levelInfo);
 
         // Cache successful output
         try {
@@ -201,6 +204,7 @@ class OfflineExamGeneratorService
                 'count' => $questionCount,
                 'engine' => $generationEngine,
                 'cognitive_level' => $cognitiveLevel,
+                'grade_level' => $levelInfo['grade_label'],
             ], json_encode($aiResult));
         } catch (\Throwable $e) {
             Log::warning('Failed saving exam cache: ' . $e->getMessage());
@@ -222,8 +226,80 @@ class OfflineExamGeneratorService
             $schoolEmail,
             $headmasterName,
             $headmasterNip,
-            $cognitiveLevel
+            $cognitiveLevel,
+            $levelInfo
         );
+    }
+
+    /**
+     * Resolve education level (SD, SMP, SMA) and grade information from target classes.
+     * E.g. "Kelas 8A, Kelas 8B" -> ['grade' => 8, 'grade_label' => 'Kelas 8 SMP', 'level_name' => 'SMP', 'phase' => 'Fase D', 'pedagogical_tone' => 'smp']
+     */
+    public function resolveEducationLevel(Collection|array $schoolClasses, string $classNames = ''): array
+    {
+        $classList = $schoolClasses instanceof Collection ? $schoolClasses : collect($schoolClasses);
+        $names = $classList->pluck('name')->filter()->values()->all();
+        if (empty($names) && $classNames !== '') {
+            $names = array_map('trim', explode(',', $classNames));
+        }
+
+        $grades = [];
+        foreach ($names as $name) {
+            $name = trim($name);
+            if (preg_match('/(?:kelas\s*|tingkat\s*)?(\d+)/i', $name, $matches)) {
+                $grades[] = (int) $matches[1];
+            } elseif (preg_match('/\b(VII|VIII|IX|X|XI|XII)\b/i', $name, $matches)) {
+                $romanMap = ['VII' => 7, 'VIII' => 8, 'IX' => 9, 'X' => 10, 'XI' => 11, 'XII' => 12];
+                $upper = strtoupper($matches[1]);
+                if (isset($romanMap[$upper])) {
+                    $grades[] = $romanMap[$upper];
+                }
+            }
+        }
+
+        $grades = array_values(array_unique(array_filter($grades)));
+        $mainGrade = !empty($grades) ? $grades[0] : 8; // Default 8 (SMP) for SMP Negeri 1 Biau
+
+        if ($mainGrade >= 7 && $mainGrade <= 9) {
+            $levelName = 'SMP';
+            $fullLevel = 'Sekolah Menengah Pertama (SMP / MTs)';
+            $phase = 'Fase D';
+            $age = '12 - 15 tahun';
+            $gradeLabel = "Kelas {$mainGrade} SMP";
+            $pedagogicalTone = 'smp';
+        } elseif ($mainGrade >= 10 && $mainGrade <= 12) {
+            $levelName = 'SMA';
+            $fullLevel = 'Sekolah Menengah Atas (SMA / SMK / MA)';
+            $phase = $mainGrade === 10 ? 'Fase E' : 'Fase F';
+            $age = '15 - 18 tahun';
+            $gradeLabel = "Kelas {$mainGrade} SMA";
+            $pedagogicalTone = 'sma';
+        } elseif ($mainGrade >= 1 && $mainGrade <= 6) {
+            $levelName = 'SD';
+            $fullLevel = 'Sekolah Dasar (SD / MI)';
+            $phase = $mainGrade <= 2 ? 'Fase A' : ($mainGrade <= 4 ? 'Fase B' : 'Fase C');
+            $age = '7 - 12 tahun';
+            $gradeLabel = "Kelas {$mainGrade} SD";
+            $pedagogicalTone = 'sd';
+        } else {
+            $levelName = 'SMP';
+            $fullLevel = 'Sekolah Menengah Pertama (SMP / MTs)';
+            $phase = 'Fase D';
+            $age = '12 - 15 tahun';
+            $gradeLabel = "Kelas {$mainGrade} SMP";
+            $pedagogicalTone = 'smp';
+        }
+
+        return [
+            'grade' => $mainGrade,
+            'grades' => $grades,
+            'level_name' => $levelName,
+            'full_level' => $fullLevel,
+            'phase' => $phase,
+            'age_range' => $age,
+            'grade_label' => $gradeLabel,
+            'pedagogical_tone' => $pedagogicalTone,
+        ];
     }
 
     /**
@@ -239,8 +315,10 @@ class OfflineExamGeneratorService
         string $questionType,
         int $questionCount,
         array $tpAllocations,
-        string $cognitiveLevel = 'all'
+        string $cognitiveLevel = 'all',
+        ?array $levelInfo = null
     ): array {
+        $levelInfo = $levelInfo ?? $this->resolveEducationLevel([], $className);
         $questions = $rawExam['questions'] ?? [];
 
         // Build a lookup map of question number -> TP allocation
@@ -259,7 +337,7 @@ class OfflineExamGeneratorService
                 $currentAlloc = $allocMap[$num] ?? ($tpAllocations[0] ?? null);
                 $targetTp = $currentAlloc ? $currentAlloc['tp'] : ($tps instanceof Collection ? $tps->first() : $tps[0]);
                 $variant = $currentAlloc ? max(0, $num - $currentAlloc['start_number']) : ($num - 1);
-                $q = $this->buildSingleEssayQuestion($targetTp, $subjectName, $className, $num, $cognitiveLevel, $questionCount, $variant);
+                $q = $this->buildSingleEssayQuestion($targetTp, $subjectName, $className, $num, $cognitiveLevel, $questionCount, $variant, $levelInfo);
                 if ($currentAlloc) {
                     $q['tp_code'] = $currentAlloc['tp_code'];
                     $q['material'] = $currentAlloc['content'];
@@ -275,7 +353,7 @@ class OfflineExamGeneratorService
                 $currentAlloc = $allocMap[$num] ?? ($tpAllocations[0] ?? null);
                 $targetTp = $currentAlloc ? $currentAlloc['tp'] : ($tps instanceof Collection ? $tps->first() : $tps[0]);
                 $variant = $currentAlloc ? max(0, $num - $currentAlloc['start_number']) : ($num - 1);
-                $q = $this->buildSingleMcQuestion($targetTp, $subjectName, $className, $num, $cognitiveLevel, $questionCount, $variant);
+                $q = $this->buildSingleMcQuestion($targetTp, $subjectName, $className, $num, $cognitiveLevel, $questionCount, $variant, $levelInfo);
                 if ($currentAlloc) {
                     $q['tp_code'] = $currentAlloc['tp_code'];
                     $q['material'] = $currentAlloc['content'];
@@ -286,7 +364,7 @@ class OfflineExamGeneratorService
         } else {
             // Mixed
             if (count($questions) < $questionCount) {
-                $fallback = $this->buildPedagogicalFallback($tps, $subjectName, $className, 'mixed', $questionCount, $tpAllocations, $cognitiveLevel);
+                $fallback = $this->buildPedagogicalFallback($tps, $subjectName, $className, 'mixed', $questionCount, $tpAllocations, $cognitiveLevel, $levelInfo);
                 $questions = $fallback['questions'];
             }
             $questions = array_slice($questions, 0, $questionCount);
@@ -360,18 +438,32 @@ class OfflineExamGeneratorService
         string $questionType,
         int $questionCount,
         array $tpAllocations,
-        string $cognitiveLevel = 'all'
+        string $cognitiveLevel = 'all',
+        ?array $levelInfo = null
     ): ?array {
+        $levelInfo = $levelInfo ?? $this->resolveEducationLevel([], $className);
+
         $typeInstruction = match ($questionType) {
             'essay' => "PERINGATAN KHUSUS: Jenis soal WAJIB 100% 'essay' (Esai / Uraian) sebanyak {$questionCount} nomor. DILARANG KERAS menghasilkan soal pilihan ganda ataupun opsi A/B/C/D!",
             'mixed' => "Jenis soal adalah 'mixed' (Campuran Pilihan Ganda & Esai) dengan total {$questionCount} nomor (misal 70% Pilihan Ganda, 30% Esai).",
             default => "PERINGATAN KHUSUS: Jenis soal WAJIB 100% 'multiple_choice' (Pilihan Ganda 4 Opsi: A, B, C, D) sebanyak {$questionCount} nomor. DILARANG KERAS menghasilkan soal esai!",
         };
 
+        $levelGuideline = match ($levelInfo['pedagogical_tone'] ?? 'smp') {
+            'smp' => "TINGKAT PENDIDIKAN SASARAN: {$levelInfo['grade_label']} ({$levelInfo['full_level']}, {$levelInfo['phase']}, Usia Siswa ~{$levelInfo['age_range']}).\n"
+                . "- WAJIB menggunakan bahasa Indonesia yang ramah, komunikatif, lugas, dan sesuai tingkat pemikiran siswa SMP.\n"
+                . "- DILARANG KERAS menggunakan istilah atau narasi yang terlalu rumit/berat seperti tingkat SMA atau Perguruan Tinggi (HINDARI frasa berat seperti: 'kendala sistemik', 'dinamika sistem', 'asumsi dasar filosofis', 'ketidakselarasan mekanisme pelaksanaan').\n"
+                . "- Sajikan stimulus persoalan yang dekat dan konkret dengan kehidupan siswa SMP (kegiatan belajar di sekolah, praktik di lab komputer, memakai smartphone/komputer, tugas kelompok, dll).",
+            'sd' => "TINGKAT PENDIDIKAN SASARAN: {$levelInfo['grade_label']} ({$levelInfo['full_level']}, {$levelInfo['phase']}, Usia Siswa ~{$levelInfo['age_range']}).\n"
+                . "- WAJIB menggunakan kalimat pendek, kosakata sederhana, konkret, dan mudah dipahami anak usia SD.",
+            default => "TINGKAT PENDIDIKAN SASARAN: {$levelInfo['grade_label']} ({$levelInfo['full_level']}, {$levelInfo['phase']}, Usia Siswa ~{$levelInfo['age_range']}).\n"
+                . "- Gunakan analisis konseptual komprehensif, penalaran logis formal, dan pemecahan kasus yang sesuai untuk tingkat SMA/SMK.",
+        };
+
         $cognitiveInstruction = match ($cognitiveLevel) {
-            'lots' => "TINGKAT KOGNITIF: WAJIB Level 1 - LOTS (C1-C2 / Mengingat & Memahami). Gunakan bahasa yang sederhana, mudah dipahami siswa SMP/SMA, pertanyaan langsung/lugas, kenalkan istilah & definisi dasar, dan HINDARI kalimat yang berbelit-belit atau terlalu rumit.",
-            'mots' => "TINGKAT KOGNITIF: WAJIB Level 2 - MOTS (C3 / Menerapkan & Aplikasi). Fokus pada prosedur langkah kerja, contoh konkret harian, dan penerapan aturan materi pada situasi nyata.",
-            'hots' => "TINGKAT KOGNITIF: WAJIB Level 3 - HOTS (C4-C6 / Menganalisis, Mengevaluasi, Pemecahan Masalah). Sajikan stimulus kasus kontekstual yang menuntut penalaran kritis.",
+            'lots' => "TINGKAT KOGNITIF: WAJIB Level 1 - LOTS (C1-C2 / Mengingat & Memahami). Gunakan bahasa yang sederhana, mudah dipahami siswa, pertanyaan langsung/lugas, kenalkan istilah & definisi dasar, dan HINDARI kalimat yang berbelit-belit atau terlalu rumit.",
+            'mots' => "TINGKAT KOGNITIF: WAJIB Level 2 - MOTS (C3 / Menerapkan & Aplikasi). Fokus pada prosedur langkah kerja, contoh konkret harian, dan penerapan aturan materi pada situasi nyata sekolah/rumah.",
+            'hots' => "TINGKAT KOGNITIF: WAJIB Level 3 - HOTS (C4-C6 / Menganalisis, Mengevaluasi, Pemecahan Masalah). Sajikan stimulus kasus konkret yang menuntut penalaran siswa sesuai jenjangnya.",
             default => "TINGKAT KOGNITIF: Campuran Proporsional Kurikulum Merdeka (sekitar 30% LOTS C1-C2 pada nomor-nomor awal, 50% MOTS C3 pada nomor tengah, dan 20% HOTS C4-C5 pada nomor akhir).",
         };
 
@@ -381,15 +473,19 @@ class OfflineExamGeneratorService
         }
 
         $prompt = <<<PROMPT
-Anda adalah ahli penyusun instrumen asesmen dan kurikulum Kurikulum Merdeka untuk jenjang sekolah menengah di Indonesia.
+Anda adalah ahli penyusun instrumen asesmen dan kurikulum Kurikulum Merdeka untuk jenjang sekolah di Indonesia.
 Tolong buatkan perangkat soal asesmen pembelajaran offline cetak lengkap berdasarkan Tujuan Pembelajaran (TP) yang telah dibagi rata:
 
 INFORMASI UJIAN:
 - Mata Pelajaran: {$subjectName}
-- Kelas / Sasaran: {$className}
+- Sasaran Siswa: {$className} ({$levelInfo['grade_label']} / {$levelInfo['phase']})
+- Jenjang Pendidikan: {$levelInfo['full_level']}
 - Bentuk Soal: {$questionType} ({$typeInstruction})
 - Tingkat Kognitif / Kesulitan: {$cognitiveInstruction}
 - Total Butir Soal: {$questionCount} Nomor
+
+BATASAN BAHASA & TINGKAT KESULITAN SISWA (MUTLAK):
+{$levelGuideline}
 
 DAFTAR TUJUAN PEMBELAJARAN (TP) DAN PEMBAGIAN RATA BUTIR SOAL:
 {$tpAllocationsText}
@@ -508,8 +604,10 @@ PROMPT;
         string $questionType,
         int $questionCount,
         array $tpAllocations,
-        string $cognitiveLevel = 'all'
+        string $cognitiveLevel = 'all',
+        ?array $levelInfo = null
     ): array {
+        $levelInfo = $levelInfo ?? $this->resolveEducationLevel([], $className);
         $questions = [];
 
         foreach ($tpAllocations as $alloc) {
@@ -520,7 +618,7 @@ PROMPT;
             if ($questionType === 'essay') {
                 for ($n = 0; $n < $countForThisTp; $n++) {
                     $qNum = $startNum + $n;
-                    $q = $this->buildSingleEssayQuestion($currentTp, $subjectName, $className, $qNum, $cognitiveLevel, $questionCount, $n);
+                    $q = $this->buildSingleEssayQuestion($currentTp, $subjectName, $className, $qNum, $cognitiveLevel, $questionCount, $n, $levelInfo);
                     $q['tp_code'] = $alloc['tp_code'];
                     $q['material'] = $alloc['content'];
                     $questions[] = $q;
@@ -528,7 +626,7 @@ PROMPT;
             } elseif ($questionType === 'multiple_choice') {
                 for ($n = 0; $n < $countForThisTp; $n++) {
                     $qNum = $startNum + $n;
-                    $q = $this->buildSingleMcQuestion($currentTp, $subjectName, $className, $qNum, $cognitiveLevel, $questionCount, $n);
+                    $q = $this->buildSingleMcQuestion($currentTp, $subjectName, $className, $qNum, $cognitiveLevel, $questionCount, $n, $levelInfo);
                     $q['tp_code'] = $alloc['tp_code'];
                     $q['material'] = $alloc['content'];
                     $questions[] = $q;
@@ -539,14 +637,14 @@ PROMPT;
                 $mcForTp = $countForThisTp - $essayForTp;
                 for ($n = 0; $n < $mcForTp; $n++) {
                     $qNum = $startNum + $n;
-                    $q = $this->buildSingleMcQuestion($currentTp, $subjectName, $className, $qNum, $cognitiveLevel, $questionCount, $n);
+                    $q = $this->buildSingleMcQuestion($currentTp, $subjectName, $className, $qNum, $cognitiveLevel, $questionCount, $n, $levelInfo);
                     $q['tp_code'] = $alloc['tp_code'];
                     $q['material'] = $alloc['content'];
                     $questions[] = $q;
                 }
                 for ($n = 0; $n < $essayForTp; $n++) {
                     $qNum = $startNum + $mcForTp + $n;
-                    $q = $this->buildSingleEssayQuestion($currentTp, $subjectName, $className, $qNum, $cognitiveLevel, $questionCount, $n);
+                    $q = $this->buildSingleEssayQuestion($currentTp, $subjectName, $className, $qNum, $cognitiveLevel, $questionCount, $n, $levelInfo);
                     $q['tp_code'] = $alloc['tp_code'];
                     $q['material'] = $alloc['content'];
                     $questions[] = $q;
@@ -612,9 +710,9 @@ PROMPT;
         $rawContent = trim($tp->content ?? '');
 
         // 1. Clean boilerplate curriculum prefixes (e.g. "Peserta didik mampu...", "Siswa diharapkan dapat...", dll)
-        $cleanedDesc = preg_replace('/^(diharapkan\s+)?(peserta didik|siswa|murid)\s+(mampu|dapat|diharapkan mampu|diharapkan dapat)\s+/iu', '', $rawDesc);
+        $cleanedDesc = preg_replace('/^(diharapkan\s+)?(peserta\s+didik|siswa|murid)\s+(mampu|dapat|diharapkan\s+mampu|diharapkan\s+dapat)\s+/iu', '', $rawDesc);
         $cleanedDesc = preg_replace('/^(mampu|dapat)\s+/iu', '', $cleanedDesc);
-        $cleanedDesc = trim($cleanedDesc, " \t\n\r\0\x0B.");
+        $cleanedDesc = trim($cleanedDesc, " \t\n\r\0\x0B.,:;");
 
         // 2. Extract parenthetical details if present, e.g. "(dekomposisi, pengenalan pola, abstraksi, algoritma)"
         $subTopics = [];
@@ -631,11 +729,11 @@ PROMPT;
 
         // 3. Determine pure topic concept (without operational verbs)
         if ($rawContent !== '') {
-            $concept = $rawContent;
+            $concept = trim($rawContent, " \t\n\r\0\x0B.,:;");
         } else {
             // Strip leading operational verbs from cleanedDesc to extract the pure subject matter concept
             $concept = preg_replace('/^(menjelaskan|mengidentifikasi|menganalisis|memahami|menerapkan|mengevaluasi|menguraikan|mempraktikkan|mendeskripsikan|merancang|menyusun|membedakan)\s+/iu', '', $cleanedDesc);
-            $concept = trim($concept, " \t\n\r\0\x0B.");
+            $concept = trim($concept, " \t\n\r\0\x0B.,:;");
             if ($concept === '') {
                 $concept = $cleanedDesc ?: ($subjectName ?: 'materi pembelajaran');
             }
@@ -663,10 +761,14 @@ PROMPT;
         int $number,
         string $cognitiveLevel = 'all',
         int $totalQuestions = 10,
-        int $variant = 0
+        int $variant = 0,
+        ?array $levelInfo = null
     ): array {
+        $levelInfo = $levelInfo ?? $this->resolveEducationLevel([], $className);
         $analysis = $this->analyzeTp($tp, $subjectName);
         $concept = $analysis['concept'];
+        $gradeLabel = $levelInfo['grade_label'] ?? 'Kelas 8 SMP';
+        $isSmp = ($levelInfo['pedagogical_tone'] ?? 'smp') === 'smp';
 
         // Determine effective cognitive level for this question
         $effectiveLevel = $cognitiveLevel;
@@ -688,27 +790,43 @@ PROMPT;
             $subLevel = (($number + $variant) % 2 === 1) ? 'C1' : 'C2';
             $verb = ($subLevel === 'C1') ? 'mengingat dan mengidentifikasi' : 'menjelaskan';
 
-            $stems = [
-                "Berdasarkan materi {$subjectName}, apa yang menjadi fokus atau pengertian pokok dari {$concept}?",
-                "Berikut ini yang merupakan ciri-ciri atau bagian mendasar dari {$concept} adalah...",
-                "Dalam ruang lingkup materi {$subjectName}, pernyataan manakah yang paling tepat menjelaskan konsep {$concept}?",
-                "Fungsi atau tujuan utama dari mempelajari {$concept} pada mata pelajaran {$subjectName} adalah...",
-                "Salah satu contoh bentuk penerapan sederhana dari {$concept} yang sering dijumpai sehari-hari adalah...",
-            ];
+            if ($isSmp) {
+                $stems = [
+                    "Berdasarkan materi {$subjectName} untuk {$gradeLabel}, apa yang menjadi fokus atau pengertian pokok dari {$concept}?",
+                    "Berikut ini yang merupakan ciri-ciri atau bagian utama dari {$concept} adalah...",
+                    "Tujuan atau manfaat utama dari mempelajari {$concept} pada mata pelajaran {$subjectName} adalah...",
+                    "Salah satu contoh bentuk penerapan sederhana dari {$concept} yang sering dijumpai sehari-hari adalah...",
+                    "Pernyataan yang paling tepat mengenai pengertian materi {$concept} adalah...",
+                ];
+                $options = [
+                    'A' => "Konsep atau cara dasar dalam {$concept} yang bertujuan mempermudah pemahaman siswa.",
+                    'B' => "Bagian dari materi {$concept} yang berfungsi mengenali istilah dan aturan pokok yang berlaku.",
+                    'C' => "Bentuk penerapan dasar {$concept} yang digunakan untuk mengenalkan materi secara konseptual.",
+                    'D' => "Prinsip utama {$concept} yang membedakannya dari materi lain dalam pembelajaran {$subjectName}.",
+                ];
+                $options[$correctLetter] = "Pengenalan dan pemahaman konsep utama mengenai {$concept} secara utuh dan sistematis.";
+            } else {
+                $stems = [
+                    "Berdasarkan materi {$subjectName}, apa yang menjadi fokus atau pengertian pokok dari {$concept}?",
+                    "Berikut ini yang merupakan ciri-ciri atau bagian mendasar dari {$concept} adalah...",
+                    "Dalam ruang lingkup materi {$subjectName}, pernyataan manakah yang paling tepat menjelaskan konsep {$concept}?",
+                    "Fungsi atau tujuan utama dari mempelajari {$concept} pada mata pelajaran {$subjectName} adalah...",
+                    "Salah satu contoh bentuk penerapan sederhana dari {$concept} yang sering dijumpai sehari-hari adalah...",
+                ];
+                $options = [
+                    'A' => "Konsep atau cara dasar dalam {$concept} yang bertujuan untuk mempermudah pemahaman peserta didik.",
+                    'B' => "Bagian dari materi {$concept} yang berfungsi mengenali istilah, fakta, dan aturan pokok yang berlaku.",
+                    'C' => "Bentuk dasar penerapan {$concept} yang digunakan untuk mengenalkan materi secara konseptual.",
+                    'D' => "Prinsip utama {$concept} yang membedakannya dari materi lain dalam pembelajaran {$subjectName}.",
+                ];
+                $options[$correctLetter] = "Pengenalan dan pemahaman konsep utama mengenai {$concept} secara utuh dan sistematis.";
+            }
             $stem = $stems[($number + $variant - 1) % count($stems)];
-
-            $options = [
-                'A' => "Konsep atau cara dasar dalam {$concept} yang bertujuan untuk mempermudah pemahaman peserta didik.",
-                'B' => "Bagian dari materi {$concept} yang berfungsi mengenali istilah, fakta, dan aturan pokok yang berlaku.",
-                'C' => "Bentuk dasar penerapan {$concept} yang digunakan untuk mengenalkan materi secara konseptual.",
-                'D' => "Prinsip utama {$concept} yang membedakannya dari materi lain dalam pembelajaran {$subjectName}.",
-            ];
-            $options[$correctLetter] = "Pengenalan dan pemahaman konsep utama mengenai {$concept} secara utuh dan sistematis.";
 
             $explanation = "Kunci Jawaban: Pilihan {$correctLetter} (Tingkat Kognitif: {$subLevel} - LOTS / Pemahaman Dasar)\n\n"
                 . "Pembahasan Rinci:\n"
                 . "1. Analisis Opsi Benar (Pilihan {$correctLetter}):\n"
-                . "   Pilihan ini tepat karena menyatakan pemahaman dasar dan definisi esensial dari materi {$concept} secara lugas dan sesuai dengan kaidah keilmuan {$subjectName}.\n\n"
+                . "   Pilihan ini tepat karena menyatakan pemahaman dasar dan definisi esensial dari materi {$concept} secara lugas dan sesuai dengan kaidah materi {$subjectName}.\n\n"
                 . "2. Analisis Opsi Pengecoh:\n"
                 . "   Pilihan lainnya kurang tepat karena hanya mendeskripsikan aspek parsial atau tidak mencakup substansi utama dari {$concept}.";
 
@@ -719,22 +837,38 @@ PROMPT;
             $verb = 'menerapkan';
             $levelCode = 'C3';
 
-            $stems = [
-                "Seorang siswa ingin menerapkan prinsip {$concept} dalam kegiatan pembelajaran {$subjectName}. Tindakan pertama yang paling tepat dilakukan adalah...",
-                "Perhatikan situasi sehari-hari: Jika Anda diminta menggunakan konsep {$concept} untuk menyelesaikan suatu tugas, langkah yang paling sesuai adalah...",
-                "Dalam praktik pembelajaran {$subjectName}, penerapan materi {$concept} yang benar ditunjukkan oleh...",
-                "Bagaimanakah prosedur atau alur kerja yang tepat saat kita memanfaatkan {$concept} untuk memecahkan persoalan praktis?",
-                "Manakah di antara pilihan berikut yang menunjukkan contoh implementasi langsung prinsip {$concept} secara terencana?",
-            ];
+            if ($isSmp) {
+                $stems = [
+                    "Seorang siswa ingin menerapkan aturan {$concept} saat mengerjakan tugas {$subjectName}. Tindakan pertama yang paling tepat dilakukan adalah...",
+                    "Perhatikan situasi sehari-hari di sekolah: Jika kamu diminta menggunakan konsep {$concept} untuk menyelesaikan suatu tugas, langkah yang paling sesuai adalah...",
+                    "Dalam praktik belajar di kelas, penerapan materi {$concept} yang benar ditunjukkan oleh...",
+                    "Bagaimanakah urutan langkah kerja yang tepat saat kita memanfaatkan {$concept} untuk menyelesaikan tugas?",
+                    "Manakah di antara pilihan berikut yang menunjukkan contoh cara kerja prinsip {$concept} secara terencana?",
+                ];
+                $options = [
+                    'A' => "Mengikuti urutan langkah kerja materi {$concept} secara bertahap dan teratur.",
+                    'B' => "Menyesuaikan langkah kerja dengan memperhatikan aturan pokok dan tujuan dari {$concept}.",
+                    'C' => "Menggunakan konsep {$concept} sebagai acuan utama dalam memilih cara kerja yang efisien.",
+                    'D' => "Mempraktikkan cara penyelesaian masalah dengan menerapkan prinsip yang telah dipelajari pada {$concept}.",
+                ];
+                $options[$correctLetter] = "Menerapkan langkah kerja yang sistematis dan terarah sesuai kaidah {$concept} dalam mencapai tujuan.";
+            } else {
+                $stems = [
+                    "Seorang siswa ingin menerapkan prinsip {$concept} dalam kegiatan pembelajaran {$subjectName}. Tindakan pertama yang paling tepat dilakukan adalah...",
+                    "Perhatikan situasi sehari-hari: Jika Anda diminta menggunakan konsep {$concept} untuk menyelesaikan suatu tugas, langkah yang paling sesuai adalah...",
+                    "Dalam praktik pembelajaran {$subjectName}, penerapan materi {$concept} yang benar ditunjukkan oleh...",
+                    "Bagaimanakah prosedur atau alur kerja yang tepat saat kita memanfaatkan {$concept} untuk memecahkan persoalan praktis?",
+                    "Manakah di antara pilihan berikut yang menunjukkan contoh implementasi langsung prinsip {$concept} secara terencana?",
+                ];
+                $options = [
+                    'A' => "Mengikuti tahapan prosedur baku materi {$concept} secara bertahap dan terencana.",
+                    'B' => "Menyesuaikan langkah kerja dengan memperhatikan aturan pokok dan tujuan dari {$concept}.",
+                    'C' => "Menggunakan konsep {$concept} sebagai acuan utama dalam memilih tindakan praktis yang efisien.",
+                    'D' => "Mempraktikkan cara penyelesaian masalah dengan menerapkan prinsip yang telah dipelajari pada {$concept}.",
+                ];
+                $options[$correctLetter] = "Menerapkan langkah kerja yang sistematis dan terarah sesuai kaidah {$concept} dalam mencapai tujuan.";
+            }
             $stem = $stems[($number + $variant - 1) % count($stems)];
-
-            $options = [
-                'A' => "Mengikuti tahapan prosedur baku materi {$concept} secara bertahap dan terencana.",
-                'B' => "Menyesuaikan langkah kerja dengan memperhatikan aturan pokok dan tujuan dari {$concept}.",
-                'C' => "Menggunakan konsep {$concept} sebagai acuan utama dalam memilih tindakan praktis yang efisien.",
-                'D' => "Mempraktikkan cara penyelesaian masalah dengan menerapkan prinsip yang telah dipelajari pada {$concept}.",
-            ];
-            $options[$correctLetter] = "Menerapkan langkah kerja yang sistematis dan terarah sesuai kaidah {$concept} dalam mencapai tujuan.";
 
             $explanation = "Kunci Jawaban: Pilihan {$correctLetter} (Tingkat Kognitif: C3 - MOTS / Penerapan)\n\n"
                 . "Pembahasan Rinci:\n"
@@ -750,22 +884,38 @@ PROMPT;
             $verb = ($subLevel === 'C4') ? 'menganalisis' : 'mengevaluasi';
             $levelCode = $subLevel;
 
-            $stems = [
-                "Disajikan studi kasus: Dalam pelaksanaan kegiatan terkait {$concept}, terjadi ketidaksesuaian antara rencana dan hasil akhir. Analisis penyebab yang paling kritis adalah...",
-                "Mengapa pemahaman mendalam tentang {$concept} sangat menentukan keberhasilan pemecahan masalah yang kompleks dalam {$subjectName}?",
-                "Apabila salah satu prinsip pokok pada {$concept} diabaikan atau tidak terpenuhi, dampak lanjutan yang paling signifikan adalah...",
-                "Berdasarkan analisis perbandingan dua metode dalam {$concept}, manakah evaluasi yang paling tepat mengenai solusi yang paling efektif dan efisien?",
-                "Seorang siswa menemukan hasil kerja yang tidak sinkron saat menerapkan aturan {$concept}. Evaluasi kritis yang harus dilakukan pertama kali adalah...",
-            ];
+            if ($isSmp) {
+                $stems = [
+                    "Disajikan masalah nyata: Jika dalam menerapkan {$concept} terjadi kendala sehingga hasil kerja belum sesuai, langkah analisis yang paling tepat kamu lakukan pertama kali adalah...",
+                    "Mengapa pemahaman mendalam tentang {$concept} sangat penting agar kita dapat menyelesaikan tugas {$subjectName} dengan baik dan benar?",
+                    "Apabila salah satu bagian penting pada {$concept} tidak terpasang atau rusak, dampak langsung yang akan terjadi adalah...",
+                    "Seorang siswa menemukan hasil kerja yang kurang tepat saat menerapkan aturan {$concept}. Tindakan pemeriksaan yang harus dilakukan adalah...",
+                    "Berdasarkan analisis perbandingan dua cara kerja dalam {$concept}, manakah pilihan tindakan yang paling efektif dan tepat sasaran?",
+                ];
+                $options = [
+                    'A' => "Mencari tahu penyebab gangguan pada komponen pendukung dan memperbaiki proses kerja konsep {$concept}.",
+                    'B' => "Memeriksa kembali bagian-bagian penting dalam materi {$concept} yang belum dilakukan dengan cermat.",
+                    'C' => "Memperbaiki kesalahan langkah kerja agar tujuan materi {$concept} dapat tercapai dengan benar.",
+                    'D' => "Melakukan pemeriksaan ulang terhadap petunjuk dasar yang digunakan dalam penerapan {$concept}.",
+                ];
+                $options[$correctLetter] = "Mencari tahu bagian yang mengalami kendala lalu memperbaikinya sesuai aturan materi {$concept}.";
+            } else {
+                $stems = [
+                    "Disajikan studi kasus: Dalam pelaksanaan kegiatan terkait {$concept}, terjadi ketidaksesuaian antara rencana dan hasil akhir. Analisis penyebab yang paling kritis adalah...",
+                    "Mengapa pemahaman mendalam tentang {$concept} sangat menentukan keberhasilan pemecahan masalah yang kompleks dalam {$subjectName}?",
+                    "Apabila salah satu prinsip pokok pada {$concept} diabaikan atau tidak terpenuhi, dampak lanjutan yang paling signifikan adalah...",
+                    "Berdasarkan analisis perbandingan dua metode dalam {$concept}, manakah evaluasi yang paling tepat mengenai solusi yang paling efektif dan efisien?",
+                    "Seorang siswa menemukan hasil kerja yang tidak sinkron saat menerapkan aturan {$concept}. Evaluasi kritis yang harus dilakukan pertama kali adalah...",
+                ];
+                $options = [
+                    'A' => "Terjadinya ketidakselarasan antara faktor pendukung dan mekanisme pelaksanaan konsep {$concept}.",
+                    'B' => "Hasil evaluasi menunjukkan bahwa variabel utama dalam materi {$concept} belum diperhitungkan dengan cermat.",
+                    'C' => "Dampak kesalahan logika atau prosedur menyebabkan tujuan materi {$concept} tidak tercapai secara optimal.",
+                    'D' => "Diperlukannya pengkajian ulang secara kritis terhadap asumsi dasar yang mendasari penerapan {$concept}.",
+                ];
+                $options[$correctLetter] = "Analisis mendalam membuktikan bahwa pengabaian kaidah {$concept} menimbulkan kendala sistemik dalam pemecahan masalah.";
+            }
             $stem = $stems[($number + $variant - 1) % count($stems)];
-
-            $options = [
-                'A' => "Terjadinya ketidakselarasan antara faktor pendukung dan mekanisme pelaksanaan konsep {$concept}.",
-                'B' => "Hasil evaluasi menunjukkan bahwa variabel utama dalam materi {$concept} belum diperhitungkan dengan cermat.",
-                'C' => "Dampak kesalahan logika atau prosedur menyebabkan tujuan materi {$concept} tidak tercapai secara optimal.",
-                'D' => "Diperlukannya pengkajian ulang secara kritis terhadap asumsi dasar yang mendasari penerapan {$concept}.",
-            ];
-            $options[$correctLetter] = "Analisis mendalam membuktikan bahwa pengabaian kaidah {$concept} menimbulkan kendala sistemik dalam pemecahan masalah.";
 
             $explanation = "Kunci Jawaban: Pilihan {$correctLetter} (Tingkat Kognitif: {$subLevel} - HOTS / Penalaran Kritis)\n\n"
                 . "Pembahasan Rinci:\n"
@@ -774,7 +924,7 @@ PROMPT;
                 . "2. Analisis Opsi Pengecoh:\n"
                 . "   Opsi-opsi pengecoh hanya melihat gejala permukaan tanpa menganalisis akar masalah secara komprehensif.";
 
-            $indicator = "Disajikan permasalahan kontekstual kompleks, peserta didik mampu {$verb} hubungan sebab-akibat dan menentukan solusi terbaik pada materi {$concept}.";
+            $indicator = "Disajikan permasalahan kontekstual, peserta didik mampu {$verb} hubungan sebab-akibat dan menentukan solusi terbaik pada materi {$concept}.";
         }
 
         return [
@@ -797,10 +947,14 @@ PROMPT;
         int $number,
         string $cognitiveLevel = 'all',
         int $totalQuestions = 10,
-        int $variant = 0
+        int $variant = 0,
+        ?array $levelInfo = null
     ): array {
+        $levelInfo = $levelInfo ?? $this->resolveEducationLevel([], $className);
         $analysis = $this->analyzeTp($tp, $subjectName);
         $concept = $analysis['concept'];
+        $gradeLabel = $levelInfo['grade_label'] ?? 'Kelas 8 SMP';
+        $isSmp = ($levelInfo['pedagogical_tone'] ?? 'smp') === 'smp';
 
         // Determine effective cognitive level
         $effectiveLevel = $cognitiveLevel;
@@ -820,235 +974,478 @@ PROMPT;
         if ($effectiveLevel === 'lots') {
             // LOTS (C1/C2 - Pemahaman Konseptual Dasar)
             $levelCode = 'C2';
-            $angles = [
-                // Angle 0: Definisi Konsep & Elemen Pokok
-                [
-                    'stem' => "Jelaskan dengan bahasa Anda sendiri apa yang dimaksud dengan {$concept}, dan sebutkan minimal 2 (dua) karakteristik atau elemen pokoknya!",
-                    'indicator' => "Peserta didik mampu mendeskripsikan konsep dasar {$concept} serta menyebutkan elemen pokoknya.",
-                    'answer' => "Kriteria Model Jawaban Lengkap (Level 1 / LOTS):\n"
-                        . "1. Menuliskan definisi atau pemahaman mengenai {$concept} dengan kalimat yang jelas, runtut, dan benar menggunakan bahasa sendiri.\n"
-                        . "2. Menyebutkan minimal 2 (dua) karakteristik atau elemen utama yang sesuai dengan konsep materi tersebut.",
-                    'explanation' => "Pedoman & Rubrik Penskoran Analitik (Skor Maksimal: 10):\n"
-                        . "• Skor 9 - 10 (Sangat Baik): Definisi dijelaskan dengan tepat menggunakan bahasa sendiri serta menyertakan minimal 2 elemen/karakteristik pokok dengan benar.\n"
-                        . "• Skor 6 - 8 (Baik): Definisi tepat namun hanya menyebutkan 1 elemen pokok, atau penjelasan masih singkat.\n"
-                        . "• Skor 3 - 5 (Cukup): Definisi masih kurang lengkap dan belum memberikan elemen yang relevan.\n"
-                        . "• Skor 1 - 2 (Perlu Bimbingan): Hanya menuliskan beberapa kata kunci tanpa membentuk penjelasan konsep yang utuh.\n"
-                        . "• Skor 0 (Tidak Menjawab): Lembar jawaban kosong atau tidak ada substansi yang relevan sama sekali.",
-                ],
-                // Angle 1: Fungsi & Peranan Materi
-                [
-                    'stem' => "Dalam konteks mata pelajaran {$subjectName}, apa peran dan fungsi utama dari {$concept}? Jelaskan mengapa konsep ini penting untuk dipelajari!",
-                    'indicator' => "Peserta didik mampu menguraikan fungsi pokok dan pentingnya materi {$concept}.",
-                    'answer' => "Kriteria Model Jawaban Lengkap (Level 1 / LOTS):\n"
-                        . "1. Menguraikan fungsi atau peranan pokok dari {$concept} dalam pembelajaran {$subjectName} secara tepat.\n"
-                        . "2. Menjelaskan alasan mengapa pemahaman materi tersebut sangat esensial bagi peserta didik.",
-                    'explanation' => "Pedoman & Rubrik Penskoran Analitik (Skor Maksimal: 10):\n"
-                        . "• Skor 9 - 10 (Sangat Baik): Menguraikan fungsi dan urgensi materi secara jelas, runtut, dan tepat sasaran.\n"
-                        . "• Skor 6 - 8 (Baik): Menguraikan fungsi materi secara tepat, tetapi penjelasan urgensi masih bersifat umum.\n"
-                        . "• Skor 3 - 5 (Cukup): Penjelasan fungsi masih terbatas dan belum menguraikan urgensi secara jelas.\n"
-                        . "• Skor 1 - 2 (Perlu Bimbingan): Hanya menyebutkan poin singkat tanpa elaboration memadai.\n"
-                        . "• Skor 0 (Tidak Menjawab): Lembar jawaban kosong atau tidak ada substansi yang relevan sama sekali.",
-                ],
-                // Angle 2: Keterkaitan & Bagian-Bagian
-                [
-                    'stem' => "Uraikan bagian-bagian atau tahapan mendasar yang berkaitan dengan {$concept}, dan jelaskan bagaimana bagian-bagian tersebut saling terhubung!",
-                    'indicator' => "Peserta didik mampu menguraikan bagian mendasar dan hubungan timbal balik materi {$concept}.",
-                    'answer' => "Kriteria Model Jawaban Lengkap (Level 1 / LOTS):\n"
-                        . "1. Menyebutkan bagian, tahapan, atau komponen mendasar dari {$concept} secara lengkap.\n"
-                        . "2. Menjelaskan hubungan timbal balik atau keterkaitan antarkomponen tersebut secara logis.",
-                    'explanation' => "Pedoman & Rubrik Penskoran Analitik (Skor Maksimal: 10):\n"
-                        . "• Skor 9 - 10 (Sangat Baik): Menyebutkan komponen secara lengkap dan menjelaskan keterhubungannya secara tepat dan sistematis.\n"
-                        . "• Skor 6 - 8 (Baik): Menyebutkan sebagian besar komponen namun penjelasan keterhubungannya masih sederhana.\n"
-                        . "• Skor 3 - 5 (Cukup): Hanya menyebutkan komponen tanpa menjelaskan bagaimana keterkaitan di antaranya.\n"
-                        . "• Skor 1 - 2 (Perlu Bimbingan): Komponen yang disebutkan belum tepat dan tidak ada penjelasan hubungan.\n"
-                        . "• Skor 0 (Tidak Menjawab): Lembar jawaban kosong atau tidak ada substansi yang relevan sama sekali.",
-                ],
-                // Angle 3: Contoh Konkret / Manifestasi
-                [
-                    'stem' => "Berikan 2 (dua) contoh konkret atau ilustrasi sederhana dari {$concept} yang sering dijumpai dalam kehidupan sehari-hari atau lingkungan sekitar!",
-                    'indicator' => "Peserta didik mampu memberikan contoh konkret terkait materi {$concept} dalam konteks harian.",
-                    'answer' => "Kriteria Model Jawaban Lengkap (Level 1 / LOTS):\n"
-                        . "1. Menyajikan minimal 2 contoh konkret atau ilustrasi nyata yang relevan dengan {$concept}.\n"
-                        . "2. Memberikan penjelasan singkat mengapa contoh-contoh tersebut mencerminkan konsep yang dipelajari.",
-                    'explanation' => "Pedoman & Rubrik Penskoran Analitik (Skor Maksimal: 10):\n"
-                        . "• Skor 9 - 10 (Sangat Baik): Memberikan 2 contoh konkret yang sangat relevan dan disertai penjelasan hubungan konsep yang tepat.\n"
-                        . "• Skor 6 - 8 (Baik): Memberikan 2 contoh relevan namun penjelasannya singkat, atau hanya 1 contoh dengan penjelasan baik.\n"
-                        . "• Skor 3 - 5 (Cukup): Contoh yang diberikan kurang kontekstual atau kurang sesuai dengan materi.\n"
-                        . "• Skor 1 - 2 (Perlu Bimbingan): Contoh tidak relevan dengan konsep yang dibahas.\n"
-                        . "• Skor 0 (Tidak Menjawab): Lembar jawaban kosong atau tidak ada substansi yang relevan sama sekali.",
-                ],
-                // Angle 4: Ciri Khusus & Istilah Pokok
-                [
-                    'stem' => "Deskripsikan ciri-ciri khusus yang menjadi pembeda pokok materi {$concept}, dan sebutkan istilah-istilah penting yang harus dipahami di dalamnya!",
-                    'indicator' => "Peserta didik mampu mendeskripsikan ciri khusus dan istilah kunci materi {$concept}.",
-                    'answer' => "Kriteria Model Jawaban Lengkap (Level 1 / LOTS):\n"
-                        . "1. Menjelaskan ciri-ciri pembeda utama dari {$concept} secara jelas.\n"
-                        . "2. Menyebutkan dan menjelaskan arti dari istilah-istilah penting yang terkandung di dalamnya.",
-                    'explanation' => "Pedoman & Rubrik Penskoran Analitik (Skor Maksimal: 10):\n"
-                        . "• Skor 9 - 10 (Sangat Baik): Ciri pembeda diuraikan secara akurat dan istilah-istilah penting dijelaskan dengan tepat.\n"
-                        . "• Skor 6 - 8 (Baik): Ciri pembeda diuraikan dengan cukup baik, namun penjelasan istilah masih terbatas.\n"
-                        . "• Skor 3 - 5 (Cukup): Penjelasan ciri pembeda masih umum dan istilah penting belum lengkap.\n"
-                        . "• Skor 1 - 2 (Perlu Bimbingan): Uraian tidak menyentuh ciri pembeda konsep materi.\n"
-                        . "• Skor 0 (Tidak Menjawab): Lembar jawaban kosong atau tidak ada substansi yang relevan sama sekali.",
-                ],
-            ];
+            $isProcess = (bool) preg_match('/^(cara kerja|interaksi|proses|siklus|tahapan|alur|langkah)/iu', $concept);
+
+            if ($isSmp) {
+                $stemAngle0Smp = $isProcess
+                    ? "Jelaskan dengan bahasamu sendiri bagaimanakah {$concept}, serta sebutkan minimal 2 (dua) contoh konkret atau bagian utamanya yang kamu ketahui!"
+                    : "Jelaskan dengan bahasamu sendiri apa yang dimaksud dengan {$concept}, serta sebutkan minimal 2 (dua) bagian atau ciri utamanya yang kamu ketahui!";
+
+                $angles = [
+                    // Angle 0: Definisi Konsep & Elemen Pokok SMP
+                    [
+                        'stem' => $stemAngle0Smp,
+                        'indicator' => "Peserta didik mampu mendeskripsikan konsep dasar {$concept} serta menyebutkan elemen pokoknya.",
+                        'answer' => "Kriteria Model Jawaban Lengkap (Level 1 / LOTS):\n"
+                            . "1. Menuliskan definisi atau pemahaman mengenai {$concept} dengan kalimat yang jelas dan benar menggunakan bahasa sendiri.\n"
+                            . "2. Menyebutkan minimal 2 (dua) bagian atau ciri utama yang sesuai dengan materi tersebut.",
+                        'explanation' => "Pedoman & Rubrik Penskoran Analitik (Skor Maksimal: 10):\n"
+                            . "• Skor 9 - 10 (Sangat Baik): Definisi dijelaskan dengan tepat menggunakan bahasa sendiri serta menyertakan minimal 2 elemen/ciri pokok dengan benar.\n"
+                            . "• Skor 6 - 8 (Baik): Definisi tepat namun hanya menyebutkan 1 elemen pokok, atau penjelasan masih singkat.\n"
+                            . "• Skor 3 - 5 (Cukup): Definisi masih kurang lengkap dan belum memberikan elemen yang relevan.\n"
+                            . "• Skor 1 - 2 (Perlu Bimbingan): Hanya menuliskan beberapa kata kunci tanpa membentuk penjelasan konsep yang utuh.\n"
+                            . "• Skor 0 (Tidak Menjawab): Lembar jawaban kosong atau tidak ada substansi yang relevan sama sekali.",
+                    ],
+                    // Angle 1: Fungsi & Manfaat SMP
+                    [
+                        'stem' => "Dalam pelajaran {$subjectName} di jenjang {$gradeLabel}, apa fungsi dan manfaat utama dari mempelajari {$concept}? Jelaskan mengapa materi ini penting untuk dipahami oleh siswa!",
+                        'indicator' => "Peserta didik mampu menguraikan fungsi pokok dan pentingnya materi {$concept}.",
+                        'answer' => "Kriteria Model Jawaban Lengkap (Level 1 / LOTS):\n"
+                            . "1. Menguraikan fungsi atau peranan pokok dari {$concept} dalam pembelajaran {$subjectName} secara tepat.\n"
+                            . "2. Menjelaskan alasan mengapa pemahaman materi tersebut sangat bermanfaat bagi peserta didik.",
+                        'explanation' => "Pedoman & Rubrik Penskoran Analitik (Skor Maksimal: 10):\n"
+                            . "• Skor 9 - 10 (Sangat Baik): Menguraikan fungsi dan urgensi materi secara jelas, runtut, dan tepat sasaran.\n"
+                            . "• Skor 6 - 8 (Baik): Menguraikan fungsi materi secara tepat, tetapi penjelasan urgensi masih bersifat umum.\n"
+                            . "• Skor 3 - 5 (Cukup): Penjelasan fungsi masih terbatas dan belum menguraikan urgensi secara jelas.\n"
+                            . "• Skor 1 - 2 (Perlu Bimbingan): Hanya menyebutkan poin singkat tanpa elaboration memadai.\n"
+                            . "• Skor 0 (Tidak Menjawab): Lembar jawaban kosong atau tidak ada substansi yang relevan sama sekali.",
+                    ],
+                    // Angle 2: Keterkaitan & Bagian-Bagian SMP
+                    [
+                        'stem' => "Sebutkan tahapan atau bagian penting yang berkaitan dengan {$concept}, lalu jelaskan bagaimana bagian-bagian tersebut saling terhubung saat bekerja!",
+                        'indicator' => "Peserta didik mampu menguraikan bagian mendasar dan hubungan timbal balik materi {$concept}.",
+                        'answer' => "Kriteria Model Jawaban Lengkap (Level 1 / LOTS):\n"
+                            . "1. Menyebutkan bagian, tahapan, atau komponen penting dari {$concept} secara tepat.\n"
+                            . "2. Menjelaskan hubungan timbal balik atau keterkaitan antarkomponen tersebut secara logis.",
+                        'explanation' => "Pedoman & Rubrik Penskoran Analitik (Skor Maksimal: 10):\n"
+                            . "• Skor 9 - 10 (Sangat Baik): Menyebutkan komponen secara lengkap dan menjelaskan keterhubungannya secara tepat dan sistematis.\n"
+                            . "• Skor 6 - 8 (Baik): Menyebutkan sebagian besar komponen namun penjelasan keterhubungannya masih sederhana.\n"
+                            . "• Skor 3 - 5 (Cukup): Hanya menyebutkan komponen tanpa menjelaskan bagaimana keterkaitan di antaranya.\n"
+                            . "• Skor 1 - 2 (Perlu Bimbingan): Komponen yang disebutkan belum tepat dan tidak ada penjelasan hubungan.\n"
+                            . "• Skor 0 (Tidak Menjawab): Lembar jawaban kosong atau tidak ada substansi yang relevan sama sekali.",
+                    ],
+                    // Angle 3: Contoh Nyata Sehari-hari SMP
+                    [
+                        'stem' => "Berikan 2 (dua) contoh nyata penerapan atau kejadian yang berhubungan dengan {$concept} yang sering kamu temui dalam kehidupan sehari-hari di sekolah atau di rumah!",
+                        'indicator' => "Peserta didik mampu memberikan contoh konkret terkait materi {$concept} dalam konteks harian.",
+                        'answer' => "Kriteria Model Jawaban Lengkap (Level 1 / LOTS):\n"
+                            . "1. Menyajikan minimal 2 contoh konkret atau kejadian nyata yang relevan dengan {$concept}.\n"
+                            . "2. Memberikan penjelasan singkat mengapa contoh-contoh tersebut mencerminkan konsep yang dipelajari.",
+                        'explanation' => "Pedoman & Rubrik Penskoran Analitik (Skor Maksimal: 10):\n"
+                            . "• Skor 9 - 10 (Sangat Baik): Memberikan 2 contoh konkret yang sangat relevan dan disertai penjelasan hubungan konsep yang tepat.\n"
+                            . "• Skor 6 - 8 (Baik): Memberikan 2 contoh relevan namun penjelasannya singkat, atau hanya 1 contoh dengan penjelasan baik.\n"
+                            . "• Skor 3 - 5 (Cukup): Contoh yang diberikan kurang kontekstual atau kurang sesuai dengan materi.\n"
+                            . "• Skor 1 - 2 (Perlu Bimbingan): Contoh tidak relevan dengan konsep yang dibahas.\n"
+                            . "• Skor 0 (Tidak Menjawab): Lembar jawaban kosong atau tidak ada substansi yang relevan sama sekali.",
+                    ],
+                    // Angle 4: Ciri Khusus & Istilah Pokok SMP
+                    [
+                        'stem' => "Deskripsikan ciri-ciri khusus yang membedakan materi {$concept} dari materi lainnya, dan sebutkan istilah-istilah penting yang harus dipahami di dalamnya!",
+                        'indicator' => "Peserta didik mampu mendeskripsikan ciri khusus dan istilah kunci materi {$concept}.",
+                        'answer' => "Kriteria Model Jawaban Lengkap (Level 1 / LOTS):\n"
+                            . "1. Menjelaskan ciri-ciri pembeda utama dari {$concept} secara jelas.\n"
+                            . "2. Menyebutkan dan menjelaskan arti dari istilah-istilah penting yang terkandung di dalamnya.",
+                        'explanation' => "Pedoman & Rubrik Penskoran Analitik (Skor Maksimal: 10):\n"
+                            . "• Skor 9 - 10 (Sangat Baik): Ciri pembeda diuraikan secara akurat dan istilah-istilah penting dijelaskan dengan tepat.\n"
+                            . "• Skor 6 - 8 (Baik): Ciri pembeda diuraikan dengan cukup baik, namun penjelasan istilah masih terbatas.\n"
+                            . "• Skor 3 - 5 (Cukup): Penjelasan ciri pembeda masih umum dan istilah penting belum lengkap.\n"
+                            . "• Skor 1 - 2 (Perlu Bimbingan): Uraian tidak menyentuh ciri pembeda konsep materi.\n"
+                            . "• Skor 0 (Tidak Menjawab): Lembar jawaban kosong atau tidak ada substansi yang relevan sama sekali.",
+                    ],
+                ];
+            } else {
+                $stemAngle0Sma = $isProcess
+                    ? "Jelaskan dengan bahasa Anda sendiri bagaimanakah {$concept}, serta uraikan minimal 2 (dua) karakteristik atau elemen pokoknya!"
+                    : "Jelaskan dengan bahasa Anda sendiri apa yang dimaksud dengan {$concept}, serta uraikan minimal 2 (dua) karakteristik atau elemen pokoknya!";
+
+                $angles = [
+                    // Angle 0: Definisi Konsep & Elemen Pokok Umum/SMA
+                    [
+                        'stem' => $stemAngle0Sma,
+                        'indicator' => "Peserta didik mampu mendeskripsikan konsep dasar {$concept} serta menyebutkan elemen pokoknya.",
+                        'answer' => "Kriteria Model Jawaban Lengkap (Level 1 / LOTS):\n"
+                            . "1. Menuliskan definisi atau pemahaman mengenai {$concept} dengan kalimat yang jelas, runtut, dan benar menggunakan bahasa sendiri.\n"
+                            . "2. Menyebutkan minimal 2 (dua) karakteristik atau elemen utama yang sesuai dengan konsep materi tersebut.",
+                        'explanation' => "Pedoman & Rubrik Penskoran Analitik (Skor Maksimal: 10):\n"
+                            . "• Skor 9 - 10 (Sangat Baik): Definisi dijelaskan dengan tepat menggunakan bahasa sendiri serta menyertakan minimal 2 elemen/karakteristik pokok dengan benar.\n"
+                            . "• Skor 6 - 8 (Baik): Definisi tepat namun hanya menyebutkan 1 elemen pokok, atau penjelasan masih singkat.\n"
+                            . "• Skor 3 - 5 (Cukup): Definisi masih kurang lengkap dan belum memberikan elemen yang relevan.\n"
+                            . "• Skor 1 - 2 (Perlu Bimbingan): Hanya menuliskan beberapa kata kunci tanpa membentuk penjelasan konsep yang utuh.\n"
+                            . "• Skor 0 (Tidak Menjawab): Lembar jawaban kosong atau tidak ada substansi yang relevan sama sekali.",
+                    ],
+                    // Angle 1: Fungsi & Peranan Materi
+                    [
+                        'stem' => "Dalam konteks mata pelajaran {$subjectName}, apa peran dan fungsi utama dari {$concept}? Jelaskan mengapa konsep ini penting untuk dipelajari!",
+                        'indicator' => "Peserta didik mampu menguraikan fungsi pokok dan pentingnya materi {$concept}.",
+                        'answer' => "Kriteria Model Jawaban Lengkap (Level 1 / LOTS):\n"
+                            . "1. Menguraikan fungsi atau peranan pokok dari {$concept} dalam pembelajaran {$subjectName} secara tepat.\n"
+                            . "2. Menjelaskan alasan mengapa pemahaman materi tersebut sangat esensial bagi peserta didik.",
+                        'explanation' => "Pedoman & Rubrik Penskoran Analitik (Skor Maksimal: 10):\n"
+                            . "• Skor 9 - 10 (Sangat Baik): Menguraikan fungsi dan urgensi materi secara jelas, runtut, dan tepat sasaran.\n"
+                            . "• Skor 6 - 8 (Baik): Menguraikan fungsi materi secara tepat, tetapi penjelasan urgensi masih bersifat umum.\n"
+                            . "• Skor 3 - 5 (Cukup): Penjelasan fungsi masih terbatas dan belum menguraikan urgensi secara jelas.\n"
+                            . "• Skor 1 - 2 (Perlu Bimbingan): Hanya menyebutkan poin singkat tanpa elaboration memadai.\n"
+                            . "• Skor 0 (Tidak Menjawab): Lembar jawaban kosong atau tidak ada substansi yang relevan sama sekali.",
+                    ],
+                    // Angle 2: Keterkaitan & Bagian-Bagian
+                    [
+                        'stem' => "Uraikan bagian-bagian atau tahapan mendasar yang berkaitan dengan {$concept}, dan jelaskan bagaimana bagian-bagian tersebut saling terhubung!",
+                        'indicator' => "Peserta didik mampu menguraikan bagian mendasar dan hubungan timbal balik materi {$concept}.",
+                        'answer' => "Kriteria Model Jawaban Lengkap (Level 1 / LOTS):\n"
+                            . "1. Menyebutkan bagian, tahapan, atau komponen mendasar dari {$concept} secara lengkap.\n"
+                            . "2. Menjelaskan hubungan timbal balik atau keterkaitan antarkomponen tersebut secara logis.",
+                        'explanation' => "Pedoman & Rubrik Penskoran Analitik (Skor Maksimal: 10):\n"
+                            . "• Skor 9 - 10 (Sangat Baik): Menyebutkan komponen secara lengkap dan menjelaskan keterhubungannya secara tepat dan sistematis.\n"
+                            . "• Skor 6 - 8 (Baik): Menyebutkan sebagian besar komponen namun penjelasan keterhubungannya masih sederhana.\n"
+                            . "• Skor 3 - 5 (Cukup): Hanya menyebutkan komponen tanpa menjelaskan bagaimana keterkaitan di antaranya.\n"
+                            . "• Skor 1 - 2 (Perlu Bimbingan): Komponen yang disebutkan belum tepat dan tidak ada penjelasan hubungan.\n"
+                            . "• Skor 0 (Tidak Menjawab): Lembar jawaban kosong atau tidak ada substansi yang relevan sama sekali.",
+                    ],
+                    // Angle 3: Contoh Konkret / Manifestasi
+                    [
+                        'stem' => "Berikan 2 (dua) contoh konkret atau ilustrasi sederhana dari {$concept} yang sering dijumpai dalam kehidupan sehari-hari atau lingkungan sekitar!",
+                        'indicator' => "Peserta didik mampu memberikan contoh konkret terkait materi {$concept} dalam konteks harian.",
+                        'answer' => "Kriteria Model Jawaban Lengkap (Level 1 / LOTS):\n"
+                            . "1. Menyajikan minimal 2 contoh konkret atau ilustrasi nyata yang relevan dengan {$concept}.\n"
+                            . "2. Memberikan penjelasan singkat mengapa contoh-contoh tersebut mencerminkan konsep yang dipelajari.",
+                        'explanation' => "Pedoman & Rubrik Penskoran Analitik (Skor Maksimal: 10):\n"
+                            . "• Skor 9 - 10 (Sangat Baik): Memberikan 2 contoh konkret yang sangat relevan dan disertai penjelasan hubungan konsep yang tepat.\n"
+                            . "• Skor 6 - 8 (Baik): Memberikan 2 contoh relevan namun penjelasannya singkat, atau hanya 1 contoh dengan penjelasan baik.\n"
+                            . "• Skor 3 - 5 (Cukup): Contoh yang diberikan kurang kontekstual atau kurang sesuai dengan materi.\n"
+                            . "• Skor 1 - 2 (Perlu Bimbingan): Contoh tidak relevan dengan konsep yang dibahas.\n"
+                            . "• Skor 0 (Tidak Menjawab): Lembar jawaban kosong atau tidak ada substansi yang relevan sama sekali.",
+                    ],
+                    // Angle 4: Ciri Khusus & Istilah Pokok
+                    [
+                        'stem' => "Deskripsikan ciri-ciri khusus yang menjadi pembeda pokok materi {$concept}, dan sebutkan istilah-istilah penting yang harus dipahami di dalamnya!",
+                        'indicator' => "Peserta didik mampu mendeskripsikan ciri khusus dan istilah kunci materi {$concept}.",
+                        'answer' => "Kriteria Model Jawaban Lengkap (Level 1 / LOTS):\n"
+                            . "1. Menjelaskan ciri-ciri pembeda utama dari {$concept} secara jelas.\n"
+                            . "2. Menyebutkan dan menjelaskan arti dari istilah-istilah penting yang terkandung di dalamnya.",
+                        'explanation' => "Pedoman & Rubrik Penskoran Analitik (Skor Maksimal: 10):\n"
+                            . "• Skor 9 - 10 (Sangat Baik): Ciri pembeda diuraikan secara akurat dan istilah-istilah penting dijelaskan dengan tepat.\n"
+                            . "• Skor 6 - 8 (Baik): Ciri pembeda diuraikan dengan cukup baik, namun penjelasan istilah masih terbatas.\n"
+                            . "• Skor 3 - 5 (Cukup): Penjelasan ciri pembeda masih umum dan istilah penting belum lengkap.\n"
+                            . "• Skor 1 - 2 (Perlu Bimbingan): Uraian tidak menyentuh ciri pembeda konsep materi.\n"
+                            . "• Skor 0 (Tidak Menjawab): Lembar jawaban kosong atau tidak ada substansi yang relevan sama sekali.",
+                    ],
+                ];
+            }
             $selected = $angles[$angleIndex];
         } elseif ($effectiveLevel === 'mots') {
             // MOTS (C3 - Menerapkan / Prosedur & Aplikasi)
             $levelCode = 'C3';
-            $angles = [
-                // Angle 0: Langkah-langkah Prosedural
-                [
-                    'stem' => "Uraikan langkah-langkah praktis dan sistematis dalam menerapkan konsep {$concept} saat menyelesaikan suatu tugas pembelajaran {$subjectName}!",
-                    'indicator' => "Peserta didik mampu menguraikan tahapan penerapan konsep {$concept} secara runtut dan terarah.",
-                    'answer' => "Kriteria Model Jawaban Lengkap (Level 2 / MOTS):\n"
-                        . "1. Menjelaskan langkah atau tahapan penerapan materi {$concept} secara runtut dari awal hingga akhir.\n"
-                        . "2. Memberikan alasan mengapa tahapan tersebut penting dilakukan untuk mencapai hasil yang diinginkan.",
-                    'explanation' => "Pedoman & Rubrik Penskoran Analitik (Skor Maksimal: 10):\n"
-                        . "• Skor 9 - 10 (Sangat Baik): Menguraikan tahapan penerapan secara sistematis, jelas, dan memberikan alasan yang tepat.\n"
-                        . "• Skor 6 - 8 (Baik): Menguraikan tahapan penerapan dengan cukup jelas, namun ada sebagian langkah yang terlewat.\n"
-                        . "• Skor 3 - 5 (Cukup): Langkah-langkah yang diuraikan masih acak dan belum menunjukkan alur kerja yang terstruktur.\n"
-                        . "• Skor 1 - 2 (Perlu Bimbingan): Hanya menyebutkan tujuan tanpa ada uraian langkah penerapan konkret.\n"
-                        . "• Skor 0 (Tidak Menjawab): Lembar jawaban kosong atau tidak ada substansi yang relevan sama sekali.",
-                ],
-                // Angle 1: Alur Kerja Proyek / Praktik
-                [
-                    'stem' => "Bayangkan Anda diminta mempraktikkan konsep {$concept} pada suatu tugas atau proyek sederhana. Bagaimanakah alur kerja yang Anda susun mulai dari persiapan hingga pengujian hasil?",
-                    'indicator' => "Peserta didik mampu menyusun alur kerja operasional berbasis konsep {$concept}.",
-                    'answer' => "Kriteria Model Jawaban Lengkap (Level 2 / MOTS):\n"
-                        . "1. Menyusun alur kerja praktis mencakup tahap persiapan, tahap pelaksanaan, dan tahap verifikasi hasil.\n"
-                        . "2. Menjelaskan cara memastikan setiap tahapan berjalan sesuai aturan materi {$concept}.",
-                    'explanation' => "Pedoman & Rubrik Penskoran Analitik (Skor Maksimal: 10):\n"
-                        . "• Skor 9 - 10 (Sangat Baik): Alur kerja terstruktur lengkap (persiapan-pelaksanaan-verifikasi) dan sesuai kaidah operasional materi.\n"
-                        . "• Skor 6 - 8 (Baik): Alur kerja terstruktur cukup baik namun tahapan verifikasi atau persiapan kurang detail.\n"
-                        . "• Skor 3 - 5 (Cukup): Alur kerja masih sederhana dan ada lompatan tahapan yang krusial.\n"
-                        . "• Skor 1 - 2 (Perlu Bimbingan): Rencana kerja tidak sistematis dan belum menerapkan konsep secara benar.\n"
-                        . "• Skor 0 (Tidak Menjawab): Lembar jawaban kosong atau tidak ada substansi yang relevan sama sekali.",
-                ],
-                // Angle 2: Penyelesaian Kasus Operasional
-                [
-                    'stem' => "Jika Anda menghadapi situasi nyata di sekolah yang menuntut penerapan {$concept}, langkah-langkah penyelesaian apa yang akan Anda ambil agar hasil yang diperoleh akurat?",
-                    'indicator' => "Peserta didik mampu merumuskan langkah penyelesaian masalah operasional menggunakan kaidah {$concept}.",
-                    'answer' => "Kriteria Model Jawaban Lengkap (Level 2 / MOTS):\n"
-                        . "1. Mengidentifikasi kebutuhan data atau kondisi awal yang diperlukan dalam situasi tersebut.\n"
-                        . "2. Menetapkan urutan tindakan penyelesaian yang tepat berbasis kaidah {$concept}.\n"
-                        . "3. Menjelaskan cara memeriksa keakuratan hasil akhir.",
-                    'explanation' => "Pedoman & Rubrik Penskoran Analitik (Skor Maksimal: 10):\n"
-                        . "• Skor 9 - 10 (Sangat Baik): Tindakan penyelesaian masalah sistematis, realistis, dan dilengkapi verifikasi keakuratan.\n"
-                        . "• Skor 6 - 8 (Baik): Tindakan penyelesaian tepat tetapi langkah pengecekan hasil belum diuraikan.\n"
-                        . "• Skor 3 - 5 (Cukup): Tindakan penyelesaian masih umum dan belum spesifik pada kaidah {$concept}.\n"
-                        . "• Skor 1 - 2 (Perlu Bimbingan): Langkah tindakan tidak sesuai dengan konteks masalah.\n"
-                        . "• Skor 0 (Tidak Menjawab): Lembar jawaban kosong atau tidak ada substansi yang relevan sama sekali.",
-                ],
-                // Angle 3: Kaidah Pemilihan Metode
-                [
-                    'stem' => "Bagaimanakah kaidah atau aturan pokok dalam {$concept} Anda terapkan saat harus memilih strategi kerja yang paling efektif dan efisien?",
-                    'indicator' => "Peserta didik mampu menerapkan aturan konsep {$concept} dalam penentuan strategi kerja efisien.",
-                    'answer' => "Kriteria Model Jawaban Lengkap (Level 2 / MOTS):\n"
-                        . "1. Menjelaskan kaidah pokok yang dijadikan pedoman dalam materi {$concept}.\n"
-                        . "2. Menguraikan pertimbangan pemilihan strategi agar pekerjaan berjalan lebih hemat waktu dan sumber daya.",
-                    'explanation' => "Pedoman & Rubrik Penskoran Analitik (Skor Maksimal: 10):\n"
-                        . "• Skor 9 - 10 (Sangat Baik): Kaidah dijelaskan dengan tepat dan pertimbangan efisiensi diuraikan dengan sangat logis.\n"
-                        . "• Skor 6 - 8 (Baik): Kaidah dijelaskan dengan benar, namun pertimbangan efisiensi masih terbatas.\n"
-                        . "• Skor 3 - 5 (Cukup): Uraian kaidah kurang mendalam dan kaitan dengan efisiensi kerja belum tampak.\n"
-                        . "• Skor 1 - 2 (Perlu Bimbingan): Jawaban tidak relevan dengan kaidah konsep yang dimaksud.\n"
-                        . "• Skor 0 (Tidak Menjawab): Lembar jawaban kosong atau tidak ada substansi yang relevan sama sekali.",
-                ],
-                // Angle 4: Siklus dan Luaran Proses
-                [
-                    'stem' => "Jelaskan siklus atau alur proses kerja yang berlangsung pada {$concept}, dan deskripsikan bentuk hasil (output) yang diharapkan pada setiap tahapannya!",
-                    'indicator' => "Peserta didik mampu mendeskripsikan siklus proses dan luaran pada materi {$concept}.",
-                    'answer' => "Kriteria Model Jawaban Lengkap (Level 2 / MOTS):\n"
-                        . "1. Menguraikan siklus proses kerja materi {$concept} dari input hingga hasil akhir.\n"
-                        . "2. Menjelaskan output atau luaran spesifik yang dihasilkan dari tiap tahapan proses.",
-                    'explanation' => "Pedoman & Rubrik Penskoran Analitik (Skor Maksimal: 10):\n"
-                        . "• Skor 9 - 10 (Sangat Baik): Siklus proses dan output setiap tahapan diuraikan secara komprehensif, benar, dan runtut.\n"
-                        . "• Skor 6 - 8 (Baik): Siklus proses diuraikan dengan baik namun penjelasan output tiap tahapan belum lengkap.\n"
-                        . "• Skor 3 - 5 (Cukup): Alur siklus masih terpotong-potong dan output belum dijelaskan.\n"
-                        . "• Skor 1 - 2 (Perlu Bimbingan): Uraian siklus salah atau tidak sesuai konsep materi.\n"
-                        . "• Skor 0 (Tidak Menjawab): Lembar jawaban kosong atau tidak ada substansi yang relevan sama sekali.",
-                ],
-            ];
+
+            if ($isSmp) {
+                $angles = [
+                    // Angle 0: Langkah Praktik Tugas Sekolah SMP
+                    [
+                        'stem' => "Tuliskan langkah-langkah praktis yang perlu kamu lakukan untuk menerapkan konsep {$concept} saat mengerjakan tugas sekolah atau praktik di kelas {$subjectName}!",
+                        'indicator' => "Peserta didik mampu menguraikan tahapan penerapan konsep {$concept} secara runtut dan terarah.",
+                        'answer' => "Kriteria Model Jawaban Lengkap (Level 2 / MOTS):\n"
+                            . "1. Menjelaskan langkah-langkah kerja materi {$concept} dari awal hingga selesai secara runtut.\n"
+                            . "2. Memberikan alasan mengapa tahapan tersebut penting dilakukan untuk mencapai hasil yang diinginkan.",
+                        'explanation' => "Pedoman & Rubrik Penskoran Analitik (Skor Maksimal: 10):\n"
+                            . "• Skor 9 - 10 (Sangat Baik): Menguraikan tahapan penerapan secara sistematis, jelas, dan memberikan alasan yang tepat.\n"
+                            . "• Skor 6 - 8 (Baik): Menguraikan tahapan penerapan dengan cukup jelas, namun ada sebagian langkah yang terlewat.\n"
+                            . "• Skor 3 - 5 (Cukup): Langkah-langkah yang diuraikan masih acak dan belum menunjukkan alur kerja yang terstruktur.\n"
+                            . "• Skor 1 - 2 (Perlu Bimbingan): Hanya menyebutkan tujuan tanpa ada uraian langkah penerapan konkret.\n"
+                            . "• Skor 0 (Tidak Menjawab): Lembar jawaban kosong atau tidak ada substansi yang relevan sama sekali.",
+                    ],
+                    // Angle 1: Alur Tugas / Proyek Sederhana SMP
+                    [
+                        'stem' => "Bayangkan kamu sedang mengerjakan tugas kelompok sederhana tentang {$concept}. Bagaimana urutan pembagian kerja yang baik mulai dari persiapan hingga memeriksa hasil pekerjaan?",
+                        'indicator' => "Peserta didik mampu menyusun alur kerja operasional berbasis konsep {$concept}.",
+                        'answer' => "Kriteria Model Jawaban Lengkap (Level 2 / MOTS):\n"
+                            . "1. Menyusun alur kerja praktis mulai dari persiapan, pengerjaan, hingga pemeriksaan hasil.\n"
+                            . "2. Menjelaskan cara memastikan tugas selesai dengan benar sesuai kaidah materi {$concept}.",
+                        'explanation' => "Pedoman & Rubrik Penskoran Analitik (Skor Maksimal: 10):\n"
+                            . "• Skor 9 - 10 (Sangat Baik): Alur kerja terstruktur lengkap (persiapan-pelaksanaan-verifikasi) dan sesuai kaidah operasional materi.\n"
+                            . "• Skor 6 - 8 (Baik): Alur kerja terstruktur cukup baik namun tahapan verifikasi atau persiapan kurang detail.\n"
+                            . "• Skor 3 - 5 (Cukup): Alur kerja masih sederhana dan ada lompatan tahapan yang krusial.\n"
+                            . "• Skor 1 - 2 (Perlu Bimbingan): Rencana kerja tidak sistematis dan belum menerapkan konsep secara benar.\n"
+                            . "• Skor 0 (Tidak Menjawab): Lembar jawaban kosong atau tidak ada substansi yang relevan sama sekali.",
+                    ],
+                    // Angle 2: Pemeriksaan Masalah Belajar SMP
+                    [
+                        'stem' => "Jika kamu menemukan kendala saat mempraktikkan {$concept} dalam pembelajaran {$subjectName}, langkah-langkah pemeriksaan apa saja yang akan kamu lakukan agar tugasmu selesai dengan benar?",
+                        'indicator' => "Peserta didik mampu merumuskan langkah penyelesaian masalah operasional menggunakan kaidah {$concept}.",
+                        'answer' => "Kriteria Model Jawaban Lengkap (Level 2 / MOTS):\n"
+                            . "1. Mengidentifikasi bagian yang mengalami kendala dalam materi {$concept}.\n"
+                            . "2. Menetapkan urutan tindakan penyelesaian yang tepat berbasis kaidah {$concept}.\n"
+                            . "3. Menjelaskan cara memeriksa keakuratan hasil akhir.",
+                        'explanation' => "Pedoman & Rubrik Penskoran Analitik (Skor Maksimal: 10):\n"
+                            . "• Skor 9 - 10 (Sangat Baik): Tindakan penyelesaian masalah sistematis, realistis, dan dilengkapi verifikasi keakuratan.\n"
+                            . "• Skor 6 - 8 (Baik): Tindakan penyelesaian tepat tetapi langkah pengecekan hasil belum diuraikan.\n"
+                            . "• Skor 3 - 5 (Cukup): Tindakan penyelesaian masih umum dan belum spesifik pada kaidah {$concept}.\n"
+                            . "• Skor 1 - 2 (Perlu Bimbingan): Langkah tindakan tidak sesuai dengan konteks masalah.\n"
+                            . "• Skor 0 (Tidak Menjawab): Lembar jawaban kosong atau tidak ada substansi yang relevan sama sekali.",
+                    ],
+                    // Angle 3: Kaidah Kerja Efisien SMP
+                    [
+                        'stem' => "Mengapa kita harus mengikuti petunjuk atau aturan yang benar pada materi {$concept}? Jelaskan dampaknya jika ada tahapan yang kamu lewati saat mengerjakan tugas!",
+                        'indicator' => "Peserta didik mampu menerapkan aturan konsep {$concept} dalam penentuan strategi kerja efisien.",
+                        'answer' => "Kriteria Model Jawaban Lengkap (Level 2 / MOTS):\n"
+                            . "1. Menjelaskan kaidah pokok yang dijadikan pedoman dalam materi {$concept}.\n"
+                            . "2. Menguraikan pertimbangan pemilihan strategi agar pekerjaan berjalan lebih hemat waktu dan sumber daya.",
+                        'explanation' => "Pedoman & Rubrik Penskoran Analitik (Skor Maksimal: 10):\n"
+                            . "• Skor 9 - 10 (Sangat Baik): Kaidah dijelaskan dengan tepat dan pertimbangan efisiensi diuraikan dengan sangat logis.\n"
+                            . "• Skor 6 - 8 (Baik): Kaidah dijelaskan dengan benar, namun pertimbangan efisiensi masih terbatas.\n"
+                            . "• Skor 3 - 5 (Cukup): Uraian kaidah kurang mendalam dan kaitan dengan efisiensi kerja belum tampak.\n"
+                            . "• Skor 1 - 2 (Perlu Bimbingan): Jawaban tidak relevan dengan kaidah konsep yang dimaksud.\n"
+                            . "• Skor 0 (Tidak Menjawab): Lembar jawaban kosong atau tidak ada substansi yang relevan sama sekali.",
+                    ],
+                    // Angle 4: Siklus dan Hasil Output SMP
+                    [
+                        'stem' => "Jelaskan urutan proses kerja yang terjadi pada {$concept}, dan sebutkan bentuk hasil (output) yang didapatkan pada setiap langkahnya!",
+                        'indicator' => "Peserta didik mampu mendeskripsikan siklus proses dan luaran pada materi {$concept}.",
+                        'answer' => "Kriteria Model Jawaban Lengkap (Level 2 / MOTS):\n"
+                            . "1. Menguraikan siklus proses kerja materi {$concept} dari input hingga hasil akhir.\n"
+                            . "2. Menjelaskan output atau luaran spesifik yang dihasilkan dari tiap tahapan proses.",
+                        'explanation' => "Pedoman & Rubrik Penskoran Analitik (Skor Maksimal: 10):\n"
+                            . "• Skor 9 - 10 (Sangat Baik): Siklus proses dan output setiap tahapan diuraikan secara komprehensif, benar, dan runtut.\n"
+                            . "• Skor 6 - 8 (Baik): Siklus proses diuraikan dengan baik namun penjelasan output tiap tahapan belum lengkap.\n"
+                            . "• Skor 3 - 5 (Cukup): Alur siklus masih terpotong-potong dan output belum dijelaskan.\n"
+                            . "• Skor 1 - 2 (Perlu Bimbingan): Uraian siklus salah atau tidak sesuai konsep materi.\n"
+                            . "• Skor 0 (Tidak Menjawab): Lembar jawaban kosong atau tidak ada substansi yang relevan sama sekali.",
+                    ],
+                ];
+            } else {
+                $angles = [
+                    // Angle 0: Langkah-langkah Prosedural Umum/SMA
+                    [
+                        'stem' => "Uraikan langkah-langkah praktis dan sistematis dalam menerapkan konsep {$concept} saat menyelesaikan suatu tugas pembelajaran {$subjectName}!",
+                        'indicator' => "Peserta didik mampu menguraikan tahapan penerapan konsep {$concept} secara runtut dan terarah.",
+                        'answer' => "Kriteria Model Jawaban Lengkap (Level 2 / MOTS):\n"
+                            . "1. Menjelaskan langkah atau tahapan penerapan materi {$concept} secara runtut dari awal hingga akhir.\n"
+                            . "2. Memberikan alasan mengapa tahapan tersebut penting dilakukan untuk mencapai hasil yang diinginkan.",
+                        'explanation' => "Pedoman & Rubrik Penskoran Analitik (Skor Maksimal: 10):\n"
+                            . "• Skor 9 - 10 (Sangat Baik): Menguraikan tahapan penerapan secara sistematis, jelas, dan memberikan alasan yang tepat.\n"
+                            . "• Skor 6 - 8 (Baik): Menguraikan tahapan penerapan dengan cukup jelas, namun ada sebagian langkah yang terlewat.\n"
+                            . "• Skor 3 - 5 (Cukup): Langkah-langkah yang diuraikan masih acak dan belum menunjukkan alur kerja yang terstruktur.\n"
+                            . "• Skor 1 - 2 (Perlu Bimbingan): Hanya menyebutkan tujuan tanpa ada uraian langkah penerapan konkret.\n"
+                            . "• Skor 0 (Tidak Menjawab): Lembar jawaban kosong atau tidak ada substansi yang relevan sama sekali.",
+                    ],
+                    // Angle 1: Alur Kerja Proyek / Praktik
+                    [
+                        'stem' => "Bayangkan Anda diminta mempraktikkan konsep {$concept} pada suatu tugas atau proyek sederhana. Bagaimanakah alur kerja yang Anda susun mulai dari persiapan hingga pengujian hasil?",
+                        'indicator' => "Peserta didik mampu menyusun alur kerja operasional berbasis konsep {$concept}.",
+                        'answer' => "Kriteria Model Jawaban Lengkap (Level 2 / MOTS):\n"
+                            . "1. Menyusun alur kerja praktis mencakup tahap persiapan, tahap pelaksanaan, dan tahap verifikasi hasil.\n"
+                            . "2. Menjelaskan cara memastikan setiap tahapan berjalan sesuai aturan materi {$concept}.",
+                        'explanation' => "Pedoman & Rubrik Penskoran Analitik (Skor Maksimal: 10):\n"
+                            . "• Skor 9 - 10 (Sangat Baik): Alur kerja terstruktur lengkap (persiapan-pelaksanaan-verifikasi) dan sesuai kaidah operasional materi.\n"
+                            . "• Skor 6 - 8 (Baik): Alur kerja terstruktur cukup baik namun tahapan verifikasi atau persiapan kurang detail.\n"
+                            . "• Skor 3 - 5 (Cukup): Alur kerja masih sederhana dan ada lompatan tahapan yang krusial.\n"
+                            . "• Skor 1 - 2 (Perlu Bimbingan): Rencana kerja tidak sistematis dan belum menerapkan konsep secara benar.\n"
+                            . "• Skor 0 (Tidak Menjawab): Lembar jawaban kosong atau tidak ada substansi yang relevan sama sekali.",
+                    ],
+                    // Angle 2: Penyelesaian Kasus Operasional
+                    [
+                        'stem' => "Jika Anda menghadapi situasi nyata di sekolah yang menuntut penerapan {$concept}, langkah-langkah penyelesaian apa yang akan Anda ambil agar hasil yang diperoleh akurat?",
+                        'indicator' => "Peserta didik mampu merumuskan langkah penyelesaian masalah operasional menggunakan kaidah {$concept}.",
+                        'answer' => "Kriteria Model Jawaban Lengkap (Level 2 / MOTS):\n"
+                            . "1. Mengidentifikasi kebutuhan data atau kondisi awal yang diperlukan dalam situasi tersebut.\n"
+                            . "2. Menetapkan urutan tindakan penyelesaian yang tepat berbasis kaidah {$concept}.\n"
+                            . "3. Menjelaskan cara memeriksa keakuratan hasil akhir.",
+                        'explanation' => "Pedoman & Rubrik Penskoran Analitik (Skor Maksimal: 10):\n"
+                            . "• Skor 9 - 10 (Sangat Baik): Tindakan penyelesaian masalah sistematis, realistis, dan dilengkapi verifikasi keakuratan.\n"
+                            . "• Skor 6 - 8 (Baik): Tindakan penyelesaian tepat tetapi langkah pengecekan hasil belum diuraikan.\n"
+                            . "• Skor 3 - 5 (Cukup): Tindakan penyelesaian masih umum dan belum spesifik pada kaidah {$concept}.\n"
+                            . "• Skor 1 - 2 (Perlu Bimbingan): Langkah tindakan tidak sesuai dengan konteks masalah.\n"
+                            . "• Skor 0 (Tidak Menjawab): Lembar jawaban kosong atau tidak ada substansi yang relevan sama sekali.",
+                    ],
+                    // Angle 3: Kaidah Pemilihan Metode
+                    [
+                        'stem' => "Bagaimanakah kaidah atau aturan pokok dalam {$concept} Anda terapkan saat harus memilih strategi kerja yang paling efektif dan efisien?",
+                        'indicator' => "Peserta didik mampu menerapkan aturan konsep {$concept} dalam penentuan strategi kerja efisien.",
+                        'answer' => "Kriteria Model Jawaban Lengkap (Level 2 / MOTS):\n"
+                            . "1. Menjelaskan kaidah pokok yang dijadikan pedoman dalam materi {$concept}.\n"
+                            . "2. Menguraikan pertimbangan pemilihan strategi agar pekerjaan berjalan lebih hemat waktu dan sumber daya.",
+                        'explanation' => "Pedoman & Rubrik Penskoran Analitik (Skor Maksimal: 10):\n"
+                            . "• Skor 9 - 10 (Sangat Baik): Kaidah dijelaskan dengan tepat dan pertimbangan efisiensi diuraikan dengan sangat logis.\n"
+                            . "• Skor 6 - 8 (Baik): Kaidah dijelaskan dengan benar, namun pertimbangan efisiensi masih terbatas.\n"
+                            . "• Skor 3 - 5 (Cukup): Uraian kaidah kurang mendalam dan kaitan dengan efisiensi kerja belum tampak.\n"
+                            . "• Skor 1 - 2 (Perlu Bimbingan): Jawaban tidak relevan dengan kaidah konsep yang dimaksud.\n"
+                            . "• Skor 0 (Tidak Menjawab): Lembar jawaban kosong atau tidak ada substansi yang relevan sama sekali.",
+                    ],
+                    // Angle 4: Siklus dan Luaran Proses
+                    [
+                        'stem' => "Jelaskan siklus atau alur proses kerja yang berlangsung pada {$concept}, dan deskripsikan bentuk hasil (output) yang diharapkan pada setiap tahapannya!",
+                        'indicator' => "Peserta didik mampu mendeskripsikan siklus proses dan luaran pada materi {$concept}.",
+                        'answer' => "Kriteria Model Jawaban Lengkap (Level 2 / MOTS):\n"
+                            . "1. Menguraikan siklus proses kerja materi {$concept} dari input hingga hasil akhir.\n"
+                            . "2. Menjelaskan output atau luaran spesifik yang dihasilkan dari tiap tahapan proses.",
+                        'explanation' => "Pedoman & Rubrik Penskoran Analitik (Skor Maksimal: 10):\n"
+                            . "• Skor 9 - 10 (Sangat Baik): Siklus proses dan output setiap tahapan diuraikan secara komprehensif, benar, dan runtut.\n"
+                            . "• Skor 6 - 8 (Baik): Siklus proses diuraikan dengan baik namun penjelasan output tiap tahapan belum lengkap.\n"
+                            . "• Skor 3 - 5 (Cukup): Alur siklus masih terpotong-potong dan output belum dijelaskan.\n"
+                            . "• Skor 1 - 2 (Perlu Bimbingan): Uraian siklus salah atau tidak sesuai konsep materi.\n"
+                            . "• Skor 0 (Tidak Menjawab): Lembar jawaban kosong atau tidak ada substansi yang relevan sama sekali.",
+                    ],
+                ];
+            }
             $selected = $angles[$angleIndex];
         } else {
             // HOTS (C4/C5 - Analisis Kasus, Evaluasi & Pemecahan Masalah Kritis)
             $levelCode = (($number + $variant) % 2 === 1) ? 'C4' : 'C5';
-            $angles = [
-                // Angle 0: Analisis Akar Masalah & Solusi
-                [
-                    'stem' => "Lakukan analisis kritis: Jika dalam implementasi {$concept} terjadi kendala atau kegagalan sistematis, bagaimana cara Anda mengidentifikasi akar penyebab masalah tersebut dan merumuskan solusi alternatif yang paling efektif?",
-                    'indicator' => "Peserta didik mampu menganalisis permasalahan, mengevaluasi faktor penyebab, dan merumuskan solusi logis pada materi {$concept}.",
-                    'answer' => "Kriteria Model Jawaban Lengkap (Level 3 / HOTS):\n"
-                        . "1. Mengidentifikasi minimal 2 faktor penyebab utama terjadinya masalah pada implementasi {$concept}.\n"
-                        . "2. Merumuskan solusi alternatif yang kreatif, logis, dan dapat diterapkan secara konkret.\n"
-                        . "3. Menyertakan argumen penalaran kritis yang menghubungkan solusi dengan prinsip keilmuan yang dipelajari.",
-                    'explanation' => "Pedoman & Rubrik Penskoran Analitik (Skor Maksimal: 10):\n"
-                        . "• Skor 9 - 10 (Sangat Baik): Analisis kritis sangat mendalam, pemetaan akar masalah tepat, dan solusi alternatif inovatif serta realistis.\n"
-                        . "• Skor 6 - 8 (Baik): Mampu mengidentifikasi penyebab dan menawarkan solusi, namun argumentasi penalaran masih sederhana.\n"
-                        . "• Skor 3 - 5 (Cukup): Hanya menyebutkan masalah tanpa analisis mendalam mengenai alternatif solusi.\n"
-                        . "• Skor 1 - 2 (Perlu Bimbingan): Uraian belum menyentuh pemecahan masalah dan argumentasi tidak logis.\n"
-                        . "• Skor 0 (Tidak Menjawab): Lembar jawaban kosong atau tidak ada substansi yang relevan sama sekali.",
-                ],
-                // Angle 1: Evaluasi Kelebihan & Keterbatasan
-                [
-                    'stem' => "Evaluasilah kelebihan dan potensi keterbatasan dari pendekatan {$concept}. Mengapa pertimbangan kritis terhadap kedua aspek tersebut penting sebelum mengambil suatu keputusan final?",
-                    'indicator' => "Peserta didik mampu mengevaluasi kelebihan, kelemahan, dan urgensi pertimbangan materi {$concept}.",
-                    'answer' => "Kriteria Model Jawaban Lengkap (Level 3 / HOTS):\n"
-                        . "1. Menyajikan telaah objektif mengenai keunggulan/kelebihan utama dari {$concept}.\n"
-                        . "2. Menguraikan keterbatasan atau tantangan yang mungkin timbul saat diterapkan.\n"
-                        . "3. Memberikan justifikasi evaluatif mengapa pertimbangan seimbang ini penting bagi pengambil keputusan.",
-                    'explanation' => "Pedoman & Rubrik Penskoran Analitik (Skor Maksimal: 10):\n"
-                        . "• Skor 9 - 10 (Sangat Baik): Evaluasi kelebihan dan keterbatasan diuraikan berimbang, kritis, dan disertai justifikasi yang kuat.\n"
-                        . "• Skor 6 - 8 (Baik): Mampu menguraikan kelebihan dan keterbatasan, namun justifikasi pengambilan keputusan masih normatif.\n"
-                        . "• Skor 3 - 5 (Cukup): Hanya menguraikan salah satu sisi (kelebihan saja atau kelemahan saja).\n"
-                        . "• Skor 1 - 2 (Perlu Bimbingan): Uraian evaluasi sangat dangkal dan tidak menunjukkan daya kritis.\n"
-                        . "• Skor 0 (Tidak Menjawab): Lembar jawaban kosong atau tidak ada substansi yang relevan sama sekali.",
-                ],
-                // Angle 2: Analisis Dampak Sistemik & Sebab-Akibat
-                [
-                    'stem' => "Disajikan analisis kasus: Apabila salah satu elemen penting dalam {$concept} mengalami gangguan atau tidak berfungsi semestinya, analisislah dampak berantai yang ditimbulkannya terhadap keseluruhan sistem atau hasil kerja!",
-                    'indicator' => "Peserta didik mampu menganalisis hubungan sebab-akibat dan dampak sistemik pada materi {$concept}.",
-                    'answer' => "Kriteria Model Jawaban Lengkap (Level 3 / HOTS):\n"
-                        . "1. Menganalisis peran kritis elemen yang mengalami gangguan dalam sistem {$concept}.\n"
-                        . "2. Menguraikan rantai sebab-akibat terhadap komponen lain yang saling bergantung.\n"
-                        . "3. Menyimpulkan dampak akhir terhadap integritas atau kinerja sistem secara keseluruhan.",
-                    'explanation' => "Pedoman & Rubrik Penskoran Analitik (Skor Maksimal: 10):\n"
-                        . "• Skor 9 - 10 (Sangat Baik): Analisis sebab-akibat sangat runtut, memetakan dampak berantai secara komprehensif, dan kesimpulan valid.\n"
-                        . "• Skor 6 - 8 (Baik): Mampu memetakan sebagian besar dampak, namun penjelasan keterkaitan antarkomponen kurang mendalam.\n"
-                        . "• Skor 3 - 5 (Cukup): Hanya menyebutkan dampak langsung tanpa menganalisis hubungan sebab-akibat berantai.\n"
-                        . "• Skor 1 - 2 (Perlu Bimbingan): Analisis tidak tepat dan tidak mencerminkan pemahaman sistemik materi.\n"
-                        . "• Skor 0 (Tidak Menjawab): Lembar jawaban kosong atau tidak ada substansi yang relevan sama sekali.",
-                ],
-                // Angle 3: Perbandingan Kritis Dua Solusi
-                [
-                    'stem' => "Bandingkan 2 (dua) pendekatan atau strategi yang berbeda dalam menyelesaikan persoalan terkait {$concept}. Berikan penilaian kritis mengenai pendekatan mana yang paling optimal, disertai argumentasi logis!",
-                    'indicator' => "Peserta didik mampu membandingkan berbagai pendekatan dan menentukan pilihan solusi terbaik pada materi {$concept}.",
-                    'answer' => "Kriteria Model Jawaban Lengkap (Level 3 / HOTS):\n"
-                        . "1. Membandingkan minimal 2 pendekatan dari parameter efektivitas, efisiensi, atau kemudahan implementasi dalam {$concept}.\n"
-                        . "2. Menentukan pendekatan yang paling optimal dengan landasan argumen logis dan berbasis bukti.",
-                    'explanation' => "Pedoman & Rubrik Penskoran Analitik (Skor Maksimal: 10):\n"
-                        . "• Skor 9 - 10 (Sangat Baik): Komparasi kedua pendekatan tajam, kriteria penilaian jelas, dan penetapan solusi optimal sangat meyakinkan.\n"
-                        . "• Skor 6 - 8 (Baik): Mampu membandingkan kedua pendekatan, tetapi kriteria penilaian solusi optimal masih sederhana.\n"
-                        . "• Skor 3 - 5 (Cukup): Perbandingan masih bersifat deskriptif tanpa penilaian kritis yang memadai.\n"
-                        . "• Skor 1 - 2 (Perlu Bimbingan): Uraian tidak menunjukkan perbandingan dua pendekatan yang jelas.\n"
-                        . "• Skor 0 (Tidak Menjawab): Lembar jawaban kosong atau tidak ada substansi yang relevan sama sekali.",
-                ],
-                // Angle 4: Perancangan Strategi Inovatif
-                [
-                    'stem' => "Bagaimanakah Anda merancang suatu strategi atau gagasan terintegrasi dengan memanfaatkan prinsip {$concept} untuk mengantisipasi persoalan atau kebutuhan di masa depan?",
-                    'indicator' => "Peserta didik mampu merancang strategi integratif dan solutif berbasis prinsip {$concept}.",
-                    'answer' => "Kriteria Model Jawaban Lengkap (Level 3 / HOTS):\n"
-                        . "1. Merumuskan gagasan atau strategi yang terstruktur dengan mengintegrasikan prinsip utama {$concept}.\n"
-                        . "2. Menjelaskan kebaruan atau efektivitas strategi tersebut dalam menjawab tantangan di masa depan.\n"
-                        . "3. Menguraikan faktor pendukung yang dibutuhkan agar strategi dapat terealisasi.",
-                    'explanation' => "Pedoman & Rubrik Penskoran Analitik (Skor Maksimal: 10):\n"
-                        . "• Skor 9 - 10 (Sangat Baik): Rancangan strategi sangat terstruktur, orisinal, aplikatif, dan didukung penalaran ilmiah yang solid.\n"
-                        . "• Skor 6 - 8 (Baik): Rancangan strategi cukup baik dan terarah, namun aspek antisipasi masa depan masih umum.\n"
-                        . "• Skor 3 - 5 (Cukup): Gagasan yang diajukan masih sederhana dan belum terintegrasi secara utuh dengan prinsip materi.\n"
-                        . "• Skor 1 - 2 (Perlu Bimbingan): Rancangan strategi tidak realistis atau tidak relevan dengan konsep materi.\n"
-                        . "• Skor 0 (Tidak Menjawab): Lembar jawaban kosong atau tidak ada substansi yang relevan sama sekali.",
-                ],
-            ];
+
+            if ($isSmp) {
+                $angles = [
+                    // Angle 0: Analisis Masalah & Solusi SMP
+                    [
+                        'stem' => "Perhatikan masalah berikut: Jika saat mempraktikkan {$concept} terjadi gangguan atau hasil tidak sesuai yang diharapkan, bagaimana caramu mencari tahu letak kesalahannya dan bagaimana solusi terbaik untuk memperbaikinya?",
+                        'indicator' => "Peserta didik mampu menganalisis permasalahan, mengevaluasi faktor penyebab, dan merumuskan solusi logis pada materi {$concept}.",
+                        'answer' => "Kriteria Model Jawaban Lengkap (Level 3 / HOTS):\n"
+                            . "1. Mengidentifikasi minimal 2 faktor penyebab utama terjadinya masalah pada materi {$concept}.\n"
+                            . "2. Merumuskan solusi alternatif yang kreatif, logis, dan dapat diterapkan secara konkret oleh siswa.\n"
+                            . "3. Menyertakan argumen penalaran yang menghubungkan solusi dengan prinsip materi yang dipelajari.",
+                        'explanation' => "Pedoman & Rubrik Penskoran Analitik (Skor Maksimal: 10):\n"
+                            . "• Skor 9 - 10 (Sangat Baik): Analisis kritis sangat mendalam, pemetaan akar masalah tepat, dan solusi alternatif inovatif serta realistis.\n"
+                            . "• Skor 6 - 8 (Baik): Mampu mengidentifikasi penyebab dan menawarkan solusi, namun argumentasi penalaran masih sederhana.\n"
+                            . "• Skor 3 - 5 (Cukup): Hanya menyebutkan masalah tanpa analisis mendalam mengenai alternatif solusi.\n"
+                            . "• Skor 1 - 2 (Perlu Bimbingan): Uraian belum menyentuh pemecahan masalah dan argumentasi tidak logis.\n"
+                            . "• Skor 0 (Tidak Menjawab): Lembar jawaban kosong atau tidak ada substansi yang relevan sama sekali.",
+                    ],
+                    // Angle 1: Menentukan Pilihan Terbaik SMP
+                    [
+                        'stem' => "Saat menyelesaikan persoalan terkait materi {$concept}, ada dua cara atau pilihan tindakan berbeda yang bisa diambil. Bagaimana cara kamu menentukan pilihan mana yang paling tepat, aman, dan mudah dilakukan?",
+                        'indicator' => "Peserta didik mampu mengevaluasi kelebihan, kelemahan, dan menentukan pilihan terbaik materi {$concept}.",
+                        'answer' => "Kriteria Model Jawaban Lengkap (Level 3 / HOTS):\n"
+                            . "1. Menyajikan pertimbangan mengenai kelebihan dan kekurangan dari pilihan cara yang ada pada {$concept}.\n"
+                            . "2. Menentukan pilihan terbaik dengan alasan logis dan dapat dipertanggungjawabkan.\n"
+                            . "3. Memberikan penjelasan mengapa pilihan tersebut paling aman dan efektif.",
+                        'explanation' => "Pedoman & Rubrik Penskoran Analitik (Skor Maksimal: 10):\n"
+                            . "• Skor 9 - 10 (Sangat Baik): Evaluasi kelebihan dan keterbatasan diuraikan berimbang, kritis, dan disertai justifikasi yang kuat.\n"
+                            . "• Skor 6 - 8 (Baik): Mampu menguraikan kelebihan dan keterbatasan, namun justifikasi pengambilan keputusan masih normatif.\n"
+                            . "• Skor 3 - 5 (Cukup): Hanya menguraikan salah satu sisi (kelebihan saja atau kelemahan saja).\n"
+                            . "• Skor 1 - 2 (Perlu Bimbingan): Uraian evaluasi sangat dangkal dan tidak menunjukkan daya kritis.\n"
+                            . "• Skor 0 (Tidak Menjawab): Lembar jawaban kosong atau tidak ada substansi yang relevan sama sekali.",
+                    ],
+                    // Angle 2: Hubungan Sebab-Akibat Komponen SMP
+                    [
+                        'stem' => "Disajikan situasi: Apabila salah satu bagian penting dalam {$concept} mengalami gangguan atau tidak berfungsi semestinya, analisislah apa akibat langsung dan dampak kelanjutannya terhadap hasil pekerjaan!",
+                        'indicator' => "Peserta didik mampu menganalisis hubungan sebab-akibat dan dampak sistemik pada materi {$concept}.",
+                        'answer' => "Kriteria Model Jawaban Lengkap (Level 3 / HOTS):\n"
+                            . "1. Menjelaskan fungsi bagian yang mengalami gangguan dalam materi {$concept}.\n"
+                            . "2. Menguraikan akibat langsung terhadap bagian lain yang saling berkaitan.\n"
+                            . "3. Menyimpulkan dampak akhir terhadap hasil tugas atau pekerjaan secara logis.",
+                        'explanation' => "Pedoman & Rubrik Penskoran Analitik (Skor Maksimal: 10):\n"
+                            . "• Skor 9 - 10 (Sangat Baik): Analisis sebab-akibat sangat runtut, memetakan dampak berantai secara komprehensif, dan kesimpulan valid.\n"
+                            . "• Skor 6 - 8 (Baik): Mampu memetakan sebagian besar dampak, namun penjelasan keterkaitan antarkomponen kurang mendalam.\n"
+                            . "• Skor 3 - 5 (Cukup): Hanya menyebutkan dampak langsung tanpa menganalisis hubungan sebab-akibat berantai.\n"
+                            . "• Skor 1 - 2 (Perlu Bimbingan): Analisis tidak tepat dan tidak mencerminkan pemahaman sistemik materi.\n"
+                            . "• Skor 0 (Tidak Menjawab): Lembar jawaban kosong atau tidak ada substansi yang relevan sama sekali.",
+                    ],
+                    // Angle 3: Memeriksa & Memberi Saran Perbaikan SMP
+                    [
+                        'stem' => "Jika kamu diminta memeriksa hasil pekerjaan tugas temanmu mengenai {$concept} yang masih belum sempurna, saran perbaikan apa yang akan kamu berikan agar hasilnya menjadi lebih rapi dan benar?",
+                        'indicator' => "Peserta didik mampu membandingkan berbagai pendekatan dan menentukan pilihan solusi terbaik pada materi {$concept}.",
+                        'answer' => "Kriteria Model Jawaban Lengkap (Level 3 / HOTS):\n"
+                            . "1. Menemukan bagian yang belum lengkap atau masih keliru pada tugas terkait {$concept}.\n"
+                            . "2. Memberikan saran perbaikan yang jelas, tepat, dan mudah diterapkan oleh teman.\n"
+                            . "3. Menyertakan alasan mengapa saran tersebut akan membuat hasil kerja lebih baik.",
+                        'explanation' => "Pedoman & Rubrik Penskoran Analitik (Skor Maksimal: 10):\n"
+                            . "• Skor 9 - 10 (Sangat Baik): Komparasi kedua pendekatan tajam, kriteria penilaian jelas, dan penetapan solusi optimal sangat meyakinkan.\n"
+                            . "• Skor 6 - 8 (Baik): Mampu membandingkan kedua pendekatan, tetapi kriteria penilaian solusi optimal masih sederhana.\n"
+                            . "• Skor 3 - 5 (Cukup): Perbandingan masih bersifat deskriptif tanpa penilaian kritis yang memadai.\n"
+                            . "• Skor 1 - 2 (Perlu Bimbingan): Uraian tidak menunjukkan perbandingan dua pendekatan yang jelas.\n"
+                            . "• Skor 0 (Tidak Menjawab): Lembar jawaban kosong atau tidak ada substansi yang relevan sama sekali.",
+                    ],
+                    // Angle 4: Gagasan Kreatif Siswa SMP
+                    [
+                        'stem' => "Bagaimanakah ide atau caramu memanfaatkan pemahaman tentang materi {$concept} untuk membantu kegiatan belajar teman-teman di sekolah agar lebih mudah dan menyenangkan?",
+                        'indicator' => "Peserta didik mampu merancang strategi integratif dan solutif berbasis prinsip {$concept}.",
+                        'answer' => "Kriteria Model Jawaban Lengkap (Level 3 / HOTS):\n"
+                            . "1. Mengusulkan gagasan atau cara belajar kreatif yang memanfaatkan materi {$concept}.\n"
+                            . "2. Menjelaskan manfaat dari ide tersebut dalam mempermudah pembelajaran siswa lain di sekolah.\n"
+                            . "3. Menyebutkan langkah sederhana untuk mempraktikkan ide tersebut.",
+                        'explanation' => "Pedoman & Rubrik Penskoran Analitik (Skor Maksimal: 10):\n"
+                            . "• Skor 9 - 10 (Sangat Baik): Rancangan strategi sangat terstruktur, orisinal, aplikatif, dan didukung penalaran ilmiah yang solid.\n"
+                            . "• Skor 6 - 8 (Baik): Rancangan strategi cukup baik dan terarah, namun aspek antisipasi masa depan masih umum.\n"
+                            . "• Skor 3 - 5 (Cukup): Gagasan yang diajukan masih sederhana dan belum terintegrasi secara utuh dengan prinsip materi.\n"
+                            . "• Skor 1 - 2 (Perlu Bimbingan): Rancangan strategi tidak realistis atau tidak relevan dengan konsep materi.\n"
+                            . "• Skor 0 (Tidak Menjawab): Lembar jawaban kosong atau tidak ada substansi yang relevan sama sekali.",
+                    ],
+                ];
+            } else {
+                $angles = [
+                    // Angle 0: Analisis Akar Masalah & Solusi Umum/SMA
+                    [
+                        'stem' => "Lakukan analisis kritis: Jika dalam implementasi {$concept} terjadi kendala atau kegagalan sistematis, bagaimana cara Anda mengidentifikasi akar penyebab masalah tersebut dan merumuskan solusi alternatif yang paling efektif?",
+                        'indicator' => "Peserta didik mampu menganalisis permasalahan, mengevaluasi faktor penyebab, dan merumuskan solusi logis pada materi {$concept}.",
+                        'answer' => "Kriteria Model Jawaban Lengkap (Level 3 / HOTS):\n"
+                            . "1. Mengidentifikasi minimal 2 faktor penyebab utama terjadinya masalah pada implementasi {$concept}.\n"
+                            . "2. Merumuskan solusi alternatif yang kreatif, logis, dan dapat diterapkan secara konkret.\n"
+                            . "3. Menyertakan argumen penalaran kritis yang menghubungkan solusi dengan prinsip keilmuan yang dipelajari.",
+                        'explanation' => "Pedoman & Rubrik Penskoran Analitik (Skor Maksimal: 10):\n"
+                            . "• Skor 9 - 10 (Sangat Baik): Analisis kritis sangat mendalam, pemetaan akar masalah tepat, dan solusi alternatif inovatif serta realistis.\n"
+                            . "• Skor 6 - 8 (Baik): Mampu mengidentifikasi penyebab dan menawarkan solusi, namun argumentasi penalaran masih sederhana.\n"
+                            . "• Skor 3 - 5 (Cukup): Hanya menyebutkan masalah tanpa analisis mendalam mengenai alternatif solusi.\n"
+                            . "• Skor 1 - 2 (Perlu Bimbingan): Uraian belum menyentuh pemecahan masalah dan argumentasi tidak logis.\n"
+                            . "• Skor 0 (Tidak Menjawab): Lembar jawaban kosong atau tidak ada substansi yang relevan sama sekali.",
+                    ],
+                    // Angle 1: Evaluasi Kelebihan & Keterbatasan
+                    [
+                        'stem' => "Evaluasilah kelebihan dan potensi keterbatasan dari pendekatan {$concept}. Mengapa pertimbangan kritis terhadap kedua aspek tersebut penting sebelum mengambil suatu keputusan final?",
+                        'indicator' => "Peserta didik mampu mengevaluasi kelebihan, kelemahan, dan urgensi pertimbangan materi {$concept}.",
+                        'answer' => "Kriteria Model Jawaban Lengkap (Level 3 / HOTS):\n"
+                            . "1. Menyajikan telaah objektif mengenai keunggulan/kelebihan utama dari {$concept}.\n"
+                            . "2. Menguraikan keterbatasan atau tantangan yang mungkin timbul saat diterapkan.\n"
+                            . "3. Memberikan justifikasi evaluatif mengapa pertimbangan seimbang ini penting bagi pengambil keputusan.",
+                        'explanation' => "Pedoman & Rubrik Penskoran Analitik (Skor Maksimal: 10):\n"
+                            . "• Skor 9 - 10 (Sangat Baik): Evaluasi kelebihan dan keterbatasan diuraikan berimbang, kritis, dan disertai justifikasi yang kuat.\n"
+                            . "• Skor 6 - 8 (Baik): Mampu menguraikan kelebihan dan keterbatasan, namun justifikasi pengambilan keputusan masih normatif.\n"
+                            . "• Skor 3 - 5 (Cukup): Hanya menguraikan salah satu sisi (kelebihan saja atau kelemahan saja).\n"
+                            . "• Skor 1 - 2 (Perlu Bimbingan): Uraian evaluasi sangat dangkal dan tidak menunjukkan daya kritis.\n"
+                            . "• Skor 0 (Tidak Menjawab): Lembar jawaban kosong atau tidak ada substansi yang relevan sama sekali.",
+                    ],
+                    // Angle 2: Analisis Dampak Sistemik & Sebab-Akibat
+                    [
+                        'stem' => "Disajikan analisis kasus: Apabila salah satu elemen penting dalam {$concept} mengalami gangguan atau tidak berfungsi semestinya, analisislah dampak berantai yang ditimbulkannya terhadap keseluruhan sistem atau hasil kerja!",
+                        'indicator' => "Peserta didik mampu menganalisis hubungan sebab-akibat dan dampak sistemik pada materi {$concept}.",
+                        'answer' => "Kriteria Model Jawaban Lengkap (Level 3 / HOTS):\n"
+                            . "1. Menganalisis peran kritis elemen yang mengalami gangguan dalam sistem {$concept}.\n"
+                            . "2. Menguraikan rantai sebab-akibat terhadap komponen lain yang saling bergantung.\n"
+                            . "3. Menyimpulkan dampak akhir terhadap integritas atau kinerja sistem secara keseluruhan.",
+                        'explanation' => "Pedoman & Rubrik Penskoran Analitik (Skor Maksimal: 10):\n"
+                            . "• Skor 9 - 10 (Sangat Baik): Analisis sebab-akibat sangat runtut, memetakan dampak berantai secara komprehensif, dan kesimpulan valid.\n"
+                            . "• Skor 6 - 8 (Baik): Mampu memetakan sebagian besar dampak, namun penjelasan keterkaitan antarkomponen kurang mendalam.\n"
+                            . "• Skor 3 - 5 (Cukup): Hanya menyebutkan dampak langsung tanpa menganalisis hubungan sebab-akibat berantai.\n"
+                            . "• Skor 1 - 2 (Perlu Bimbingan): Analisis tidak tepat dan tidak mencerminkan pemahaman sistemik materi.\n"
+                            . "• Skor 0 (Tidak Menjawab): Lembar jawaban kosong atau tidak ada substansi yang relevan sama sekali.",
+                    ],
+                    // Angle 3: Perbandingan Kritis Dua Solusi
+                    [
+                        'stem' => "Bandingkan 2 (dua) pendekatan atau strategi yang berbeda dalam menyelesaikan persoalan terkait {$concept}. Berikan penilaian kritis mengenai pendekatan mana yang paling optimal, disertai argumentasi logis!",
+                        'indicator' => "Peserta didik mampu membandingkan berbagai pendekatan dan menentukan pilihan solusi terbaik pada materi {$concept}.",
+                        'answer' => "Kriteria Model Jawaban Lengkap (Level 3 / HOTS):\n"
+                            . "1. Membandingkan minimal 2 pendekatan dari parameter efektivitas, efisiensi, atau kemudahan implementasi dalam {$concept}.\n"
+                            . "2. Menentukan pendekatan yang paling optimal dengan landasan argumen logis dan berbasis bukti.",
+                        'explanation' => "Pedoman & Rubrik Penskoran Analitik (Skor Maksimal: 10):\n"
+                            . "• Skor 9 - 10 (Sangat Baik): Komparasi kedua pendekatan tajam, kriteria penilaian jelas, dan penetapan solusi optimal sangat meyakinkan.\n"
+                            . "• Skor 6 - 8 (Baik): Mampu membandingkan kedua pendekatan, tetapi kriteria penilaian solusi optimal masih sederhana.\n"
+                            . "• Skor 3 - 5 (Cukup): Perbandingan masih bersifat deskriptif tanpa penilaian kritis yang memadai.\n"
+                            . "• Skor 1 - 2 (Perlu Bimbingan): Uraian tidak menunjukkan perbandingan dua pendekatan yang jelas.\n"
+                            . "• Skor 0 (Tidak Menjawab): Lembar jawaban kosong atau tidak ada substansi yang relevan sama sekali.",
+                    ],
+                    // Angle 4: Perancangan Strategi Inovatif
+                    [
+                        'stem' => "Bagaimanakah Anda merancang suatu strategi atau gagasan terintegrasi dengan memanfaatkan prinsip {$concept} untuk mengantisipasi persoalan atau kebutuhan di masa depan?",
+                        'indicator' => "Peserta didik mampu merancang strategi integratif dan solutif berbasis prinsip {$concept}.",
+                        'answer' => "Kriteria Model Jawaban Lengkap (Level 3 / HOTS):\n"
+                            . "1. Merumuskan gagasan atau strategi yang terstruktur dengan mengintegrasikan prinsip utama {$concept}.\n"
+                            . "2. Menjelaskan kebaruan atau efektivitas strategi tersebut dalam menjawab tantangan di masa depan.\n"
+                            . "3. Menguraikan faktor pendukung yang dibutuhkan agar strategi dapat terealisasi.",
+                        'explanation' => "Pedoman & Rubrik Penskoran Analitik (Skor Maksimal: 10):\n"
+                            . "• Skor 9 - 10 (Sangat Baik): Rancangan strategi sangat terstruktur, orisinal, aplikatif, dan didukung penalaran ilmiah yang solid.\n"
+                            . "• Skor 6 - 8 (Baik): Rancangan strategi cukup baik dan terarah, namun aspek antisipasi masa depan masih umum.\n"
+                            . "• Skor 3 - 5 (Cukup): Gagasan yang diajukan masih sederhana dan belum terintegrasi secara utuh dengan prinsip materi.\n"
+                            . "• Skor 1 - 2 (Perlu Bimbingan): Rancangan strategi tidak realistis atau tidak relevan dengan konsep materi.\n"
+                            . "• Skor 0 (Tidak Menjawab): Lembar jawaban kosong atau tidak ada substansi yang relevan sama sekali.",
+                    ],
+                ];
+            }
             $selected = $angles[$angleIndex];
         }
 
@@ -1084,8 +1481,10 @@ PROMPT;
         string $schoolEmail,
         string $headmasterName,
         string $headmasterNip,
-        string $cognitiveLevel = 'all'
+        string $cognitiveLevel = 'all',
+        ?array $levelInfo = null
     ): array {
+        $levelInfo = $levelInfo ?? $this->resolveEducationLevel([], $classNames);
         $tpList = $tps instanceof Collection ? $tps : collect($tps);
         $primaryTp = $tpList->first();
 
@@ -1123,6 +1522,10 @@ PROMPT;
             'teacher_nip' => $teacher->nip ?? '-',
             'class_ids' => $classIds,
             'class_name' => $classNames,
+            'grade_level' => $levelInfo['grade_label'] ?? 'Kelas 8 SMP',
+            'education_level' => $levelInfo['level_name'] ?? 'SMP',
+            'full_education_level' => $levelInfo['full_level'] ?? 'Sekolah Menengah Pertama (SMP / MTs)',
+            'curriculum_phase' => $levelInfo['phase'] ?? 'Fase D',
             'subject_name' => $subjectName,
             'tp_id' => $primaryTp?->id,
             'tp_ids' => $tpList->pluck('id')->all(),
@@ -1167,6 +1570,10 @@ PROMPT;
      */
     public function exportDocx(array $examData): \Symfony\Component\HttpFoundation\BinaryFileResponse
     {
+        // Enforce strict XML output escaping and compatibility to guarantee 100% valid OOXML
+        Settings::setOutputEscapingEnabled(true);
+        Settings::setCompatibility(false);
+
         $phpWord = new PhpWord();
         $phpWord->setDefaultFontName('Times New Roman');
         $phpWord->setDefaultFontSize(11);
@@ -1183,6 +1590,7 @@ PROMPT;
             'borderBottomSize' => 18,
             'borderBottomColor' => '000000',
             'alignment' => JcTable::CENTER,
+            'unit' => TblWidth::PERCENT,
             'width' => 100 * 50,
         ]);
         $kopRow = $kopTable->addRow();
@@ -1202,14 +1610,21 @@ PROMPT;
         $section->addText('TAHUN AJARAN ' . $this->cleanWordText(strtoupper($examData['period'])), ['bold' => true, 'size' => 10], ['alignment' => Jc::CENTER, 'spaceAfter' => 120]);
 
         // 3. Metadata Table (2 Columns)
-        $metaTable = $section->addTable(['alignment' => JcTable::CENTER, 'width' => 100 * 50]);
+        $metaTable = $section->addTable([
+            'alignment' => JcTable::CENTER,
+            'unit' => TblWidth::PERCENT,
+            'width' => 100 * 50,
+        ]);
         $metaRow1 = $metaTable->addRow();
         $metaCell1 = $metaRow1->addCell(5000);
         $metaCell1->addText("Mata Pelajaran : " . $this->cleanWordText($examData['subject_name']), ['bold' => true]);
-        $metaCell1->addText("Kelas / Rombel : " . $this->cleanWordText($examData['class_name']));
+        $metaCell1->addText("Kelas / Rombel : " . $this->cleanWordText($examData['class_name'] . (!empty($examData['grade_level']) ? " ({$examData['grade_level']})" : '')));
         $metaCell1->addText("Hari / Tanggal : ........................................");
 
         $metaCell2 = $metaRow1->addCell(4000);
+        $metaCell2->addText("Waktu          : " . $this->cleanWordText($examData['time_limit']), ['bold' => true]);
+        $metaCell2->addText("Nama Siswa     : ........................................");
+        $metaCell2->addText("Nomor Absen    : ........................................");
         $metaCell2->addText("Waktu          : " . $this->cleanWordText($examData['time_limit']), ['bold' => true]);
         $metaCell2->addText("Nama Siswa     : ........................................");
         $metaCell2->addText("Nomor Absen    : ........................................");
@@ -1275,6 +1690,8 @@ PROMPT;
             'borderColor' => 'CBD5E1',
             'alignment' => JcTable::CENTER,
             'cellMargin' => 80,
+            'unit' => TblWidth::TWIP,
+            'width' => 9000,
         ]);
 
         $bpHeader = $bpTable->addRow();
@@ -1304,6 +1721,8 @@ PROMPT;
             'borderColor' => 'CBD5E1',
             'alignment' => JcTable::CENTER,
             'cellMargin' => 80,
+            'unit' => TblWidth::TWIP,
+            'width' => 9000,
         ]);
 
         $keyHeader = $keyTable->addRow();
@@ -1344,7 +1763,11 @@ PROMPT;
         $section->addText($this->cleanWordText($formulaText), ['bold' => true, 'italic' => true, 'size' => 9.5], ['spaceAfter' => 120]);
 
         // Signatures Table
-        $sigTable = $section->addTable(['alignment' => JcTable::CENTER, 'width' => 100 * 50]);
+        $sigTable = $section->addTable([
+            'alignment' => JcTable::CENTER,
+            'unit' => TblWidth::PERCENT,
+            'width' => 100 * 50,
+        ]);
         $sigRow = $sigTable->addRow();
 
         $sigCell1 = $sigRow->addCell(4500);
@@ -1367,8 +1790,8 @@ PROMPT;
             mkdir($tempDir, 0755, true);
         }
 
-        $safeClassName = str_replace([' ', '/', '\\', ','], '_', $examData['class_name']);
-        $safeSubject = str_replace([' ', '/', '\\'], '_', $examData['subject_name']);
+        $safeClassName = preg_replace('/[^A-Za-z0-9_-]/', '_', str_replace([' ', '/', '\\', ','], '_', $examData['class_name']));
+        $safeSubject = preg_replace('/[^A-Za-z0-9_-]/', '_', str_replace([' ', '/', '\\'], '_', $examData['subject_name']));
         $filename = "Soal_Offline_{$safeSubject}_{$safeClassName}_" . date('Ymd_His') . ".docx";
         $tempFile = $tempDir . '/' . uniqid('exam_', true) . '.docx';
 
@@ -1377,6 +1800,7 @@ PROMPT;
 
         return response()->download($tempFile, $filename, [
             'Content-Type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'Content-Length' => (string) filesize($tempFile),
         ])->deleteFileAfterSend(true);
     }
 }
