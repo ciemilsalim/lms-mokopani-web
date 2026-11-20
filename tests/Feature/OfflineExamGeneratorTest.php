@@ -881,5 +881,67 @@ class OfflineExamGeneratorTest extends TestCase
                 $this->assertStringNotContainsString('memproduksi konten digital terintegrasi yang menggabungkan elemen teks', $optText);
             }
         }
+
+        // 5. Test 50 questions with 2 TPs (TP-3.1 and TP-3.2 from user's screenshot)
+        $disseminationTp = LmsLearningObjective::create([
+            'teacher_id' => $this->teacher->id,
+            'subject_id' => $this->subject->id,
+            'school_class_id' => $this->schoolClass->id,
+            'academic_year_id' => $this->academicYear->id,
+            'semester_id' => $this->semester->id,
+            'code' => 'TP-3.2',
+            'description' => 'mendiseminasikan konten digital hasil buatannya di platform publik virtual dengan menerapkan prinsip keamanan data dan etika kewargaan digital',
+            'content' => null,
+            'order' => 2,
+        ]);
+
+        $multiTpResponse = $this->actingAs($this->teacherUser)->postJson('/offline-exams/generate', [
+            'school_class_ids' => [$this->schoolClass->id],
+            'learning_objective_ids' => [$complexTp->id, $disseminationTp->id],
+            'question_type' => 'multiple_choice',
+            'question_count' => 50,
+            'cognitive_level' => 'all',
+            'generation_engine' => 'fast',
+            'output_format' => 'preview',
+        ]);
+
+        $multiTpResponse->assertOk();
+        $multiData = $multiTpResponse->json('exam');
+
+        // Question 25 (last question of TP-3.1) and Question 26 (first question of TP-3.2)
+        $q25 = $multiData['questions'][24];
+        $q26 = $multiData['questions'][25];
+
+        $this->assertEquals('TP-3.1', $q25['tp_code']);
+        $this->assertEquals('TP-3.2', $q26['tp_code']);
+
+        // Assert Question 26 is simplified and does NOT contain the 20-word curriculum string
+        $this->assertStringNotContainsString('mendiseminasikan konten digital hasil buatannya di platform publik virtual dengan menerapkan prinsip keamanan data dan etika kewargaan digital', $q26['question']);
+        $this->assertStringNotContainsString('hasil buatannya di platform publik virtual', $q26['question']);
+        $this->assertStringNotContainsString('dengan menerapkan prinsip keamanan data', $q26['question']);
+
+        // Assert Question 26 uses the simplified, student-friendly noun phrase
+        $this->assertStringContainsString('publikasi konten digital', $q26['question']);
+        $this->assertEquals(
+            'Tindakan yang paling aman dan rapi saat kamu mempraktikkan materi publikasi konten digital adalah...',
+            $q26['question']
+        );
+
+        // When LOTS is selected, question 26 matches the exact stem from the user's screenshot with simplified noun phrase
+        $lots50Response = $this->actingAs($this->teacherUser)->postJson('/offline-exams/generate', [
+            'school_class_ids' => [$this->schoolClass->id],
+            'learning_objective_ids' => [$complexTp->id, $disseminationTp->id],
+            'question_type' => 'multiple_choice',
+            'question_count' => 50,
+            'cognitive_level' => 'lots',
+            'generation_engine' => 'fast',
+            'output_format' => 'preview',
+        ]);
+        $lots50Data = $lots50Response->json('exam');
+        $q26Lots = $lots50Data['questions'][25];
+        $this->assertEquals(
+            'Tujuan utama kita mempelajari materi publikasi konten digital di sekolah adalah agar kita bisa...',
+            $q26Lots['question']
+        );
     }
 }

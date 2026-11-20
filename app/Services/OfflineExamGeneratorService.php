@@ -147,7 +147,7 @@ class OfflineExamGeneratorService
         $classKey = implode('_', $classIds);
         $tpKey = $tpList->pluck('id')->sort()->implode('_');
         $levelInfo = $this->resolveEducationLevel($classList, $classNames);
-        $cacheHash = md5("offline_exam_v10_{$tpKey}_{$classKey}_{$questionType}_{$questionCount}_{$generationEngine}_{$cognitiveLevel}_{$levelInfo['grade_label']}");
+        $cacheHash = md5("offline_exam_v11_{$tpKey}_{$classKey}_{$questionType}_{$questionCount}_{$generationEngine}_{$cognitiveLevel}_{$levelInfo['grade_label']}");
 
         if (!$regenerate) {
             $cachedJson = LmsAiCache::getCache($cacheHash);
@@ -502,8 +502,10 @@ ATURAN WAJIB & SANGAT KETAT:
       - Fokus pada SATU hal saja: minta penjelasan SAJA, atau sebutkan contoh SAJA, atau sebutkan bagian/tahapan SAJA!
    c. PENYEDERHANAAN TOPIK DAN BAHASA ALAMI (JANGAN SEPERTI ROBOT):
       - DILARANG KERAS mengulang-ulang seluruh teks deskripsi TP yang panjang secara kaku pada setiap butir soal!
-      - Sederhanakan topik materi sesuai konteks pertanyaan (contoh: jika TP adalah "menjelaskan cara kerja dan interaksi antar komponen sistem komputer dalam memproses data melalui siklus input-proses-output", maka sederhanakan kalimat soal menjadi topik intinya yang relevan, contoh: "Jelaskan bagaimana cara kerja dan interaksi antar komponen sistem komputer dengan bahasamu sendiri!").
-      - Potong anak kalimat kualifikasi kurikulum yang terlalu panjang ("dalam memproses...", "untuk memecahkan masalah...", "dalam konteks...", "secara tepat...", dll.) agar redaksi soal terdengar alami seperti naskah ujian resmi buatan guru.
+      - Sederhanakan topik materi sesuai konteks pertanyaan. Contoh:
+        * Jika TP adalah "menjelaskan cara kerja dan interaksi antar komponen sistem komputer dalam memproses data melalui siklus input-proses-output", sederhanakan menjadi topik intinya: "cara kerja dan interaksi antar komponen sistem komputer" (contoh: "Jelaskan bagaimana cara kerja dan interaksi antar komponen sistem komputer dengan bahasamu sendiri!").
+        * Jika TP adalah "mendiseminasikan konten digital hasil buatannya di platform publik virtual dengan menerapkan prinsip keamanan data dan etika kewargaan digital", sederhanakan menjadi topik intinya: "publikasi konten digital" atau "konten digital" (contoh: "Tujuan utama kita mempelajari materi publikasi konten digital di sekolah adalah agar kita bisa...").
+      - Potong anak kalimat kualifikasi kurikulum yang terlalu panjang ("dalam memproses...", "untuk memecahkan masalah...", "dalam konteks...", "secara tepat...", "hasil buatannya...", "di platform publik virtual dengan menerapkan...", dll.) agar redaksi soal terdengar alami seperti naskah ujian resmi buatan guru.
    d. JANGAN PERNAH menyalin mentah-mentah frasa kurikulum seperti "Peserta didik mampu..." atau "Peserta didik dapat..." ke dalam kalimat soal.
    e. DILARANG KERAS menyisipkan teks artifisial seperti "(soal nomor X)!" pada kalimat soal.
    f. Jika sebuah TP dialokasikan lebih dari 1 butir soal, setiap butir soal pada TP tersebut WAJIB menguji aspek materi yang BERBEDA (contoh: butir 1 fokus alur/konsep, butir 2 fokus manfaat, butir 3 fokus komponen/bagian, butir 4 fokus contoh penerapan sehari-hari, butir 5 fokus langkah kerja). DILARANG KERAS membuat soal kembar atau berulang dengan redaksi yang sama!
@@ -752,17 +754,25 @@ PROMPT;
 
         // 3. Operational verb
         $verb = 'memahami';
-        $verbPattern = '/^(menjelaskan|mengidentifikasi|menganalisis|memahami|menerapkan|mengevaluasi|menguraikan|mempraktikkan|mendeskripsikan|merancang|menyusun|membedakan|memproduksi|membuat|mengembangkan|mengoperasikan|menggunakan|mengolah|menghasilkan|menampilkan|menyajikan|membangun|memilih|menentukan|mengkaji|menelaah)/iu';
+        $verbList = 'menjelaskan|mengidentifikasi|menganalisis|memahami|menerapkan|mengevaluasi|menguraikan|'
+            . 'mempraktikkan|mendeskripsikan|merancang|menyusun|membedakan|memproduksi|membuat|'
+            . 'mengembangkan|mengoperasikan|menggunakan|mengolah|menghasilkan|menampilkan|menyajikan|'
+            . 'membangun|memilih|menentukan|mengkaji|menelaah|mendiseminasikan|mempublikasikan|'
+            . 'menyebarkan|membagikan|mengunggah|mengunduh|menginstal|mengonfigurasi|mengamankan|'
+            . 'mengakses|mengomunikasikan|mengeksplorasi|mengintegrasikan|mengaitkan|menghubungkan|'
+            . 'berbagi|mempresentasikan|mengenal|mempelajari';
+        $verbPattern = '/^(?:' . $verbList . '|me[a-z]{3,}(?:kan|i)?)\b/iu';
         if (preg_match($verbPattern, $cleanedDesc, $vMatch)) {
-            $verb = mb_strtolower($vMatch[1]);
+            $verb = mb_strtolower($vMatch[0]);
         }
 
         // 4. Determine pure topic concept (without operational verbs)
         if ($rawContent !== '') {
             $fullConcept = trim($rawContent, " \t\n\r\0\x0B.,:;");
         } else {
-            // Strip leading operational verbs from cleanedDesc to extract the pure subject matter concept
-            $fullConcept = preg_replace('/^(?:menjelaskan|mengidentifikasi|menganalisis|memahami|menerapkan|mengevaluasi|menguraikan|mempraktikkan|mendeskripsikan|merancang|menyusun|membedakan|memproduksi|membuat|mengembangkan|mengoperasikan|menggunakan|mengolah|menghasilkan|menampilkan|menyajikan|membangun|memilih|menentukan|mengkaji|menelaah)\s+/iu', '', $cleanedDesc);
+            // Strip leading operational verbs (including compound ones like "memahami dan menerapkan")
+            $stripVerbsPattern = '/^(?:' . $verbList . '|me[a-z]{3,}(?:kan|i)?)(?:\s+(?:dan|serta|lalu)\s+(?:' . $verbList . '|me[a-z]{3,}(?:kan|i)?))?\s+/iu';
+            $fullConcept = preg_replace($stripVerbsPattern, '', $cleanedDesc);
             $fullConcept = trim($fullConcept, " \t\n\r\0\x0B.,:;");
             if ($fullConcept === '') {
                 $fullConcept = $cleanedDesc ?: ($subjectName ?: 'materi pembelajaran');
@@ -770,8 +780,20 @@ PROMPT;
         }
 
         // 5. Natural Simplification: Cut off overly long trailing prepositional qualification clauses
-        // e.g. "dalam memproses data melalui siklus input-proses-output", "untuk memecahkan masalah...", "dalam konteks...", "secara tepat...", "yang menggabungkan..."
-        $qualifierPattern = '/\s*,?\s+(?:dalam\s+(?:memproses|menyelesaikan|menerapkan|melakukan|menganalisis|mengembangkan|memecahkan|pemecahan|kehidupan|konteks|kegiatan|praktik|lingkungan|berbagai)|untuk\s+(?:memecahkan|menyelesaikan|membantu|mencapai|menghasilkan|menjaga|meningkatkan|mendukung)|melalui\s+(?:siklus|proses|tahapan|kegiatan|pendekatan)|secara\s+(?:tepat|kritis|mandiri|kreatif|bertanggung\s+jawab|efektif|lengkap|logis|sistematis|terstruktur|menarik)|dengan\s+(?:menggunakan|memanfaatkan|bantuan)|yang\s+(?:menggabungkan|memadukan|melibatkan|berkaitan\s+dengan|berhubungan\s+dengan|berbasis|memuat|berisi|menggunakan|memanfaatkan|terdiri\s+dari|mengintegrasikan))\b.*$/iu';
+        // e.g. "dalam memproses data melalui siklus input-proses-output", "hasil buatannya di platform publik virtual...", "dengan menerapkan prinsip..."
+        $qualifierPattern = '/\s*,?\s+(?:'
+            . 'dengan\b.*|'
+            . 'di\s+(?:platform|media|lingkungan|jejaring|internet|web|dunia\s+maya|komputer|laboratorium|sekolah|kelas|kehidupan|masyarakat)\b.*|'
+            . 'pada\s+(?:platform|media|lingkungan|jejaring|internet|web|perangkat|sistem|kehidupan|masyarakat)\b.*|'
+            . 'hasil\s+(?:buatannya|karya|cipta|proyek|tugas|kerja)\b.*|'
+            . 'dalam\s+(?:memproses|menyelesaikan|menerapkan|melakukan|menganalisis|mengembangkan|memecahkan|pemecahan|kehidupan|konteks|kegiatan|praktik|lingkungan|berbagai|berkomunikasi)\b.*|'
+            . 'untuk\s+(?:memecahkan|menyelesaikan|membantu|mencapai|menghasilkan|menjaga|meningkatkan|mendukung|memenuhi)\b.*|'
+            . 'melalui\s+(?:siklus|proses|tahapan|kegiatan|pendekatan|media|jaringan)\b.*|'
+            . 'secara\s+(?:tepat|kritis|mandiri|kreatif|bertanggung\s+jawab|efektif|lengkap|logis|sistematis|terstruktur|menarik|aman|berkala|runtut)\b.*|'
+            . 'yang\s+(?:menggabungkan|memadukan|melibatkan|berkaitan|berhubungan|berbasis|memuat|berisi|menggunakan|memanfaatkan|terdiri|mengintegrasikan)\b.*|'
+            . 'berdasarkan\s+.*|'
+            . 'sesuai\s+(?:dengan\s+)?(?:kaidah|aturan|petunjuk|kriteria|standar|panduan)\b.*'
+            . ')$/iu';
         $headConcept = preg_replace($qualifierPattern, '', $fullConcept);
         $headConcept = trim($headConcept, " \t\n\r\0\x0B.,:;");
         if ($headConcept === '' || mb_strlen($headConcept) < 4) {
@@ -787,6 +809,18 @@ PROMPT;
         }
         $coreNoun = preg_replace('/^(?:cara\s+(?:kerja|membuat|menggunakan|mengoperasikan|merancang)\s+|proses\s+(?:pembuatan|produksi|pengolahan)\s+|pembuatan\s+|produksi\s+)/iu', '', $coreNoun);
         $coreNoun = trim($coreNoun, " \t\n\r\0\x0B.,:;");
+
+        // Convert dissemination / publication action verbs into friendly noun phrase
+        if (preg_match('/^(?:mendiseminasikan|mempublikasikan|menyebarkan|membagikan|mengunggah)/i', $verb) && !preg_match('/^publikasi/i', $coreNoun)) {
+            $coreNoun = 'publikasi ' . $coreNoun;
+        }
+
+        // If coreNoun still exceeds 4 words, extract first 3-4 words for student ergonomics
+        $words = preg_split('/\s+/u', $coreNoun);
+        if (count($words) > 4) {
+            $coreNoun = implode(' ', array_slice($words, 0, 4));
+        }
+
         if ($coreNoun === '') {
             $coreNoun = $headConcept;
         }
