@@ -14,6 +14,7 @@
         "inertiajs/inertia-laravel": "^2.0",
         "laravel/framework": "^12.0",
         "laravel/tinker": "^2.10.1",
+        "phpoffice/phpword": "*",
         "tightenco/ziggy": "^2.4"
     },
     "require-dev": {
@@ -68,7 +69,7 @@
         }
     },
     "config": {
-        "optimize-autoloader": true,
+        "optimize-autoloader": false,
         "preferred-install": "dist",
         "sort-packages": true,
         "allow-plugins": {

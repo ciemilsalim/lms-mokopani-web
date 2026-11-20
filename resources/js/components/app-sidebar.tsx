@@ -5,7 +5,7 @@ import { type NavItem, type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
 import {
     Book, BookOpen, ClipboardList, GraduationCap, LayoutDashboard, Library, Target, FileBarChart, Bell,
-    Heart, BarChart3, Users, ExternalLink, RotateCcw, School, Sparkles, Table2,
+    Heart, BarChart3, Users, ExternalLink, RotateCcw, School, Sparkles, Table2, Printer,
 } from 'lucide-react';
 import AppLogo from './app-logo';
 
@@ -35,6 +35,7 @@ const teacherNavSections: NavSection[] = [
         items: [
             { title: 'Bahan Materi',          url: '/materials',              icon: Library },
             { title: 'Bank Asesmen',          url: '/assignments',            icon: ClipboardList },
+            { title: 'Soal Ujian Offline',    url: '/offline-exams',          icon: Printer },
         ],
     },
     {

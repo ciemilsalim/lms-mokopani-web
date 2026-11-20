@@ -235,6 +235,13 @@ Route::middleware(['auth'])->group(function () {
         Route::post('assignments/{assignment}', [AssignmentController::class, 'update'])->name('assignments.update');
         Route::delete('assignments/{assignment}', [AssignmentController::class, 'destroy'])->name('assignments.destroy');
 
+        // Generator Soal Offline (Berdasarkan TP)
+        Route::get('offline-exams', [\App\Http\Controllers\OfflineExamGeneratorController::class, 'index'])->name('offline-exams.index');
+        Route::get('offline-exams/tps', [\App\Http\Controllers\OfflineExamGeneratorController::class, 'getTps'])->name('offline-exams.tps');
+        Route::post('offline-exams/generate', [\App\Http\Controllers\OfflineExamGeneratorController::class, 'generate'])->name('offline-exams.generate');
+        Route::post('offline-exams/export-pdf', [\App\Http\Controllers\OfflineExamGeneratorController::class, 'exportPdf'])->name('offline-exams.export-pdf');
+        Route::post('offline-exams/export-docx', [\App\Http\Controllers\OfflineExamGeneratorController::class, 'exportDocx'])->name('offline-exams.export-docx');
+
         // Tujuan Pembelajaran (TP)
         Route::get('learning-objectives', [\App\Http\Controllers\LearningObjectiveController::class, 'index'])->name('learning-objectives.index');
         Route::post('learning-objectives', [\App\Http\Controllers\LearningObjectiveController::class, 'store'])->name('learning-objectives.store');
