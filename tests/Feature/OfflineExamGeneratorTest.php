@@ -476,4 +476,69 @@ class OfflineExamGeneratorTest extends TestCase
             $this->assertContains($q['cognitive_level'], ['C4', 'C5']);
         }
     }
+
+    public function test_generated_questions_have_clean_stems_without_boilerplate_and_without_duplicate_questions(): void
+    {
+        // Real-world TP from user where description starts with 'Peserta didik mampu...' and content is null
+        $realTp = LmsLearningObjective::create([
+            'teacher_id' => $this->teacher->id,
+            'subject_id' => $this->subject->id,
+            'school_class_id' => $this->schoolClass->id,
+            'academic_year_id' => $this->academicYear->id,
+            'semester_id' => $this->semester->id,
+            'code' => 'TP-1.1',
+            'description' => 'Peserta didik mampu menjelaskan cara kerja dan interaksi antar komponen sistem komputer dalam memproses data melalui siklus input-proses-output.',
+            'competence' => null,
+            'content' => null,
+            'order' => 1,
+        ]);
+
+        $response = $this->actingAs($this->teacherUser)->postJson('/offline-exams/generate', [
+            'school_class_ids' => [$this->schoolClass->id],
+            'learning_objective_ids' => [$realTp->id],
+            'question_type' => 'essay',
+            'question_count' => 5,
+            'generation_engine' => 'fast',
+            'output_format' => 'preview',
+        ]);
+
+        $response->assertOk();
+        $data = $response->json('exam');
+        $this->assertCount(5, $data['questions']);
+
+        $stems = array_column($data['questions'], 'question');
+
+        // 1. None of the questions should have the artificial '(soal nomor X)!' suffix
+        foreach ($stems as $stem) {
+            $this->assertStringNotContainsString('(soal nomor', $stem);
+            $this->assertStringNotContainsString('Peserta didik mampu', $stem);
+            $this->assertStringNotContainsString('apa yang dimaksud dengan Peserta didik mampu', $stem);
+        }
+
+        // 2. All 5 essay questions for this same TP must be unique variants (no duplicate questions)
+        $uniqueStems = array_unique($stems);
+        $this->assertCount(5, $uniqueStems, 'All 5 questions generated for the same TP must have distinct pedagogical angles');
+
+        // Test multiple choice as well
+        $mcResponse = $this->actingAs($this->teacherUser)->postJson('/offline-exams/generate', [
+            'school_class_ids' => [$this->schoolClass->id],
+            'learning_objective_ids' => [$realTp->id],
+            'question_type' => 'multiple_choice',
+            'question_count' => 5,
+            'generation_engine' => 'fast',
+            'output_format' => 'preview',
+        ]);
+
+        $mcResponse->assertOk();
+        $mcData = $mcResponse->json('exam');
+        $mcStems = array_column($mcData['questions'], 'question');
+
+        foreach ($mcStems as $stem) {
+            $this->assertStringNotContainsString('(soal nomor', $stem);
+            $this->assertStringNotContainsString('Peserta didik mampu', $stem);
+        }
+
+        $uniqueMcStems = array_unique($mcStems);
+        $this->assertCount(5, $uniqueMcStems, 'All 5 MC questions generated for the same TP must have distinct stems');
+    }
 }
