@@ -590,4 +590,68 @@ class OfflineExamGeneratorTest extends TestCase
         $this->assertStringNotContainsString('w:type="auto"/>', $xmlContent, 'All table widths must have explicit valid units (pct or dxa)');
         $this->assertMatchesRegularExpression('/<w:tblW[^>]*w:type="(?:pct|dxa)"[^>]*\/>/', $xmlContent);
     }
+
+    public function test_smp_questions_are_student_facing_and_strictly_single_focused(): void
+    {
+        // Generate essay questions for SMP across LOTS, MOTS, and HOTS
+        $levels = ['lots', 'mots', 'hots'];
+
+        foreach ($levels as $level) {
+            $response = $this->actingAs($this->teacherUser)->postJson('/offline-exams/generate', [
+                'school_class_ids' => [$this->schoolClass->id],
+                'learning_objective_ids' => [$this->tp->id],
+                'question_type' => 'essay',
+                'cognitive_level' => $level,
+                'question_count' => 5,
+                'generation_engine' => 'fast',
+                'output_format' => 'preview',
+            ]);
+
+            $response->assertOk();
+            $data = $response->json('exam');
+            $this->assertCount(5, $data['questions']);
+
+            foreach ($data['questions'] as $q) {
+                $stem = $q['question'];
+
+                // 1. Single focus: No branching/double questions
+                $this->assertLessThanOrEqual(
+                    1,
+                    substr_count($stem, '?'),
+                    "Question stem must not contain multiple questions (found multiple '?'): {$stem}"
+                );
+
+                // 2. No compound conjunctions introducing a secondary task
+                $this->assertStringNotContainsStringIgnoringCase('serta sebutkan', $stem);
+                $this->assertStringNotContainsStringIgnoringCase('lalu jelaskan', $stem);
+                $this->assertStringNotContainsStringIgnoringCase('dan sebutkan istilah', $stem);
+                $this->assertStringNotContainsStringIgnoringCase('serta jelaskan', $stem);
+
+                // 3. Student-facing phrasing: No raw curriculum objectives
+                $this->assertStringNotContainsString('Peserta didik mampu', $stem);
+                $this->assertStringNotContainsString('(soal nomor', $stem);
+            }
+        }
+
+        // Also test Multiple Choice for SMP: single focus & student friendly
+        $mcResponse = $this->actingAs($this->teacherUser)->postJson('/offline-exams/generate', [
+            'school_class_ids' => [$this->schoolClass->id],
+            'learning_objective_ids' => [$this->tp->id],
+            'question_type' => 'multiple_choice',
+            'cognitive_level' => 'all',
+            'question_count' => 10,
+            'generation_engine' => 'fast',
+            'output_format' => 'preview',
+        ]);
+
+        $mcResponse->assertOk();
+        $mcData = $mcResponse->json('exam');
+        foreach ($mcData['questions'] as $q) {
+            $stem = $q['question'];
+            $this->assertLessThanOrEqual(1, substr_count($stem, '?'), "MC stem must have at most 1 '?': {$stem}");
+            $this->assertStringNotContainsStringIgnoringCase('serta sebutkan', $stem);
+            $this->assertStringNotContainsStringIgnoringCase('lalu jelaskan', $stem);
+            $this->assertStringNotContainsString('Peserta didik mampu', $stem);
+        }
+    }
 }
