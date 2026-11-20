@@ -536,14 +536,33 @@ class OfflineExamGeneratorTest extends TestCase
 
         $stems = array_column($data['questions'], 'question');
 
-        // 1. None of the questions should have the artificial '(soal nomor X)!' suffix
+        // 1. None of the questions should have the artificial '(soal nomor X)!' suffix or boilerplate prefix
         foreach ($stems as $stem) {
             $this->assertStringNotContainsString('(soal nomor', $stem);
             $this->assertStringNotContainsString('Peserta didik mampu', $stem);
             $this->assertStringNotContainsString('apa yang dimaksud dengan Peserta didik mampu', $stem);
+            // Must not repeat long trailing curriculum qualification clauses repetitively
+            $this->assertStringNotContainsString('dalam memproses data melalui siklus input-proses-output', $stem);
         }
 
-        // 2. All 5 essay questions for this same TP must be unique variants (no duplicate questions)
+        // 2. Specific assertion for concise, natural Indonesian phrasing requested by user:
+        $this->assertEquals(
+            'Jelaskan bagaimana cara kerja dan interaksi antar komponen sistem komputer dengan bahasamu sendiri!',
+            $stems[0],
+            'Question 1 must be concise, contextual, and natural without repetitive qualification clauses'
+        );
+        $this->assertEquals(
+            'Apa manfaat yang kamu peroleh setelah mempelajari materi sistem komputer dalam kehidupan sehari-hari?',
+            $stems[1],
+            'Question 2 must use concise core noun phrase instead of long robotic text'
+        );
+        $this->assertEquals(
+            'Langkah apa yang akan kamu lakukan jika hasil praktik materi sistem komputer milikmu belum sesuai petunjuk?',
+            $stems[2],
+            'Question 3 (MOTS) must use concise core noun phrase'
+        );
+
+        // 3. All 5 essay questions for this same TP must be unique variants (no duplicate questions)
         $uniqueStems = array_unique($stems);
         $this->assertCount(5, $uniqueStems, 'All 5 questions generated for the same TP must have distinct pedagogical angles');
 
@@ -564,6 +583,7 @@ class OfflineExamGeneratorTest extends TestCase
         foreach ($mcStems as $stem) {
             $this->assertStringNotContainsString('(soal nomor', $stem);
             $this->assertStringNotContainsString('Peserta didik mampu', $stem);
+            $this->assertStringNotContainsString('dalam memproses data melalui siklus input-proses-output', $stem);
         }
 
         $uniqueMcStems = array_unique($mcStems);
