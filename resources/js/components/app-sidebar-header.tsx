@@ -12,7 +12,7 @@ import { ChevronDown, ArrowLeft, Calendar, User, LogOut, Library, ClipboardList,
 import { cn } from '@/lib/utils';
 
 export function AppSidebarHeader({ breadcrumbs = [] }: { breadcrumbs?: BreadcrumbItemType[] }) {
-    const { auth, user_role, semestersList, activeSemesterId } = usePage<SharedData>().props;
+    const { auth, user_role, is_wakasek_kurikulum, semestersList, activeSemesterId } = usePage<SharedData>().props;
 
     const fullName = auth?.user?.name ?? '';
     const nameParts = fullName.trim().split(' ');
@@ -44,11 +44,14 @@ export function AppSidebarHeader({ breadcrumbs = [] }: { breadcrumbs?: Breadcrum
 
     const roleLabels: Record<string, string> = {
         admin: 'Admin',
+        wakasek_kurikulum: 'Wakasek Kurikulum',
         teacher: 'Guru',
         student: 'Siswa',
         parent: 'Orang Tua',
     };
-    const roleLabel = roleLabels[user_role] || 'Pengguna';
+    const roleLabel = is_wakasek_kurikulum && user_role === 'teacher'
+        ? 'Guru • Wakasek Kurikulum'
+        : (roleLabels[user_role] || 'Pengguna');
 
     const hasBackHistory = breadcrumbs.length > 1;
     const prevBreadcrumb = hasBackHistory ? breadcrumbs[breadcrumbs.length - 2] : null;

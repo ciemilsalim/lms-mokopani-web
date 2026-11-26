@@ -568,4 +568,97 @@ class HomeroomLegerTest extends TestCase
             ])
             ->assertStatus(403);
     }
+
+    public function test_teacher_with_spatie_wakasek_kurikulum_role_gets_leger_access_and_read_only_protection(): void
+    {
+        // Simulasikan kondisi nyata di server hosting (SIPADA / Absensi + LMS):
+        // Kolom users.role bernilai 'teacher', memiliki record Teacher,
+        // dan mendapatkan role 'wakasek_kurikulum' + 'teacher' melalui tabel Spatie model_has_roles.
+        $carolinUser = User::factory()->create([
+            'role' => 'teacher',
+            'name' => 'Carolin Estevin Bogar, S.Pd',
+        ]);
+        $carolinTeacher = Teacher::create([
+            'user_id' => $carolinUser->id,
+            'name'    => 'Carolin Estevin Bogar, S.Pd',
+            'nip'     => '198409152008042002',
+        ]);
+
+        $wakasekRoleId = \Illuminate\Support\Facades\DB::table('roles')->insertGetId([
+            'name'       => 'wakasek_kurikulum',
+            'guard_name' => 'web',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        \Illuminate\Support\Facades\DB::table('model_has_roles')->insert([
+            'role_id'    => $wakasekRoleId,
+            'model_type' => User::class,
+            'model_id'   => $carolinUser->id,
+        ]);
+
+        $class7A = SchoolClass::create([
+            'name'             => 'Kelas 7A',
+            'academic_year_id' => $this->academicYear->id,
+        ]);
+        $class8A = SchoolClass::create([
+            'name'             => 'Kelas 8A',
+            'academic_year_id' => $this->academicYear->id,
+        ]);
+
+        $studentUser = User::factory()->create(['role' => 'student', 'name' => 'Siswa 8A']);
+        $student = Student::create([
+            'user_id'         => $studentUser->id,
+            'school_class_id' => $class8A->id,
+            'name'            => 'Siswa 8A',
+            'nis'             => '8001',
+            'unique_id'       => 'STU-8001',
+        ]);
+
+        $matematika = Subject::create(['name' => 'Matematika', 'code' => 'MAT', 'kktp' => 75]);
+
+        $finalScore = GradebookFinalScore::create([
+            'student_id'       => $student->id,
+            'subject_id'       => $matematika->id,
+            'school_class_id'  => $class8A->id,
+            'academic_year_id' => $this->academicYear->id,
+            'semester_id'      => $this->semester->id,
+            'score'            => 88,
+        ]);
+
+        // 1. Dashboard tetap terbuka dengan is_wakasek_kurikulum = true sehingga menu Leger Nilai muncul di Sidebar & Dashboard
+        $dashboardResponse = $this->actingAs($carolinUser)->get('/dashboard');
+        $dashboardResponse->assertStatus(200);
+        $dashboardResponse->assertInertia(fn (Assert $page) => $page
+            ->where('user_role', 'teacher')
+            ->where('is_wakasek_kurikulum', true)
+        );
+
+        // 2. Dapat mengakses Leger Nilai untuk seluruh kelas walaupun bukan wali kelas
+        $legerResponse = $this->actingAs($carolinUser)->get("/gradebook/leger?class_id={$class8A->id}");
+        $legerResponse->assertStatus(200);
+        $legerResponse->assertInertia(fn (Assert $page) => $page
+            ->component('gradebook/leger')
+            ->where('is_wakasek_kurikulum', true)
+            ->where('school_class.id', $class8A->id)
+            ->has('admin_classes', 2)
+            ->has('rows', 1)
+            ->where("rows.0.scores.{$matematika->id}.final_score", 88)
+        );
+
+        // 3. Tidak dapat mengubah nilai walaupun memiliki user_role='teacher' dan record Teacher
+        $this->actingAs($carolinUser)
+            ->postJson('/gradebook/final-score', [
+                'student_id' => $student->id,
+                'subject_id' => $matematika->id,
+                'class_id'   => $class8A->id,
+                'score'      => 100,
+            ])
+            ->assertStatus(403);
+
+        $this->assertDatabaseHas('gradebook_final_scores', [
+            'id'    => $finalScore->id,
+            'score' => 88,
+        ]);
+    }
 }

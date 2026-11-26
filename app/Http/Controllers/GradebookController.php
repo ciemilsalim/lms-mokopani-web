@@ -34,7 +34,7 @@ class GradebookController extends Controller
         $activeYear = AcademicYear::getActive();
         $activeSemester = Semester::getActive();
 
-        if ($user->isWakasekKurikulum()) {
+        if ($user->isWakasekKurikulum() && !$user->teacher) {
             return redirect()->route('gradebook.leger');
         }
 

@@ -208,6 +208,9 @@ class RemedialRecordController extends Controller
 
     public function store(Request $request)
     {
+        if (Auth::user()?->isWakasekKurikulum()) {
+            abort(403, 'Peran Wakasek Kurikulum tidak dapat menambah atau mengubah nilai remedial.');
+        }
         $teacher = Auth::user()->teacher;
         if (!$teacher) {
             abort(403, 'Anda tidak memiliki akses sebagai guru.');
@@ -321,8 +324,11 @@ class RemedialRecordController extends Controller
 
     protected function authorizeTeacher(LmsRemedialRecord $record)
     {
+        if (Auth::user()?->isWakasekKurikulum()) {
+            abort(403, 'Peran Wakasek Kurikulum tidak dapat mengubah atau menghapus nilai remedial.');
+        }
         $teacher = Auth::user()->teacher;
-        if ($record->teacher_id !== $teacher->id) {
+        if (!$teacher || $record->teacher_id !== $teacher->id) {
             abort(403);
         }
     }

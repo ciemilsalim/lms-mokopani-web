@@ -360,6 +360,10 @@ class P5ProjectController extends Controller
 
     public function storeScore(Request $request)
     {
+        if (Auth::user()?->isWakasekKurikulum()) {
+            abort(403, 'Peran Wakasek Kurikulum tidak dapat menambah, mengubah, atau menghapus nilai P5.');
+        }
+
         $validated = $request->validate([
             'project_id'     => 'required|exists:lms_p5_projects,id',
             'student_id'     => 'required|exists:mysql_absensi.students,id',

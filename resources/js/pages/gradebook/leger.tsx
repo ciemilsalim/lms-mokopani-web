@@ -124,7 +124,7 @@ export default function GradebookLeger({
                                     <span>{period}</span>
                                 </span>
                             )}
-                            {user_role === 'wakasek_kurikulum' && (
+                            {(user_role === 'wakasek_kurikulum' || is_wakasek_kurikulum) && (
                                 <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-primary/10 text-primary text-[11px] font-bold border border-primary/20">
                                     <span>Mode Baca (Wakasek Kurikulum)</span>
                                 </span>

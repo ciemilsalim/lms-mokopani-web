@@ -271,6 +271,9 @@ class AssignmentController extends Controller
 
     public function create(Request $request)
     {
+        if (Auth::user()?->isWakasekKurikulum()) {
+            abort(403, 'Peran Wakasek Kurikulum tidak dapat membuat atau mengubah asesmen/nilai.');
+        }
         $teacher = Auth::user()->teacher;
         $activeYear = \App\Models\AcademicYear::getActive();
         $activeSemester = \App\Models\Semester::getActive();
@@ -352,6 +355,9 @@ class AssignmentController extends Controller
 
     public function store(Request $request)
     {
+        if (Auth::user()?->isWakasekKurikulum()) {
+            abort(403, 'Peran Wakasek Kurikulum tidak dapat menambah asesmen atau nilai.');
+        }
         $teacher = Auth::user()->teacher;
         $activeYear = \App\Models\AcademicYear::getActive();
         $activeSemester = \App\Models\Semester::getActive();
@@ -932,7 +938,7 @@ class AssignmentController extends Controller
     public function uploadProof(Request $request, LmsAssignment $assignment)
     {
         $user = Auth::user();
-        if ($user->role !== 'admin' && $assignment->teacher_id !== $user->teacher?->id) {
+        if ($user->isWakasekKurikulum() || ($user->role !== 'admin' && $assignment->teacher_id !== $user->teacher?->id)) {
             abort(403, 'Anda tidak memiliki hak akses untuk mengunggah bukti fisik pada asesmen ini.');
         }
 
@@ -970,7 +976,7 @@ class AssignmentController extends Controller
     public function gradeView(Request $request, LmsAssignment $assignment)
     {
         $user = Auth::user();
-        if ($user->role !== 'admin' && $assignment->teacher_id !== $user->teacher?->id) {
+        if ($user->isWakasekKurikulum() || ($user->role !== 'admin' && $assignment->teacher_id !== $user->teacher?->id)) {
             abort(403, 'Anda tidak memiliki hak akses untuk mengakses halaman penilaian ini.');
         }
 
@@ -1084,6 +1090,9 @@ class AssignmentController extends Controller
         ]);
 
         $user = Auth::user();
+        if ($user->isWakasekKurikulum()) {
+            abort(403, 'Peran Wakasek Kurikulum tidak dapat menambah atau mengubah nilai.');
+        }
         $assignment = \App\Models\LmsAssignment::findOrFail($validated['assignment_id']);
         if ($user->role !== 'admin' && $assignment->teacher_id !== $user->teacher?->id) {
             abort(403, 'Anda tidak memiliki hak akses untuk menilai asesmen ini.');
@@ -1131,6 +1140,9 @@ class AssignmentController extends Controller
         ]);
 
         $user = Auth::user();
+        if ($user->isWakasekKurikulum()) {
+            abort(403, 'Peran Wakasek Kurikulum tidak dapat membuka atau mengubah nilai remedial.');
+        }
         $assignment = LmsAssignment::findOrFail($validated['assignment_id']);
         if ($user->role !== 'admin' && $assignment->teacher_id !== $user->teacher?->id) {
             abort(403, 'Anda tidak memiliki hak akses untuk membuka remedial pada asesmen ini.');
@@ -1166,7 +1178,7 @@ class AssignmentController extends Controller
     public function edit(LmsAssignment $assignment)
     {
         $user = Auth::user();
-        if ($user->role !== 'admin' && $assignment->teacher_id !== $user->teacher?->id) {
+        if ($user->isWakasekKurikulum() || ($user->role !== 'admin' && $assignment->teacher_id !== $user->teacher?->id)) {
             abort(403, 'Anda tidak memiliki hak akses untuk mengubah asesmen ini.');
         }
 
@@ -1263,7 +1275,7 @@ class AssignmentController extends Controller
     public function update(Request $request, LmsAssignment $assignment)
     {
         $user = Auth::user();
-        if ($user->role !== 'admin' && $assignment->teacher_id !== $user->teacher?->id) {
+        if ($user->isWakasekKurikulum() || ($user->role !== 'admin' && $assignment->teacher_id !== $user->teacher?->id)) {
             abort(403, 'Anda tidak memiliki hak akses untuk mengubah asesmen ini.');
         }
 
@@ -1297,7 +1309,7 @@ class AssignmentController extends Controller
     public function destroy(LmsAssignment $assignment)
     {
         $user = Auth::user();
-        if ($user->role !== 'admin' && $assignment->teacher_id !== $user->teacher?->id) {
+        if ($user->isWakasekKurikulum() || ($user->role !== 'admin' && $assignment->teacher_id !== $user->teacher?->id)) {
             abort(403, 'Anda tidak memiliki hak akses untuk menghapus asesmen ini.');
         }
 

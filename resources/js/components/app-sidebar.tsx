@@ -147,11 +147,20 @@ const parentNavSections: NavSection[] = [
     },
 ];
 
-export function getNavSections(role: string, isHomeroomTeacher = false): NavSection[] {
+export function getNavSections(role: string, isHomeroomTeacher = false, isWakasekKurikulum = false): NavSection[] {
     switch (role) {
         case 'teacher':
             return teacherNavSections.map((section) => {
-                if (section.label === 'Pengolahan' && isHomeroomTeacher) {
+                if (section.label === 'Utama' && isWakasekKurikulum) {
+                    return {
+                        ...section,
+                        items: [
+                            ...section.items,
+                            { title: 'Leger Nilai', url: '/gradebook/leger', icon: Table2 },
+                        ],
+                    };
+                }
+                if (section.label === 'Pengolahan' && (isHomeroomTeacher || isWakasekKurikulum)) {
                     return {
                         ...section,
                         items: [
@@ -172,7 +181,7 @@ export function getNavSections(role: string, isHomeroomTeacher = false): NavSect
 
 export function AppSidebar() {
     const { user_role, is_homeroom_teacher, is_wakasek_kurikulum } = usePage<SharedData>().props;
-    const sections = getNavSections(user_role, Boolean(is_homeroom_teacher) || Boolean(is_wakasek_kurikulum));
+    const sections = getNavSections(user_role, Boolean(is_homeroom_teacher), Boolean(is_wakasek_kurikulum));
 
     return (
         <Sidebar collapsible="icon" variant="sidebar">

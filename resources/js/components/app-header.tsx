@@ -74,11 +74,17 @@ interface AppHeaderProps {
 
 export function AppHeader({ breadcrumbs = [] }: AppHeaderProps) {
     const page = usePage<SharedData>();
-    const { auth, user_role, semestersList, activeSemesterId } = page.props;
+    const { auth, user_role, is_homeroom_teacher, is_wakasek_kurikulum, semestersList, activeSemesterId } = page.props;
     const getInitials = useInitials();
 
     const mobileItems = user_role === 'teacher' 
-        ? teacherMobileNavItems 
+        ? (is_homeroom_teacher || is_wakasek_kurikulum
+            ? [
+                ...teacherMobileNavItems.slice(0, 6),
+                { title: 'Leger Nilai', url: '/gradebook/leger', icon: Table2 },
+                ...teacherMobileNavItems.slice(6),
+            ]
+            : teacherMobileNavItems)
         : user_role === 'admin'
         ? adminMobileNavItems
         : user_role === 'wakasek_kurikulum'

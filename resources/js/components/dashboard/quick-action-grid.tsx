@@ -1,6 +1,7 @@
 import React from 'react';
-import { Link } from '@inertiajs/react';
-import { type LucideIcon, BookOpen, ClipboardList, CalendarCheck, FileText, Award, Megaphone } from 'lucide-react';
+import { Link, usePage } from '@inertiajs/react';
+import { type SharedData } from '@/types';
+import { type LucideIcon, BookOpen, ClipboardList, CalendarCheck, FileText, Award, Megaphone, Table2 } from 'lucide-react';
 
 export interface QuickActionItem {
     id: string;
@@ -99,12 +100,30 @@ const actionStyles = {
  * title: 13px/700, subtitle: hidden on <=360px, 10-11px on >360px.
  */
 export function QuickActionGrid({
-    actions = defaultTeacherActions,
+    actions,
     className = '',
 }: QuickActionGridProps) {
+    const { is_wakasek_kurikulum, is_homeroom_teacher } = usePage<SharedData>().props;
+
+    const resolvedActions = actions ?? (
+        (is_wakasek_kurikulum || is_homeroom_teacher)
+            ? [
+                {
+                    id: 'leger-nilai',
+                    title: 'Leger Nilai',
+                    description: is_wakasek_kurikulum ? 'Rekap nilai semua kelas' : 'Leger kelas perwalian',
+                    href: '/gradebook/leger',
+                    icon: Table2,
+                    variant: 'warning' as const,
+                },
+                ...defaultTeacherActions,
+            ]
+            : defaultTeacherActions
+    );
+
     return (
         <div className={`grid grid-cols-2 sm:grid-cols-3 gap-2 w-full min-w-0 ${className}`}>
-            {actions.map((act) => {
+            {resolvedActions.map((act) => {
                 const Icon = act.icon;
                 const style = actionStyles[act.variant || 'primary'];
 

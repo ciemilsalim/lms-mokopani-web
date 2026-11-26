@@ -27,7 +27,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose 
 export function MobileBottomNav() {
     const { auth, user_role, is_homeroom_teacher, is_wakasek_kurikulum, semestersList, activeSemesterId } = usePage<SharedData>().props;
     const [searchQuery, setSearchQuery] = useState('');
-    const sections = getNavSections(user_role, Boolean(is_homeroom_teacher) || Boolean(is_wakasek_kurikulum));
+    const sections = getNavSections(user_role, Boolean(is_homeroom_teacher), Boolean(is_wakasek_kurikulum));
 
     const activeSemester = semestersList?.find(s => s.id === activeSemesterId);
 
@@ -35,6 +35,14 @@ export function MobileBottomNav() {
     const primaryNavItems = useMemo(() => {
         switch (user_role) {
             case 'teacher':
+                if (is_wakasek_kurikulum || is_homeroom_teacher) {
+                    return [
+                        { title: 'Beranda', url: '/dashboard', icon: LayoutDashboard },
+                        { title: 'Leger Nilai', url: '/gradebook/leger', icon: FileSpreadsheet },
+                        { title: 'Kelas', url: '/classes', icon: GraduationCap },
+                        { title: 'Presensi', url: '/sso/presensi', icon: CalendarCheck, isExternal: true },
+                    ];
+                }
                 return [
                     { title: 'Beranda', url: '/dashboard', icon: LayoutDashboard },
                     { title: 'Kelas', url: '/classes', icon: GraduationCap },
@@ -73,7 +81,7 @@ export function MobileBottomNav() {
                     { title: 'Beranda', url: '/dashboard', icon: LayoutDashboard },
                 ];
         }
-    }, [user_role]);
+    }, [user_role, is_wakasek_kurikulum, is_homeroom_teacher]);
 
     // Filtered items for search inside Drawer
     const filteredSections = useMemo(() => {

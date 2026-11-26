@@ -27,7 +27,11 @@ class EnsureUserRole
 
         $allowedRoles = array_map(fn ($r) => \App\Models\User::normalizeRole($r) ?? $r, $roles);
 
-        if (!in_array($userRole, $allowedRoles, true)) {
+        $isAuthorized = in_array($userRole, $allowedRoles, true)
+            || $user->hasAnyRole($allowedRoles)
+            || (in_array('wakasek_kurikulum', $allowedRoles, true) && $user->isWakasekKurikulum());
+
+        if (!$isAuthorized) {
             abort(403, 'Anda tidak memiliki akses ke halaman ini.');
         }
 

@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import AppLayout from '@/layouts/app-layout';
-import { type BreadcrumbItem } from '@/types';
-import { Head, Link } from '@inertiajs/react';
+import { type BreadcrumbItem, type SharedData } from '@/types';
+import { Head, Link, usePage } from '@inertiajs/react';
 import {
     GraduationCap,
     BookOpen,
@@ -12,6 +12,7 @@ import {
     ArrowRight,
     School,
     Plus,
+    Table2,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import {
@@ -115,6 +116,7 @@ export function TeacherDashboardView({
     todayName,
     auth,
 }: TeacherDashboardViewProps) {
+    const { is_wakasek_kurikulum, is_homeroom_teacher, homeroom_class } = usePage<SharedData>().props;
     const todayDateText = useMemo(() => {
         return new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
     }, []);
@@ -149,6 +151,39 @@ export function TeacherDashboardView({
                         dateText={todayDateText}
                     />
                 </div>
+
+                {/* 01b. BANNER AKSES LEGER NILAI (Wakasek Kurikulum / Wali Kelas) */}
+                {(is_wakasek_kurikulum || (is_homeroom_teacher && homeroom_class)) && (
+                    <div className="order-1 lg:order-none lg:col-span-12 w-full min-w-0 box-border">
+                        <div className="rounded-2xl border border-primary/25 bg-primary/5 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+                            <div className="flex items-center gap-3">
+                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary">
+                                    <Table2 className="h-5 w-5" />
+                                </div>
+                                <div>
+                                    <h2 className="text-sm font-bold text-foreground">
+                                        {is_wakasek_kurikulum
+                                            ? 'Leger Nilai Wakasek Kurikulum (Seluruh Kelas)'
+                                            : `Leger Nilai Wali Kelas — ${homeroom_class?.name}`}
+                                    </h2>
+                                    <p className="text-xs text-muted-foreground">
+                                        {is_wakasek_kurikulum
+                                            ? 'Pantau rekapitulasi nilai seluruh mata pelajaran siswa untuk semua kelas dalam Mode Baca (Read-Only).'
+                                            : 'Lihat rekap nilai seluruh mata pelajaran untuk siswa di kelas perwalian Anda.'}
+                                    </p>
+                                </div>
+                            </div>
+                            <Link
+                                href="/gradebook/leger"
+                                className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-xs font-bold shadow-xs hover:bg-primary/90 transition shrink-0 min-h-[40px]"
+                            >
+                                <Table2 className="h-4 w-4" />
+                                <span>Buka Leger Nilai</span>
+                                <ChevronRight className="h-3.5 w-3.5" />
+                            </Link>
+                        </div>
+                    </div>
+                )}
 
                 {/* 02. RINGKASAN PEMBELAJARAN (Full Width 5 Stats) */}
                 <div className="order-5 lg:order-none lg:col-span-12 w-full min-w-0 box-border">

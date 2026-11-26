@@ -64,11 +64,118 @@ class User extends Authenticatable
     }
 
     /**
-     * Determine whether this user has the Wakasek Kurikulum role.
+     * Check whether the user holds any of the given roles via Spatie's `model_has_roles` + `roles` tables
+     * (shared with SIPADA / Aplikasi Absensi) or via the local `users.role` column.
+     */
+    public function hasAnyRole(array $roles): bool
+    {
+        $targetRoles = [];
+        foreach ($roles as $r) {
+            $lower = strtolower(trim((string) $r));
+            if ($lower !== '') {
+                $targetRoles[] = $lower;
+            }
+            $norm = self::normalizeRole((string) $r);
+            if ($norm) {
+                $targetRoles[] = strtolower($norm);
+            }
+        }
+        $targetRoles = array_values(array_unique($targetRoles));
+
+        // 1. Check Spatie Permission tables (model_has_roles & roles) if available
+        try {
+            if (\Illuminate\Support\Facades\Schema::hasTable('model_has_roles') && \Illuminate\Support\Facades\Schema::hasTable('roles')) {
+                $spatieRoleNames = \Illuminate\Support\Facades\DB::table('model_has_roles')
+                    ->join('roles', 'model_has_roles.role_id', '=', 'roles.id')
+                    ->where('model_has_roles.model_id', $this->id)
+                    ->where(function ($q) {
+                        $q->where('model_has_roles.model_type', self::class)
+                          ->orWhere('model_has_roles.model_type', 'App\\Models\\User');
+                    })
+                    ->pluck('roles.name');
+
+                foreach ($spatieRoleNames as $spatieRole) {
+                    $rawLower = strtolower(trim((string) $spatieRole));
+                    $normLower = strtolower((string) self::normalizeRole((string) $spatieRole));
+                    if (in_array($rawLower, $targetRoles, true) || ($normLower !== '' && in_array($normLower, $targetRoles, true))) {
+                        return true;
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            // Fallback gracefully if Spatie tables are not present
+        }
+
+        // 2. Fallback to local `users.role` column and model relations
+        $localRole = strtolower(trim((string) $this->role));
+        $normalizedLocal = strtolower((string) self::normalizeRole($this->role));
+
+        if (($localRole !== '' && in_array($localRole, $targetRoles, true)) || ($normalizedLocal !== '' && in_array($normalizedLocal, $targetRoles, true))) {
+            return true;
+        }
+
+        if ((!$localRole || $localRole === 'user') && $this->teacher && in_array('teacher', $targetRoles, true)) {
+            return true;
+        }
+        if ((!$localRole || $localRole === 'user') && $this->student && in_array('student', $targetRoles, true)) {
+            return true;
+        }
+        if ((!$localRole || $localRole === 'user') && $this->parent && in_array('parent', $targetRoles, true)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Determine whether this user has the Wakasek Kurikulum role (via `users.role` OR Spatie `model_has_roles`).
      */
     public function isWakasekKurikulum(): bool
     {
-        return self::normalizeRole($this->role) === 'wakasek_kurikulum';
+        if (self::normalizeRole($this->role) === 'wakasek_kurikulum') {
+            return true;
+        }
+
+        return $this->hasAnyRole(['wakasek_kurikulum', 'wakasek kurikulum', 'waka_kurikulum', 'waka kurikulum', 'kurikulum']);
+    }
+
+    /**
+     * Resolve the effective primary role string for LMS navigation and middleware.
+     */
+    public function resolveEffectiveRole(): string
+    {
+        if (strtolower((string) $this->role) === 'admin' || $this->hasAnyRole(['admin'])) {
+            return 'admin';
+        }
+
+        // If user is a teacher (even if also Wakasek Kurikulum), keep 'teacher' as primary layout role
+        // while `isWakasekKurikulum()` unlocks Leger Nilai across all classes and enforces read-only grade rules.
+        // If user is NOT a teacher (standalone Wakasek Kurikulum account) or explicitly has role='wakasek_kurikulum' without teacher record, return 'wakasek_kurikulum'.
+        if (self::normalizeRole($this->role) === 'wakasek_kurikulum' && !$this->teacher) {
+            return 'wakasek_kurikulum';
+        }
+
+        if ($this->teacher || strtolower((string) $this->role) === 'teacher') {
+            return self::normalizeRole($this->role) === 'wakasek_kurikulum' ? 'wakasek_kurikulum' : 'teacher';
+        }
+
+        if ($this->isWakasekKurikulum()) {
+            return 'wakasek_kurikulum';
+        }
+
+        if ($this->role && $this->role !== 'user') {
+            return self::normalizeRole($this->role) ?? $this->role;
+        }
+
+        if ($this->student) {
+            return 'student';
+        }
+
+        if ($this->parent) {
+            return 'parent';
+        }
+
+        return 'guest';
     }
 
     protected $appends = ['avatar', 'avatar_url'];

@@ -53,6 +53,10 @@ class RaporReportController extends Controller
      */
     public function generate(Request $request)
     {
+        if (Auth::user()?->isWakasekKurikulum()) {
+            abort(403, 'Peran Wakasek Kurikulum tidak dapat menambah atau mengubah nilai rapor.');
+        }
+
         $validated = $request->validate([
             'student_id' => 'required|integer',
             'modul_ajar_id' => 'nullable|integer',
