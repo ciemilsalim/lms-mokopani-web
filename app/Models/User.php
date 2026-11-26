@@ -44,6 +44,33 @@ class User extends Authenticatable
         return $this->hasOne(ParentModel::class, 'user_id');
     }
 
+    /**
+     * Normalize role aliases for Wakasek Kurikulum to canonical 'wakasek_kurikulum'.
+     */
+    public static function normalizeRole(?string $role): ?string
+    {
+        if (!$role) {
+            return null;
+        }
+
+        $normalized = strtolower(trim($role));
+        $normalizedSlug = str_replace([' ', '-'], '_', $normalized);
+
+        if (in_array($normalizedSlug, ['wakasek_kurikulum', 'waka_kurikulum', 'kurikulum', 'wakasek'], true)) {
+            return 'wakasek_kurikulum';
+        }
+
+        return $role;
+    }
+
+    /**
+     * Determine whether this user has the Wakasek Kurikulum role.
+     */
+    public function isWakasekKurikulum(): bool
+    {
+        return self::normalizeRole($this->role) === 'wakasek_kurikulum';
+    }
+
     protected $appends = ['avatar', 'avatar_url'];
 
     public function getAvatarAttribute()

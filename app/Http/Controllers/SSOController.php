@@ -38,9 +38,10 @@ class SSOController extends Controller
         }
 
         // Secure role check in LMS
-        $role = $user->role ?: ($user->teacher ? 'teacher' : ($user->student ? 'student' : 'guest'));
+        $normalizedRole = \App\Models\User::normalizeRole($user->role);
+        $role = $normalizedRole ?: ($user->teacher ? 'teacher' : ($user->student ? 'student' : 'guest'));
         
-        if ($role !== 'teacher' && $role !== 'admin') {
+        if (!in_array($role, ['teacher', 'admin', 'wakasek_kurikulum'], true)) {
             abort(403, 'Anda tidak memiliki hak akses untuk SSO ke Aplikasi Presensi.');
         }
 

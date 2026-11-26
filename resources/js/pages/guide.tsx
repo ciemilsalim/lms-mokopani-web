@@ -103,7 +103,13 @@ function SectionCard({ section, defaultOpen }: { section: GuideSection; defaultO
     );
 }
 
-const roleLabels: Record<string, string> = { teacher: 'Guru', student: 'Siswa', parent: 'Orang Tua', admin: 'Admin' };
+const roleLabels: Record<string, string> = {
+    teacher: 'Guru',
+    student: 'Siswa',
+    parent: 'Orang Tua',
+    admin: 'Admin',
+    wakasek_kurikulum: 'Wakasek Kurikulum',
+};
 
 const tipsMap: Record<string, { icon: any; text: string }[]> = {
     teacher: [

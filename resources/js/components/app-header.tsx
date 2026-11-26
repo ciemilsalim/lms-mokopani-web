@@ -9,7 +9,7 @@ import { useInitials } from '@/hooks/use-initials';
 import { cn } from '@/lib/utils';
 import { type BreadcrumbItem, type NavItem, type SharedData } from '@/types';
 import { Link, usePage, router } from '@inertiajs/react';
-import { LayoutGrid, Menu, BookOpen, Library, ClipboardList, Target, FileBarChart, Bell, GraduationCap, Compass, BarChart3, Heart, ChevronDown, Users, Sparkles } from 'lucide-react';
+import { LayoutGrid, Menu, BookOpen, Library, ClipboardList, Target, FileBarChart, Bell, GraduationCap, Compass, BarChart3, Heart, ChevronDown, Users, Sparkles, Table2 } from 'lucide-react';
 import AppLogo from './app-logo';
 import AppLogoIcon from './app-logo-icon';
 import AppearanceToggleDropdown from './appearance-dropdown';
@@ -57,6 +57,15 @@ const parentMobileNavItems: NavItem[] = [
     { title: 'Pengumuman', url: '/announcements', icon: Bell },
 ];
 
+const wakasekKurikulumMobileNavItems: NavItem[] = [
+    { title: 'Dashboard', url: '/dashboard', icon: LayoutGrid },
+    { title: 'Leger Nilai', url: '/gradebook/leger', icon: Table2 },
+    { title: 'Mata Pelajaran', url: '/subjects', icon: BookOpen },
+    { title: 'Materi', url: '/materials', icon: Library },
+    { title: 'Asesmen', url: '/assignments', icon: ClipboardList },
+    { title: 'Pengumuman', url: '/announcements', icon: Bell },
+];
+
 const activeItemStyles = 'text-foreground dark:bg-muted dark:text-foreground font-bold';
 
 interface AppHeaderProps {
@@ -72,6 +81,8 @@ export function AppHeader({ breadcrumbs = [] }: AppHeaderProps) {
         ? teacherMobileNavItems 
         : user_role === 'admin'
         ? adminMobileNavItems
+        : user_role === 'wakasek_kurikulum'
+        ? wakasekKurikulumMobileNavItems
         : user_role === 'parent' 
         ? parentMobileNavItems 
         : studentMobileNavItems;

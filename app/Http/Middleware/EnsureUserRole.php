@@ -22,9 +22,12 @@ class EnsureUserRole
             return redirect()->route('login');
         }
 
-        $userRole = ($user->role && $user->role !== 'user') ? $user->role : ($user->teacher ? 'teacher' : ($user->student ? 'student' : ($user->parent ? 'parent' : 'guest')));
+        $normalizedRole = \App\Models\User::normalizeRole($user->role);
+        $userRole = ($normalizedRole && $normalizedRole !== 'user') ? $normalizedRole : ($user->teacher ? 'teacher' : ($user->student ? 'student' : ($user->parent ? 'parent' : 'guest')));
 
-        if (!in_array($userRole, $roles)) {
+        $allowedRoles = array_map(fn ($r) => \App\Models\User::normalizeRole($r) ?? $r, $roles);
+
+        if (!in_array($userRole, $allowedRoles, true)) {
             abort(403, 'Anda tidak memiliki akses ke halaman ini.');
         }
 

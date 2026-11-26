@@ -45,7 +45,8 @@ export default function GradebookIndex({
     selected_class_id = null,
     period = ''
 }: GradebookIndexProps) {
-    const { is_homeroom_teacher, homeroom_class } = usePage<SharedData>().props;
+    const { is_homeroom_teacher, is_wakasek_kurikulum, homeroom_class, user_role } = usePage<SharedData>().props;
+    const canAccessLeger = Boolean(is_homeroom_teacher && homeroom_class) || Boolean(is_wakasek_kurikulum) || user_role === 'wakasek_kurikulum' || user_role === 'admin';
     const [selectedClass, setSelectedClass] = useState<number | 'all'>(selected_class_id || 'all');
     const [search, setSearch] = useState('');
 
@@ -88,8 +89,8 @@ export default function GradebookIndex({
                     )}
                 </div>
 
-                {/* Wali Kelas Leger Nilai Banner */}
-                {is_homeroom_teacher && homeroom_class && (
+                {/* Wali Kelas / Wakasek Kurikulum Leger Nilai Banner */}
+                {canAccessLeger && (
                     <div className="rounded-2xl border border-primary/25 bg-primary/5 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         <div className="flex items-center gap-3">
                             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary">
@@ -97,10 +98,14 @@ export default function GradebookIndex({
                             </div>
                             <div>
                                 <h2 className="text-sm font-bold text-foreground">
-                                    Leger Nilai Wali Kelas — {homeroom_class.name}
+                                    {homeroom_class
+                                        ? `Leger Nilai Wali Kelas — ${homeroom_class.name}`
+                                        : 'Leger Nilai Seluruh Kelas'}
                                 </h2>
                                 <p className="text-xs text-muted-foreground">
-                                    Lihat rekap nilai seluruh mata pelajaran untuk siswa di kelas perwalian Anda.
+                                    {homeroom_class
+                                        ? 'Lihat rekap nilai seluruh mata pelajaran untuk siswa di kelas perwalian Anda.'
+                                        : 'Lihat rekapitulasi nilai seluruh mata pelajaran siswa untuk semua kelas (Mode Baca).'}
                                 </p>
                             </div>
                         </div>

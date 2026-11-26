@@ -328,4 +328,244 @@ class HomeroomLegerTest extends TestCase
             ->where('school_class.name', 'Kelas 7C')
         );
     }
+
+    public function test_wakasek_kurikulum_can_view_and_switch_all_classes_in_leger_nilai_and_export_csv(): void
+    {
+        $wakasekUser = User::factory()->create([
+            'role' => 'wakasek_kurikulum',
+            'name' => 'Wakasek Kurikulum',
+        ]);
+
+        $waliTeacherUser = User::factory()->create(['role' => 'teacher', 'name' => 'Wali Kelas 7A']);
+        $waliTeacher = Teacher::create([
+            'user_id' => $waliTeacherUser->id,
+            'name'    => 'Wali Kelas 7A',
+            'nip'     => '198001012005011011',
+        ]);
+
+        $class7A = SchoolClass::create([
+            'name'             => 'Kelas 7A',
+            'teacher_id'       => $waliTeacher->id,
+            'academic_year_id' => $this->academicYear->id,
+        ]);
+
+        $class8B = SchoolClass::create([
+            'name'             => 'Kelas 8B',
+            'academic_year_id' => $this->academicYear->id,
+        ]);
+
+        $student7AUser = User::factory()->create(['role' => 'student', 'name' => 'Dewi 7A']);
+        $student7A = Student::create([
+            'user_id'         => $student7AUser->id,
+            'school_class_id' => $class7A->id,
+            'name'            => 'Dewi 7A',
+            'nis'             => '2001',
+            'unique_id'       => 'STU-2001',
+        ]);
+
+        $student8BUser = User::factory()->create(['role' => 'student', 'name' => 'Eko 8B']);
+        $student8B = Student::create([
+            'user_id'         => $student8BUser->id,
+            'school_class_id' => $class8B->id,
+            'name'            => 'Eko 8B',
+            'nis'             => '2002',
+            'unique_id'       => 'STU-2002',
+        ]);
+
+        $ipa = Subject::create(['name' => 'IPA', 'code' => 'IPA', 'kktp' => 75]);
+
+        GradebookFinalScore::create([
+            'student_id'       => $student7A->id,
+            'subject_id'       => $ipa->id,
+            'school_class_id'  => $class7A->id,
+            'academic_year_id' => $this->academicYear->id,
+            'semester_id'      => $this->semester->id,
+            'score'            => 85,
+        ]);
+
+        GradebookFinalScore::create([
+            'student_id'       => $student8B->id,
+            'subject_id'       => $ipa->id,
+            'school_class_id'  => $class8B->id,
+            'academic_year_id' => $this->academicYear->id,
+            'semester_id'      => $this->semester->id,
+            'score'            => 92,
+        ]);
+
+        // 1. Mengakses /gradebook bagi wakasek_kurikulum diarahkan langsung ke /gradebook/leger
+        $this->actingAs($wakasekUser)
+            ->get('/gradebook')
+            ->assertRedirect(route('gradebook.leger'));
+
+        // 2. Mengakses /gradebook/leger tanpa parameter menampilkan kelas pertama + daftar seluruh kelas (admin_classes)
+        $response = $this->actingAs($wakasekUser)->get('/gradebook/leger');
+        $response->assertStatus(200);
+        $response->assertInertia(fn (Assert $page) => $page
+            ->component('gradebook/leger')
+            ->where('user_role', 'wakasek_kurikulum')
+            ->where('is_wakasek_kurikulum', true)
+            ->where('is_read_only', true)
+            ->where('school_class.id', $class7A->id)
+            ->where('school_class.name', 'Kelas 7A')
+            ->has('admin_classes', 2)
+            ->has('rows', 1)
+            ->where('rows.0.name', 'Dewi 7A')
+            ->where("rows.0.scores.{$ipa->id}.final_score", 85)
+        );
+
+        // 3. Wakasek Kurikulum dapat berpindah ke kelas lain (Kelas 8B) via ?class_id=
+        $switchResponse = $this->actingAs($wakasekUser)->get("/gradebook/leger?class_id={$class8B->id}");
+        $switchResponse->assertStatus(200);
+        $switchResponse->assertInertia(fn (Assert $page) => $page
+            ->component('gradebook/leger')
+            ->where('school_class.id', $class8B->id)
+            ->where('school_class.name', 'Kelas 8B')
+            ->has('rows', 1)
+            ->where('rows.0.name', 'Eko 8B')
+            ->where("rows.0.scores.{$ipa->id}.final_score", 92)
+        );
+
+        // 4. Wakasek Kurikulum dapat mengunduh CSV leger nilai kelas mana pun
+        $csvResponse = $this->actingAs($wakasekUser)->get("/gradebook/leger/export-csv?class_id={$class8B->id}");
+        $csvResponse->assertStatus(200);
+        $csvResponse->assertHeader('Content-Type', 'text/csv; charset=UTF-8');
+        $this->assertStringContainsString('Eko 8B', $csvResponse->streamedContent());
+        $this->assertStringContainsString('92', $csvResponse->streamedContent());
+    }
+
+    public function test_wakasek_kurikulum_cannot_add_update_or_delete_any_scores(): void
+    {
+        // Uji akun Wakasek Kurikulum (bahkan jika akun tersebut juga terhubung ke data Teacher)
+        $wakasekUser = User::factory()->create([
+            'role' => 'wakasek_kurikulum',
+            'name' => 'Wakasek Kurikulum Read Only',
+        ]);
+        $wakasekTeacher = Teacher::create([
+            'user_id' => $wakasekUser->id,
+            'name'    => 'Wakasek Kurikulum Read Only',
+            'nip'     => '197901012005011022',
+        ]);
+
+        $classA = SchoolClass::create([
+            'name'             => 'Kelas 9A',
+            'teacher_id'       => $wakasekTeacher->id,
+            'academic_year_id' => $this->academicYear->id,
+        ]);
+
+        $studentUser = User::factory()->create(['role' => 'student', 'name' => 'Fajar']);
+        $student = Student::create([
+            'user_id'         => $studentUser->id,
+            'school_class_id' => $classA->id,
+            'name'            => 'Fajar',
+            'nis'             => '3001',
+            'unique_id'       => 'STU-3001',
+        ]);
+
+        $subject = Subject::create(['name' => 'Bahasa Indonesia', 'code' => 'BIN', 'kktp' => 75]);
+
+        $assignment = LmsAssignment::create([
+            'teacher_id'      => $wakasekTeacher->id,
+            'subject_id'      => $subject->id,
+            'academic_year_id'=> $this->academicYear->id,
+            'semester_id'     => $this->semester->id,
+            'title'           => 'Sumatif Teks Laporan',
+            'description'     => 'Ujian Sumatif',
+            'assessment_type' => 'summative',
+            'max_points'      => 100,
+        ]);
+        $assignment->schoolClasses()->attach($classA->id);
+
+        $submission = LmsSubmission::create([
+            'assignment_id' => $assignment->id,
+            'student_id'    => $student->id,
+            'score'         => 78,
+            'submitted_at'  => now(),
+        ]);
+
+        $finalScore = GradebookFinalScore::create([
+            'student_id'       => $student->id,
+            'subject_id'       => $subject->id,
+            'school_class_id'  => $classA->id,
+            'academic_year_id' => $this->academicYear->id,
+            'semester_id'      => $this->semester->id,
+            'score'            => 80,
+        ]);
+
+        // 1. Tidak bisa menambah atau mengubah nilai akhir (SAS/ASAT) di Gradebook
+        $this->actingAs($wakasekUser)
+            ->postJson('/gradebook/final-score', [
+                'student_id' => $student->id,
+                'subject_id' => $subject->id,
+                'class_id'   => $classA->id,
+                'score'      => 99,
+            ])
+            ->assertStatus(403);
+
+        $this->assertDatabaseHas('gradebook_final_scores', [
+            'id'    => $finalScore->id,
+            'score' => 80,
+        ]);
+
+        // 2. Tidak bisa menambah atau mengubah nilai tugas/asesmen
+        $this->actingAs($wakasekUser)
+            ->post('/assignments/grade', [
+                'assignment_id' => $assignment->id,
+                'student_id'    => $student->id,
+                'score'         => 95,
+            ])
+            ->assertStatus(403);
+
+        $this->assertDatabaseHas('lms_submissions', [
+            'id'    => $submission->id,
+            'score' => 78,
+        ]);
+
+        // 3. Tidak bisa membuat, mengubah, atau menghapus asesmen/nilai
+        $this->actingAs($wakasekUser)
+            ->post('/assignments', [
+                'title'           => 'Asesmen Ilegal',
+                'description'     => 'Test',
+                'subject_id'      => $subject->id,
+                'assessment_type' => 'summative',
+                'due_date'        => now()->addDays(3)->toDateString(),
+                'school_classes'  => [$classA->id],
+            ])
+            ->assertStatus(403);
+
+        $this->actingAs($wakasekUser)
+            ->post("/assignments/{$assignment->id}", [
+                'title' => 'Ubah Asesmen',
+            ])
+            ->assertStatus(403);
+
+        $this->actingAs($wakasekUser)
+            ->delete("/assignments/{$assignment->id}")
+            ->assertStatus(403);
+
+        $this->assertDatabaseHas('lms_assignments', ['id' => $assignment->id]);
+
+        // 4. Tidak bisa menambah/mengubah nilai P5, remedial, atau generate rapor
+        $this->actingAs($wakasekUser)
+            ->post('/p5/score', [
+                'project_id'     => 1,
+                'student_id'     => $student->id,
+                'sub_element_id' => 1,
+                'nilai'          => 'SB',
+            ])
+            ->assertStatus(403);
+
+        $this->actingAs($wakasekUser)
+            ->post('/remedial', [
+                'records' => [],
+            ])
+            ->assertStatus(403);
+
+        $this->actingAs($wakasekUser)
+            ->post('/rapor/generate', [
+                'student_id'         => $student->id,
+                'calculation_method' => 'average',
+                'tp_scores'          => ['TP 1' => 90],
+            ])
+            ->assertStatus(403);
+    }
 }

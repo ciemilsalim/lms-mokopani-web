@@ -645,6 +645,7 @@ function AdminDashboardView(props: DashboardProps & { auth: any; user_role: stri
 
     const roleLabel: Record<string, string> = {
         admin: 'Administrator',
+        wakasek_kurikulum: 'Wakasek Kurikulum',
         teacher: 'Guru',
         student: 'Siswa',
         parent: 'Orang Tua',

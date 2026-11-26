@@ -55,8 +55,9 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $user,
             ],
-            'user_role' => ($user?->role && $user->role !== 'user') ? $user->role : ($user?->teacher ? 'teacher' : ($user?->student ? 'student' : ($user?->parent ? 'parent' : 'guest'))),
+            'user_role' => ($user?->role && $user->role !== 'user') ? (\App\Models\User::normalizeRole($user->role) ?? $user->role) : ($user?->teacher ? 'teacher' : ($user?->student ? 'student' : ($user?->parent ? 'parent' : 'guest'))),
             'is_homeroom_teacher' => (bool) $homeroomClass,
+            'is_wakasek_kurikulum' => (bool) $user?->isWakasekKurikulum(),
             'homeroom_class' => $homeroomClass ? ['id' => $homeroomClass->id, 'name' => $homeroomClass->name] : null,
             'unread_count' => $user ? \App\Models\Notification::where('user_id', $user->id)->unread()->count() : 0,
             'sipada_url' => env('SIPADA_URL', env('VITE_SIPADA_URL', 'http://localhost:8000')),

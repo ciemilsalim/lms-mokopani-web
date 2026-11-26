@@ -25,9 +25,9 @@ import { getNavSections } from './app-sidebar';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose } from './ui/sheet';
 
 export function MobileBottomNav() {
-    const { auth, user_role, semestersList, activeSemesterId } = usePage<SharedData>().props;
+    const { auth, user_role, is_homeroom_teacher, is_wakasek_kurikulum, semestersList, activeSemesterId } = usePage<SharedData>().props;
     const [searchQuery, setSearchQuery] = useState('');
-    const sections = getNavSections(user_role);
+    const sections = getNavSections(user_role, Boolean(is_homeroom_teacher) || Boolean(is_wakasek_kurikulum));
 
     const activeSemester = semestersList?.find(s => s.id === activeSemesterId);
 
@@ -39,6 +39,13 @@ export function MobileBottomNav() {
                     { title: 'Beranda', url: '/dashboard', icon: LayoutDashboard },
                     { title: 'Kelas', url: '/classes', icon: GraduationCap },
                     { title: 'Materi', url: '/materials', icon: BookOpen },
+                    { title: 'Presensi', url: '/sso/presensi', icon: CalendarCheck, isExternal: true },
+                ];
+            case 'wakasek_kurikulum':
+                return [
+                    { title: 'Beranda', url: '/dashboard', icon: LayoutDashboard },
+                    { title: 'Leger Nilai', url: '/gradebook/leger', icon: FileSpreadsheet },
+                    { title: 'Mapel', url: '/subjects', icon: BookOpen },
                     { title: 'Presensi', url: '/sso/presensi', icon: CalendarCheck, isExternal: true },
                 ];
             case 'student':

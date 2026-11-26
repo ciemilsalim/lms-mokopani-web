@@ -93,6 +93,7 @@ const adminNavSections: NavSection[] = [
     {
         label: 'Monitoring & Analitik',
         items: [
+            { title: 'Leger Nilai',                 url: '/gradebook/leger',    icon: Table2 },
             { title: 'Analitik Pembelajaran',       url: '/analytics',          icon: BarChart3 },
             { title: 'Analitik AI & Konfigurasi',  url: '/admin/ai-analytics', icon: Sparkles },
         ],
@@ -101,6 +102,31 @@ const adminNavSections: NavSection[] = [
         label: 'Komunikasi',
         items: [
             { title: 'Pengumuman', url: '/announcements', icon: Bell },
+        ],
+    },
+];
+
+const wakasekKurikulumNavSections: NavSection[] = [
+    {
+        label: 'Utama',
+        items: [
+            { title: 'Dashboard',           url: '/dashboard',       icon: LayoutDashboard },
+            { title: 'Leger Nilai',         url: '/gradebook/leger', icon: Table2 },
+            { title: 'Pengumuman',          url: '/announcements',   icon: Bell },
+        ],
+    },
+    {
+        label: 'Monitoring Kurikulum',
+        items: [
+            { title: 'Mata Pelajaran',      url: '/subjects',        icon: BookOpen },
+            { title: 'Bahan Materi',        url: '/materials',       icon: Library },
+            { title: 'Bank Asesmen',        url: '/assignments',     icon: ClipboardList },
+        ],
+    },
+    {
+        label: 'Bantuan',
+        items: [
+            { title: 'Petunjuk Penggunaan', url: '/guide',           icon: Book },
         ],
     },
 ];
@@ -136,6 +162,7 @@ export function getNavSections(role: string, isHomeroomTeacher = false): NavSect
                 }
                 return section;
             });
+        case 'wakasek_kurikulum': return wakasekKurikulumNavSections;
         case 'student': return studentNavSections;
         case 'admin':   return adminNavSections;
         case 'parent':  return parentNavSections;
@@ -144,8 +171,8 @@ export function getNavSections(role: string, isHomeroomTeacher = false): NavSect
 }
 
 export function AppSidebar() {
-    const { user_role, is_homeroom_teacher } = usePage<SharedData>().props;
-    const sections = getNavSections(user_role, Boolean(is_homeroom_teacher));
+    const { user_role, is_homeroom_teacher, is_wakasek_kurikulum } = usePage<SharedData>().props;
+    const sections = getNavSections(user_role, Boolean(is_homeroom_teacher) || Boolean(is_wakasek_kurikulum));
 
     return (
         <Sidebar collapsible="icon" variant="sidebar">
@@ -172,7 +199,7 @@ export function AppSidebar() {
             </SidebarContent>
 
             <SidebarFooter className="border-t border-sidebar-border/50">
-                {(user_role === 'admin' || user_role === 'teacher') && (
+                {(user_role === 'admin' || user_role === 'teacher' || user_role === 'wakasek_kurikulum') && (
                     <SidebarMenu>
                         <SidebarMenuItem>
                             <SidebarMenuButton

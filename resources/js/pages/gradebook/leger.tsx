@@ -62,6 +62,7 @@ interface LegerProps {
         students_need_attention: number;
     };
     admin_classes?: Array<{ id: number; name: string }>;
+    is_read_only?: boolean;
 }
 
 export default function GradebookLeger({
@@ -74,7 +75,10 @@ export default function GradebookLeger({
     summary,
     admin_classes = [],
 }: LegerProps) {
-    const { user_role } = usePage<SharedData>().props;
+    const { user_role, is_wakasek_kurikulum } = usePage<SharedData>().props;
+    const canSwitchClasses = user_role === 'admin' || user_role === 'wakasek_kurikulum' || Boolean(is_wakasek_kurikulum);
+    const backHref = user_role === 'wakasek_kurikulum' ? '/dashboard' : '/gradebook';
+    const backLabel = user_role === 'wakasek_kurikulum' ? 'Dashboard' : 'Nilai & Rapor';
     const [search, setSearch] = useState('');
     const [onlyAttention, setOnlyAttention] = useState(false);
 
@@ -108,16 +112,21 @@ export default function GradebookLeger({
                     <div className="space-y-1">
                         <div className="flex items-center gap-2 flex-wrap">
                             <Link
-                                href="/gradebook"
+                                href={backHref}
                                 className="inline-flex items-center gap-1 text-xs font-bold text-muted-foreground hover:text-primary transition"
                             >
                                 <ArrowLeft className="h-3.5 w-3.5" />
-                                <span>Nilai & Rapor</span>
+                                <span>{backLabel}</span>
                             </Link>
                             {period && (
                                 <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-muted text-muted-foreground text-[11px] font-bold border border-border/60">
                                     <GraduationCap className="h-3.5 w-3.5 text-primary" />
                                     <span>{period}</span>
+                                </span>
+                            )}
+                            {user_role === 'wakasek_kurikulum' && (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-primary/10 text-primary text-[11px] font-bold border border-primary/20">
+                                    <span>Mode Baca (Wakasek Kurikulum)</span>
                                 </span>
                             )}
                         </div>
@@ -133,7 +142,7 @@ export default function GradebookLeger({
                     </div>
 
                     <div className="flex items-center gap-2 flex-wrap">
-                        {user_role === 'admin' && admin_classes.length > 0 && (
+                        {canSwitchClasses && admin_classes.length > 0 && (
                             <select
                                 aria-label="Pilih kelas"
                                 value={school_class?.id ?? ''}

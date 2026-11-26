@@ -33,6 +33,7 @@ export interface WelcomeCardProps {
 
 const roleLabelMap: Record<string, string> = {
     admin: 'Administrator',
+    wakasek_kurikulum: 'Wakasek Kurikulum',
     teacher: 'Guru',
     student: 'Siswa',
     parent: 'Orang Tua / Wali',

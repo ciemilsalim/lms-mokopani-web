@@ -27,7 +27,7 @@ class DashboardController extends Controller
     public function index()
     {
         $user = Auth::user();
-        $role = strtolower($user->role ?? '');
+        $role = strtolower(\App\Models\User::normalizeRole($user->role) ?? ($user->role ?? ''));
 
         if (!$role) {
             $role = $user->teacher ? 'teacher' : ($user->student ? 'student' : ($user->parent ? 'parent' : 'guest'));
@@ -40,13 +40,14 @@ class DashboardController extends Controller
         return match ($role) {
             'teacher', 'guru' => $this->teacherDashboard($user),
             'student', 'siswa' => $this->studentDashboard($user),
+            'wakasek_kurikulum' => $this->adminDashboard($user, 'wakasek_kurikulum'),
             default   => $this->adminDashboard($user),
         };
     }
 
-    // ─── ADMIN ───────────────────────────────────────────────────────
+    // ─── ADMIN / WAKASEK KURIKULUM ───────────────────────────────────
 
-    private function adminDashboard($user)
+    private function adminDashboard($user, string $identityRole = 'admin')
     {
         $stats = [
             'total_students'      => Student::count(),
@@ -71,7 +72,7 @@ class DashboardController extends Controller
             'stats'               => $stats,
             'identity'            => [
                 'name'       => $user->name,
-                'role'       => 'admin',
+                'role'       => $identityRole,
                 'sekolah'    => school_setting('school_name', config('app.name')),
                 'tahunAjaran' => AcademicYear::getActive()?->name,
                 'semester'   => Semester::getActive()?->name,

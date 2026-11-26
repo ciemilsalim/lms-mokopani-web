@@ -34,6 +34,10 @@ class GradebookController extends Controller
         $activeYear = AcademicYear::getActive();
         $activeSemester = Semester::getActive();
 
+        if ($user->isWakasekKurikulum()) {
+            return redirect()->route('gradebook.leger');
+        }
+
         if ($user->teacher || $user->role === 'admin') {
             $query = TeachingAssignment::with(['subject', 'schoolClass.students'])
                 ->whereHas('schoolClass');
@@ -856,8 +860,8 @@ class GradebookController extends Controller
         $user = Auth::user();
         $teacher = $user?->teacher;
 
-        if ($user?->role !== 'admin' && !$teacher) {
-            abort(403);
+        if ($user?->isWakasekKurikulum() || ($user?->role !== 'admin' && !$teacher)) {
+            abort(403, 'Peran Wakasek Kurikulum hanya memiliki akses baca (read-only) dan tidak dapat menambah, mengubah, atau menghapus nilai.');
         }
 
         $validated = $request->validate([
@@ -1013,7 +1017,7 @@ class GradebookController extends Controller
     }
 
     /**
-     * Leger Nilai untuk Wali Kelas (dan Admin): rekap nilai semua mapel untuk seluruh siswa di kelas perwalian.
+     * Leger Nilai untuk Wali Kelas, Wakasek Kurikulum, dan Admin: rekap nilai semua mapel untuk seluruh siswa di kelas.
      */
     public function leger(Request $request)
     {
@@ -1021,9 +1025,10 @@ class GradebookController extends Controller
         $activeYear = AcademicYear::getActive();
         $activeSemester = Semester::getActive();
 
+        $canSelectAllClasses = $user->role === 'admin' || $user->isWakasekKurikulum();
         $schoolClass = $this->resolveHomeroomClass($request, $user);
-        $adminClasses = $user->role === 'admin'
-            ? SchoolClass::orderBy('name')->get(['id', 'name'])
+        $adminClasses = $canSelectAllClasses
+            ? $this->getAvailableLegerClasses($activeYear)
             : collect();
 
         if (!$schoolClass) {
@@ -1041,6 +1046,7 @@ class GradebookController extends Controller
                     'students_need_attention' => 0,
                 ],
                 'admin_classes'    => $adminClasses,
+                'is_read_only'     => true,
             ]);
         }
 
@@ -1064,6 +1070,7 @@ class GradebookController extends Controller
             'subject_averages' => $legerData['subject_averages'],
             'summary'          => $legerData['summary'],
             'admin_classes'    => $adminClasses,
+            'is_read_only'     => true,
         ]);
     }
 
@@ -1129,15 +1136,39 @@ class GradebookController extends Controller
     }
 
     /**
+     * Get sorted list of available classes for Leger Nilai (prioritizing active academic year).
+     */
+    protected function getAvailableLegerClasses(?AcademicYear $activeYear = null)
+    {
+        if ($activeYear) {
+            $activeYearClasses = SchoolClass::where(function ($q) use ($activeYear) {
+                $q->where('academic_year_id', $activeYear->id)
+                    ->orWhereNull('academic_year_id');
+            })->orderBy('name')->get(['id', 'name']);
+
+            if ($activeYearClasses->isNotEmpty()) {
+                return $activeYearClasses;
+            }
+        }
+
+        return SchoolClass::orderBy('name')->get(['id', 'name']);
+    }
+
+    /**
      * Resolve and authorize the homeroom class for the current user.
      */
     protected function resolveHomeroomClass(Request $request, $user): ?SchoolClass
     {
         $requestedClassId = $request->query('class_id') ? (int) $request->query('class_id') : null;
 
-        if ($user->role === 'admin') {
+        if ($user->role === 'admin' || $user->isWakasekKurikulum()) {
             if ($requestedClassId) {
                 return SchoolClass::findOrFail($requestedClassId);
+            }
+            $activeYear = AcademicYear::getActive();
+            $availableClasses = $this->getAvailableLegerClasses($activeYear);
+            if ($availableClasses->isNotEmpty()) {
+                return SchoolClass::find($availableClasses->first()->id);
             }
             return SchoolClass::orderBy('name')->first();
         }

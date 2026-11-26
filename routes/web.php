@@ -184,8 +184,14 @@ Route::middleware(['auth'])->group(function () {
     Route::post('comments', [\App\Http\Controllers\CommentController::class, 'store'])->name('comments.store');
     Route::delete('comments/{comment}', [\App\Http\Controllers\CommentController::class, 'destroy'])->name('comments.destroy');
 
-    // Laporan Nilai (shared — dispatches teacher vs student in controller)
+    // Laporan Nilai (shared — dispatches teacher vs student vs wakasek_kurikulum in controller)
     Route::get('gradebook', [\App\Http\Controllers\GradebookController::class, 'index'])->name('gradebook.index');
+
+    // Leger Nilai (read-only ledger accessible by Wali Kelas, Wakasek Kurikulum, and Admin)
+    Route::middleware(['role:admin,teacher,wakasek_kurikulum'])->group(function () {
+        Route::get('gradebook/leger', [\App\Http\Controllers\GradebookController::class, 'leger'])->name('gradebook.leger');
+        Route::get('gradebook/leger/export-csv', [\App\Http\Controllers\GradebookController::class, 'exportLegerCsv'])->name('gradebook.leger.export-csv');
+    });
 
     // ── Student-only ────────────────────────────────────────────────
     Route::middleware(['role:student'])->group(function () {
@@ -256,8 +262,6 @@ Route::middleware(['auth'])->group(function () {
         Route::get('gradebook/show', [\App\Http\Controllers\GradebookController::class, 'show'])->name('gradebook.show');
         Route::get('gradebook/final-report', [\App\Http\Controllers\GradebookController::class, 'finalReport'])->name('gradebook.final-report');
         Route::post('gradebook/final-score', [\App\Http\Controllers\GradebookController::class, 'updateFinalScore'])->name('gradebook.final-score.update');
-        Route::get('gradebook/leger', [\App\Http\Controllers\GradebookController::class, 'leger'])->name('gradebook.leger');
-        Route::get('gradebook/leger/export-csv', [\App\Http\Controllers\GradebookController::class, 'exportLegerCsv'])->name('gradebook.leger.export-csv');
 
         // Laporan Capaian Pembelajaran (read-only report)
         Route::get('gradebook/learning-report/{class_id}/{subject_id}', [GradebookController::class, 'learningReport'])->name('gradebook.learning-report');

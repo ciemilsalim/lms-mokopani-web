@@ -28,8 +28,9 @@ export interface SharedData {
     school_logo: string | null;
     quote: { message: string; author: string };
     auth: Auth;
-    user_role: 'admin' | 'teacher' | 'student' | 'parent' | 'user' | 'guest';
+    user_role: 'admin' | 'teacher' | 'student' | 'parent' | 'wakasek_kurikulum' | 'user' | 'guest';
     is_homeroom_teacher?: boolean;
+    is_wakasek_kurikulum?: boolean;
     homeroom_class?: { id: number; name: string } | null;
     unread_count: number;
     sipada_url?: string;
